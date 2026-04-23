@@ -10,6 +10,9 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   external: ["react", "react-dom", "tailwindcss"],
+  loader: {
+    ".svg": "dataurl",
+  },
   // Copy the CSS tokens file to dist
   onSuccess: "cp -r src/styles dist/styles",
 });
