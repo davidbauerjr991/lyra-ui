@@ -14,5 +14,5 @@ export default defineConfig({
     ".svg": "dataurl",
   },
   // Copy the CSS tokens file to dist
-  onSuccess: "cp -r src/styles dist/styles",
+  onSuccess: "mkdir -p dist/styles && cp src/styles/lyra-tokens.css dist/styles/lyra-tokens.css",
 });
