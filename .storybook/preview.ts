@@ -3,6 +3,11 @@ import "../src/storybook.css";
 
 const preview: Preview = {
   parameters: {
+    options: {
+      storySort: {
+        order: ["Foundations", ["Colors", "Typography", "Spacing", "Border Radius", "Shadows"], "UI"],
+      },
+    },
     controls: {
       matchers: {
         color: /(background|color)$/i,

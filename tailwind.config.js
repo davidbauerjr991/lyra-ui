@@ -1,8 +1,25 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ["./src/**/*.{ts,tsx}"],
+  content: [
+    "./src/**/*.{ts,tsx}",
+    "./src/components/__stories__/**/*.{ts,tsx}",
+  ],
   theme: {
     extend: {
+      /* ── Lyra Spacing Scale (4px base unit) ── */
+      spacing: {
+        "lyra-0": "var(--lyra-spacing-0)",
+        "lyra-1": "var(--lyra-spacing-1)",
+        "lyra-2": "var(--lyra-spacing-2)",
+        "lyra-3": "var(--lyra-spacing-3)",
+        "lyra-4": "var(--lyra-spacing-4)",
+        "lyra-5": "var(--lyra-spacing-5)",
+        "lyra-6": "var(--lyra-spacing-6)",
+        "lyra-7": "var(--lyra-spacing-7)",
+        "lyra-8": "var(--lyra-spacing-8)",
+        "lyra-9": "var(--lyra-spacing-9)",
+      },
+      /* ── Lyra Colors ── */
       colors: {
         "lyra-bg-surface-base": "var(--lyra-bg-surface-base)",
         "lyra-bg-surface-canvas": "var(--lyra-bg-surface-canvas)",
@@ -55,6 +72,7 @@ export default {
         "lyra-state-pressed-destructive": "var(--lyra-state-pressed-destructive)",
         "cxone-navy": "#2a2d32",
       },
+      /* ── Lyra Border Radius ── */
       borderRadius: {
         "lyra-none": "var(--lyra-radius-none)",
         "lyra-xs": "var(--lyra-radius-xs)",
@@ -64,6 +82,7 @@ export default {
         "lyra-xl": "var(--lyra-radius-xl)",
         "lyra-round": "var(--lyra-radius-round)",
       },
+      /* ── Font Family ── */
       fontFamily: {
         sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "sans-serif"],
       },
