@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { LeftNav, type NavItem } from "../left-nav";
+import { Container } from "../container";
+import { ContentArea } from "../content-area";
 import {
   Monitor,
   LayoutGrid,
@@ -61,7 +63,9 @@ const meta: Meta<typeof LeftNav> = {
     (Story) => (
       <div className="flex h-[600px] bg-lyra-bg-surface-shell">
         <Story />
-        <div className="flex-1 bg-lyra-bg-surface-base m-3 rounded-lyra-lg border border-lyra-border-subtle" />
+        <ContentArea>
+          <Container className="flex flex-1" />
+        </ContentArea>
       </div>
     ),
   ],

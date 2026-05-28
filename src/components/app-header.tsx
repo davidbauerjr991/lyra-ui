@@ -15,7 +15,7 @@ const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
     <header
       ref={ref}
       className={cn(
-        "flex h-12 items-center justify-between px-4",
+        "flex h-14 items-center justify-between pl-2 pr-4",
         className
       )}
       {...props}

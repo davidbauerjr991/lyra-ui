@@ -3,7 +3,7 @@ import { Button } from "../button";
 import { Sparkles, MoreVertical, ChevronDown, RefreshCw, Trash2 } from "lucide-react";
 
 const meta: Meta<typeof Button> = {
-  title: "UI/Button",
+  title: "Atoms/Button",
   component: Button,
   tags: ["autodocs"],
   argTypes: {
@@ -13,7 +13,7 @@ const meta: Meta<typeof Button> = {
     },
     size: {
       control: "select",
-      options: ["default", "sm", "lg", "icon"],
+      options: ["sm", "default", "lg", "xl", "icon-sm", "icon", "icon-lg", "icon-xl"],
     },
     disabled: { control: "boolean" },
   },
@@ -71,13 +71,58 @@ export const Disabled: Story = {
 
 export const Sizes: Story = {
   render: () => (
-    <div className="flex items-center gap-4">
-      <Button size="sm">Small</Button>
-      <Button size="default">Default</Button>
-      <Button size="lg">Large</Button>
-      <Button variant="icon" size="icon">
-        <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
-      </Button>
+    <div className="space-y-6">
+      <div>
+        <h3 className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">Text Buttons</h3>
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col items-center gap-1">
+            <Button size="sm">Button</Button>
+            <span className="lyra-body-sm text-lyra-fg-secondary">32px</span>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <Button size="default">Button</Button>
+            <span className="lyra-body-sm text-lyra-fg-secondary">36px</span>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <Button size="lg">Button</Button>
+            <span className="lyra-body-sm text-lyra-fg-secondary">40px</span>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <Button size="xl">Button</Button>
+            <span className="lyra-body-sm text-lyra-fg-secondary">44px</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">Icon Buttons</h3>
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col items-center gap-1">
+            <Button variant="icon" size="icon-sm">
+              <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
+            </Button>
+            <span className="lyra-body-sm text-lyra-fg-secondary">32px</span>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <Button variant="icon" size="icon">
+              <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
+            </Button>
+            <span className="lyra-body-sm text-lyra-fg-secondary">36px</span>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <Button variant="icon" size="icon-lg">
+              <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
+            </Button>
+            <span className="lyra-body-sm text-lyra-fg-secondary">40px</span>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <Button variant="icon" size="icon-xl">
+              <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
+            </Button>
+            <span className="lyra-body-sm text-lyra-fg-secondary">44px</span>
+          </div>
+        </div>
+      </div>
     </div>
   ),
 };

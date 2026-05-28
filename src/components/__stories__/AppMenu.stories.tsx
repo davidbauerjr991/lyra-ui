@@ -28,7 +28,7 @@ const sampleGroups: AppMenuGroup[] = [
 ];
 
 const meta: Meta<typeof AppMenu> = {
-  title: "UI/AppMenu",
+  title: "UI/AppHeader/AppMenu",
   component: AppMenu,
   tags: ["autodocs"],
   parameters: {

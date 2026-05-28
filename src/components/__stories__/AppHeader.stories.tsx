@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { AppHeader } from "../app-header";
 import { AppName } from "../app-name";
-import { ActionIconButton, ActionAvatarButton } from "../actions";
+import { ActionIconButton } from "../actions";
+import { ProfileMenu, defaultProfileMenuGroups } from "../profile-menu";
+import { DashboardIcon } from "../icons/dashboard-icon";
 import { CircleHelp, Bell, Settings, Search } from "lucide-react";
 import appIcon from "../../assets/app-icon.svg";
 
@@ -30,15 +32,19 @@ export const Default: Story = {
       }
       actions={
         <>
-          <ActionIconButton title="Help">
-            <CircleHelp className="h-[18px] w-[18px]" strokeWidth={1.5} />
+          <ActionIconButton size="xl" title="Help">
+            <CircleHelp className="h-5 w-5" strokeWidth={1.5} />
           </ActionIconButton>
-          <ActionIconButton title="Notifications" badge={4}>
-            <Bell className="h-[18px] w-[18px]" strokeWidth={1.5} />
+          <ActionIconButton size="xl" title="Dashboards">
+            <DashboardIcon className="text-lyra-fg-default" />
           </ActionIconButton>
-          <ActionAvatarButton
+          <ActionIconButton size="xl" title="Notifications" badge={4}>
+            <Bell className="h-5 w-5" strokeWidth={1.5} />
+          </ActionIconButton>
+          <ProfileMenu
             initials="JS"
             avatarColor="#5d6a79"
+            groups={defaultProfileMenuGroups}
             className="ml-1"
           />
         </>
@@ -72,21 +78,25 @@ export const ActionsOnly: Story = {
       appName={<div />}
       actions={
         <>
-          <ActionIconButton title="Search">
-            <Search className="h-[18px] w-[18px]" strokeWidth={1.5} />
+          <ActionIconButton size="xl" title="Search">
+            <Search className="h-5 w-5" strokeWidth={1.5} />
           </ActionIconButton>
-          <ActionIconButton title="Settings">
-            <Settings className="h-[18px] w-[18px]" strokeWidth={1.5} />
+          <ActionIconButton size="xl" title="Settings">
+            <Settings className="h-5 w-5" strokeWidth={1.5} />
           </ActionIconButton>
-          <ActionIconButton title="Help">
-            <CircleHelp className="h-[18px] w-[18px]" strokeWidth={1.5} />
+          <ActionIconButton size="xl" title="Help">
+            <CircleHelp className="h-5 w-5" strokeWidth={1.5} />
           </ActionIconButton>
-          <ActionIconButton title="Notifications" badge={12}>
-            <Bell className="h-[18px] w-[18px]" strokeWidth={1.5} />
+          <ActionIconButton size="xl" title="Dashboards">
+            <DashboardIcon className="text-lyra-fg-default" />
           </ActionIconButton>
-          <ActionAvatarButton
+          <ActionIconButton size="xl" title="Notifications" badge={12}>
+            <Bell className="h-5 w-5" strokeWidth={1.5} />
+          </ActionIconButton>
+          <ProfileMenu
             initials="DB"
             avatarColor="#5d6a79"
+            groups={defaultProfileMenuGroups}
             className="ml-1"
           />
         </>
@@ -110,15 +120,19 @@ export const WithBackground: Story = {
       }
       actions={
         <>
-          <ActionIconButton title="Help">
-            <CircleHelp className="h-[18px] w-[18px]" strokeWidth={1.5} />
+          <ActionIconButton size="xl" title="Help">
+            <CircleHelp className="h-5 w-5" strokeWidth={1.5} />
           </ActionIconButton>
-          <ActionIconButton title="Notifications" badge={4}>
-            <Bell className="h-[18px] w-[18px]" strokeWidth={1.5} />
+          <ActionIconButton size="xl" title="Dashboards">
+            <DashboardIcon className="text-lyra-fg-default" />
           </ActionIconButton>
-          <ActionAvatarButton
+          <ActionIconButton size="xl" title="Notifications" badge={4}>
+            <Bell className="h-5 w-5" strokeWidth={1.5} />
+          </ActionIconButton>
+          <ProfileMenu
             initials="JS"
             avatarColor="#5d6a79"
+            groups={defaultProfileMenuGroups}
             className="ml-1"
           />
         </>

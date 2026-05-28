@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { useState } from "react";
 import {
   Table,
   TableHeader,
@@ -6,12 +7,16 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  SortableTableHead,
+  useColumnReorder,
 } from "../table";
+import type { SortDirection } from "../table";
 import { Checkbox } from "../checkbox";
+import { cn } from "../../lib/utils";
 import { CircleCheck, Minus, MoreVertical } from "lucide-react";
 
 const meta: Meta<typeof Table> = {
-  title: "UI/Table",
+  title: "UI/PageContent/Table",
   component: Table,
   tags: ["autodocs"],
   parameters: {
@@ -110,4 +115,215 @@ export const WithSelectedRows: Story = {
       </Table>
     </div>
   ),
+};
+
+/* ── Sortable ── */
+
+const sortableData = [
+  { id: 1, name: "Agent Desktop #1", description: "Back office", createdBy: "Alice Johnson" },
+  { id: 2, name: "Agent Desktop #2", description: "Custom", createdBy: "Bob Smith" },
+  { id: 3, name: "Agent Desktop #3", description: "Knowledge Worker", createdBy: "Charlie Lee" },
+  { id: 4, name: "Agent Desktop #4", description: "BPO", createdBy: "Diana Park" },
+  { id: 5, name: "Agent Desktop #5", description: "Collections", createdBy: "Eve Martinez" },
+];
+
+type SortKey = "name" | "description" | "createdBy";
+
+function nextDirection(current: SortDirection): SortDirection {
+  if (current === null) return "asc";
+  if (current === "asc") return "desc";
+  return null;
+}
+
+function SortableDemo() {
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDirection>(null);
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      const next = nextDirection(sortDir);
+      setSortDir(next);
+      if (next === null) setSortKey(null);
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const sorted = [...sortableData].sort((a, b) => {
+    if (!sortKey || !sortDir) return 0;
+    const aVal = a[sortKey].toLowerCase();
+    const bVal = b[sortKey].toLowerCase();
+    if (aVal < bVal) return sortDir === "asc" ? -1 : 1;
+    if (aVal > bVal) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const dirFor = (key: SortKey): SortDirection =>
+    sortKey === key ? sortDir : null;
+
+  return (
+    <div className="h-[400px]">
+      <Table>
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <TableHead className="w-[40px] shrink-0"><Checkbox /></TableHead>
+            <SortableTableHead
+              className="flex-[2]"
+              sortDirection={dirFor("name")}
+              onSort={() => handleSort("name")}
+            >
+              Name
+            </SortableTableHead>
+            <SortableTableHead
+              className="flex-[2]"
+              sortDirection={dirFor("description")}
+              onSort={() => handleSort("description")}
+            >
+              Description
+            </SortableTableHead>
+            <SortableTableHead
+              className="flex-[1.3]"
+              sortDirection={dirFor("createdBy")}
+              onSort={() => handleSort("createdBy")}
+            >
+              Created By
+            </SortableTableHead>
+            <TableHead className="w-[48px] shrink-0" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sorted.map((row) => (
+            <TableRow key={row.id}>
+              <TableCell className="w-[40px] shrink-0"><Checkbox /></TableCell>
+              <TableCell className="flex-[2] text-lyra-fg-link cursor-pointer hover:underline">{row.name}</TableCell>
+              <TableCell className="flex-[2]">{row.description}</TableCell>
+              <TableCell className="flex-[1.3]">{row.createdBy}</TableCell>
+              <TableCell className="w-[48px] shrink-0">
+                <button className="flex h-7 w-7 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-bg-surface-shell transition-colors">
+                  <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
+                </button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+export const Sortable: Story = {
+  name: "Sortable",
+  render: () => <SortableDemo />,
+};
+
+/* ── Reorderable + Sortable ── */
+
+type ReorderColKey = "name" | "description" | "createdBy";
+
+const reorderColumnConfig: Record<ReorderColKey, { label: string; flex: string }> = {
+  name: { label: "Name", flex: "flex-[2]" },
+  description: { label: "Description", flex: "flex-[2]" },
+  createdBy: { label: "Created By", flex: "flex-[1.3]" },
+};
+
+const reorderData = [
+  { id: 1, name: "Agent Desktop #1", description: "Back office", createdBy: "Alice Johnson" },
+  { id: 2, name: "Agent Desktop #2", description: "Custom", createdBy: "Bob Smith" },
+  { id: 3, name: "Agent Desktop #3", description: "Knowledge Worker", createdBy: "Charlie Lee" },
+  { id: 4, name: "Agent Desktop #4", description: "BPO", createdBy: "Diana Park" },
+  { id: 5, name: "Agent Desktop #5", description: "Collections", createdBy: "Eve Martinez" },
+];
+
+function ReorderableDemo() {
+  const [sortKey, setSortKey] = useState<ReorderColKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDirection>(null);
+  const { columnOrder, dragOverKey, dragHandlers } = useColumnReorder<ReorderColKey>([
+    "name",
+    "description",
+    "createdBy",
+  ]);
+
+  const handleSort = (key: ReorderColKey) => {
+    if (sortKey === key) {
+      const next: SortDirection = sortDir === null ? "asc" : sortDir === "asc" ? "desc" : null;
+      setSortDir(next);
+      if (next === null) setSortKey(null);
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const sorted = [...reorderData].sort((a, b) => {
+    if (!sortKey || !sortDir) return 0;
+    const aVal = a[sortKey].toLowerCase();
+    const bVal = b[sortKey].toLowerCase();
+    if (aVal < bVal) return sortDir === "asc" ? -1 : 1;
+    if (aVal > bVal) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const dirFor = (key: ReorderColKey): SortDirection =>
+    sortKey === key ? sortDir : null;
+
+  return (
+    <div className="h-[400px]">
+      <Table>
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <TableHead className="w-[40px] shrink-0"><Checkbox /></TableHead>
+            {columnOrder.map((key) => {
+              const col = reorderColumnConfig[key];
+              return (
+                <SortableTableHead
+                  key={key}
+                  className={col.flex}
+                  sortDirection={dirFor(key)}
+                  onSort={() => handleSort(key)}
+                  columnKey={key}
+                  dragHandlers={dragHandlers}
+                  isDragOver={dragOverKey === key}
+                >
+                  {col.label}
+                </SortableTableHead>
+              );
+            })}
+            <TableHead className="w-[48px] shrink-0" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sorted.map((row) => (
+            <TableRow key={row.id}>
+              <TableCell className="w-[40px] shrink-0"><Checkbox /></TableCell>
+              {columnOrder.map((key) => {
+                const col = reorderColumnConfig[key];
+                return (
+                  <TableCell
+                    key={key}
+                    className={cn(
+                      col.flex,
+                      key === "name" && "text-lyra-fg-link cursor-pointer hover:underline"
+                    )}
+                  >
+                    {row[key]}
+                  </TableCell>
+                );
+              })}
+              <TableCell className="w-[48px] shrink-0">
+                <button className="flex h-7 w-7 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-bg-surface-shell transition-colors">
+                  <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
+                </button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+export const Reorderable: Story = {
+  name: "Reorderable",
+  render: () => <ReorderableDemo />,
 };

@@ -4,7 +4,7 @@ import appIcon from "../../assets/app-icon.svg";
 import { LayoutGrid } from "lucide-react";
 
 const meta: Meta<typeof AppName> = {
-  title: "UI/AppName",
+  title: "UI/AppHeader/AppName",
   component: AppName,
   tags: ["autodocs"],
   argTypes: {

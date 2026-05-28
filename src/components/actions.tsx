@@ -1,6 +1,7 @@
 import * as React from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "../lib/utils";
+import { Tooltip } from "./tooltip";
 
 /* ── Action Icon Button (icon with optional badge) ── */
 
@@ -8,30 +9,52 @@ interface ActionIconButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   /** Badge count — hidden when 0 or undefined */
   badge?: number;
+  /** Size: sm=32, default=36, lg=40, xl=44 */
+  size?: "sm" | "default" | "lg" | "xl";
 }
+
+const actionIconSizeMap = {
+  sm: "h-8 w-8",
+  default: "h-9 w-9",
+  lg: "h-10 w-10",
+  xl: "h-11 w-11",
+} as const;
 
 const ActionIconButton = React.forwardRef<
   HTMLButtonElement,
   ActionIconButtonProps
->(({ className, badge, children, ...props }, ref) => (
-  <button
-    ref={ref}
-    className={cn(
-      "relative flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-default transition-colors",
-      "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
-      className
-    )}
-    {...props}
-  >
-    {children}
-    {badge != null && badge > 0 && (
-      <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-lyra-bg-destructive px-1 text-[9px] font-bold text-lyra-fg-on-primary">
-        {badge}
-      </span>
-    )}
-  </button>
-));
+>(({ className, badge, size = "default", title, children, ...props }, ref) => {
+  const button = (
+    <button
+      ref={ref}
+      className={cn(
+        "relative flex items-center justify-center rounded-lyra-sm text-lyra-fg-default transition-colors",
+        actionIconSizeMap[size],
+        "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
+        className
+      )}
+      {...props}
+    >
+      {children}
+      {badge != null && badge > 0 && (
+        <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-lyra-bg-destructive px-1 text-[10px] font-bold text-lyra-fg-on-primary">
+          {badge}
+        </span>
+      )}
+    </button>
+  );
+
+  if (title) {
+    return (
+      <Tooltip content={title} placement="bottom">
+        {button}
+      </Tooltip>
+    );
+  }
+
+  return button;
+});
 ActionIconButton.displayName = "ActionIconButton";
 
 /* ── Action Avatar Button (avatar circle + chevron) ── */
@@ -51,7 +74,7 @@ const ActionAvatarButton = React.forwardRef<
   <button
     ref={ref}
     className={cn(
-      "inline-flex items-center gap-1 rounded-lyra-sm px-1.5 py-1 transition-colors",
+      "inline-flex h-11 items-center gap-2 rounded-lyra-sm pl-2 pr-1.5 transition-colors",
       "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
       className

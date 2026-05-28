@@ -144,7 +144,7 @@ export const AllColors: Story = {
         description="Use for selected or active states on rows, items, and controls."
         colors={[
           { name: "Active Strong", token: "lyra-bg-active-strong", value: "#166cca", description: "Strong active/selected state." },
-          { name: "Active Moderate", token: "lyra-bg-active-moderate", value: "rgba(44,138,242,0.18)", description: "Medium active/selected state." },
+          { name: "Active Moderate", token: "lyra-bg-active-moderate", value: "#D3E6FD", description: "Medium active/selected state." },
           { name: "Active Subtle", token: "lyra-bg-active-subtle", value: "#ecf5fe", description: "Subtle active/selected state for rows and items." },
         ]}
       />
@@ -169,7 +169,7 @@ export const AllColors: Story = {
         title="Border"
         description="Use for borders, dividers, and outlines."
         colors={[
-          { name: "Subtle", token: "lyra-border-subtle", value: "rgba(0,0,0,0.08)", description: "Lightest dividers and card borders." },
+          { name: "Subtle", token: "lyra-border-subtle", value: "rgba(0,0,0,0.10)", description: "Lightest dividers and card borders." },
           { name: "Default", token: "lyra-border-default", value: "rgba(0,0,0,0.16)", description: "Standard input and control borders." },
           { name: "Medium", token: "lyra-border-medium", value: "rgba(0,0,0,0.32)", description: "Medium emphasis borders." },
           { name: "Strong", token: "lyra-border-strong", value: "rgba(0,0,0,0.46)", description: "High emphasis borders and hover states." },
@@ -204,7 +204,7 @@ export const AllColors: Story = {
         description="Use for hover, pressed, and interactive state overlays."
         colors={[
           { name: "Hover", token: "lyra-state-hover", value: "rgba(0,0,0,0.04)", description: "Default hover overlay on neutral elements." },
-          { name: "Pressed", token: "lyra-state-pressed", value: "rgba(0,0,0,0.08)", description: "Default pressed/active overlay." },
+          { name: "Pressed", token: "lyra-state-pressed", value: "rgba(0,0,0,0.10)", description: "Default pressed/active overlay." },
           { name: "Hover Primary", token: "lyra-state-hover-primary", value: "#185ba4", description: "Hover state for primary buttons." },
           { name: "Pressed Primary", token: "lyra-state-pressed-primary", value: "#164479", description: "Pressed state for primary buttons." },
           { name: "Hover Active Subtle", token: "lyra-state-hover-active-subtle", value: "#e4f2ff", description: "Hover on selected/active rows." },
@@ -260,7 +260,7 @@ export const PrimaryColors: Story = {
         <Swatch name="On Primary" token="lyra-fg-on-primary" value="#ffffff" />
         <Swatch name="Active Subtle (fg)" token="lyra-fg-active-subtle" value="#f5faff" />
         <Swatch name="Active Subtle" token="lyra-bg-active-subtle" value="#ecf5fe" />
-        <Swatch name="Active Moderate" token="lyra-bg-active-moderate" value="rgba(44,138,242,0.18)" />
+        <Swatch name="Active Moderate" token="lyra-bg-active-moderate" value="#D3E6FD" />
         <Swatch name="Primary" token="lyra-bg-primary" value="#166cca" />
         <Swatch name="Hover / Link" token="lyra-state-hover-primary" value="#185ba4" />
         <Swatch name="Pressed" token="lyra-state-pressed-primary" value="#164479" />
@@ -278,7 +278,7 @@ export const PrimaryColors: Story = {
       <AliasRow name="hover" value="#185ba4" token="lyra-state-hover-primary" />
       <AliasRow name="pressed" value="#164479" token="lyra-state-pressed-primary" />
       <AliasRow name="active-strong" value="#166cca" token="lyra-bg-active-strong" />
-      <AliasRow name="active-moderate" value="rgba(44,138,242,0.18)" token="lyra-bg-active-moderate" />
+      <AliasRow name="active-moderate" value="#D3E6FD" token="lyra-bg-active-moderate" />
       <AliasRow name="active-subtle" value="#ecf5fe" token="lyra-bg-active-subtle" />
       <AliasRow name="border-active" value="#166cca" token="lyra-border-active" />
       <AliasRow name="border-focus" value="#185ba4" token="lyra-border-focus" />
@@ -414,8 +414,8 @@ export const NeutralColors: Story = {
         <Swatch name="Surface Shell" token="lyra-bg-surface-shell" value="#f3f5f6" />
         <Swatch name="Disabled" token="lyra-bg-disabled" value="rgba(0,0,0,0.06)" />
         <Swatch name="Hover" token="lyra-state-hover" value="rgba(0,0,0,0.04)" />
-        <Swatch name="Pressed" token="lyra-state-pressed" value="rgba(0,0,0,0.08)" />
-        <Swatch name="Border Subtle" token="lyra-border-subtle" value="rgba(0,0,0,0.08)" />
+        <Swatch name="Pressed" token="lyra-state-pressed" value="rgba(0,0,0,0.10)" />
+        <Swatch name="Border Subtle" token="lyra-border-subtle" value="rgba(0,0,0,0.10)" />
         <Swatch name="Border Default" token="lyra-border-default" value="rgba(0,0,0,0.16)" />
         <Swatch name="Border Medium" token="lyra-border-medium" value="rgba(0,0,0,0.32)" />
         <Swatch name="Border Strong" token="lyra-border-strong" value="rgba(0,0,0,0.46)" />
@@ -445,8 +445,8 @@ export const NeutralColors: Story = {
       <AliasRow name="field" value="#ffffff" token="lyra-bg-field" />
       <AliasRow name="disabled" value="rgba(0,0,0,0.06)" token="lyra-bg-disabled" />
       <AliasRow name="hover" value="rgba(0,0,0,0.04)" token="lyra-state-hover" />
-      <AliasRow name="pressed" value="rgba(0,0,0,0.08)" token="lyra-state-pressed" />
-      <AliasRow name="border-subtle" value="rgba(0,0,0,0.08)" token="lyra-border-subtle" />
+      <AliasRow name="pressed" value="rgba(0,0,0,0.10)" token="lyra-state-pressed" />
+      <AliasRow name="border-subtle" value="rgba(0,0,0,0.10)" token="lyra-border-subtle" />
       <AliasRow name="border-default" value="rgba(0,0,0,0.16)" token="lyra-border-default" />
       <AliasRow name="border-medium" value="rgba(0,0,0,0.32)" token="lyra-border-medium" />
       <AliasRow name="border-strong" value="rgba(0,0,0,0.46)" token="lyra-border-strong" />

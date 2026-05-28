@@ -7,7 +7,7 @@ import { CircleHelp, Bell, Settings, Search } from "lucide-react";
    ══════════════════════════════════════════ */
 
 const avatarMeta: Meta<typeof ActionAvatarButton> = {
-  title: "UI/ActionButtons/Avatar",
+  title: "UI/AppHeader/Avatar",
   component: ActionAvatarButton,
   tags: ["autodocs"],
   argTypes: {

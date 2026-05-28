@@ -5,7 +5,7 @@ const preview: Preview = {
   parameters: {
     options: {
       storySort: {
-        order: ["Foundations", ["Colors", "Typography", "Spacing", "Border Radius", "Shadows"], "UI"],
+        order: ["Foundations", ["Colors", "Typography", "Spacing", "Border Radius", "Shadows"], "Atoms", "UI"],
       },
     },
     controls: {

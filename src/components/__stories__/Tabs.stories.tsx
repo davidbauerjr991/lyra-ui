@@ -4,7 +4,7 @@ import { TabList, Tab, TabPanel } from "../tabs";
 import { LayoutGrid, Settings, FileText } from "lucide-react";
 
 const meta: Meta<typeof TabList> = {
-  title: "UI/Tabs",
+  title: "Atoms/Tabs",
   component: TabList,
   tags: ["autodocs"],
 };

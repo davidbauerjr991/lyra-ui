@@ -25,7 +25,7 @@
   --lyra-bg-disabled: rgba(0, 0, 0, 0.06);
   --lyra-bg-none: rgba(0, 0, 0, 0.00);
   --lyra-bg-active-strong: #166cca;
-  --lyra-bg-active-moderate: rgba(44, 138, 242, 0.18);
+  --lyra-bg-active-moderate: #D3E6FD;
   --lyra-bg-active-subtle: #ecf5fe;
 
   --lyra-fg-default: rgba(0, 0, 0, 0.80);
@@ -40,7 +40,7 @@
   --lyra-fg-active-subtle: #f5faff;
   --lyra-fg-active-strong: #185ba4;
 
-  --lyra-border-subtle: rgba(0, 0, 0, 0.08);
+  --lyra-border-subtle: rgba(0, 0, 0, 0.10);
   --lyra-border-default: rgba(0, 0, 0, 0.16);
   --lyra-border-medium: rgba(0, 0, 0, 0.32);
   --lyra-border-strong: rgba(0, 0, 0, 0.46);
@@ -66,7 +66,7 @@
   --lyra-status-warning-subtle: #fffae0;
 
   --lyra-state-hover-opacity: rgba(0, 0, 0, 0.04);
-  --lyra-state-pressed-opacity: rgba(0, 0, 0, 0.08);
+  --lyra-state-pressed-opacity: rgba(0, 0, 0, 0.10);
   --lyra-state-hover-secondary: #fcfcfd;
   --lyra-state-pressed-secondary: #f3f5f6;
   --lyra-state-hover-active-subtle: #e4f2ff;

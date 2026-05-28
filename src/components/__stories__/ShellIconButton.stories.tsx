@@ -3,7 +3,7 @@ import { ActionIconButton } from "../actions";
 import { CircleHelp, Bell, Settings, Search } from "lucide-react";
 
 const meta: Meta<typeof ActionIconButton> = {
-  title: "UI/ActionButtons/IconButton",
+  title: "UI/AppHeader/IconButton",
   component: ActionIconButton,
   tags: ["autodocs"],
   argTypes: {
@@ -60,6 +60,38 @@ export const States: Story = {
   ),
 };
 
+export const Sizes: Story = {
+  name: "Sizes",
+  render: () => (
+    <div className="flex items-center gap-4">
+      <div className="flex flex-col items-center gap-1">
+        <ActionIconButton size="sm" title="Help">
+          <CircleHelp className="h-[18px] w-[18px]" strokeWidth={1.5} />
+        </ActionIconButton>
+        <span className="lyra-body-sm text-lyra-fg-secondary">32px</span>
+      </div>
+      <div className="flex flex-col items-center gap-1">
+        <ActionIconButton size="default" title="Help">
+          <CircleHelp className="h-[18px] w-[18px]" strokeWidth={1.5} />
+        </ActionIconButton>
+        <span className="lyra-body-sm text-lyra-fg-secondary">36px</span>
+      </div>
+      <div className="flex flex-col items-center gap-1">
+        <ActionIconButton size="lg" title="Help">
+          <CircleHelp className="h-[18px] w-[18px]" strokeWidth={1.5} />
+        </ActionIconButton>
+        <span className="lyra-body-sm text-lyra-fg-secondary">40px</span>
+      </div>
+      <div className="flex flex-col items-center gap-1">
+        <ActionIconButton size="xl" title="Help">
+          <CircleHelp className="h-[18px] w-[18px]" strokeWidth={1.5} />
+        </ActionIconButton>
+        <span className="lyra-body-sm text-lyra-fg-secondary">44px</span>
+      </div>
+    </div>
+  ),
+};
+
 export const AllIcons: Story = {
   name: "Icon Variations",
   render: () => (
@@ -76,6 +108,44 @@ export const AllIcons: Story = {
       <ActionIconButton title="Search">
         <Search className="h-[18px] w-[18px]" strokeWidth={1.5} />
       </ActionIconButton>
+    </div>
+  ),
+};
+
+export const BadgeVariants: Story = {
+  name: "Badge Variants",
+  render: () => (
+    <div className="flex items-center gap-6">
+      <div className="flex flex-col items-center gap-2">
+        <ActionIconButton size="xl" title="No badge">
+          <Bell className="h-5 w-5" strokeWidth={1.5} />
+        </ActionIconButton>
+        <span className="lyra-body-sm text-lyra-fg-secondary">No badge</span>
+      </div>
+      <div className="flex flex-col items-center gap-2">
+        <ActionIconButton size="xl" title="Badge 1" badge={1}>
+          <Bell className="h-5 w-5" strokeWidth={1.5} />
+        </ActionIconButton>
+        <span className="lyra-body-sm text-lyra-fg-secondary">1</span>
+      </div>
+      <div className="flex flex-col items-center gap-2">
+        <ActionIconButton size="xl" title="Badge 4" badge={4}>
+          <Bell className="h-5 w-5" strokeWidth={1.5} />
+        </ActionIconButton>
+        <span className="lyra-body-sm text-lyra-fg-secondary">4</span>
+      </div>
+      <div className="flex flex-col items-center gap-2">
+        <ActionIconButton size="xl" title="Badge 12" badge={12}>
+          <Bell className="h-5 w-5" strokeWidth={1.5} />
+        </ActionIconButton>
+        <span className="lyra-body-sm text-lyra-fg-secondary">12</span>
+      </div>
+      <div className="flex flex-col items-center gap-2">
+        <ActionIconButton size="xl" title="Badge 99+" badge={100}>
+          <Bell className="h-5 w-5" strokeWidth={1.5} />
+        </ActionIconButton>
+        <span className="lyra-body-sm text-lyra-fg-secondary">100</span>
+      </div>
     </div>
   ),
 };
