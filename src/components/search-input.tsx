@@ -14,15 +14,19 @@ const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
   ({ className, value, onValueChange, onChange, ...props }, ref) => {
     const hasValue = value != null && value.length > 0;
 
+    const searchLabel = props["aria-label"] || "Search";
+
     return (
-      <div className={cn("relative", className)}>
+      <div className={cn("relative", className)} role="search" aria-label={searchLabel}>
         <Search
           className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-lyra-fg-secondary pointer-events-none"
           strokeWidth={1.5}
+          aria-hidden="true"
         />
         <input
           ref={ref}
-          type="text"
+          type="search"
+          aria-label={searchLabel}
           value={value}
           onChange={(e) => {
             onChange?.(e);
@@ -30,6 +34,7 @@ const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
           }}
           className={cn(
             "h-9 w-full rounded-lyra-sm border border-lyra-border-default bg-lyra-bg-field pl-9 pr-9 lyra-body-md text-lyra-fg-default transition-colors",
+            "[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none",
             "placeholder:text-lyra-fg-disabled",
             "hover:border-lyra-border-strong",
             "focus:outline-none focus:border-lyra-border-active focus:ring-2 focus:ring-lyra-border-active/20",

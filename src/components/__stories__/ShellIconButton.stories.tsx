@@ -16,6 +16,7 @@ type Story = StoryObj<typeof ActionIconButton>;
 
 export const Default: Story = {
   args: {
+    title: "Help",
     children: <CircleHelp className="h-[18px] w-[18px]" strokeWidth={1.5} />,
   },
 };
@@ -23,6 +24,7 @@ export const Default: Story = {
 export const WithBadge: Story = {
   name: "With Badge",
   args: {
+    title: "Help",
     badge: 5,
     children: <CircleHelp className="h-[18px] w-[18px]" strokeWidth={1.5} />,
   },
@@ -36,7 +38,7 @@ export const States: Story = {
         <span className="lyra-body-sm text-lyra-fg-secondary mb-2 block">
           Default
         </span>
-        <ActionIconButton badge={5}>
+        <ActionIconButton title="Help" badge={5}>
           <CircleHelp className="h-[18px] w-[18px]" strokeWidth={1.5} />
         </ActionIconButton>
       </div>
@@ -44,7 +46,7 @@ export const States: Story = {
         <span className="lyra-body-sm text-lyra-fg-secondary mb-2 block">
           Hover (hover to see)
         </span>
-        <ActionIconButton badge={5}>
+        <ActionIconButton title="Help" badge={5}>
           <CircleHelp className="h-[18px] w-[18px]" strokeWidth={1.5} />
         </ActionIconButton>
       </div>
@@ -52,7 +54,7 @@ export const States: Story = {
         <span className="lyra-body-sm text-lyra-fg-secondary mb-2 block">
           Pressed (click and hold)
         </span>
-        <ActionIconButton badge={5}>
+        <ActionIconButton title="Help" badge={5}>
           <CircleHelp className="h-[18px] w-[18px]" strokeWidth={1.5} />
         </ActionIconButton>
       </div>

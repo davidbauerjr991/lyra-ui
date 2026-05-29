@@ -65,6 +65,7 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
     return (
       <aside
         ref={ref}
+        aria-label="Main navigation"
         className={cn(
           "relative z-10 flex flex-shrink-0 flex-col overflow-visible bg-lyra-bg-surface-shell transition-all duration-200",
           open ? "w-[256px]" : "w-[52px]",
@@ -74,15 +75,17 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
       >
         {/* Toggle button */}
         {collapsible && (
-          <Tooltip content="Toggle sidebar" placement="right">
+          <Tooltip content={open ? "Collapse sidebar" : "Expand sidebar"} placement="right" asLabel>
             <button
               onClick={onToggle}
-              className="absolute -right-3 top-[25px] z-10 flex h-5 w-5 items-center justify-center rounded-full border border-lyra-border-default bg-lyra-bg-surface-base text-lyra-fg-secondary shadow-sm hover:bg-lyra-bg-surface-shell transition-colors"
+              aria-expanded={open}
+              aria-label={open ? "Collapse sidebar" : "Expand sidebar"}
+              className="absolute -right-3 top-[25px] z-10 flex h-5 w-5 items-center justify-center rounded-full border border-lyra-border-default bg-lyra-bg-surface-base text-lyra-fg-secondary shadow-sm hover:bg-lyra-bg-surface-shell transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
             >
               {open ? (
-                <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.5} />
+                <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
               ) : (
-                <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.5} />
+                <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
               )}
             </button>
           </Tooltip>
@@ -93,24 +96,27 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
           <TreeMenu items={treeItems} className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-3" />
         ) : (
           /* Collapsed — icon-only buttons */
-          <nav className="flex flex-1 flex-col gap-0.5 items-center overflow-y-auto overflow-x-hidden px-2 py-3">
+          <nav aria-label="Main navigation" className="flex flex-1 flex-col gap-0.5 items-center overflow-y-auto overflow-x-hidden px-2 py-3">
             {items.map((item, i) => {
               const isActive =
                 item.active ||
                 (item.children && item.children.some((c) => c.active));
 
               return (
-                <Tooltip key={i} content={item.label} placement="right">
+                <Tooltip key={i} content={item.label} placement="right" asLabel>
                   <button
                     onClick={item.onClick}
+                    aria-label={item.label}
+                    aria-current={isActive ? "page" : undefined}
                     className={cn(
                       "flex h-8 w-8 items-center justify-center rounded-lyra-sm transition-colors",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
                       isActive
                         ? "bg-lyra-bg-active-moderate text-lyra-fg-active-strong"
                         : "text-lyra-fg-default hover:bg-lyra-state-hover active:bg-lyra-state-pressed"
                     )}
                   >
-                    {item.icon}
+                    <span aria-hidden="true">{item.icon}</span>
                   </button>
                 </Tooltip>
               );

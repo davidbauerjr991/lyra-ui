@@ -45,8 +45,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           {...props}
         />
         {error && (
-          <div id={`${inputId}-error`} className="flex items-center gap-1 mt-1.5">
-            <AlertCircle className="h-3.5 w-3.5 text-lyra-status-critical-strong flex-shrink-0" strokeWidth={1.5} />
+          <div id={`${inputId}-error`} role="alert" className="flex items-center gap-1 mt-1.5">
+            <AlertCircle className="h-3.5 w-3.5 text-lyra-status-critical-strong flex-shrink-0" strokeWidth={1.5} aria-hidden="true" />
             <span className="lyra-body-sm text-lyra-status-critical-strong">{error}</span>
           </div>
         )}

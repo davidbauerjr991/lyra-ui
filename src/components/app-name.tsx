@@ -13,6 +13,8 @@ const AppName = React.forwardRef<HTMLButtonElement, AppNameProps>(
   ({ className, icon, name, ...props }, ref) => (
     <button
       ref={ref}
+      aria-haspopup="true"
+      aria-label={`${name} — open application menu`}
       className={cn(
         "group inline-flex items-center gap-2.5 rounded-lyra-sm p-2 transition-colors",
         "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
@@ -21,11 +23,12 @@ const AppName = React.forwardRef<HTMLButtonElement, AppNameProps>(
       )}
       {...props}
     >
-      <span className="flex-shrink-0">{icon}</span>
+      <span className="flex-shrink-0" aria-hidden="true">{icon}</span>
       <span className="text-[16px] font-medium text-lyra-fg-default">{name}</span>
       <ChevronDown
         className="h-3.5 w-3.5 text-lyra-fg-secondary"
         strokeWidth={1.5}
+        aria-hidden="true"
       />
     </button>
   )

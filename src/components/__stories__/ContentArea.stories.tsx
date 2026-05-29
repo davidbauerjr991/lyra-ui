@@ -3,7 +3,7 @@ import { ContentArea } from "../content-area";
 import { Container } from "../container";
 
 const meta: Meta<typeof ContentArea> = {
-  title: "Atoms/ContentArea",
+  title: "UI/ContentArea",
   component: ContentArea,
   tags: ["autodocs"],
   parameters: {

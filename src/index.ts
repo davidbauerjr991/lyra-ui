@@ -1,6 +1,8 @@
 /* ── Components ── */
 export { Button, buttonVariants } from "./components/button";
 export { Checkbox } from "./components/checkbox";
+export { Switch } from "./components/switch";
+export type { SwitchProps } from "./components/switch";
 export {
   Table,
   TableHeader,
@@ -9,9 +11,16 @@ export {
   TableHead,
   TableCell,
   SortableTableHead,
+  TableToolbar,
+  TableFooter,
+  ColumnToggle,
+  TableGroupRow,
+  ColumnHeaderContextMenu,
   useColumnReorder,
+  useTableGrouping,
+  useAutoFitRows,
 } from "./components/table";
-export type { SortDirection, ColumnDragHandlers } from "./components/table";
+export type { SortDirection, ColumnDragHandlers, TableToolbarProps, ToolbarFilterDef, TableFooterProps, ColumnToggleItem, ColumnToggleProps, TableGroupRowProps, GroupedData, UseTableGroupingReturn, UseAutoFitRowsReturn } from "./components/table";
 export { TabList, Tab, TabPanel } from "./components/tabs";
 export { AppName } from "./components/app-name";
 export { AppHeader } from "./components/app-header";
@@ -40,12 +49,23 @@ export { CXoneSmiley } from "./components/cxone-smiley";
 export { ProfileMenu, defaultProfileMenuGroups } from "./components/profile-menu";
 export type { ProfileMenuItem, ProfileMenuGroup } from "./components/profile-menu";
 
+export { FilterChip } from "./components/filter-chip";
+export type { FilterChipProps, FilterChipOption, FilterChipVariant } from "./components/filter-chip";
+
 export { Tooltip } from "./components/tooltip";
+export { InlineNotification } from "./components/inline-notification";
+export { Toast, ToastContainer, useToast } from "./components/toast";
 export type { TooltipProps, TooltipPlacement } from "./components/tooltip";
+export type { ToastProps, ToastVariant, ToastItem } from "./components/toast";
 
 /* ── Icons ── */
 export { AiIcon } from "./components/icons/ai-icon";
 export { DashboardIcon } from "./components/icons/dashboard-icon";
+export { WarningIcon } from "./components/icons/warning-icon";
+export { ErrorIcon } from "./components/icons/error-icon";
+export { InfoIcon } from "./components/icons/info-icon";
+export { SuccessIcon } from "./components/icons/success-icon";
+export { ColumnsIcon } from "./components/icons/columns-icon";
 
 /* ── Utilities ── */
 export { cn } from "./lib/utils";

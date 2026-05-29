@@ -6,7 +6,7 @@ import { Button } from "../button";
 import { AiIcon } from "../icons/ai-icon";
 
 const meta: Meta<typeof PageHeader> = {
-  title: "UI/PageContent/PageHeader",
+  title: "UI/PageHeader",
   component: PageHeader,
   tags: ["autodocs"],
   parameters: {

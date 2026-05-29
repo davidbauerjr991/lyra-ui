@@ -35,31 +35,67 @@ interface MenuProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const Menu = React.forwardRef<HTMLDivElement, MenuProps>(
-  ({ className, items, ...props }, ref) => (
-    <div
-      ref={ref}
-      role="menu"
-      className={cn(
-        "min-w-[200px] rounded-lyra-lg bg-lyra-bg-surface-overlay border border-lyra-border-subtle shadow-lg py-1.5",
-        className
-      )}
-      {...props}
-    >
-      {items.map((entry, i) => {
-        if (entry === "separator") {
-          return (
-            <div
-              key={`sep-${i}`}
-              role="separator"
-              className="border-b border-lyra-border-subtle my-1.5"
-            />
-          );
-        }
+  ({ className, items, ...props }, ref) => {
+    const menuRef = React.useRef<HTMLDivElement>(null);
 
-        return <MenuItemRow key={entry.id} item={entry} />;
-      })}
-    </div>
-  )
+    const handleKeyDown = React.useCallback((e: React.KeyboardEvent) => {
+      const menu = menuRef.current;
+      if (!menu) return;
+
+      const menuItems = Array.from(
+        menu.querySelectorAll<HTMLElement>(':scope > div > [role="menuitem"]:not([disabled]), :scope > [role="menuitem"]:not([disabled])')
+      );
+      const current = document.activeElement as HTMLElement;
+      const idx = menuItems.indexOf(current);
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        const next = idx < menuItems.length - 1 ? menuItems[idx + 1] : menuItems[0];
+        next?.focus();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        const prev = idx > 0 ? menuItems[idx - 1] : menuItems[menuItems.length - 1];
+        prev?.focus();
+      } else if (e.key === "Home") {
+        e.preventDefault();
+        menuItems[0]?.focus();
+      } else if (e.key === "End") {
+        e.preventDefault();
+        menuItems[menuItems.length - 1]?.focus();
+      }
+    }, []);
+
+    return (
+      <div
+        ref={(node) => {
+          (menuRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+          if (typeof ref === "function") ref(node);
+          else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+        }}
+        role="menu"
+        onKeyDown={handleKeyDown}
+        className={cn(
+          "min-w-[200px] rounded-lyra-lg bg-lyra-bg-surface-overlay border border-lyra-border-subtle shadow-lg py-1.5",
+          className
+        )}
+        {...props}
+      >
+        {items.map((entry, i) => {
+          if (entry === "separator") {
+            return (
+              <div
+                key={`sep-${i}`}
+                role="separator"
+                className="border-b border-lyra-border-subtle my-1.5"
+              />
+            );
+          }
+
+          return <MenuItemRow key={entry.id} item={entry} />;
+        })}
+      </div>
+    );
+  }
 );
 Menu.displayName = "Menu";
 
@@ -98,6 +134,26 @@ const MenuItemRow: React.FC<MenuItemRowProps> = ({ item }) => {
     item.onClick?.();
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (hasSubmenu) {
+      if (e.key === "ArrowRight" || e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        e.stopPropagation();
+        setSubmenuOpen(true);
+      }
+    }
+    if (e.key === "ArrowLeft" && submenuOpen) {
+      e.preventDefault();
+      e.stopPropagation();
+      setSubmenuOpen(false);
+    }
+    if (e.key === "Escape" && submenuOpen) {
+      e.preventDefault();
+      e.stopPropagation();
+      setSubmenuOpen(false);
+    }
+  };
+
   const isDestructive = item.destructive;
 
   return (
@@ -111,6 +167,9 @@ const MenuItemRow: React.FC<MenuItemRowProps> = ({ item }) => {
         role="menuitem"
         disabled={item.disabled}
         onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        aria-haspopup={hasSubmenu ? "menu" : undefined}
+        aria-expanded={hasSubmenu ? submenuOpen : undefined}
         className={cn(
           "group flex w-full items-center gap-2.5 px-3 py-2.5 lyra-body-md transition-colors text-left relative",
           "focus:outline-none focus-visible:bg-lyra-state-hover",
@@ -122,6 +181,7 @@ const MenuItemRow: React.FC<MenuItemRowProps> = ({ item }) => {
       >
         {/* Left accent bar — visible on hover/active */}
         <span
+          aria-hidden="true"
           className={cn(
             "absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full opacity-0 transition-opacity",
             isDestructive
@@ -133,11 +193,14 @@ const MenuItemRow: React.FC<MenuItemRowProps> = ({ item }) => {
 
         {/* Leading icon */}
         {item.icon && (
-          <span className={cn(
-            "flex h-5 w-5 items-center justify-center flex-shrink-0",
-            item.description && "self-start mt-0.5",
-            isDestructive ? "text-lyra-status-critical-strong" : "text-lyra-fg-secondary"
-          )}>
+          <span
+            aria-hidden="true"
+            className={cn(
+              "flex h-5 w-5 items-center justify-center flex-shrink-0",
+              item.description && "self-start mt-0.5",
+              isDestructive ? "text-lyra-status-critical-strong" : "text-lyra-fg-secondary"
+            )}
+          >
             {item.icon}
           </span>
         )}
@@ -162,6 +225,7 @@ const MenuItemRow: React.FC<MenuItemRowProps> = ({ item }) => {
           <ChevronRight
             className="h-4 w-4 text-lyra-fg-secondary flex-shrink-0"
             strokeWidth={1.5}
+            aria-hidden="true"
           />
         )}
       </button>

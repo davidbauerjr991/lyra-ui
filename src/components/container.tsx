@@ -20,20 +20,25 @@ interface ContainerProps
     VariantProps<typeof containerVariants> {
   /** Optional header title rendered at the top of the container */
   headerTitle?: string;
+  /** Optional icon rendered to the left of the header title */
+  headerIcon?: React.ReactNode;
   /** Additional actions rendered to the right of the header title */
   headerActions?: React.ReactNode;
 }
 
 const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
-  ({ className, variant, headerTitle, headerActions, children, ...props }, ref) => (
+  ({ className, variant, headerTitle, headerIcon, headerActions, children, ...props }, ref) => (
     <div
       ref={ref}
       className={cn(containerVariants({ variant }), className)}
       {...props}
     >
       {headerTitle && (
-        <div className="flex items-center justify-between px-5 pt-5 pb-3">
-          <h2 className="lyra-heading-lg text-lyra-fg-default">{headerTitle}</h2>
+        <div className="flex items-center justify-between px-5 pt-5 pb-5">
+          <div className="flex items-center gap-2">
+            {headerIcon && <span className="flex-shrink-0">{headerIcon}</span>}
+            <h2 className="lyra-heading-lg text-lyra-fg-default">{headerTitle}</h2>
+          </div>
           {headerActions && (
             <div className="flex items-center gap-2">{headerActions}</div>
           )}

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useRef, useCallback } from "react";
 import { cn } from "../lib/utils";
 
 /* ── Tab List (container with bottom border) ── */
@@ -9,18 +10,63 @@ interface TabListProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
-  ({ className, fullWidth, ...props }, ref) => (
-    <div
-      ref={ref}
-      role="tablist"
-      className={cn(
-        "flex border-b border-lyra-border-subtle",
-        fullWidth ? "[&>*]:flex-1" : "gap-1",
-        className
-      )}
-      {...props}
-    />
-  )
+  ({ className, fullWidth, onKeyDown, ...props }, ref) => {
+    const listRef = useRef<HTMLDivElement>(null);
+
+    const handleKeyDown = useCallback(
+      (e: React.KeyboardEvent<HTMLDivElement>) => {
+        onKeyDown?.(e);
+        const list = listRef.current;
+        if (!list) return;
+
+        const tabs = Array.from(
+          list.querySelectorAll<HTMLElement>('[role="tab"]:not([disabled])')
+        );
+        const current = document.activeElement as HTMLElement;
+        const index = tabs.indexOf(current);
+        if (index === -1) return;
+
+        let next: HTMLElement | undefined;
+        if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+          e.preventDefault();
+          next = tabs[(index + 1) % tabs.length];
+        } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+          e.preventDefault();
+          next = tabs[(index - 1 + tabs.length) % tabs.length];
+        } else if (e.key === "Home") {
+          e.preventDefault();
+          next = tabs[0];
+        } else if (e.key === "End") {
+          e.preventDefault();
+          next = tabs[tabs.length - 1];
+        }
+
+        if (next) {
+          next.focus();
+          next.click();
+        }
+      },
+      [onKeyDown]
+    );
+
+    return (
+      <div
+        ref={(node) => {
+          (listRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+          if (typeof ref === "function") ref(node);
+          else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+        }}
+        role="tablist"
+        onKeyDown={handleKeyDown}
+        className={cn(
+          "flex border-b border-lyra-border-subtle",
+          fullWidth ? "[&>*]:flex-1" : "gap-1",
+          className
+        )}
+        {...props}
+      />
+    );
+  }
 );
 TabList.displayName = "TabList";
 
@@ -29,14 +75,25 @@ TabList.displayName = "TabList";
 interface TabProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   active?: boolean;
   icon?: React.ReactNode;
+  /** Right-side icon (e.g. close or menu icon) */
+  rightIcon?: React.ReactNode;
+  /** Called when the remove button is clicked (renders an × button on the right) */
+  onRemove?: (e: React.MouseEvent) => void;
+  /** Accessible label for the remove button (default: "Remove tab") */
+  removeLabel?: string;
+  /** ID of the associated TabPanel */
+  panelId?: string;
 }
 
 const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
-  ({ className, active, icon, children, ...props }, ref) => (
+  ({ className, active, icon, rightIcon, onRemove, removeLabel = "Remove tab", panelId, children, id, ...props }, ref) => (
     <button
       ref={ref}
+      id={id}
       role="tab"
       aria-selected={active}
+      aria-controls={panelId}
+      tabIndex={active ? 0 : -1}
       className={cn(
         "group relative inline-flex items-center justify-center gap-2 px-3 py-2.5 lyra-body-md-emphasis transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
@@ -48,18 +105,48 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
       {...props}
     >
       {icon && (
-        <span className={cn("flex-shrink-0 transition-colors", active ? "text-lyra-fg-action" : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary")}>
+        <span
+          aria-hidden="true"
+          className={cn("flex-shrink-0 transition-colors", active ? "text-lyra-fg-action" : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary")}
+        >
           {icon}
         </span>
       )}
       {children}
+      {onRemove && (
+        <span
+          role="button"
+          tabIndex={0}
+          aria-label={removeLabel}
+          onClick={(e) => { e.stopPropagation(); onRemove(e); }}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onRemove(e as unknown as React.MouseEvent); } }}
+          className={cn(
+            "flex h-4 w-4 items-center justify-center rounded-lyra-xs flex-shrink-0 transition-colors",
+            "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
+            active ? "text-lyra-fg-action" : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary"
+          )}
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+            <line x1="1.5" y1="1.5" x2="8.5" y2="8.5" />
+            <line x1="8.5" y1="1.5" x2="1.5" y2="8.5" />
+          </svg>
+        </span>
+      )}
+      {rightIcon && !onRemove && (
+        <span
+          aria-hidden="true"
+          className={cn("flex-shrink-0 transition-colors", active ? "text-lyra-fg-action" : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary")}
+        >
+          {rightIcon}
+        </span>
+      )}
       {/* Active indicator — blue bar */}
       {active && (
-        <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-lyra-bg-primary" />
+        <span aria-hidden="true" className="absolute bottom-0 left-0 right-0 h-[3px] bg-lyra-bg-primary" />
       )}
       {/* Hover indicator — gray bar (only when not active) */}
       {!active && (
-        <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-transparent group-hover:bg-lyra-border-medium transition-colors" />
+        <span aria-hidden="true" className="absolute bottom-0 left-0 right-0 h-[3px] bg-transparent group-hover:bg-lyra-border-medium transition-colors" />
       )}
     </button>
   )
@@ -70,15 +157,19 @@ Tab.displayName = "Tab";
 
 interface TabPanelProps extends React.HTMLAttributes<HTMLDivElement> {
   active?: boolean;
+  /** ID of the associated Tab */
+  tabId?: string;
 }
 
 const TabPanel = React.forwardRef<HTMLDivElement, TabPanelProps>(
-  ({ className, active, ...props }, ref) => {
+  ({ className, active, tabId, ...props }, ref) => {
     if (!active) return null;
     return (
       <div
         ref={ref}
         role="tabpanel"
+        tabIndex={0}
+        aria-labelledby={tabId}
         className={cn("flex-1", className)}
         {...props}
       />

@@ -30,8 +30,8 @@
 
   --lyra-fg-default: rgba(0, 0, 0, 0.80);
   --lyra-fg-secondary: rgba(0, 0, 0, 0.56);
-  --lyra-fg-action: #49515a;
-  --lyra-fg-disabled: rgba(0, 0, 0, 0.30);
+  --lyra-fg-action: #5D6A79;
+  --lyra-fg-disabled: rgba(0, 0, 0, 0.55);
   --lyra-fg-link: #185ba4;
   --lyra-fg-inverse: #ffffff;
   --lyra-fg-inverse-disabled: rgba(255, 255, 255, 0.30);
@@ -69,7 +69,7 @@
   --lyra-state-pressed-opacity: rgba(0, 0, 0, 0.10);
   --lyra-state-hover-secondary: #fcfcfd;
   --lyra-state-pressed-secondary: #f3f5f6;
-  --lyra-state-hover-active-subtle: #e4f2ff;
+  --lyra-state-hover-active-subtle: #e8f1fc;
   --lyra-state-pressed-active-subtle: #c8e1fe;
   --lyra-state-hover-active-strong: #185ba4;
   --lyra-state-pressed-active-strong: #164479;
@@ -77,6 +77,8 @@
   --lyra-state-pressed-primary: #164479;
   --lyra-state-hover-destructive: #902222;
   --lyra-state-pressed-destructive: #6d2222;
+  --lyra-state-hover-critical-subtle: #ffebeb;
+  --lyra-state-pressed-critical-subtle: #ffe0e0;
   --lyra-state-hover-border-neutral: rgba(0, 0, 0, 0.80);
 
   --lyra-accent-slate-soft: #e8ebed;

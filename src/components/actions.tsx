@@ -27,8 +27,9 @@ const ActionIconButton = React.forwardRef<
   const button = (
     <button
       ref={ref}
+      aria-label={title}
       className={cn(
-        "relative flex items-center justify-center rounded-lyra-sm text-lyra-fg-default transition-colors",
+        "relative flex items-center justify-center rounded-lyra-sm text-lyra-fg-action transition-colors",
         actionIconSizeMap[size],
         "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
@@ -36,10 +37,13 @@ const ActionIconButton = React.forwardRef<
       )}
       {...props}
     >
-      {children}
+      <span aria-hidden="true">{children}</span>
       {badge != null && badge > 0 && (
-        <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-lyra-bg-destructive px-1 text-[10px] font-bold text-lyra-fg-on-primary">
-          {badge}
+        <span
+          className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-lyra-bg-destructive px-1 text-[10px] font-bold text-lyra-fg-on-primary"
+          aria-label={`${badge} notifications`}
+        >
+          <span aria-hidden="true">{badge}</span>
         </span>
       )}
     </button>
@@ -47,7 +51,7 @@ const ActionIconButton = React.forwardRef<
 
   if (title) {
     return (
-      <Tooltip content={title} placement="bottom">
+      <Tooltip content={title} placement="bottom" asLabel>
         {button}
       </Tooltip>
     );
@@ -71,27 +75,33 @@ const ActionAvatarButton = React.forwardRef<
   HTMLButtonElement,
   ActionAvatarButtonProps
 >(({ className, initials, avatarColor = "#5d6a79", ...props }, ref) => (
-  <button
-    ref={ref}
-    className={cn(
-      "inline-flex h-11 items-center gap-2 rounded-lyra-sm pl-2 pr-1.5 transition-colors",
-      "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
-      className
-    )}
-    {...props}
-  >
-    <div
-      className="flex h-8 w-8 items-center justify-center rounded-full lyra-body-md-emphasis text-white"
-      style={{ backgroundColor: avatarColor }}
+  <Tooltip content="Profile" placement="bottom" asLabel={false}>
+    <button
+      ref={ref}
+      aria-label="User menu"
+      aria-haspopup="true"
+      className={cn(
+        "inline-flex h-11 items-center gap-2 rounded-lyra-sm pl-2 pr-1.5 transition-colors",
+        "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
+        className
+      )}
+      {...props}
     >
-      {initials}
-    </div>
-    <ChevronDown
-      className="h-3.5 w-3.5 text-lyra-fg-secondary"
-      strokeWidth={1.5}
-    />
-  </button>
+      <div
+        className="flex h-8 w-8 items-center justify-center rounded-full lyra-body-md-emphasis text-white"
+        style={{ backgroundColor: avatarColor }}
+        aria-hidden="true"
+      >
+        {initials}
+      </div>
+      <ChevronDown
+        className="h-3.5 w-3.5 text-lyra-fg-secondary"
+        strokeWidth={1.5}
+        aria-hidden="true"
+      />
+    </button>
+  </Tooltip>
 ));
 ActionAvatarButton.displayName = "ActionAvatarButton";
 

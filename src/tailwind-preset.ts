@@ -51,6 +51,10 @@ const lyraPreset: Partial<Config> = {
         "lyra-status-success-subtle": "var(--lyra-status-success-subtle)",
         "lyra-status-info-strong": "var(--lyra-status-info-strong)",
         "lyra-status-critical-strong": "var(--lyra-status-critical-strong)",
+        "lyra-status-critical-medium": "var(--lyra-status-critical-medium)",
+        "lyra-status-critical-subtle": "var(--lyra-status-critical-subtle)",
+        "lyra-state-hover-critical-subtle": "var(--lyra-state-hover-critical-subtle)",
+        "lyra-state-pressed-critical-subtle": "var(--lyra-state-pressed-critical-subtle)",
         "lyra-status-warning-strong": "var(--lyra-status-warning-strong)",
 
         /* ── Lyra State ── */

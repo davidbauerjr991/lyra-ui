@@ -41,21 +41,51 @@ function Swatch({
 function AliasRow({
   name,
   value,
+  darkValue,
   token,
 }: {
   name: string;
   value: string;
+  darkValue?: string;
   token: string;
 }) {
   return (
-    <div className="flex items-center border-b border-lyra-border-subtle py-3 gap-6">
-      <div className="w-[200px] lyra-body-md text-lyra-fg-default">{name}</div>
+    <div className="flex items-center border-b border-lyra-border-subtle py-3 gap-4">
+      <div className="w-[140px] flex-shrink-0 lyra-body-md text-lyra-fg-default">{name}</div>
       <div
         className="h-8 w-8 flex-shrink-0 rounded-lyra-sm border border-lyra-border-default"
         style={{ backgroundColor: value }}
+        title={`Light: ${value}`}
       />
-      <div className="w-[240px] lyra-body-md text-lyra-fg-secondary font-mono">{value}</div>
-      <div className="lyra-body-md text-lyra-fg-disabled font-mono">{token}</div>
+      <div className="w-[180px] flex-shrink-0 lyra-body-sm text-lyra-fg-secondary font-mono">{value}</div>
+      {darkValue !== undefined && (
+        <>
+          <div
+            className="h-8 w-8 flex-shrink-0 rounded-lyra-sm border border-lyra-border-default"
+            style={{ backgroundColor: darkValue }}
+            title={`Dark: ${darkValue}`}
+          />
+          <div className="w-[180px] flex-shrink-0 lyra-body-sm text-lyra-fg-secondary font-mono">{darkValue}</div>
+        </>
+      )}
+      <div className="flex-shrink-0 lyra-body-sm text-lyra-fg-disabled font-mono">{token}</div>
+    </div>
+  );
+}
+
+function AliasTableHeader({ hasDark = false }: { hasDark?: boolean }) {
+  return (
+    <div className="flex items-center border-b border-lyra-border-medium py-2 gap-4 mb-1">
+      <div className="w-[140px] flex-shrink-0 lyra-body-sm-emphasis text-lyra-fg-secondary">Name</div>
+      <div className="w-8 flex-shrink-0 lyra-body-sm-emphasis text-lyra-fg-secondary">Light</div>
+      <div className="w-[180px] flex-shrink-0 lyra-body-sm-emphasis text-lyra-fg-secondary">Value</div>
+      {hasDark && (
+        <>
+          <div className="w-8 flex-shrink-0 lyra-body-sm-emphasis text-lyra-fg-secondary">Dark</div>
+          <div className="w-[180px] flex-shrink-0 lyra-body-sm-emphasis text-lyra-fg-secondary">Value</div>
+        </>
+      )}
+      <div className="flex-shrink-0 lyra-body-sm-emphasis text-lyra-fg-secondary">Token</div>
     </div>
   );
 }
@@ -207,7 +237,7 @@ export const AllColors: Story = {
           { name: "Pressed", token: "lyra-state-pressed", value: "rgba(0,0,0,0.10)", description: "Default pressed/active overlay." },
           { name: "Hover Primary", token: "lyra-state-hover-primary", value: "#185ba4", description: "Hover state for primary buttons." },
           { name: "Pressed Primary", token: "lyra-state-pressed-primary", value: "#164479", description: "Pressed state for primary buttons." },
-          { name: "Hover Active Subtle", token: "lyra-state-hover-active-subtle", value: "#e4f2ff", description: "Hover on selected/active rows." },
+          { name: "Hover Active Subtle", token: "lyra-state-hover-active-subtle", value: "#e8f1fc", description: "Hover on selected/active rows." },
           { name: "Pressed Active Subtle", token: "lyra-state-pressed-active-subtle", value: "#c8e1fe", description: "Pressed on selected/active rows." },
           { name: "Hover Destructive", token: "lyra-state-hover-destructive", value: "#902222", description: "Hover state for destructive buttons." },
           { name: "Pressed Destructive", token: "lyra-state-pressed-destructive", value: "#6d2222", description: "Pressed state for destructive buttons." },
@@ -268,24 +298,19 @@ export const PrimaryColors: Story = {
 
       {/* Semantic aliases table */}
       <h3 className="lyra-heading-md text-lyra-fg-default mb-4">Semantic Aliases</h3>
-      <div className="flex items-center border-b border-lyra-border-medium py-2 gap-6 mb-1">
-        <div className="w-[200px] lyra-body-sm-emphasis text-lyra-fg-secondary">Name</div>
-        <div className="w-8 lyra-body-sm-emphasis text-lyra-fg-secondary">Preview</div>
-        <div className="w-[240px] lyra-body-sm-emphasis text-lyra-fg-secondary">Value</div>
-        <div className="lyra-body-sm-emphasis text-lyra-fg-secondary">Token</div>
-      </div>
-      <AliasRow name="default" value="#166cca" token="lyra-bg-primary" />
-      <AliasRow name="hover" value="#185ba4" token="lyra-state-hover-primary" />
-      <AliasRow name="pressed" value="#164479" token="lyra-state-pressed-primary" />
-      <AliasRow name="active-strong" value="#166cca" token="lyra-bg-active-strong" />
-      <AliasRow name="active-moderate" value="#D3E6FD" token="lyra-bg-active-moderate" />
-      <AliasRow name="active-subtle" value="#ecf5fe" token="lyra-bg-active-subtle" />
-      <AliasRow name="border-active" value="#166cca" token="lyra-border-active" />
-      <AliasRow name="border-focus" value="#185ba4" token="lyra-border-focus" />
-      <AliasRow name="fg-on-primary" value="#ffffff" token="lyra-fg-on-primary" />
-      <AliasRow name="fg-link" value="#185ba4" token="lyra-fg-link" />
-      <AliasRow name="fg-active-strong" value="#185ba4" token="lyra-fg-active-strong" />
-      <AliasRow name="fg-active-subtle" value="#f5faff" token="lyra-fg-active-subtle" />
+      <AliasTableHeader hasDark />
+      <AliasRow name="default" value="#166cca" darkValue="#166cca" token="lyra-bg-primary" />
+      <AliasRow name="hover" value="#185ba4" darkValue="#185ba4" token="lyra-state-hover-primary" />
+      <AliasRow name="pressed" value="#164479" darkValue="#164479" token="lyra-state-pressed-primary" />
+      <AliasRow name="active-strong" value="#166cca" darkValue="#4896ec" token="lyra-bg-active-strong" />
+      <AliasRow name="active-moderate" value="#D3E6FD" darkValue="rgba(72,150,236,0.20)" token="lyra-bg-active-moderate" />
+      <AliasRow name="active-subtle" value="#ecf5fe" darkValue="rgba(72,150,236,0.12)" token="lyra-bg-active-subtle" />
+      <AliasRow name="border-active" value="#166cca" darkValue="#4896ec" token="lyra-border-active" />
+      <AliasRow name="border-focus" value="#185ba4" darkValue="#facb33" token="lyra-border-focus" />
+      <AliasRow name="fg-on-primary" value="#ffffff" darkValue="#ffffff" token="lyra-fg-on-primary" />
+      <AliasRow name="fg-link" value="#185ba4" darkValue="#a7d0fe" token="lyra-fg-link" />
+      <AliasRow name="fg-active-strong" value="#185ba4" darkValue="#a7d0fe" token="lyra-fg-active-strong" />
+      <AliasRow name="fg-active-subtle" value="#f5faff" darkValue="#0c2845" token="lyra-fg-active-subtle" />
     </div>
   ),
 };
@@ -309,23 +334,22 @@ export const DestructiveColors: Story = {
         <Swatch name="Destructive" token="lyra-bg-destructive" value="#bc2626" />
         <Swatch name="Hover" token="lyra-state-hover-destructive" value="#902222" />
         <Swatch name="Pressed" token="lyra-state-pressed-destructive" value="#6d2222" />
+        <Swatch name="Hover Critical Subtle" token="lyra-state-hover-critical-subtle" value="#ffebeb" />
+        <Swatch name="Pressed Critical Subtle" token="lyra-state-pressed-critical-subtle" value="#ffe0e0" />
       </div>
 
       {/* Semantic aliases table */}
       <h3 className="lyra-heading-md text-lyra-fg-default mb-4">Semantic Aliases</h3>
-      <div className="flex items-center border-b border-lyra-border-medium py-2 gap-6 mb-1">
-        <div className="w-[200px] lyra-body-sm-emphasis text-lyra-fg-secondary">Name</div>
-        <div className="w-8 lyra-body-sm-emphasis text-lyra-fg-secondary">Preview</div>
-        <div className="w-[240px] lyra-body-sm-emphasis text-lyra-fg-secondary">Value</div>
-        <div className="lyra-body-sm-emphasis text-lyra-fg-secondary">Token</div>
-      </div>
-      <AliasRow name="default" value="#bc2626" token="lyra-bg-destructive" />
-      <AliasRow name="hover" value="#902222" token="lyra-state-hover-destructive" />
-      <AliasRow name="pressed" value="#6d2222" token="lyra-state-pressed-destructive" />
-      <AliasRow name="critical-strong" value="#bc2626" token="lyra-status-critical-strong" />
-      <AliasRow name="critical-medium" value="#fa7f7f" token="lyra-status-critical-medium" />
-      <AliasRow name="critical-subtle" value="#fff0f0" token="lyra-status-critical-subtle" />
-      <AliasRow name="fg-on-destructive" value="#ffffff" token="lyra-fg-on-primary" />
+      <AliasTableHeader hasDark />
+      <AliasRow name="default" value="#bc2626" darkValue="#bd2a2a" token="lyra-bg-destructive" />
+      <AliasRow name="hover" value="#902222" darkValue="#a32424" token="lyra-state-hover-destructive" />
+      <AliasRow name="pressed" value="#6d2222" darkValue="#8a1f1f" token="lyra-state-pressed-destructive" />
+      <AliasRow name="critical-strong" value="#bc2626" darkValue="#fa7f7f" token="lyra-status-critical-strong" />
+      <AliasRow name="critical-medium" value="#fa7f7f" darkValue="#bd2a2a" token="lyra-status-critical-medium" />
+      <AliasRow name="critical-subtle" value="#fff0f0" darkValue="rgba(227,69,69,0.12)" token="lyra-status-critical-subtle" />
+      <AliasRow name="hover-critical-subtle" value="#ffebeb" darkValue="rgba(227,69,69,0.18)" token="lyra-state-hover-critical-subtle" />
+      <AliasRow name="pressed-critical-subtle" value="#ffe0e0" darkValue="rgba(227,69,69,0.24)" token="lyra-state-pressed-critical-subtle" />
+      <AliasRow name="fg-on-destructive" value="#ffffff" darkValue="#ffffff" token="lyra-fg-on-destructive" />
     </div>
   ),
 };
@@ -350,15 +374,10 @@ export const SuccessColors: Story = {
 
       {/* Semantic aliases table */}
       <h3 className="lyra-heading-md text-lyra-fg-default mb-4">Semantic Aliases</h3>
-      <div className="flex items-center border-b border-lyra-border-medium py-2 gap-6 mb-1">
-        <div className="w-[200px] lyra-body-sm-emphasis text-lyra-fg-secondary">Name</div>
-        <div className="w-8 lyra-body-sm-emphasis text-lyra-fg-secondary">Preview</div>
-        <div className="w-[240px] lyra-body-sm-emphasis text-lyra-fg-secondary">Value</div>
-        <div className="lyra-body-sm-emphasis text-lyra-fg-secondary">Token</div>
-      </div>
-      <AliasRow name="success-strong" value="#21742c" token="lyra-status-success-strong" />
-      <AliasRow name="success-medium" value="#5ac368" token="lyra-status-success-medium" />
-      <AliasRow name="success-subtle" value="#ebfaed" token="lyra-status-success-subtle" />
+      <AliasTableHeader hasDark />
+      <AliasRow name="success-strong" value="#21742c" darkValue="#64b96f" token="lyra-status-success-strong" />
+      <AliasRow name="success-medium" value="#5ac368" darkValue="#23722d" token="lyra-status-success-medium" />
+      <AliasRow name="success-subtle" value="#ebfaed" darkValue="rgba(33,116,44,0.20)" token="lyra-status-success-subtle" />
     </div>
   ),
 };
@@ -383,15 +402,10 @@ export const WarningColors: Story = {
 
       {/* Semantic aliases table */}
       <h3 className="lyra-heading-md text-lyra-fg-default mb-4">Semantic Aliases</h3>
-      <div className="flex items-center border-b border-lyra-border-medium py-2 gap-6 mb-1">
-        <div className="w-[200px] lyra-body-sm-emphasis text-lyra-fg-secondary">Name</div>
-        <div className="w-8 lyra-body-sm-emphasis text-lyra-fg-secondary">Preview</div>
-        <div className="w-[240px] lyra-body-sm-emphasis text-lyra-fg-secondary">Value</div>
-        <div className="lyra-body-sm-emphasis text-lyra-fg-secondary">Token</div>
-      </div>
-      <AliasRow name="warning-strong" value="#8e6800" token="lyra-status-warning-strong" />
-      <AliasRow name="warning-medium" value="#fcce36" token="lyra-status-warning-medium" />
-      <AliasRow name="warning-subtle" value="#fffae0" token="lyra-status-warning-subtle" />
+      <AliasTableHeader hasDark />
+      <AliasRow name="warning-strong" value="#8e6800" darkValue="#facb33" token="lyra-status-warning-strong" />
+      <AliasRow name="warning-medium" value="#fcce36" darkValue="#8e6800" token="lyra-status-warning-medium" />
+      <AliasRow name="warning-subtle" value="#fffae0" darkValue="rgba(142,104,0,0.20)" token="lyra-status-warning-subtle" />
     </div>
   ),
 };
@@ -426,37 +440,32 @@ export const NeutralColors: Story = {
 
       {/* Semantic aliases table */}
       <h3 className="lyra-heading-md text-lyra-fg-default mb-4">Semantic Aliases</h3>
-      <div className="flex items-center border-b border-lyra-border-medium py-2 gap-6 mb-1">
-        <div className="w-[200px] lyra-body-sm-emphasis text-lyra-fg-secondary">Name</div>
-        <div className="w-8 lyra-body-sm-emphasis text-lyra-fg-secondary">Preview</div>
-        <div className="w-[240px] lyra-body-sm-emphasis text-lyra-fg-secondary">Value</div>
-        <div className="lyra-body-sm-emphasis text-lyra-fg-secondary">Token</div>
-      </div>
-      <AliasRow name="surface-base" value="#ffffff" token="lyra-bg-surface-base" />
-      <AliasRow name="surface-canvas" value="#fcfcfd" token="lyra-bg-surface-canvas" />
-      <AliasRow name="surface-container" value="#ffffff" token="lyra-bg-surface-container" />
-      <AliasRow name="surface-container-subtle" value="#fcfcfd" token="lyra-bg-surface-container-subtle" />
-      <AliasRow name="surface-shell" value="#f3f5f6" token="lyra-bg-surface-shell" />
-      <AliasRow name="surface-backdrop" value="rgba(0,0,0,0.24)" token="lyra-bg-surface-backdrop" />
-      <AliasRow name="surface-overlay" value="#ffffff" token="lyra-bg-surface-overlay" />
-      <AliasRow name="surface-inverse" value="#2a2d32" token="lyra-bg-surface-inverse" />
-      <AliasRow name="control" value="#ffffff" token="lyra-bg-control" />
-      <AliasRow name="control-subtle" value="rgba(0,0,0,0.02)" token="lyra-bg-control-subtle" />
-      <AliasRow name="field" value="#ffffff" token="lyra-bg-field" />
-      <AliasRow name="disabled" value="rgba(0,0,0,0.06)" token="lyra-bg-disabled" />
-      <AliasRow name="hover" value="rgba(0,0,0,0.04)" token="lyra-state-hover" />
-      <AliasRow name="pressed" value="rgba(0,0,0,0.10)" token="lyra-state-pressed" />
-      <AliasRow name="border-subtle" value="rgba(0,0,0,0.10)" token="lyra-border-subtle" />
-      <AliasRow name="border-default" value="rgba(0,0,0,0.16)" token="lyra-border-default" />
-      <AliasRow name="border-medium" value="rgba(0,0,0,0.32)" token="lyra-border-medium" />
-      <AliasRow name="border-strong" value="rgba(0,0,0,0.46)" token="lyra-border-strong" />
-      <AliasRow name="border-disabled" value="rgba(0,0,0,0.10)" token="lyra-border-disabled" />
-      <AliasRow name="border-inverse" value="rgba(255,255,255,0.80)" token="lyra-border-inverse" />
-      <AliasRow name="fg-default" value="rgba(0,0,0,0.80)" token="lyra-fg-default" />
-      <AliasRow name="fg-secondary" value="rgba(0,0,0,0.56)" token="lyra-fg-secondary" />
-      <AliasRow name="fg-disabled" value="rgba(0,0,0,0.30)" token="lyra-fg-disabled" />
-      <AliasRow name="fg-inverse" value="#ffffff" token="lyra-fg-inverse" />
-      <AliasRow name="fg-action" value="#49515a" token="lyra-fg-action" />
+      <AliasTableHeader hasDark />
+      <AliasRow name="surface-base" value="#ffffff" darkValue="#1f1f1e" token="lyra-bg-surface-base" />
+      <AliasRow name="surface-canvas" value="#fcfcfd" darkValue="#141414" token="lyra-bg-surface-canvas" />
+      <AliasRow name="surface-container" value="#ffffff" darkValue="#1f1f1e" token="lyra-bg-surface-container" />
+      <AliasRow name="surface-container-subtle" value="#fcfcfd" darkValue="#262626" token="lyra-bg-surface-container-subtle" />
+      <AliasRow name="surface-shell" value="#f3f5f6" darkValue="#2e2e2e" token="lyra-bg-surface-shell" />
+      <AliasRow name="surface-backdrop" value="rgba(0,0,0,0.24)" darkValue="rgba(0,0,0,0.24)" token="lyra-bg-surface-backdrop" />
+      <AliasRow name="surface-overlay" value="#ffffff" darkValue="#2e2e2e" token="lyra-bg-surface-overlay" />
+      <AliasRow name="surface-inverse" value="#2a2d32" darkValue="#eceff3" token="lyra-bg-surface-inverse" />
+      <AliasRow name="control" value="#ffffff" darkValue="#1f1f1e" token="lyra-bg-control" />
+      <AliasRow name="control-subtle" value="rgba(0,0,0,0.02)" darkValue="rgba(255,255,255,0.04)" token="lyra-bg-control-subtle" />
+      <AliasRow name="field" value="#ffffff" darkValue="rgba(255,255,255,0.04)" token="lyra-bg-field" />
+      <AliasRow name="disabled" value="rgba(0,0,0,0.06)" darkValue="rgba(255,255,255,0.04)" token="lyra-bg-disabled" />
+      <AliasRow name="hover" value="rgba(0,0,0,0.04)" darkValue="rgba(255,255,255,0.06)" token="lyra-state-hover" />
+      <AliasRow name="pressed" value="rgba(0,0,0,0.10)" darkValue="rgba(255,255,255,0.12)" token="lyra-state-pressed" />
+      <AliasRow name="border-subtle" value="rgba(0,0,0,0.10)" darkValue="rgba(255,255,255,0.10)" token="lyra-border-subtle" />
+      <AliasRow name="border-default" value="rgba(0,0,0,0.16)" darkValue="rgba(255,255,255,0.16)" token="lyra-border-default" />
+      <AliasRow name="border-medium" value="rgba(0,0,0,0.32)" darkValue="rgba(255,255,255,0.32)" token="lyra-border-medium" />
+      <AliasRow name="border-strong" value="rgba(0,0,0,0.46)" darkValue="rgba(255,255,255,0.46)" token="lyra-border-strong" />
+      <AliasRow name="border-disabled" value="rgba(0,0,0,0.10)" darkValue="rgba(255,255,255,0.10)" token="lyra-border-disabled" />
+      <AliasRow name="border-inverse" value="rgba(255,255,255,0.80)" darkValue="rgba(0,0,0,0.80)" token="lyra-border-inverse" />
+      <AliasRow name="fg-default" value="rgba(0,0,0,0.80)" darkValue="rgba(255,255,255,0.80)" token="lyra-fg-default" />
+      <AliasRow name="fg-secondary" value="rgba(0,0,0,0.56)" darkValue="rgba(255,255,255,0.60)" token="lyra-fg-secondary" />
+      <AliasRow name="fg-disabled" value="rgba(0,0,0,0.30)" darkValue="rgba(255,255,255,0.20)" token="lyra-fg-disabled" />
+      <AliasRow name="fg-inverse" value="#ffffff" darkValue="#1f1f1e" token="lyra-fg-inverse" />
+      <AliasRow name="fg-action" value="#5D6A79" darkValue="#acb7c3" token="lyra-fg-action" />
     </div>
   ),
 };

@@ -20,26 +20,58 @@ type Story = StoryObj<typeof Checkbox>;
 
 /* ── Individual states ── */
 
-export const Default: Story = {};
+export const Default: Story = {
+  render: () => (
+    <label className="flex items-center gap-2 cursor-pointer">
+      <Checkbox />
+      <span className="lyra-body-md text-lyra-fg-default">Checkbox label</span>
+    </label>
+  ),
+};
 
 export const Checked: Story = {
-  args: { defaultChecked: true },
+  render: () => (
+    <label className="flex items-center gap-2 cursor-pointer">
+      <Checkbox defaultChecked />
+      <span className="lyra-body-md text-lyra-fg-default">Checkbox label</span>
+    </label>
+  ),
 };
 
 export const Indeterminate: Story = {
-  args: { checked: "indeterminate" },
+  render: () => (
+    <label className="flex items-center gap-2 cursor-pointer">
+      <Checkbox checked="indeterminate" />
+      <span className="lyra-body-md text-lyra-fg-default">Checkbox label</span>
+    </label>
+  ),
 };
 
 export const Disabled: Story = {
-  args: { disabled: true },
+  render: () => (
+    <label className="flex items-center gap-2 cursor-not-allowed">
+      <Checkbox disabled />
+      <span className="lyra-body-md text-lyra-fg-disabled">Checkbox label</span>
+    </label>
+  ),
 };
 
 export const DisabledChecked: Story = {
-  args: { disabled: true, checked: true },
+  render: () => (
+    <label className="flex items-center gap-2 cursor-not-allowed">
+      <Checkbox disabled checked />
+      <span className="lyra-body-md text-lyra-fg-disabled">Checkbox label</span>
+    </label>
+  ),
 };
 
 export const DisabledIndeterminate: Story = {
-  args: { disabled: true, checked: "indeterminate" },
+  render: () => (
+    <label className="flex items-center gap-2 cursor-not-allowed">
+      <Checkbox disabled checked="indeterminate" />
+      <span className="lyra-body-md text-lyra-fg-disabled">Checkbox label</span>
+    </label>
+  ),
 };
 
 /* ── State Matrix (matches Figma) ── */

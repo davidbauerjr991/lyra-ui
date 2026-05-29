@@ -60,12 +60,13 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
               onMouseEnter={!panelPinned ? onPanelHoverStart : undefined}
               onMouseLeave={!panelPinned ? onPanelHoverEnd : undefined}
             >
-              <Tooltip content="Toggle panel" placement="bottom">
+              <Tooltip content="Toggle panel" placement="bottom" asLabel>
                 <button
                   onClick={panelPinned ? onPanelToggle : undefined}
-                  className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary transition-colors hover:bg-lyra-state-hover active:bg-lyra-state-pressed"
+                  aria-label="Toggle panel"
+                  className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary transition-colors hover:bg-lyra-state-hover active:bg-lyra-state-pressed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
                 >
-                  <PanelLeft className="h-5 w-5" strokeWidth={1.5} />
+                  <PanelLeft className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />
                 </button>
               </Tooltip>
             </div>
@@ -73,16 +74,24 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
           </>
         )}
         {breadcrumb ? (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={breadcrumb.onClick}
-              className="lyra-heading-md text-lyra-fg-secondary transition-colors hover:text-lyra-fg-default"
-            >
-              {breadcrumb.label}
-            </button>
-            <span className="lyra-heading-md text-lyra-fg-secondary">/</span>
-            <h1 className="lyra-heading-lg text-lyra-fg-default">{title}</h1>
-          </div>
+          <nav aria-label="Breadcrumb">
+            <ol className="flex items-center gap-2 list-none m-0 p-0">
+              <li>
+                <button
+                  onClick={breadcrumb.onClick}
+                  className="lyra-heading-md text-lyra-fg-secondary transition-colors hover:text-lyra-fg-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2 rounded-lyra-xs"
+                >
+                  {breadcrumb.label}
+                </button>
+              </li>
+              <li aria-hidden="true">
+                <span className="lyra-heading-md text-lyra-fg-secondary">/</span>
+              </li>
+              <li aria-current="page">
+                <h1 className="lyra-heading-lg text-lyra-fg-default">{title}</h1>
+              </li>
+            </ol>
+          </nav>
         ) : (
           <h1 className="lyra-heading-lg text-lyra-fg-default">{title}</h1>
         )}

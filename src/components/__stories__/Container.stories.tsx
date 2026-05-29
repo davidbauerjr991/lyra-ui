@@ -5,6 +5,7 @@ import { Input } from "../input";
 import { Select } from "../select";
 import { RadioGroup, RadioGroupItem } from "../radio";
 import { X } from "lucide-react";
+import { Tooltip } from "../tooltip";
 
 const meta: Meta<typeof Container> = {
   title: "Atoms/Container",
@@ -42,9 +43,11 @@ export const Modal: Story = {
         variant="modal"
         headerTitle="Dialog Title"
         headerActions={
-          <button className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover transition-colors">
-            <X className="h-5 w-5" strokeWidth={1.5} />
-          </button>
+          <Tooltip content="Close dialog" placement="bottom" asLabel>
+            <button aria-label="Close dialog" className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2">
+              <X className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />
+            </button>
+          </Tooltip>
         }
         className="w-[480px]"
       >

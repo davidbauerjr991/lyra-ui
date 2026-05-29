@@ -41,6 +41,9 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
       return (
         <div
           ref={ref}
+          role="region"
+          aria-label={headerTitle || "Side panel"}
+          aria-hidden={!open || undefined}
           className={cn(
             "shrink-0 overflow-hidden bg-lyra-bg-surface-container-subtle",
             open && "border-r border-lyra-border-subtle",
@@ -62,12 +65,13 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
                   {headerTitle}
                 </h2>
                 {onPinToggle && (
-                  <Tooltip content="Unpin panel" placement="bottom">
+                  <Tooltip content="Unpin panel" placement="bottom" asLabel>
                     <button
                       onClick={onPinToggle}
-                      className="flex h-7 w-7 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary transition-colors hover:bg-lyra-state-hover active:bg-lyra-state-pressed"
+                      aria-label="Unpin panel"
+                      className="flex h-7 w-7 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary transition-colors hover:bg-lyra-state-hover active:bg-lyra-state-pressed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
                     >
-                      <Pin className="h-4 w-4 rotate-45" strokeWidth={1.5} />
+                      <Pin className="h-4 w-4 rotate-45" strokeWidth={1.5} aria-hidden="true" />
                     </button>
                   </Tooltip>
                 )}
@@ -83,6 +87,9 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
     return (
       <div
         ref={ref}
+        role="region"
+        aria-label={headerTitle || "Side panel"}
+        aria-hidden={!open || undefined}
         className={cn(
           "absolute left-0 top-0 z-[5] h-full overflow-hidden bg-lyra-bg-surface-container-subtle shadow-lg",
           open
@@ -106,12 +113,13 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
                 {headerTitle}
               </h2>
               {onPinToggle && (
-                <Tooltip content="Pin panel" placement="bottom">
+                <Tooltip content="Pin panel" placement="bottom" asLabel>
                   <button
                     onClick={onPinToggle}
-                    className="flex h-7 w-7 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary transition-colors hover:bg-lyra-state-hover active:bg-lyra-state-pressed"
+                    aria-label="Pin panel"
+                    className="flex h-7 w-7 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary transition-colors hover:bg-lyra-state-hover active:bg-lyra-state-pressed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
                   >
-                    <Pin className="h-4 w-4" strokeWidth={1.5} />
+                    <Pin className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
                   </button>
                 </Tooltip>
               )}

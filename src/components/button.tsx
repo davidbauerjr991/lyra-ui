@@ -14,10 +14,10 @@ const buttonVariants = cva(
         destructive:
           "bg-lyra-bg-destructive text-lyra-fg-on-primary hover:bg-lyra-state-hover-destructive active:bg-lyra-state-pressed-destructive",
         outline:
-          "border border-lyra-border-default bg-lyra-bg-control text-lyra-fg-default hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
+          "border border-lyra-border-default bg-lyra-bg-control text-lyra-fg-action hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
         ghost:
-          "text-lyra-fg-default hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
-        icon: "text-lyra-fg-secondary hover:bg-lyra-state-hover active:bg-lyra-state-pressed hover:text-lyra-fg-default rounded-lyra-sm",
+          "text-lyra-fg-action hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
+        icon: "text-lyra-fg-action hover:bg-lyra-state-hover active:bg-lyra-state-pressed hover:text-lyra-fg-default rounded-lyra-sm",
       },
       size: {
         sm: "h-8 px-3",
@@ -53,13 +53,14 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
         title={isIconVariant ? undefined : title}
+        aria-label={isIconVariant ? title : undefined}
         {...props}
       />
     );
 
     if (isIconVariant && title) {
       return (
-        <Tooltip content={title} placement="bottom">
+        <Tooltip content={title} placement="bottom" asLabel>
           {button}
         </Tooltip>
       );

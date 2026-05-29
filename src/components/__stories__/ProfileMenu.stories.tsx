@@ -36,7 +36,7 @@ export const CustomGroups: Story = {
     <div className="flex justify-end p-8">
       <ProfileMenu
         initials="DB"
-        avatarColor="#3b82f6"
+        avatarColor="#166cca"
         groups={[
           {
             items: [

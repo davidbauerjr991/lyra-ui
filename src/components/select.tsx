@@ -1,4 +1,5 @@
 import * as React from "react";
+import * as ReactDOM from "react-dom";
 import { ChevronDown, Search, X, Check } from "lucide-react";
 import { Checkbox } from "./checkbox";
 import { cn } from "../lib/utils";
@@ -33,6 +34,8 @@ interface SelectProps {
   searchable?: boolean;
   /** Show a "select all" checkbox (only for multiple mode) */
   showSelectAll?: boolean;
+  /** Custom trigger element — replaces the default button. Must accept a ref and onClick. */
+  trigger?: React.ReactNode;
 
   /* ── Controlled single-select ── */
   /** Controlled value (single select) */
@@ -45,6 +48,15 @@ interface SelectProps {
   values?: string[];
   /** Called when the values change (multi select) */
   onValuesChange?: (values: string[]) => void;
+
+  /** Called when the dropdown opens or closes */
+  onOpenChange?: (open: boolean) => void;
+
+  /** Dropdown alignment when using a custom trigger */
+  dropdownAlign?: "left" | "right";
+
+  /** Render dropdown in a portal (fixed position) to escape overflow containers */
+  portalDropdown?: boolean;
 
   /** Additional class on the root */
   className?: string;
@@ -61,10 +73,14 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
       multiple = false,
       searchable = false,
       showSelectAll = false,
+      trigger,
       value,
       onValueChange,
       values,
       onValuesChange,
+      onOpenChange,
+      dropdownAlign = "right",
+      portalDropdown = false,
       className,
     },
     ref
@@ -86,9 +102,11 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
     const currentValues = isControlledMulti ? values : internalValues;
 
     const rootRef = React.useRef<HTMLDivElement>(null);
+    const dropdownRef = React.useRef<HTMLDivElement>(null);
     const triggerRef = React.useRef<HTMLButtonElement | null>(null);
     const searchRef = React.useRef<HTMLInputElement>(null);
     const listRef = React.useRef<HTMLDivElement>(null);
+    const [portalStyle, setPortalStyle] = React.useState<React.CSSProperties>({});
 
     // Merge forwarded ref with internal ref
     const setTriggerRef = React.useCallback(
@@ -99,6 +117,25 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
       },
       [ref]
     );
+
+    /* ── Notify parent of open/close ── */
+    React.useEffect(() => {
+      onOpenChange?.(open);
+    }, [open, onOpenChange]);
+
+    /* ── Portal positioning ── */
+    React.useEffect(() => {
+      if (!open || !portalDropdown || !triggerRef.current) return;
+      const rect = triggerRef.current.getBoundingClientRect();
+      setPortalStyle({
+        position: "fixed",
+        top: rect.bottom + 4,
+        left: dropdownAlign === "left" ? rect.left : undefined,
+        right: dropdownAlign === "right" ? window.innerWidth - rect.right : undefined,
+        width: trigger ? 240 : rect.width,
+        zIndex: 9999,
+      });
+    }, [open, portalDropdown, dropdownAlign, trigger]);
 
     /* ── Filtered options ── */
     const filtered = React.useMemo(() => {
@@ -147,7 +184,11 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
     React.useEffect(() => {
       if (!open) return;
       const handler = (e: MouseEvent) => {
-        if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        const target = e.target as Node;
+        if (
+          rootRef.current && !rootRef.current.contains(target) &&
+          (!dropdownRef.current || !dropdownRef.current.contains(target))
+        ) {
           setOpen(false);
         }
       };
@@ -199,6 +240,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
         {/* Label */}
         {label && (
           <label
+            id={`${autoId}-label`}
             className={cn(
               "lyra-label block mb-1.5",
               disabled ? "text-lyra-fg-disabled" : "text-lyra-fg-default"
@@ -209,38 +251,63 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
         )}
 
         {/* Trigger */}
-        <button
-          ref={setTriggerRef}
-          type="button"
-          disabled={disabled}
-          onClick={toggleOpen}
-          aria-haspopup="listbox"
-          aria-expanded={open}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? `${autoId}-error` : undefined}
-          className={cn(
-            "flex h-9 w-full items-center justify-between rounded-lyra-sm border px-3 lyra-body-md transition-colors",
-            "focus:outline-none",
-            error
-              ? "border-lyra-status-critical-strong bg-lyra-status-critical-subtle text-lyra-fg-default focus:ring-2 focus:ring-lyra-status-critical-strong/20"
-              : "border-lyra-border-default bg-lyra-bg-field text-lyra-fg-default hover:border-lyra-border-strong focus:border-lyra-border-active focus:ring-2 focus:ring-lyra-border-active/20",
-            disabled &&
-              "bg-lyra-bg-disabled border-lyra-border-disabled text-lyra-fg-disabled cursor-not-allowed hover:border-lyra-border-disabled",
-            open && !error && "border-lyra-border-active ring-2 ring-lyra-border-active/20"
-          )}
-        >
-          <span className={cn(!displayText && "text-lyra-fg-disabled")}>
-            {displayText || placeholder}
-          </span>
-          <ChevronDown
+        {trigger && React.isValidElement(trigger) && trigger.type === "button" ? (
+          React.cloneElement(trigger as React.ReactElement<any>, {
+            ref: setTriggerRef,
+            onClick: (e: React.MouseEvent) => {
+              toggleOpen();
+              (trigger as React.ReactElement<any>).props.onClick?.(e);
+            },
+          })
+        ) : trigger ? (
+          <button
+            ref={setTriggerRef}
+            type="button"
+            disabled={disabled}
+            onClick={toggleOpen}
+            aria-haspopup="listbox"
+            aria-expanded={open}
+            aria-label={label || placeholder}
+            className="inline-flex items-center justify-center rounded-lyra-sm text-lyra-fg-action hover:bg-lyra-state-hover active:bg-lyra-state-pressed transition-colors h-8 w-8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+          >
+            {trigger}
+          </button>
+        ) : (
+          <button
+            ref={setTriggerRef}
+            type="button"
+            disabled={disabled}
+            onClick={toggleOpen}
+            aria-haspopup="listbox"
+            aria-expanded={open}
+            aria-labelledby={label ? `${autoId}-label` : undefined}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? `${autoId}-error` : undefined}
             className={cn(
-              "h-4 w-4 flex-shrink-0 transition-transform",
-              disabled ? "text-lyra-fg-disabled" : "text-lyra-fg-secondary",
-              open && "rotate-180"
+              "flex h-9 w-full items-center justify-between rounded-lyra-sm border px-3 lyra-body-md transition-colors",
+              "focus:outline-none",
+              error
+                ? "border-lyra-status-critical-strong bg-lyra-status-critical-subtle text-lyra-fg-default focus:ring-2 focus:ring-lyra-status-critical-strong/20"
+                : "border-lyra-border-default bg-lyra-bg-field text-lyra-fg-default hover:border-lyra-border-strong focus:border-lyra-border-active focus:ring-2 focus:ring-lyra-border-active/20",
+              disabled &&
+                "bg-lyra-bg-disabled border-lyra-border-disabled text-lyra-fg-disabled cursor-not-allowed hover:border-lyra-border-disabled",
+              open && !error && "border-lyra-border-active ring-2 ring-lyra-border-active/20"
             )}
-            strokeWidth={1.5}
-          />
-        </button>
+          >
+            <span className={cn(!displayText && "text-lyra-fg-disabled")}>
+              {displayText || placeholder}
+            </span>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 flex-shrink-0 transition-transform",
+                disabled ? "text-lyra-fg-disabled" : "text-lyra-fg-secondary",
+                open && "rotate-180"
+              )}
+              strokeWidth={1.5}
+              aria-hidden="true"
+            />
+          </button>
+        )}
 
         {/* Error */}
         {error && (
@@ -250,9 +317,16 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
         )}
 
         {/* Dropdown */}
-        {open && (
+        {open && (() => {
+          const dropdownContent = (
           <div
-            className="absolute z-50 mt-1 w-full rounded-lyra-lg bg-lyra-bg-surface-overlay border border-lyra-border-subtle shadow-lg"
+            ref={dropdownRef}
+            className={cn(
+              "rounded-lyra-lg bg-lyra-bg-surface-overlay border border-lyra-border-subtle shadow-lg",
+              portalDropdown ? "" : "absolute top-full z-50 mt-1",
+              !portalDropdown && trigger ? cn(dropdownAlign === "left" ? "left-0" : "right-0", "w-[240px]") : !portalDropdown ? "w-full" : ""
+            )}
+            style={portalDropdown ? portalStyle : undefined}
           >
             {/* Search */}
             {searchable && (
@@ -261,10 +335,12 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                   <Search
                     className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-lyra-fg-secondary pointer-events-none"
                     strokeWidth={1.5}
+                    aria-hidden="true"
                   />
                   <input
                     ref={searchRef}
                     type="text"
+                    aria-label="Search options"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search"
@@ -293,15 +369,18 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
             {/* Select All header (multi only) */}
             {multiple && showSelectAll && (
               <>
-                <div className="flex items-center justify-between px-3 py-2">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      checked={allSelected ? true : someSelected ? "indeterminate" : false}
-                      onCheckedChange={() => toggleAll()}
-                    />
-                    <span className="lyra-body-md text-lyra-fg-default">All</span>
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-lyra-state-hover active:bg-lyra-state-pressed transition-colors"
+                  onClick={() => toggleAll()}
+                >
+                  <Checkbox
+                    checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                    tabIndex={-1}
+                    aria-hidden="true"
+                  />
+                  <span className="lyra-body-md text-lyra-fg-default">Select All</span>
+                </button>
                 <div className="border-b border-lyra-border-subtle" />
               </>
             )}
@@ -310,7 +389,32 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
             <div
               ref={listRef}
               role="listbox"
+              aria-labelledby={label ? `${autoId}-label` : undefined}
               aria-multiselectable={multiple || undefined}
+              tabIndex={-1}
+              onKeyDown={(e) => {
+                const opts = Array.from(
+                  listRef.current?.querySelectorAll<HTMLElement>('[role="option"]:not([disabled])') ?? []
+                );
+                const current = document.activeElement as HTMLElement;
+                const idx = opts.indexOf(current);
+
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  const next = idx < opts.length - 1 ? opts[idx + 1] : opts[0];
+                  next?.focus();
+                } else if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  const prev = idx > 0 ? opts[idx - 1] : opts[opts.length - 1];
+                  prev?.focus();
+                } else if (e.key === "Home") {
+                  e.preventDefault();
+                  opts[0]?.focus();
+                } else if (e.key === "End") {
+                  e.preventDefault();
+                  opts[opts.length - 1]?.focus();
+                }
+              }}
               className="max-h-[240px] overflow-y-auto py-1"
             >
               {filtered.length === 0 && (
@@ -364,19 +468,23 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                           option.disabled && "opacity-40 cursor-not-allowed hover:bg-transparent"
                         )}
                       >
-                        <span className={cn(
-                          "flex h-4 w-4 items-center justify-center flex-shrink-0",
-                          isSelected ? "text-lyra-bg-primary" : "text-transparent"
-                        )}>
-                          <Check className="h-4 w-4" strokeWidth={2} />
-                        </span>
+                        {isSelected && (
+                          <span
+                            aria-hidden="true"
+                            className="flex h-4 w-4 items-center justify-center flex-shrink-0 text-lyra-bg-primary"
+                          >
+                            <Check className="h-4 w-4" strokeWidth={2} />
+                          </span>
+                        )}
                         <span className="text-lyra-fg-default">{option.label}</span>
                       </button>
                     );
                   })}
             </div>
           </div>
-        )}
+          );
+          return portalDropdown ? ReactDOM.createPortal(dropdownContent, document.body) : dropdownContent;
+        })()}
       </div>
     );
   }

@@ -72,6 +72,7 @@ export const States: Story = {
               placeholder="Search"
               value={val1}
               onValueChange={setVal1}
+              aria-label="Search default"
             />
           </div>
           <div>
@@ -82,6 +83,7 @@ export const States: Story = {
               placeholder="Search"
               value={val2}
               onValueChange={setVal2}
+              aria-label="Search hover"
             />
           </div>
           <div>
@@ -92,6 +94,7 @@ export const States: Story = {
               placeholder="Search"
               value={val3}
               onValueChange={setVal3}
+              aria-label="Search focused"
             />
           </div>
           <div>
@@ -102,13 +105,14 @@ export const States: Story = {
               placeholder="Search"
               value={val4}
               onValueChange={setVal4}
+              aria-label="Search with value"
             />
           </div>
           <div>
             <span className="lyra-body-sm text-lyra-fg-secondary mb-2 block">
               Disabled
             </span>
-            <SearchInput placeholder="Search" value="" disabled />
+            <SearchInput placeholder="Search" value="" disabled aria-label="Search disabled" />
           </div>
         </div>
       </div>

@@ -25,12 +25,16 @@
   --lyra-bg-active-strong: #166cca;
   --lyra-bg-active-moderate: #D3E6FD;
   --lyra-bg-active-subtle: #ecf5fe;
+  --lyra-bg-conversation-ai: #f3f5f6;
+  --lyra-bg-conversation-agent: #eef4fe;
+  --lyra-bg-conversation-customer: #eefaf0;
+  --lyra-bg-conversation-user: #eef4fe;
 
   /* ── Foreground / Text ── */
   --lyra-fg-default: rgba(0, 0, 0, 0.80);
   --lyra-fg-secondary: rgba(0, 0, 0, 0.56);
-  --lyra-fg-action: #49515a;
-  --lyra-fg-disabled: rgba(0, 0, 0, 0.30);
+  --lyra-fg-action: #5D6A79;
+  --lyra-fg-disabled: rgba(0, 0, 0, 0.55);
   --lyra-fg-link: #185ba4;
   --lyra-fg-inverse: #ffffff;
   --lyra-fg-inverse-disabled: rgba(255, 255, 255, 0.30);
@@ -62,6 +66,8 @@
   --lyra-status-critical-strong: #bc2626;
   --lyra-status-critical-medium: #fa7f7f;
   --lyra-status-critical-subtle: #fff0f0;
+  --lyra-state-hover-critical-subtle: #ffebeb;
+  --lyra-state-pressed-critical-subtle: #ffe0e0;
   --lyra-status-warning-strong: #8e6800;
   --lyra-status-warning-medium: #fcce36;
   --lyra-status-warning-subtle: #fffae0;
@@ -71,7 +77,7 @@
   --lyra-state-pressed-opacity: rgba(0, 0, 0, 0.10);
   --lyra-state-hover-secondary: #fcfcfd;
   --lyra-state-pressed-secondary: #f3f5f6;
-  --lyra-state-hover-active-subtle: #e4f2ff;
+  --lyra-state-hover-active-subtle: #e8f1fc;
   --lyra-state-pressed-active-subtle: #c8e1fe;
   --lyra-state-hover-active-strong: #185ba4;
   --lyra-state-pressed-active-strong: #164479;
@@ -129,6 +135,132 @@
   --lyra-border-width-default: 1px;
   --lyra-border-width-md: 2px;
   --lyra-border-width-lg: 3px;
+}
+
+/* ════════════════════════════════════════════════════
+   Lyra Dark Theme
+   Applied when [data-theme="dark"] is on a parent element
+   ════════════════════════════════════════════════════ */
+
+[data-theme="dark"] {
+  /* ── Background ── */
+  --lyra-bg-surface-base: #1f1f1e;
+  --lyra-bg-surface-canvas: #141414;
+  --lyra-bg-surface-container: #1f1f1e;
+  --lyra-bg-surface-container-subtle: #262626;
+  --lyra-bg-surface-shell: #2e2e2e;
+  --lyra-bg-surface-backdrop: rgba(0, 0, 0, 0.24);
+  --lyra-bg-surface-overlay: #2e2e2e;
+  --lyra-bg-surface-inverse: #eceff3;
+  --lyra-bg-primary: #166cca;
+  --lyra-bg-secondary: rgba(255, 255, 255, 0.04);
+  --lyra-bg-destructive: #bd2a2a;
+  --lyra-bg-control: #1f1f1e;
+  --lyra-bg-control-subtle: rgba(255, 255, 255, 0.04);
+  --lyra-bg-field: rgba(255, 255, 255, 0.04);
+  --lyra-bg-field-ai: rgba(143, 115, 227, 0.08);
+  --lyra-bg-disabled: rgba(255, 255, 255, 0.04);
+  --lyra-bg-none: rgba(255, 255, 255, 0.00);
+  --lyra-bg-active-strong: #4896ec;
+  --lyra-bg-active-moderate: rgba(72, 150, 236, 0.20);
+  --lyra-bg-active-subtle: rgba(72, 150, 236, 0.12);
+  --lyra-bg-conversation-ai: rgba(255, 255, 255, 0.04);
+  --lyra-bg-conversation-agent: rgba(44, 138, 242, 0.18);
+  --lyra-bg-conversation-customer: #0f2a13;
+  --lyra-bg-conversation-user: rgba(44, 138, 242, 0.18);
+
+  /* ── Foreground / Text ── */
+  --lyra-fg-default: rgba(255, 255, 255, 0.80);
+  --lyra-fg-secondary: rgba(255, 255, 255, 0.60);
+  --lyra-fg-action: #acb7c3;
+  --lyra-fg-disabled: rgba(255, 255, 255, 0.20);
+  --lyra-fg-link: #a7d0fe;
+  --lyra-fg-inverse: #1f1f1e;
+  --lyra-fg-inverse-disabled: rgba(0, 0, 0, 0.30);
+  --lyra-fg-on-primary: #ffffff;
+  --lyra-fg-on-destructive: #ffffff;
+  --lyra-fg-active-subtle: #0c2845;
+  --lyra-fg-active-strong: #a7d0fe;
+
+  /* ── Border ── */
+  --lyra-border-subtle: rgba(255, 255, 255, 0.10);
+  --lyra-border-default: rgba(255, 255, 255, 0.16);
+  --lyra-border-medium: rgba(255, 255, 255, 0.32);
+  --lyra-border-strong: rgba(255, 255, 255, 0.46);
+  --lyra-border-disabled: rgba(255, 255, 255, 0.10);
+  --lyra-border-active: #4896ec;
+  --lyra-border-field-ai: #a998e7;
+  --lyra-border-inverse: rgba(0, 0, 0, 0.80);
+  --lyra-border-none: rgba(255, 255, 255, 0.00);
+  --lyra-border-focus-default: #facb33;
+  --lyra-border-focus-inverse: #185ba4;
+
+  /* ── Status ── */
+  --lyra-status-success-strong: #64b96f;
+  --lyra-status-success-medium: #23722d;
+  --lyra-status-success-subtle: rgba(33, 116, 44, 0.20);
+  --lyra-status-info-strong: #789fed;
+  --lyra-status-info-medium: #2d5bb9;
+  --lyra-status-info-subtle: rgba(37, 88, 193, 0.20);
+  --lyra-status-critical-strong: #fa7f7f;
+  --lyra-status-critical-medium: #bd2a2a;
+  --lyra-status-critical-subtle: rgba(227, 69, 69, 0.12);
+  --lyra-state-hover-critical-subtle: rgba(227, 69, 69, 0.18);
+  --lyra-state-pressed-critical-subtle: rgba(227, 69, 69, 0.24);
+  --lyra-status-warning-strong: #facb33;
+  --lyra-status-warning-medium: #8e6800;
+  --lyra-status-warning-subtle: rgba(142, 104, 0, 0.20);
+
+  /* ── State ── */
+  --lyra-state-hover-opacity: rgba(255, 255, 255, 0.06);
+  --lyra-state-pressed-opacity: rgba(255, 255, 255, 0.12);
+  --lyra-state-hover-secondary: rgba(255, 255, 255, 0.10);
+  --lyra-state-pressed-secondary: rgba(255, 255, 255, 0.16);
+  --lyra-state-hover-active-subtle: rgba(72, 150, 236, 0.18);
+  --lyra-state-pressed-active-subtle: rgba(72, 150, 236, 0.24);
+  --lyra-state-hover-active-strong: #a7d0fe;
+  --lyra-state-pressed-active-strong: #d3e6fd;
+  --lyra-state-hover-primary: #185ba4;
+  --lyra-state-pressed-primary: #164479;
+  --lyra-state-hover-destructive: #a32424;
+  --lyra-state-pressed-destructive: #8a1f1f;
+  --lyra-state-hover-border-neutral: rgba(255, 255, 255, 0.80);
+
+  /* ── Accent ── */
+  --lyra-accent-slate-soft: #49515a;
+  --lyra-accent-slate-strong: #d0d6dc;
+  --lyra-accent-red-soft: #a32424;
+  --lyra-accent-red-strong: #ffb8b8;
+  --lyra-accent-orange-soft: #7d420c;
+  --lyra-accent-orange-strong: #ffcc9e;
+  --lyra-accent-yellow-soft: #674b13;
+  --lyra-accent-yellow-strong: #ffe680;
+  --lyra-accent-lime-soft: #446311;
+  --lyra-accent-lime-strong: #c9ea80;
+  --lyra-accent-green-soft: #1f5c27;
+  --lyra-accent-green-strong: #b0e8b7;
+  --lyra-accent-teal-soft: #1b636a;
+  --lyra-accent-teal-strong: #aae0e5;
+  --lyra-accent-blue-soft: #264c97;
+  --lyra-accent-blue-strong: #b9cef8;
+  --lyra-accent-purple-soft: #4e39a8;
+  --lyra-accent-purple-strong: #d1c9f2;
+  --lyra-accent-pink-soft: #91296e;
+  --lyra-accent-pink-strong: #fccaeb;
+
+  /* Tailwind class overrides for dark mode */
+  color-scheme: dark;
+}
+
+/* Utility classes for state layers in dark mode */
+[data-theme="dark"] .hover\:bg-lyra-state-hover:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+[data-theme="dark"] .active\:bg-lyra-state-pressed:active {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+[data-theme="dark"] .focus-visible\:ring-lyra-border-focus {
+  --tw-ring-color: #facb33;
 }
 
 /* ════════════════════════════════════════════════════

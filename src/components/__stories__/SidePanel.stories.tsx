@@ -4,7 +4,7 @@ import { SidePanel } from "../side-panel";
 import { Button } from "../button";
 
 const meta: Meta<typeof SidePanel> = {
-  title: "UI/PageContent/SidePanel",
+  title: "UI/SidePanel",
   component: SidePanel,
   tags: ["autodocs"],
   parameters: {

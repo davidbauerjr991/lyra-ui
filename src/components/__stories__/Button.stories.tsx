@@ -56,6 +56,7 @@ export const IconButton: Story = {
   args: {
     variant: "icon",
     size: "icon",
+    title: "More options",
     children: <MoreVertical className="h-4 w-4" strokeWidth={1.5} />,
   },
 };
@@ -98,25 +99,25 @@ export const Sizes: Story = {
         <h3 className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">Icon Buttons</h3>
         <div className="flex items-center gap-4">
           <div className="flex flex-col items-center gap-1">
-            <Button variant="icon" size="icon-sm">
+            <Button variant="icon" size="icon-sm" title="More options">
               <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
             </Button>
             <span className="lyra-body-sm text-lyra-fg-secondary">32px</span>
           </div>
           <div className="flex flex-col items-center gap-1">
-            <Button variant="icon" size="icon">
+            <Button variant="icon" size="icon" title="More options">
               <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
             </Button>
             <span className="lyra-body-sm text-lyra-fg-secondary">36px</span>
           </div>
           <div className="flex flex-col items-center gap-1">
-            <Button variant="icon" size="icon-lg">
+            <Button variant="icon" size="icon-lg" title="More options">
               <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
             </Button>
             <span className="lyra-body-sm text-lyra-fg-secondary">40px</span>
           </div>
           <div className="flex flex-col items-center gap-1">
-            <Button variant="icon" size="icon-xl">
+            <Button variant="icon" size="icon-xl" title="More options">
               <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
             </Button>
             <span className="lyra-body-sm text-lyra-fg-secondary">44px</span>
@@ -171,30 +172,30 @@ export const AllVariants: Story = {
           <span className="lyra-body-sm text-lyra-fg-secondary">Ghost</span>
 
           <span className="lyra-body-sm text-lyra-fg-secondary">Default</span>
-          <Button variant="outline" size="icon">
+          <Button variant="outline" size="icon" title="More options">
             <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
           </Button>
-          <Button variant="default" size="icon">
+          <Button variant="default" size="icon" title="More options">
             <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
           </Button>
-          <Button variant="destructive" size="icon">
+          <Button variant="destructive" size="icon" title="More options">
             <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
           </Button>
-          <Button variant="icon" size="icon">
+          <Button variant="icon" size="icon" title="More options">
             <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
           </Button>
 
           <span className="lyra-body-sm text-lyra-fg-secondary">Disabled</span>
-          <Button variant="outline" size="icon" disabled>
+          <Button variant="outline" size="icon" title="More options" disabled>
             <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
           </Button>
-          <Button variant="default" size="icon" disabled>
+          <Button variant="default" size="icon" title="More options" disabled>
             <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
           </Button>
-          <Button variant="destructive" size="icon" disabled>
+          <Button variant="destructive" size="icon" title="More options" disabled>
             <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
           </Button>
-          <Button variant="icon" size="icon" disabled>
+          <Button variant="icon" size="icon" title="More options" disabled>
             <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
           </Button>
         </div>

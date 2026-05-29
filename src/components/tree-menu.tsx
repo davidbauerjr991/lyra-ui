@@ -119,12 +119,17 @@ const TreeMenu = React.forwardRef<HTMLElement, TreeMenuProps>(
   ({ className, items, ...props }, ref) => (
     <nav
       ref={ref}
+      aria-label="Navigation menu"
       className={cn("flex flex-col gap-0.5 py-1", className)}
       {...props}
     >
-      {items.map((item, i) => (
-        <TreeMenuRow key={i} item={item} />
-      ))}
+      <ul role="tree" className="flex flex-col gap-0.5 list-none m-0 p-0">
+        {items.map((item, i) => (
+          <li key={i} role="treeitem" aria-expanded={item.children && item.children.length > 0 ? undefined : undefined}>
+            <TreeMenuRow item={item} />
+          </li>
+        ))}
+      </ul>
     </nav>
   )
 );
@@ -147,8 +152,10 @@ function TreeMenuRow({ item }: { item: TreeMenuItem }) {
           if (hasChildren) setOpen((v) => !v);
           item.onClick?.();
         }}
+        aria-expanded={hasChildren ? open : undefined}
         className={cn(
           "flex w-full items-center gap-2.5 rounded-lyra-sm px-2.5 py-[7px] lyra-body-md transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
           isLeafActive
             ? "bg-lyra-bg-active-moderate text-lyra-fg-active-strong lyra-body-md-emphasis hover:bg-lyra-bg-active-moderate active:bg-lyra-bg-active-subtle"
             : isParentActive
@@ -157,11 +164,12 @@ function TreeMenuRow({ item }: { item: TreeMenuItem }) {
         )}
       >
         {item.icon && (
-          <span className={cn("flex-shrink-0", isParentActive || isLeafActive ? "text-lyra-fg-active-strong" : "text-lyra-fg-default")}>{item.icon}</span>
+          <span aria-hidden="true" className={cn("flex-shrink-0", isParentActive || isLeafActive ? "text-lyra-fg-active-strong" : "text-lyra-fg-default")}>{item.icon}</span>
         )}
         <span className="flex-1 text-left truncate">{item.label}</span>
         {hasChildren && (
           <span
+            aria-hidden="true"
             className="text-lyra-fg-disabled transition-transform duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
             style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
           >
@@ -173,22 +181,25 @@ function TreeMenuRow({ item }: { item: TreeMenuItem }) {
       {/* Children — animated expand/collapse */}
       {hasChildren && (
         <CollapsiblePanel open={open}>
-          <div className="ml-[18px] mt-0.5 flex flex-col gap-0.5 pl-3">
+          <ul role="group" className="ml-[18px] mt-0.5 flex flex-col gap-0.5 pl-3 list-none m-0 p-0 pl-3">
             {item.children!.map((child, j) => (
-              <button
-                key={j}
-                onClick={child.onClick}
-                className={cn(
-                  "w-full rounded-lyra-sm px-2.5 py-[6px] text-left lyra-body-md transition-colors",
-                  child.active
-                    ? "bg-lyra-bg-active-moderate text-lyra-fg-active-strong lyra-body-md-emphasis hover:bg-lyra-bg-active-moderate active:bg-lyra-bg-active-subtle"
-                    : "text-lyra-fg-secondary hover:bg-lyra-state-hover hover:text-lyra-fg-default active:bg-lyra-state-pressed"
-                )}
-              >
-                {child.label}
-              </button>
+              <li key={j} role="treeitem">
+                <button
+                  onClick={child.onClick}
+                  aria-current={child.active ? "page" : undefined}
+                  className={cn(
+                    "w-full rounded-lyra-sm px-2.5 py-[6px] text-left lyra-body-md transition-colors",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
+                    child.active
+                      ? "bg-lyra-bg-active-moderate text-lyra-fg-active-strong lyra-body-md-emphasis hover:bg-lyra-bg-active-moderate active:bg-lyra-bg-active-subtle"
+                      : "text-lyra-fg-secondary hover:bg-lyra-state-hover hover:text-lyra-fg-default active:bg-lyra-state-pressed"
+                  )}
+                >
+                  {child.label}
+                </button>
+              </li>
             ))}
-          </div>
+          </ul>
         </CollapsiblePanel>
       )}
     </div>
