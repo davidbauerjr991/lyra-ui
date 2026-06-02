@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useState, useCallback, useRef, useEffect } from "react";
-import { ArrowUp, ArrowDown, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, ChevronRight as ChevronRightIcon, Group } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, ChevronRight as ChevronRightIcon, Group, MoreVertical } from "lucide-react";
 import { cn } from "../lib/utils";
 import { SearchInput } from "./search-input";
 import { Select } from "./select";
@@ -300,6 +300,22 @@ interface ToolbarFilterDef {
   options: FilterChipOption[];
 }
 
+/** Configuration for a single action in the toolbar */
+interface ToolbarActionDef {
+  /** Unique key for this action */
+  key: string;
+  /** Display label (shown in overflow menu, used as title on icon buttons) */
+  label: string;
+  /** Icon element */
+  icon?: React.ReactNode;
+  /** Click handler */
+  onClick?: () => void;
+  /** Whether the action is disabled */
+  disabled?: boolean;
+  /** Whether to show a divider before this action */
+  divider?: boolean;
+}
+
 interface TableToolbarProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Search query value */
   searchQuery?: string;
@@ -323,10 +339,26 @@ interface TableToolbarProps extends React.HTMLAttributes<HTMLDivElement> {
   onFilterClear?: () => void;
   /** Action buttons rendered on the right side */
   actions?: React.ReactNode;
+  /** Structured action definitions — renders icon buttons inline on large screens, labeled menu on small screens */
+  actionDefs?: ToolbarActionDef[];
 }
 
 const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
-  ({ className, searchQuery, onSearchChange, searchPlaceholder = "Quick Search", recordCount, recordLabel = "Records", filters, filterDefs, filterValues, onFilterChange, onFilterClear, actions, ...props }, ref) => {
+  ({ className, searchQuery, onSearchChange, searchPlaceholder = "Quick Search", recordCount, recordLabel = "Records", filters, filterDefs, filterValues, onFilterChange, onFilterClear, actions, actionDefs, ...props }, ref) => {
+    const [moreOpen, setMoreOpen] = useState(false);
+    const moreRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      if (!moreOpen) return;
+      const onClickOutside = (e: MouseEvent) => {
+        if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+          setMoreOpen(false);
+        }
+      };
+      document.addEventListener("mousedown", onClickOutside);
+      return () => document.removeEventListener("mousedown", onClickOutside);
+    }, [moreOpen]);
+
     const hasActiveFilters = filterDefs && filterValues && filterDefs.some((f) => (filterValues[f.key]?.length ?? 0) > 0);
 
     const filterChips = filterDefs ? (
@@ -348,15 +380,18 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
       </>
     ) : null;
 
+    const hasSearch = onSearchChange !== undefined;
+    const hasFilters = filterChips || filters;
+
     return (
       <div
         ref={ref}
-        className={cn("flex flex-col py-3", className)}
+        className={cn("flex flex-col gap-2 py-3", className)}
         {...props}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {onSearchChange !== undefined && (
+            {hasSearch && (
               <SearchInput
                 placeholder={searchPlaceholder}
                 value={searchQuery ?? ""}
@@ -365,13 +400,83 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
                 aria-label={searchPlaceholder}
               />
             )}
+            {/* Filters inline when no search, or on large screens */}
+            {hasFilters && (!hasSearch ? (
+              <div className="flex items-center gap-2">
+                {filterChips}
+                {filters}
+              </div>
+            ) : (
+              <div className="hidden lg:flex items-center gap-2">
+                {filterChips}
+                {filters}
+              </div>
+            ))}
+          </div>
+          {(actions || actionDefs) && (
+            <>
+              {/* Inline actions on large screens */}
+              <div className="hidden lg:flex items-center gap-1">
+                {actionDefs?.map((a) => (
+                  <React.Fragment key={a.key}>
+                    {a.divider && <div className="mx-1 h-6 w-px bg-lyra-border-subtle" />}
+                    <Button variant="icon" size="icon" title={a.label} disabled={a.disabled} onClick={a.onClick}>
+                      {a.icon}
+                    </Button>
+                  </React.Fragment>
+                ))}
+                {actionDefs && actionDefs.length > 0 && actions && (
+                  <div className="mx-1 h-6 w-px bg-lyra-border-subtle" />
+                )}
+                {actions}
+              </div>
+              {/* More button on small screens */}
+              <div className="relative lg:hidden flex items-center gap-1" ref={moreRef}>
+                {/* Non-menu actions (like ColumnToggle) stay visible */}
+                {actions}
+                {actionDefs && actionDefs.length > 0 && (
+                  <>
+                    <Button
+                      variant="icon"
+                      size="icon"
+                      title="More actions"
+                      onClick={() => setMoreOpen((v) => !v)}
+                    >
+                      <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
+                    </Button>
+                    {moreOpen && (
+                      <div className="absolute right-0 top-full mt-1 z-50 min-w-[180px] rounded-lg border border-lyra-border-subtle bg-lyra-bg-surface-base shadow-lg py-1">
+                        {actionDefs.map((a) => (
+                          <React.Fragment key={a.key}>
+                            {a.divider && <div className="my-1 h-px bg-lyra-border-subtle" />}
+                            <button
+                              className={cn(
+                                "flex w-full items-center gap-3 px-3 py-2 text-sm text-lyra-content-primary hover:bg-lyra-bg-surface-container-subtle transition-colors",
+                                a.disabled && "opacity-40 pointer-events-none"
+                              )}
+                              disabled={a.disabled}
+                              onClick={() => { a.onClick?.(); setMoreOpen(false); }}
+                            >
+                              {a.icon && <span className="flex-shrink-0 h-4 w-4 [&>svg]:h-4 [&>svg]:w-4">{a.icon}</span>}
+                              {a.label}
+                            </button>
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+        {/* Filters on second row below 1024px when search is present */}
+        {hasSearch && hasFilters && (
+          <div className="flex items-center gap-2 lg:hidden">
             {filterChips}
             {filters}
           </div>
-          {actions && (
-            <div className="flex items-center gap-1">{actions}</div>
-          )}
-        </div>
+        )}
       </div>
     );
   }
@@ -802,4 +907,4 @@ export {
   useTableGrouping,
   useAutoFitRows,
 };
-export type { SortDirection, ColumnDragHandlers, TableToolbarProps, ToolbarFilterDef, TableFooterProps, ColumnToggleItem, ColumnToggleProps, TableGroupRowProps, GroupedData, UseTableGroupingReturn, UseAutoFitRowsReturn };
+export type { SortDirection, ColumnDragHandlers, TableToolbarProps, ToolbarFilterDef, ToolbarActionDef, TableFooterProps, ColumnToggleItem, ColumnToggleProps, TableGroupRowProps, GroupedData, UseTableGroupingReturn, UseAutoFitRowsReturn };

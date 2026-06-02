@@ -20,7 +20,7 @@ export {
   useTableGrouping,
   useAutoFitRows,
 } from "./components/table";
-export type { SortDirection, ColumnDragHandlers, TableToolbarProps, ToolbarFilterDef, TableFooterProps, ColumnToggleItem, ColumnToggleProps, TableGroupRowProps, GroupedData, UseTableGroupingReturn, UseAutoFitRowsReturn } from "./components/table";
+export type { SortDirection, ColumnDragHandlers, TableToolbarProps, ToolbarFilterDef, ToolbarActionDef, TableFooterProps, ColumnToggleItem, ColumnToggleProps, TableGroupRowProps, GroupedData, UseTableGroupingReturn, UseAutoFitRowsReturn } from "./components/table";
 export { TabList, Tab, TabPanel } from "./components/tabs";
 export { AppName } from "./components/app-name";
 export { AppHeader } from "./components/app-header";

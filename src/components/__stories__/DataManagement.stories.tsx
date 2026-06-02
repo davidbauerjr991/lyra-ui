@@ -17,7 +17,7 @@ import {
   useTableGrouping,
   useAutoFitRows,
 } from "../table";
-import type { ColumnToggleItem, SortDirection } from "../table";
+import type { ColumnToggleItem, SortDirection, ToolbarActionDef } from "../table";
 import { PageHeader } from "../page-header";
 import { TabList, Tab } from "../tabs";
 import { Button } from "../button";
@@ -428,41 +428,20 @@ function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, sho
           searchQuery={showQuickSearch ? searchQuery : undefined}
           onSearchChange={showQuickSearch ? setSearchQuery : undefined}
           searchPlaceholder="Quick Search"
+          actionDefs={[
+            ...(showRefresh ? [{ key: "refresh", label: "Refresh", icon: <RefreshCw className="h-4 w-4" strokeWidth={1.5} /> }] : []),
+            ...(showEdit ? [{ key: "edit", label: "Edit", icon: <Pencil className="h-4 w-4" strokeWidth={1.5} />, disabled: selectedRows.size === 0 }] : []),
+            ...(showCopy ? [{ key: "copy", label: "Copy", icon: <Copy className="h-4 w-4" strokeWidth={1.5} />, disabled: selectedRows.size === 0 }] : []),
+            ...(showDelete ? [{ key: "delete", label: "Delete", icon: <Trash2 className="h-4 w-4" strokeWidth={1.5} />, disabled: selectedRows.size === 0 }] : []),
+          ]}
           actions={
-            <div className="flex items-center gap-1">
-              {showRefresh && (
-                <Button variant="icon" size="icon" title="Refresh">
-                  <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
-                </Button>
-              )}
-              {showEdit && (
-                <Button variant="icon" size="icon" title="Edit" disabled={selectedRows.size === 0}>
-                  <Pencil className="h-4 w-4" strokeWidth={1.5} />
-                </Button>
-              )}
-              {showCopy && (
-                <Button variant="icon" size="icon" title="Copy" disabled={selectedRows.size === 0}>
-                  <Copy className="h-4 w-4" strokeWidth={1.5} />
-                </Button>
-              )}
-              {showDelete && (
-                <Button variant="icon" size="icon" title="Delete" disabled={selectedRows.size === 0}>
-                  <Trash2 className="h-4 w-4" strokeWidth={1.5} />
-                </Button>
-              )}
-              {showColumns && (
-                <>
-                  {(showRefresh || showEdit || showCopy || showDelete) && (
-                    <div className="mx-1 h-6 w-px bg-lyra-border-subtle" />
-                  )}
-                  <ColumnToggle
-                    columns={allColumnDefs}
-                    visibleColumns={visibleCols}
-                    onVisibilityChange={setVisibleCols}
-                  />
-                </>
-              )}
-            </div>
+            showColumns ? (
+              <ColumnToggle
+                columns={allColumnDefs}
+                visibleColumns={visibleCols}
+                onVisibilityChange={setVisibleCols}
+              />
+            ) : undefined
           }
           filterDefs={showFilters ? filterDefs : undefined}
           filterValues={showFilters ? filterValues : undefined}
