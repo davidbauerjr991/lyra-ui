@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import {
   Table,
   TableHeader,
@@ -19,6 +19,8 @@ import {
 } from "../table";
 import type { ColumnToggleItem, SortDirection, ToolbarActionDef } from "../table";
 import { PageHeader } from "../page-header";
+import { SidePanel } from "../side-panel";
+import { Panel } from "../panel";
 import { TabList, Tab } from "../tabs";
 import { Button } from "../button";
 import { Checkbox } from "../checkbox";
@@ -91,6 +93,9 @@ interface TableFeatures {
   showTabs: boolean;
   showToolbar: boolean;
   showAskAI: boolean;
+  showChip: boolean;
+  headerPanelToggle: "none" | "left" | "right" | "both";
+  toolbarPanelToggle: "none" | "left" | "right" | "both";
   showQuickSearch: boolean;
   showRefresh: boolean;
   showEdit: boolean;
@@ -98,11 +103,81 @@ interface TableFeatures {
   showDelete: boolean;
   showColumns: boolean;
   showFilters: boolean;
+  showTitle: boolean;
 }
 
 /* ── Template Component ── */
 
-function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, showTabs, showToolbar, showAskAI, showQuickSearch, showRefresh, showEdit, showCopy, showDelete, showColumns, showFilters }: TableFeatures) {
+function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, showTabs, showToolbar, showAskAI, showChip, headerPanelToggle, toolbarPanelToggle, showQuickSearch, showRefresh, showEdit, showCopy, showDelete, showColumns, showFilters, showTitle }: TableFeatures) {
+  /* Interior panels (controlled by Toolbar toggle) */
+  const [toolbarLeftOpen, setToolbarLeftOpen] = useState(false);
+  const [toolbarRightOpen, setToolbarRightOpen] = useState(false);
+
+  /* Left side panel — hover overlay + pin */
+  const [leftPanelOpen, setLeftPanelOpen] = useState(false);
+  const [leftPanelPinned, setLeftPanelPinned] = useState(false);
+  const leftHoverTimeout = useRef<ReturnType<typeof setTimeout>>();
+
+  const handleLeftPanelToggle = useCallback(() => {
+    if (leftPanelPinned) setLeftPanelOpen((v) => !v);
+  }, [leftPanelPinned]);
+
+  const handleLeftHoverStart = useCallback(() => {
+    if (!leftPanelPinned) { clearTimeout(leftHoverTimeout.current); setLeftPanelOpen(true); }
+  }, [leftPanelPinned]);
+
+  const handleLeftHoverEnd = useCallback(() => {
+    if (!leftPanelPinned) { leftHoverTimeout.current = setTimeout(() => setLeftPanelOpen(false), 300); }
+  }, [leftPanelPinned]);
+
+  const handleLeftPinToggle = useCallback(() => {
+    setLeftPanelPinned((prev) => { const next = !prev; setLeftPanelOpen(next); return next; });
+  }, []);
+
+  /* Right side panel — hover overlay + pin (independent from left) */
+  const [rightPanelOpen, setRightPanelOpen] = useState(false);
+  const [rightPanelPinned, setRightPanelPinned] = useState(false);
+  const rightHoverTimeout = useRef<ReturnType<typeof setTimeout>>();
+
+  const handleRightHoverStart = useCallback(() => {
+    if (!rightPanelPinned) { clearTimeout(rightHoverTimeout.current); setRightPanelOpen(true); }
+  }, [rightPanelPinned]);
+
+  const handleRightHoverEnd = useCallback(() => {
+    if (!rightPanelPinned) { rightHoverTimeout.current = setTimeout(() => setRightPanelOpen(false), 300); }
+  }, [rightPanelPinned]);
+
+  const handleRightPinToggle = useCallback(() => {
+    setRightPanelPinned((prev) => { const next = !prev; setRightPanelOpen(next); return next; });
+  }, []);
+
+  /* Unpin side panels when screen < 1024px, prevent pinning below that */
+  const [canPin, setCanPin] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1024);
+
+  React.useEffect(() => {
+    const check = () => {
+      const wide = window.innerWidth >= 1024;
+      setCanPin(wide);
+      if (!wide) {
+        setLeftPanelPinned(false);
+        setRightPanelPinned(false);
+      }
+    };
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  const guardedLeftPinToggle = useCallback(() => {
+    if (!canPin) return;
+    setLeftPanelPinned((prev) => { const next = !prev; setLeftPanelOpen(next); return next; });
+  }, [canPin]);
+
+  const guardedRightPinToggle = useCallback(() => {
+    if (!canPin) return;
+    setRightPanelPinned((prev) => { const next = !prev; setRightPanelOpen(next); return next; });
+  }, [canPin]);
+
   /* Tabs */
   const [activeTab, setActiveTab] = useState("all");
 
@@ -178,10 +253,10 @@ function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, sho
   const [sortDir, setSortDir] = useState<SortDirection>(null);
 
   /* Column reorder */
-  const allVisibleKeys = (Object.keys(columnConfig) as ColKey[]).filter((k) =>
-    visibleCols.has(k)
+  const { columnOrder: allColumnOrder, dragOverKey, dragHandlers } = useColumnReorder<ColKey>(
+    Object.keys(columnConfig) as ColKey[]
   );
-  const { columnOrder, dragOverKey, dragHandlers } = useColumnReorder<ColKey>(allVisibleKeys);
+  const columnOrder = allColumnOrder.filter((k) => visibleCols.has(k));
 
   /* Grouping */
   const getValueForKey = useCallback(
@@ -388,10 +463,39 @@ function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, sho
   const renderFlatBody = () => pageRows.map((row) => renderDataRow(row));
 
   return (
-    <div className="flex flex-col h-full bg-lyra-bg-surface-base rounded-lyra-lg border border-lyra-border-subtle overflow-hidden">
+    <div className="flex h-full bg-lyra-bg-surface-base rounded-lyra-lg border border-lyra-border-subtle overflow-hidden relative">
+
+      {/* Left side panel — wraps PageHeader too */}
+      {(headerPanelToggle === "left" || headerPanelToggle === "both") && (
+        <SidePanel
+          open={leftPanelOpen}
+          pinned={leftPanelPinned}
+          headerTitle="Designer"
+          onPinToggle={canPin ? guardedLeftPinToggle : undefined}
+          onMouseEnter={!leftPanelPinned ? handleLeftHoverStart : undefined}
+          onMouseLeave={!leftPanelPinned ? handleLeftHoverEnd : undefined}
+        >
+          <div className="p-4">
+            <p className="lyra-body-md text-lyra-fg-secondary">Side panel content.</p>
+          </div>
+        </SidePanel>
+      )}
+
+      {/* Main content column — flex-col inside the outer flex row */}
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+
       {/* Page Header */}
       <PageHeader
         title="Desktop Designs"
+        chip={showChip ? "Active" : undefined}
+        panelToggle={headerPanelToggle === "none" ? undefined : headerPanelToggle}
+        panelPinned={leftPanelPinned}
+        onPanelToggle={handleLeftPanelToggle}
+        onPanelHoverStart={handleLeftHoverStart}
+        onPanelHoverEnd={handleLeftHoverEnd}
+        onInnerPanelToggle={rightPanelPinned ? () => setRightPanelOpen((v) => !v) : undefined}
+        onInnerPanelHoverStart={!rightPanelPinned ? handleRightHoverStart : undefined}
+        onInnerPanelHoverEnd={!rightPanelPinned ? handleRightHoverEnd : undefined}
         actions={
           <>
             <Button variant="outline">Secondary</Button>
@@ -412,6 +516,10 @@ function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, sho
         }
       />
 
+      {/* Centre column: tabs + interior panel row */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+
       {/* Tabs */}
       {showTabs && (
         <TabList className="px-6">
@@ -421,10 +529,32 @@ function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, sho
         </TabList>
       )}
 
+      {/* Interior panels row (toolbar toggles only push toolbar + table) */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+
+      {/* Left interior panel (Toolbar toggle) */}
+      {(toolbarPanelToggle === "left" || toolbarPanelToggle === "both") && (
+        <Panel
+          variant="interior"
+          side="left"
+          open={toolbarLeftOpen}
+          headerTitle="Details"
+          onClose={() => setToolbarLeftOpen(false)}
+        >
+          <div className="p-4">
+            <p className="lyra-body-md text-lyra-fg-secondary">Left panel content.</p>
+          </div>
+        </Panel>
+      )}
+
+      {/* Main content column (toolbar + table + footer) */}
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+
       {/* Toolbar */}
       {showToolbar && (
         <TableToolbar
           className="px-6"
+          title={showTitle ? "Title" : undefined}
           searchQuery={showQuickSearch ? searchQuery : undefined}
           onSearchChange={showQuickSearch ? setSearchQuery : undefined}
           searchPlaceholder="Quick Search"
@@ -447,6 +577,9 @@ function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, sho
           filterValues={showFilters ? filterValues : undefined}
           onFilterChange={showFilters ? handleFilterChange : undefined}
           onFilterClear={showFilters ? clearAllFilters : undefined}
+          toolbarPanelToggle={toolbarPanelToggle === "none" ? undefined : toolbarPanelToggle}
+          onLeftPanelToggle={() => setToolbarLeftOpen((v) => !v)}
+          onRightPanelToggle={() => setToolbarRightOpen((v) => !v)}
         />
       )}
 
@@ -482,6 +615,48 @@ function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, sho
         displayStart={displayStart}
         displayEnd={displayEnd}
       />
+
+      </div>{/* end main content column */}
+
+      {/* Right interior panel (Toolbar toggle) */}
+      {(toolbarPanelToggle === "right" || toolbarPanelToggle === "both") && (
+        <Panel
+          variant="interior"
+          side="right"
+          open={toolbarRightOpen}
+          headerTitle="Details"
+          onClose={() => setToolbarRightOpen(false)}
+        >
+          <div className="p-4">
+            <p className="lyra-body-md text-lyra-fg-secondary">Right panel content.</p>
+          </div>
+        </Panel>
+      )}
+
+      </div>{/* end interior panels row */}
+      </div>{/* end centre inner column */}
+      </div>{/* end centre column wrapper */}
+
+      </div>{/* end main content column */}
+
+      {/* Right side panel — sibling of main content column, pushes PageHeader too */}
+      {(headerPanelToggle === "right" || headerPanelToggle === "both") && (
+        <Panel
+          variant="side"
+          side="right"
+          open={rightPanelOpen}
+          pinned={rightPanelPinned}
+          headerTitle="Designer"
+          onPinToggle={canPin ? guardedRightPinToggle : undefined}
+          onMouseEnter={!rightPanelPinned ? handleRightHoverStart : undefined}
+          onMouseLeave={!rightPanelPinned ? handleRightHoverEnd : undefined}
+        >
+          <div className="p-4">
+            <p className="lyra-body-md text-lyra-fg-secondary">Side panel content.</p>
+          </div>
+        </Panel>
+      )}
+
     </div>
   );
 }
@@ -500,6 +675,9 @@ const meta: Meta = {
     showTabs: { control: "boolean", description: "Show tab navigation" },
     showToolbar: { control: "boolean", description: "Show table toolbar" },
     showAskAI: { control: "boolean", description: "Show Ask AI button" },
+    showChip: { control: "boolean", description: "Show chip next to page title" },
+    headerPanelToggle: { control: "select", options: ["none", "left", "right", "both"], description: "PageHeader panel toggle → opens side panels" },
+    toolbarPanelToggle: { control: "select", options: ["none", "left", "right", "both"], description: "Toolbar panel toggle → opens interior panels" },
     showQuickSearch: { control: "boolean", description: "Show quick search input" },
     showRefresh: { control: "boolean", description: "Show refresh button" },
     showEdit: { control: "boolean", description: "Show edit button" },
@@ -507,6 +685,7 @@ const meta: Meta = {
     showDelete: { control: "boolean", description: "Show delete button" },
     showColumns: { control: "boolean", description: "Show column toggle" },
     showFilters: { control: "boolean", description: "Show filter chips" },
+    showTitle: { control: "boolean", description: "Show title above search row" },
   },
   args: {
     sortable: true,
@@ -515,6 +694,9 @@ const meta: Meta = {
     showTabs: true,
     showToolbar: true,
     showAskAI: true,
+    showChip: false,
+    headerPanelToggle: "none",
+    toolbarPanelToggle: "none",
     showQuickSearch: true,
     showRefresh: true,
     showEdit: true,
@@ -522,6 +704,7 @@ const meta: Meta = {
     showDelete: true,
     showColumns: true,
     showFilters: true,
+    showTitle: false,
   },
 };
 
@@ -539,6 +722,9 @@ export const Default: Story = {
         showTabs={args.showTabs as boolean}
         showToolbar={args.showToolbar as boolean}
         showAskAI={args.showAskAI as boolean}
+        showChip={args.showChip as boolean}
+        headerPanelToggle={args.headerPanelToggle as "none" | "left" | "right" | "both"}
+        toolbarPanelToggle={args.toolbarPanelToggle as "none" | "left" | "right" | "both"}
         showQuickSearch={args.showQuickSearch as boolean}
         showRefresh={args.showRefresh as boolean}
         showEdit={args.showEdit as boolean}
@@ -546,6 +732,7 @@ export const Default: Story = {
         showDelete={args.showDelete as boolean}
         showColumns={args.showColumns as boolean}
         showFilters={args.showFilters as boolean}
+        showTitle={args.showTitle as boolean}
         autoFit={false}
       />
     </div>
@@ -568,6 +755,9 @@ export const AutoFit: Story = {
         showTabs={args.showTabs as boolean}
         showToolbar={args.showToolbar as boolean}
         showAskAI={args.showAskAI as boolean}
+        showChip={args.showChip as boolean}
+        headerPanelToggle={args.headerPanelToggle as "none" | "left" | "right" | "both"}
+        toolbarPanelToggle={args.toolbarPanelToggle as "none" | "left" | "right" | "both"}
         showQuickSearch={args.showQuickSearch as boolean}
         showRefresh={args.showRefresh as boolean}
         showEdit={args.showEdit as boolean}
@@ -575,6 +765,7 @@ export const AutoFit: Story = {
         showDelete={args.showDelete as boolean}
         showColumns={args.showColumns as boolean}
         showFilters={args.showFilters as boolean}
+        showTitle={args.showTitle as boolean}
         autoFit={true}
       />
     </div>

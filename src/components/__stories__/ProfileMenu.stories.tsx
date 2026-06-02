@@ -23,6 +23,7 @@ export const Default: Story = {
         initials="JS"
         avatarColor="#5d6a79"
         groups={defaultProfileMenuGroups}
+        showThemeToggle
       />
     </div>
   ),

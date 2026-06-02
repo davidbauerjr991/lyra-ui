@@ -1,6 +1,6 @@
 import * as React from "react";
-import { useState, useCallback, useRef, useEffect } from "react";
-import { ArrowUp, ArrowDown, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, ChevronRight as ChevronRightIcon, Group, MoreVertical } from "lucide-react";
+import { useState, useCallback, useRef, useEffect, useLayoutEffect } from "react";
+import { ArrowUp, ArrowDown, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, ChevronRight as ChevronRightIcon, Group, MoreVertical, PanelLeft, PanelRight } from "lucide-react";
 import { cn } from "../lib/utils";
 import { SearchInput } from "./search-input";
 import { Select } from "./select";
@@ -341,12 +341,45 @@ interface TableToolbarProps extends React.HTMLAttributes<HTMLDivElement> {
   actions?: React.ReactNode;
   /** Structured action definitions — renders icon buttons inline on large screens, labeled menu on small screens */
   actionDefs?: ToolbarActionDef[];
+  /** Optional title — when provided, renders inline with action buttons on row 1; search + filters move to row 2 */
+  title?: string;
+  /** Show panel toggle icon button(s) at the far right of the toolbar — always opens interior panels */
+  toolbarPanelToggle?: "left" | "right" | "both";
+  /** Called when the left interior panel toggle is clicked */
+  onLeftPanelToggle?: () => void;
+  /** Called when the right interior panel toggle is clicked */
+  onRightPanelToggle?: () => void;
 }
 
 const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
-  ({ className, searchQuery, onSearchChange, searchPlaceholder = "Quick Search", recordCount, recordLabel = "Records", filters, filterDefs, filterValues, onFilterChange, onFilterClear, actions, actionDefs, ...props }, ref) => {
+  ({ className, searchQuery, onSearchChange, searchPlaceholder = "Quick Search", recordCount, recordLabel = "Records", filters, filterDefs, filterValues, onFilterChange, onFilterClear, actions, actionDefs, title, toolbarPanelToggle, onLeftPanelToggle, onRightPanelToggle, ...props }, ref) => {
     const [moreOpen, setMoreOpen] = useState(false);
     const moreRef = useRef<HTMLDivElement>(null);
+    const measureRef = useRef<HTMLDivElement>(null);
+    const [containerWidth, setContainerWidth] = useState(9999);
+
+    /* Stable callback ref — useCallback with [] ensures it never recreates,
+       so React never detaches/reattaches it on re-renders triggered by
+       setContainerWidth, which would disconnect the ResizeObserver. */
+    const stableRef = useCallback((el: HTMLDivElement | null) => {
+      (measureRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+      if (typeof ref === "function") ref(el);
+      else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = el;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useLayoutEffect(() => {
+      const el = measureRef.current;
+      if (!el) return;
+      setContainerWidth(el.getBoundingClientRect().width);
+      const ro = new ResizeObserver(([entry]) => {
+        setContainerWidth(entry.contentRect.width);
+      });
+      ro.observe(el);
+      return () => ro.disconnect();
+    }, []);
+
+    const isWide = containerWidth >= 991;
 
     useEffect(() => {
       if (!moreOpen) return;
@@ -360,6 +393,61 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
     }, [moreOpen]);
 
     const hasActiveFilters = filterDefs && filterValues && filterDefs.some((f) => (filterValues[f.key]?.length ?? 0) > 0);
+    const activeFilterCount = filterDefs && filterValues
+      ? filterDefs.filter((f) => (filterValues[f.key]?.length ?? 0) > 0).length
+      : 0;
+
+    /* Collapsed filter dropdown — shown when toolbar is narrow */
+    const [filtersDropdownOpen, setFiltersDropdownOpen] = useState(false);
+    const filtersDropdownRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+      if (!filtersDropdownOpen) return;
+      const handler = (e: MouseEvent) => {
+        if (filtersDropdownRef.current && !filtersDropdownRef.current.contains(e.target as Node)) {
+          setFiltersDropdownOpen(false);
+        }
+      };
+      document.addEventListener("mousedown", handler);
+      return () => document.removeEventListener("mousedown", handler);
+    }, [filtersDropdownOpen]);
+
+    const collapsedFilterChip = filterDefs && filterDefs.length > 0 ? (
+      <div ref={filtersDropdownRef} className="relative">
+        <button
+          onClick={() => setFiltersDropdownOpen((v) => !v)}
+          className={cn(
+            "inline-flex items-center gap-1.5 h-8 px-3 rounded-lyra-md lyra-body-md-emphasis border transition-colors whitespace-nowrap",
+            activeFilterCount > 0
+              ? "bg-lyra-bg-active-subtle border-lyra-border-active text-lyra-fg-active-strong"
+              : "bg-lyra-bg-control border-lyra-border-default text-lyra-fg-default hover:bg-lyra-state-hover"
+          )}
+        >
+          Filters{activeFilterCount > 0 ? `: ${activeFilterCount} Active` : ""}
+          <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </button>
+        {filtersDropdownOpen && (
+          <div className="absolute left-0 top-full mt-1 z-50 min-w-[280px] rounded-lyra-md border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg p-3 flex flex-col gap-2">
+            {filterDefs.map((f) => (
+              <FilterChip
+                key={f.key}
+                label={f.label}
+                options={f.options}
+                selectedValues={filterValues?.[f.key] ?? []}
+                onSelectionChange={(vals) => onFilterChange?.(f.key, vals)}
+              />
+            ))}
+            {hasActiveFilters && (
+              <button
+                onClick={() => { onFilterClear?.(); setFiltersDropdownOpen(false); }}
+                className="lyra-body-md text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors text-left"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    ) : null;
 
     const filterChips = filterDefs ? (
       <>
@@ -373,7 +461,7 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
           />
         ))}
         {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={onFilterClear}>
+          <Button variant="ghost" size="default" onClick={onFilterClear}>
             Clear
           </Button>
         )}
@@ -383,14 +471,128 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
     const hasSearch = onSearchChange !== undefined;
     const hasFilters = filterChips || filters;
 
+    /* Panel toggle buttons (always at far right of toolbar) */
+    /* Right panel toggle only — left appears before search (see below) */
+    const panelToggleButtons = (toolbarPanelToggle === "right" || toolbarPanelToggle === "both") ? (
+      <div className="flex items-center gap-2 ml-2 pl-2 border-l border-lyra-border-subtle">
+        <Button variant="icon" size="icon" title="Toggle right panel" onClick={onRightPanelToggle}>
+          <PanelRight className="h-4 w-4" strokeWidth={1.5} />
+        </Button>
+      </div>
+    ) : null;
+
+    /* Shared action buttons block */
+    const actionButtons = (actions || actionDefs || toolbarPanelToggle) ? (
+      <>
+        {/* Inline actions when toolbar is wide */}
+        {isWide && <div className="flex items-center gap-2">
+          {actionDefs?.map((a) => (
+            <React.Fragment key={a.key}>
+              {a.divider && <div className="mx-1 h-6 w-px bg-lyra-border-subtle" />}
+              <Button variant="icon" size="icon" title={a.label} disabled={a.disabled} onClick={a.onClick}>
+                {a.icon}
+              </Button>
+            </React.Fragment>
+          ))}
+          {actionDefs && actionDefs.length > 0 && actions && (
+            <div className="mx-2 h-6 w-px bg-lyra-border-subtle" />
+          )}
+          {actions}
+          {panelToggleButtons}
+        </div>}
+        {/* More button when toolbar is narrow */}
+        {!isWide && <div className="relative flex items-center gap-2" ref={moreRef}>
+          {actions}
+          {panelToggleButtons}
+          {actionDefs && actionDefs.length > 0 && (
+            <>
+              <Button
+                variant="icon"
+                size="icon"
+                title="More actions"
+                onClick={() => setMoreOpen((v) => !v)}
+              >
+                <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
+              </Button>
+              {moreOpen && (
+                <div className="absolute right-0 top-full mt-1 z-50 min-w-[180px] rounded-lg border border-lyra-border-subtle bg-lyra-bg-surface-base shadow-lg py-1">
+                  {actionDefs.map((a) => (
+                    <React.Fragment key={a.key}>
+                      {a.divider && <div className="my-1 h-px bg-lyra-border-subtle" />}
+                      <button
+                        className={cn(
+                          "flex w-full items-center gap-3 px-3 py-2 text-sm text-lyra-content-primary hover:bg-lyra-bg-surface-container-subtle transition-colors",
+                          a.disabled && "opacity-40 pointer-events-none"
+                        )}
+                        disabled={a.disabled}
+                        onClick={() => { a.onClick?.(); setMoreOpen(false); }}
+                      >
+                        {a.icon && <span className="flex-shrink-0 h-4 w-4 [&>svg]:h-4 [&>svg]:w-4">{a.icon}</span>}
+                        {a.label}
+                      </button>
+                    </React.Fragment>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>}
+      </>
+    ) : null;
+
+
+    if (title) {
+      /* ── Title mode: row 1 = title + actions, row 2 = search + filters ── */
+      return (
+        <div
+          ref={stableRef}
+          className={cn("flex flex-col gap-2 py-3", className)}
+          {...props}
+        >
+          {/* Row 1: title + action buttons */}
+          <div className="flex items-center justify-between">
+            <span className="lyra-body-md-emphasis text-lyra-fg-default">{title}</span>
+            {actionButtons}
+          </div>
+          {/* Row 2: search + filters always inline */}
+          {(hasSearch || hasFilters) && (
+            <div className="flex items-center gap-2">
+              {hasSearch && (
+                <SearchInput
+                  placeholder={searchPlaceholder}
+                  value={searchQuery ?? ""}
+                  onValueChange={onSearchChange}
+                  className="w-[260px]"
+                  aria-label={searchPlaceholder}
+                />
+              )}
+              {hasFilters && (
+                <div className="flex items-center gap-2">
+                  {filterChips}
+                  {filters}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    /* ── No title: original layout ── */
     return (
       <div
-        ref={ref}
+        ref={stableRef}
         className={cn("flex flex-col gap-2 py-3", className)}
         {...props}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
+            {/* Left panel toggle — appears before search */}
+            {(toolbarPanelToggle === "left" || toolbarPanelToggle === "both") && (
+              <Button variant="icon" size="icon" title="Toggle left panel" onClick={onLeftPanelToggle}>
+                <PanelLeft className="h-4 w-4" strokeWidth={1.5} />
+              </Button>
+            )}
             {hasSearch && (
               <SearchInput
                 placeholder={searchPlaceholder}
@@ -400,82 +602,22 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
                 aria-label={searchPlaceholder}
               />
             )}
-            {/* Filters inline when no search, or on large screens */}
+            {/* Filters: inline when wide, collapsed chip when narrow */}
             {hasFilters && (!hasSearch ? (
-              <div className="flex items-center gap-2">
-                {filterChips}
-                {filters}
-              </div>
+              isWide ? (
+                <div className="flex items-center gap-2">{filterChips}{filters}</div>
+              ) : collapsedFilterChip
             ) : (
-              <div className="hidden lg:flex items-center gap-2">
-                {filterChips}
-                {filters}
-              </div>
+              isWide
+                ? <div className="flex items-center gap-2">{filterChips}{filters}</div>
+                : collapsedFilterChip
             ))}
           </div>
-          {(actions || actionDefs) && (
-            <>
-              {/* Inline actions on large screens */}
-              <div className="hidden lg:flex items-center gap-1">
-                {actionDefs?.map((a) => (
-                  <React.Fragment key={a.key}>
-                    {a.divider && <div className="mx-1 h-6 w-px bg-lyra-border-subtle" />}
-                    <Button variant="icon" size="icon" title={a.label} disabled={a.disabled} onClick={a.onClick}>
-                      {a.icon}
-                    </Button>
-                  </React.Fragment>
-                ))}
-                {actionDefs && actionDefs.length > 0 && actions && (
-                  <div className="mx-1 h-6 w-px bg-lyra-border-subtle" />
-                )}
-                {actions}
-              </div>
-              {/* More button on small screens */}
-              <div className="relative lg:hidden flex items-center gap-1" ref={moreRef}>
-                {/* Non-menu actions (like ColumnToggle) stay visible */}
-                {actions}
-                {actionDefs && actionDefs.length > 0 && (
-                  <>
-                    <Button
-                      variant="icon"
-                      size="icon"
-                      title="More actions"
-                      onClick={() => setMoreOpen((v) => !v)}
-                    >
-                      <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
-                    </Button>
-                    {moreOpen && (
-                      <div className="absolute right-0 top-full mt-1 z-50 min-w-[180px] rounded-lg border border-lyra-border-subtle bg-lyra-bg-surface-base shadow-lg py-1">
-                        {actionDefs.map((a) => (
-                          <React.Fragment key={a.key}>
-                            {a.divider && <div className="my-1 h-px bg-lyra-border-subtle" />}
-                            <button
-                              className={cn(
-                                "flex w-full items-center gap-3 px-3 py-2 text-sm text-lyra-content-primary hover:bg-lyra-bg-surface-container-subtle transition-colors",
-                                a.disabled && "opacity-40 pointer-events-none"
-                              )}
-                              disabled={a.disabled}
-                              onClick={() => { a.onClick?.(); setMoreOpen(false); }}
-                            >
-                              {a.icon && <span className="flex-shrink-0 h-4 w-4 [&>svg]:h-4 [&>svg]:w-4">{a.icon}</span>}
-                              {a.label}
-                            </button>
-                          </React.Fragment>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </>
-          )}
+          {actionButtons}
         </div>
         {/* Filters on second row below 1024px when search is present */}
-        {hasSearch && hasFilters && (
-          <div className="flex items-center gap-2 lg:hidden">
-            {filterChips}
-            {filters}
-          </div>
+        {hasSearch && filters && !isWide && (
+          <div className="flex items-center gap-2">{filters}</div>
         )}
       </div>
     );
@@ -504,6 +646,12 @@ interface TableFooterProps extends React.HTMLAttributes<HTMLDivElement> {
   displayStart: number;
   /** Index of last visible record */
   displayEnd: number;
+  /** Show the "Displaying X-Y of Z" record count (default: true) */
+  showDisplayCount?: boolean;
+  /** Show the "Rows per page" selector (default: true) */
+  showRowsPerPage?: boolean;
+  /** Show first/last page jump buttons (default: true) */
+  showJumpButtons?: boolean;
 }
 
 const TableFooter = React.forwardRef<HTMLDivElement, TableFooterProps>(
@@ -518,27 +666,49 @@ const TableFooter = React.forwardRef<HTMLDivElement, TableFooterProps>(
     totalRecords,
     displayStart,
     displayEnd,
+    showDisplayCount = true,
+    showRowsPerPage = true,
+    showJumpButtons = true,
     ...props
   }, ref) => {
     const safePage = Math.min(currentPage, totalPages);
 
+    const footerMeasureRef = useRef<HTMLDivElement>(null);
+    const [footerWidth, setFooterWidth] = useState(9999);
+    const footerStableRef = useCallback((el: HTMLDivElement | null) => {
+      (footerMeasureRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+      if (typeof ref === "function") ref(el);
+      else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = el;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+    useLayoutEffect(() => {
+      const el = footerMeasureRef.current;
+      if (!el) return;
+      setFooterWidth(el.getBoundingClientRect().width);
+      const ro = new ResizeObserver(([entry]) => setFooterWidth(entry.contentRect.width));
+      ro.observe(el);
+      return () => ro.disconnect();
+    }, []);
+    const isFooterNarrow = footerWidth < 760;
+
     return (
       <div
-        ref={ref}
+        ref={footerStableRef}
         className={cn(
-          "flex items-center justify-between border-t border-lyra-border-subtle py-2.5",
+          "flex border-t border-lyra-border-subtle py-2.5",
+          isFooterNarrow ? "flex-col gap-2" : "flex-row items-center justify-between",
           className
         )}
         {...props}
       >
         {/* Left: display range + rows per page */}
         <div className="flex items-center gap-2 lyra-body-sm text-lyra-fg-secondary">
-          <span>
-            Displaying {displayStart}-{displayEnd} of {totalRecords}
-          </span>
-          {onRowsPerPageChange && (
+          {showDisplayCount && (
+            <span>Displaying {displayStart}-{displayEnd} of {totalRecords}</span>
+          )}
+          {showRowsPerPage && onRowsPerPageChange && (
             <>
-              <span className="text-lyra-border-default">|</span>
+              {showDisplayCount && <span className="text-lyra-border-default">|</span>}
               <span>Rows per page:</span>
               <div className="relative inline-flex items-center">
                 <select
@@ -560,14 +730,16 @@ const TableFooter = React.forwardRef<HTMLDivElement, TableFooterProps>(
         {/* Right: page navigation */}
         <nav className="flex items-center gap-1 lyra-body-sm text-lyra-fg-secondary" aria-label="Pagination">
           <span>Page</span>
-          <button
-            onClick={() => onPageChange(1)}
-            disabled={safePage <= 1}
-            aria-label="First page"
-            className="flex h-6 w-6 items-center justify-center rounded-lyra-sm hover:bg-lyra-bg-surface-shell transition-colors disabled:text-lyra-fg-disabled disabled:hover:bg-transparent text-lyra-fg-secondary"
-          >
-            <ChevronsLeft className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
-          </button>
+          {showJumpButtons && (
+            <button
+              onClick={() => onPageChange(1)}
+              disabled={safePage <= 1}
+              aria-label="First page"
+              className="flex h-6 w-6 items-center justify-center rounded-lyra-sm hover:bg-lyra-bg-surface-shell transition-colors disabled:text-lyra-fg-disabled disabled:hover:bg-transparent text-lyra-fg-secondary"
+            >
+              <ChevronsLeft className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
+            </button>
+          )}
           <button
             onClick={() => onPageChange(Math.max(1, safePage - 1))}
             disabled={safePage <= 1}
@@ -597,14 +769,16 @@ const TableFooter = React.forwardRef<HTMLDivElement, TableFooterProps>(
           >
             <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
           </button>
-          <button
-            onClick={() => onPageChange(totalPages)}
-            disabled={safePage >= totalPages}
-            aria-label="Last page"
-            className="flex h-6 w-6 items-center justify-center rounded-lyra-sm hover:bg-lyra-bg-surface-shell transition-colors disabled:text-lyra-fg-disabled disabled:hover:bg-transparent text-lyra-fg-secondary"
-          >
-            <ChevronsRight className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
-          </button>
+          {showJumpButtons && (
+            <button
+              onClick={() => onPageChange(totalPages)}
+              disabled={safePage >= totalPages}
+              aria-label="Last page"
+              className="flex h-6 w-6 items-center justify-center rounded-lyra-sm hover:bg-lyra-bg-surface-shell transition-colors disabled:text-lyra-fg-disabled disabled:hover:bg-transparent text-lyra-fg-secondary"
+            >
+              <ChevronsRight className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
+            </button>
+          )}
         </nav>
       </div>
     );

@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { useState } from "react";
 import { Container } from "../container";
+import { Panel } from "../panel";
 import { Button } from "../button";
 import { Input } from "../input";
 import { Select } from "../select";
@@ -184,6 +186,65 @@ export const Popover: Story = {
       </div>
     </div>
   ),
+};
+
+/* ── Panel variants ── */
+
+export const PanelInterior: Story = {
+  name: "Panel/Interior",
+  parameters: { backgrounds: { default: "lyra-shell" } },
+  render: () => (
+    <div className="h-[500px] flex overflow-hidden rounded-lyra-lg border border-lyra-border-subtle">
+      <div className="flex-1 bg-lyra-bg-surface-base" />
+      <Panel
+        variant="interior"
+        side="right"
+        open
+        headerTitle="Dialog Title"
+        onClose={() => {}}
+        footer={<><Button variant="outline">Cancel</Button><Button>Save</Button></>}
+      >
+        <div className="flex flex-col gap-4 px-4 py-4">
+          <Input label="Name" placeholder="Enter name" />
+          <Input label="Description" placeholder="Enter description" />
+          <Input label="Value" placeholder="Enter value" />
+        </div>
+      </Panel>
+    </div>
+  ),
+};
+
+export const PanelSide: Story = {
+  name: "Panel/Side",
+  parameters: { backgrounds: { default: "lyra-shell" } },
+  render: () => {
+    const [open, setOpen] = useState(true);
+    const [pinned, setPinned] = useState(true);
+    return (
+      <div className="relative h-[500px] flex overflow-hidden rounded-lyra-lg border border-lyra-border-subtle">
+        <Panel
+          variant="side"
+          side="left"
+          open={open}
+          pinned={pinned}
+          headerTitle="Designer"
+          onPinToggle={() => setPinned((v) => !v)}
+        >
+          <div className="px-4 py-4">
+            <p className="lyra-body-md text-lyra-fg-secondary">Side panel content.</p>
+          </div>
+        </Panel>
+        <div className="flex flex-1 flex-col bg-lyra-bg-surface-base p-4 gap-2">
+          <Button onClick={() => setOpen((v) => !v)} variant="outline">
+            {open ? "Close Panel" : "Open Panel"}
+          </Button>
+          <p className="lyra-body-sm text-lyra-fg-secondary">
+            {pinned ? "Pinned — pushes content" : "Unpinned — hovers as overlay"}
+          </p>
+        </div>
+      </div>
+    );
+  },
 };
 
 export const Nested: Story = {

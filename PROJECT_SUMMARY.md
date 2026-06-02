@@ -51,9 +51,9 @@ There are two repos:
 - TableFooter uses ChevronDown icon element (not background-image) for accessibility
 
 ### Button (`src/components/button.tsx`)
-- Sizes: sm (32px), default (36px), lg (40px), xl (44px), icon-sm (32px), icon (36px), icon-lg (40px), icon-xl (44px)
+- Sizes: sm (24px), default/md (32px), lg (36px), xl (40px), icon-sm (24px), icon/icon-md (32px), icon-lg (36px), icon-xl (40px)
 - Variants: default, destructive, outline, ghost, icon
-- Data Management uses default size (36px) for all buttons
+- Data Management uses lg size (36px) for page header buttons; toolbar icon buttons use icon/icon-md (32px)
 
 ## Stories
 

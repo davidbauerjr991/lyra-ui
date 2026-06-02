@@ -1,0 +1,266 @@
+import * as React from "react";
+import { useState, useRef, useCallback, useLayoutEffect } from "react";
+import { Pin } from "lucide-react";
+import { PanelHeader } from "./panel-header";
+import { PanelContent } from "./panel-content";
+import { PanelFooter } from "./panel-footer";
+import { Tooltip } from "./tooltip";
+import { cn } from "../lib/utils";
+
+/* ── Types ── */
+
+export type PanelVariant = "side" | "interior";
+export type PanelSide = "left" | "right";
+
+export interface PanelProps extends React.HTMLAttributes<HTMLDivElement> {
+  /**
+   * "side"     — navigation/tool panel; unpinned = hover overlay, pinned = inline.
+   * "interior" — inline detail/properties panel; always inline and resizable.
+   */
+  variant: PanelVariant;
+  /** Which side of the layout the panel appears on */
+  side?: PanelSide;
+  /** Whether the panel is open (required for animated variants) */
+  open?: boolean;
+
+  /* ── Side variant ── */
+  /** Pinned = inline push; unpinned = hover overlay. Side variant only. */
+  pinned?: boolean;
+  /** Called when the pin button is clicked */
+  onPinToggle?: () => void;
+
+  /* ── Interior variant ── */
+  /** Renders a close (×) button in the header. Interior variant only. */
+  onClose?: () => void;
+
+  /* ── Resize ── */
+  /** Allow drag-to-resize on the leading border (default: true) */
+  resizable?: boolean;
+  /** Min width when resizing in px (default: 200) */
+  minWidth?: number;
+  /** Max width when resizing in px (default: 800) */
+  maxWidth?: number;
+
+  /* ── Layout ── */
+  /** Width in px. Defaults: side = 256, interior = 340 */
+  width?: number;
+
+  /* ── Header ── */
+  headerTitle?: string;
+  headerIcon?: React.ReactNode;
+  headerActions?: React.ReactNode;
+
+  /* ── Footer ── */
+  footer?: React.ReactNode;
+}
+
+/* ── Drag hook ── */
+
+function useDragResize(
+  side: PanelSide,
+  initialWidth: number,
+  min: number,
+  max: number
+) {
+  const [dragWidth, setDragWidth] = useState<number | null>(null);
+  const dragging = useRef(false);
+  const startX = useRef(0);
+  const startW = useRef(0);
+
+  const onMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      dragging.current = true;
+      startX.current = e.clientX;
+      startW.current = dragWidth ?? initialWidth;
+
+      const onMove = (ev: MouseEvent) => {
+        if (!dragging.current) return;
+        const delta = side === "right"
+          ? startX.current - ev.clientX
+          : ev.clientX - startX.current;
+        setDragWidth(Math.min(max, Math.max(min, startW.current + delta)));
+      };
+      const onUp = () => {
+        dragging.current = false;
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+      };
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    },
+    [side, dragWidth, initialWidth, min, max]
+  );
+
+  return { width: dragWidth ?? initialWidth, isDragging: dragging, onMouseDown };
+}
+
+/* ── Panel ── */
+
+const Panel = React.forwardRef<HTMLDivElement, PanelProps>(
+  (
+    {
+      className,
+      variant,
+      side = "right",
+      open = true,
+      pinned = true,
+      onPinToggle,
+      onClose,
+      resizable = true,
+      minWidth = 200,
+      maxWidth = 800,
+      width,
+      headerTitle,
+      headerIcon,
+      headerActions,
+      footer,
+      children,
+      ...props
+    },
+    ref
+  ) => {
+    const defaultWidth = variant === "side" ? 256 : 340;
+    const baseWidth = width ?? defaultWidth;
+    const { width: currentWidth, isDragging, onMouseDown } = useDragResize(side, baseWidth, minWidth, maxWidth);
+
+    /* ── Interior: go full-width when parent container < 991px ── */
+    const outerRef = useRef<HTMLDivElement>(null);
+    const [parentWidth, setParentWidth] = useState(9999);
+    const isNarrow = variant === "interior" && parentWidth < 991;
+
+    const stableOuterRef = useCallback((el: HTMLDivElement | null) => {
+      (outerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+      if (typeof ref === "function") ref(el);
+      else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = el;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useLayoutEffect(() => {
+      if (variant !== "interior") return;
+      const el = outerRef.current?.parentElement;
+      if (!el) return;
+      setParentWidth(el.getBoundingClientRect().width);
+      const ro = new ResizeObserver(([entry]) => setParentWidth(entry.contentRect.width));
+      ro.observe(el);
+      return () => ro.disconnect();
+    }, [variant]);
+
+    /* ── Pin button (side variant) ── */
+    const pinButton = variant === "side" && onPinToggle ? (
+      <Tooltip content={pinned ? "Unpin panel" : "Pin panel"} placement="bottom" asLabel>
+        <button
+          onClick={onPinToggle}
+          aria-label={pinned ? "Unpin panel" : "Pin panel"}
+          className="flex h-7 w-7 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary transition-colors hover:bg-lyra-state-hover active:bg-lyra-state-pressed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+        >
+          <Pin className={cn("h-4 w-4", pinned && "rotate-45")} strokeWidth={1.5} aria-hidden="true" />
+        </button>
+      </Tooltip>
+    ) : null;
+
+    /* ── Drag handle ── */
+    const dragHandle = resizable && (variant === "interior" ? open : true) ? (
+      <div
+        onMouseDown={onMouseDown}
+        className="absolute top-0 bottom-0 z-10 flex items-center justify-center group"
+        style={{ [side === "right" ? "left" : "right"]: -4, width: 8, cursor: "col-resize" }}
+        aria-hidden="true"
+      >
+        <div className="w-0.5 h-8 rounded-full bg-lyra-border-default opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
+    ) : null;
+
+    /* ── Inner content ── */
+    const innerWidth = isNarrow ? "100%" : currentWidth;
+    const inner = (
+      <div
+        className="relative flex flex-col h-full"
+        style={{ width: innerWidth, minWidth: innerWidth }}
+      >
+        {dragHandle}
+        {headerTitle && (
+          <PanelHeader
+            title={headerTitle}
+            icon={headerIcon}
+            actions={<>{headerActions}{pinButton}</>}
+            onClose={variant === "interior" ? onClose : undefined}
+          />
+        )}
+        <PanelContent>{children}</PanelContent>
+        {footer && (
+          variant === "interior"
+            ? <PanelFooter>{footer}</PanelFooter>
+            : <div className="shrink-0">{footer}</div>
+        )}
+      </div>
+    );
+
+    /* ── Side: pinned (inline) ── */
+    if (variant === "side" && pinned) {
+      const border = side === "left" ? "border-r border-lyra-border-subtle" : "border-l border-lyra-border-subtle";
+      return (
+        <div
+          ref={ref}
+          role="region"
+          aria-label={headerTitle || "Side panel"}
+          className={cn("shrink-0 overflow-hidden bg-lyra-bg-surface-container-subtle", open && border, className)}
+          style={{ width: open ? currentWidth : 0, transition: isDragging.current ? "none" : "width 250ms cubic-bezier(0.4, 0, 0.2, 1)" }}
+          {...props}
+        >
+          {inner}
+        </div>
+      );
+    }
+
+    /* ── Side: unpinned (overlay) ── */
+    if (variant === "side" && !pinned) {
+      const pos = side === "left" ? "left-0" : "right-0";
+      const border = side === "left" ? "border-r border-lyra-border-subtle" : "border-l border-lyra-border-subtle";
+      return (
+        <div
+          ref={ref}
+          role="region"
+          aria-label={headerTitle || "Side panel"}
+          className={cn("absolute top-0 z-[5] h-full overflow-hidden bg-lyra-bg-surface-container-subtle shadow-lg", pos, open ? border : "pointer-events-none", className)}
+          style={{ width: open ? currentWidth : 0, transition: isDragging.current ? "none" : "width 250ms cubic-bezier(0.4, 0, 0.2, 1)" }}
+          {...props}
+        >
+          {inner}
+        </div>
+      );
+    }
+
+    /* ── Interior ── */
+    const border = open
+      ? (side === "right" ? "border-l border-lyra-border-subtle" : "border-r border-lyra-border-subtle")
+      : "";
+    const interiorWidth = open ? (isNarrow ? "100%" : currentWidth) : 0;
+    return (
+      <div
+        ref={stableOuterRef}
+        className={cn("relative flex flex-col h-full bg-lyra-bg-surface-overlay shrink-0", border, className)}
+        style={{
+          width: interiorWidth,
+          minWidth: 0,
+          overflow: "hidden",
+          transition: isDragging.current ? "none" : "width 250ms cubic-bezier(0.4, 0, 0.2, 1)",
+        }}
+        {...props}
+      >
+        {/* Left-side interior: align content to right edge during animation */}
+        {side === "left"
+          ? <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: innerWidth, minWidth: innerWidth }}>{inner}</div>
+          : inner
+        }
+      </div>
+    );
+  }
+);
+Panel.displayName = "Panel";
+
+export { Panel, PanelContent };

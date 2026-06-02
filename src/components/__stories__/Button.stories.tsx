@@ -13,7 +13,7 @@ const meta: Meta<typeof Button> = {
     },
     size: {
       control: "select",
-      options: ["sm", "default", "lg", "xl", "icon-sm", "icon", "icon-lg", "icon-xl"],
+      options: ["sm", "default", "md", "lg", "xl", "icon-sm", "icon", "icon-md", "icon-lg", "icon-xl"],
     },
     disabled: { control: "boolean" },
   },
@@ -75,52 +75,52 @@ export const Sizes: Story = {
     <div className="space-y-6">
       <div>
         <h3 className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">Text Buttons</h3>
-        <div className="flex items-center gap-4">
+        <div className="flex items-end gap-4">
           <div className="flex flex-col items-center gap-1">
             <Button size="sm">Button</Button>
-            <span className="lyra-body-sm text-lyra-fg-secondary">32px</span>
+            <span className="lyra-body-sm text-lyra-fg-secondary">24px</span>
           </div>
           <div className="flex flex-col items-center gap-1">
             <Button size="default">Button</Button>
-            <span className="lyra-body-sm text-lyra-fg-secondary">36px</span>
+            <span className="lyra-body-sm text-lyra-fg-secondary">32px</span>
           </div>
           <div className="flex flex-col items-center gap-1">
             <Button size="lg">Button</Button>
-            <span className="lyra-body-sm text-lyra-fg-secondary">40px</span>
+            <span className="lyra-body-sm text-lyra-fg-secondary">36px</span>
           </div>
           <div className="flex flex-col items-center gap-1">
             <Button size="xl">Button</Button>
-            <span className="lyra-body-sm text-lyra-fg-secondary">44px</span>
+            <span className="lyra-body-sm text-lyra-fg-secondary">40px</span>
           </div>
         </div>
       </div>
 
       <div>
         <h3 className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">Icon Buttons</h3>
-        <div className="flex items-center gap-4">
+        <div className="flex items-end gap-4">
           <div className="flex flex-col items-center gap-1">
             <Button variant="icon" size="icon-sm" title="More options">
-              <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
+              <MoreVertical className="h-3.5 w-3.5" strokeWidth={1.5} />
             </Button>
-            <span className="lyra-body-sm text-lyra-fg-secondary">32px</span>
+            <span className="lyra-body-sm text-lyra-fg-secondary">24px</span>
           </div>
           <div className="flex flex-col items-center gap-1">
             <Button variant="icon" size="icon" title="More options">
               <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
             </Button>
-            <span className="lyra-body-sm text-lyra-fg-secondary">36px</span>
+            <span className="lyra-body-sm text-lyra-fg-secondary">32px</span>
           </div>
           <div className="flex flex-col items-center gap-1">
             <Button variant="icon" size="icon-lg" title="More options">
               <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
             </Button>
-            <span className="lyra-body-sm text-lyra-fg-secondary">40px</span>
+            <span className="lyra-body-sm text-lyra-fg-secondary">36px</span>
           </div>
           <div className="flex flex-col items-center gap-1">
             <Button variant="icon" size="icon-xl" title="More options">
               <MoreVertical className="h-4 w-4" strokeWidth={1.5} />
             </Button>
-            <span className="lyra-body-sm text-lyra-fg-secondary">44px</span>
+            <span className="lyra-body-sm text-lyra-fg-secondary">40px</span>
           </div>
         </div>
       </div>

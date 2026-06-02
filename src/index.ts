@@ -38,6 +38,16 @@ export { PageHeader } from "./components/page-header";
 export { SidePanel } from "./components/side-panel";
 export type { PageHeaderBreadcrumb } from "./components/page-header";
 export { Container } from "./components/container";
+export { Panel, PanelContent } from "./components/panel";
+export type { PanelProps, PanelVariant, PanelSide } from "./components/panel";
+export { PanelContent as PanelContentComponent } from "./components/panel-content";
+export type { PanelContentProps } from "./components/panel-content";
+export { InteriorPanel } from "./components/interior-panel";
+export type { InteriorPanelProps } from "./components/interior-panel";
+export { PanelHeader } from "./components/panel-header";
+export type { PanelHeaderProps } from "./components/panel-header";
+export { PanelFooter } from "./components/panel-footer";
+export type { PanelFooterProps } from "./components/panel-footer";
 export { ContentArea } from "./components/content-area";
 export { Select } from "./components/select";
 export type { SelectOption } from "./components/select";
@@ -48,6 +58,9 @@ export type { TreeMenuItem, TreeMenuChild } from "./components/tree-menu";
 export { CXoneSmiley } from "./components/cxone-smiley";
 export { ProfileMenu, defaultProfileMenuGroups } from "./components/profile-menu";
 export type { ProfileMenuItem, ProfileMenuGroup } from "./components/profile-menu";
+
+export { Chip } from "./components/chip";
+export type { ChipProps, ChipColor, ChipVariant } from "./components/chip";
 
 export { FilterChip } from "./components/filter-chip";
 export type { FilterChipProps, FilterChipOption, FilterChipVariant } from "./components/filter-chip";

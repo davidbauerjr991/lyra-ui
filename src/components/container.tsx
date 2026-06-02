@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import { PanelHeader } from "./panel-header";
 import { cn } from "../lib/utils";
 
 const containerVariants = cva("rounded-lyra-lg", {
@@ -34,15 +35,11 @@ const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
       {...props}
     >
       {headerTitle && (
-        <div className="flex items-center justify-between px-5 pt-5 pb-5">
-          <div className="flex items-center gap-2">
-            {headerIcon && <span className="flex-shrink-0">{headerIcon}</span>}
-            <h2 className="lyra-heading-lg text-lyra-fg-default">{headerTitle}</h2>
-          </div>
-          {headerActions && (
-            <div className="flex items-center gap-2">{headerActions}</div>
-          )}
-        </div>
+        <PanelHeader
+          title={headerTitle}
+          icon={headerIcon}
+          actions={headerActions}
+        />
       )}
       {children}
     </div>

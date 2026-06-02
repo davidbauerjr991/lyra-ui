@@ -20,19 +20,21 @@ const buttonVariants = cva(
         icon: "text-lyra-fg-action hover:bg-lyra-state-hover active:bg-lyra-state-pressed hover:text-lyra-fg-default rounded-lyra-sm",
       },
       size: {
-        sm: "h-8 px-3",
-        default: "h-9 px-4 py-2",
-        lg: "h-10 px-5",
-        xl: "h-11 px-6",
-        "icon-sm": "h-8 w-8",
-        icon: "h-9 w-9",
-        "icon-lg": "h-10 w-10",
-        "icon-xl": "h-11 w-11",
+        sm: "h-6 px-2.5",
+        default: "h-8 px-3",
+        md: "h-8 px-3",
+        lg: "h-9 px-4",
+        xl: "h-10 px-5",
+        "icon-sm": "h-6 w-6",
+        icon: "h-8 w-8",
+        "icon-md": "h-8 w-8",
+        "icon-lg": "h-9 w-9",
+        "icon-xl": "h-10 w-10",
       },
     },
     defaultVariants: {
       variant: "default",
-      size: "default",
+      size: "lg",
     },
   }
 );
@@ -46,7 +48,7 @@ export interface ButtonProps
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, title, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
-    const isIconVariant = variant === "icon" || size === "icon" || size === "icon-sm" || size === "icon-lg" || size === "icon-xl";
+    const isIconVariant = variant === "icon" || size === "icon" || size === "icon-sm" || size === "icon-md" || size === "icon-lg" || size === "icon-xl";
 
     const button = (
       <Comp

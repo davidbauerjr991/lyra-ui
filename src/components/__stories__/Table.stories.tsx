@@ -348,52 +348,103 @@ const toolbarColumns: ColumnToggleItem[] = [
   { key: "createdDate", label: "Created Date" },
 ];
 
-function ToolbarDemo() {
+const toolbarFilterDefs = [
+  {
+    key: "description",
+    label: "Description",
+    options: [
+      { value: "Back office", label: "Back office" },
+      { value: "Custom", label: "Custom" },
+      { value: "Knowledge Worker", label: "Knowledge Worker" },
+    ],
+  },
+  {
+    key: "createdBy",
+    label: "Created By",
+    options: [
+      { value: "Jim Smith", label: "Jim Smith" },
+      { value: "Alice Johnson", label: "Alice Johnson" },
+    ],
+  },
+];
+
+interface ToolbarDemoProps {
+  showSearch: boolean;
+  showFilters: boolean;
+  showColumns: boolean;
+  showActions: boolean;
+  showTitle: boolean;
+  toolbarPanelToggle: string;
+}
+
+function ToolbarDemo({ showSearch, showFilters, showColumns, showActions, showTitle, toolbarPanelToggle }: ToolbarDemoProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [visibleCols, setVisibleCols] = useState<Set<string>>(
-    new Set(toolbarColumns.map((c) => c.key))
-  );
+  const [filterValues, setFilterValues] = useState<Record<string, string[]>>({ description: [], createdBy: [] });
+  const [visibleCols, setVisibleCols] = useState<Set<string>>(new Set(toolbarColumns.map((c) => c.key)));
 
   return (
-    <TableToolbar
-      searchQuery={searchQuery}
-      onSearchChange={setSearchQuery}
-      searchPlaceholder="Quick Search"
-      recordCount={5}
-      actions={
-        <div className="flex items-center gap-1">
-          <Button variant="icon" size="icon-sm" title="Refresh">
-            <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
-          </Button>
-          <Button variant="icon" size="icon-sm" title="Edit">
-            <Pencil className="h-4 w-4" strokeWidth={1.5} />
-          </Button>
-          <Button variant="icon" size="icon-sm" title="Copy">
-            <Copy className="h-4 w-4" strokeWidth={1.5} />
-          </Button>
-          <Button variant="icon" size="icon-sm" title="Delete">
-            <Trash2 className="h-4 w-4" strokeWidth={1.5} />
-          </Button>
-          <div className="mx-1 h-6 w-px bg-lyra-border-subtle" />
-          <ColumnToggle
-            columns={toolbarColumns}
-            visibleColumns={visibleCols}
-            onVisibilityChange={setVisibleCols}
-          />
-        </div>
-      }
-    />
+    <div className="border border-lyra-border-subtle rounded-lyra-md overflow-hidden">
+      <TableToolbar
+        title={showTitle ? "Records" : undefined}
+        searchQuery={showSearch ? searchQuery : undefined}
+        onSearchChange={showSearch ? setSearchQuery : undefined}
+        searchPlaceholder="Quick Search"
+        filterDefs={showFilters ? toolbarFilterDefs : undefined}
+        filterValues={showFilters ? filterValues : undefined}
+        onFilterChange={showFilters ? (key, vals) => setFilterValues((p) => ({ ...p, [key]: vals })) : undefined}
+        onFilterClear={showFilters ? () => setFilterValues({ description: [], createdBy: [] }) : undefined}
+        actionDefs={showActions ? [
+          { key: "refresh", label: "Refresh", icon: <RefreshCw className="h-4 w-4" strokeWidth={1.5} /> },
+          { key: "edit",    label: "Edit",    icon: <Pencil   className="h-4 w-4" strokeWidth={1.5} /> },
+          { key: "copy",    label: "Copy",    icon: <Copy     className="h-4 w-4" strokeWidth={1.5} /> },
+          { key: "delete",  label: "Delete",  icon: <Trash2   className="h-4 w-4" strokeWidth={1.5} /> },
+        ] : undefined}
+        actions={showColumns ? (
+          <ColumnToggle columns={toolbarColumns} visibleColumns={visibleCols} onVisibilityChange={setVisibleCols} />
+        ) : undefined}
+        toolbarPanelToggle={toolbarPanelToggle === "none" ? undefined : toolbarPanelToggle as "left" | "right" | "both"}
+        onLeftPanelToggle={() => {}}
+        onRightPanelToggle={() => {}}
+      />
+    </div>
   );
 }
 
 export const Toolbar: Story = {
   name: "Toolbar",
-  render: () => <ToolbarDemo />,
+  parameters: {
+    controls: {
+      include: ["showSearch", "showFilters", "showColumns", "showActions", "showTitle", "toolbarPanelToggle"],
+    },
+  },
+  args: {
+    showSearch: true,
+    showFilters: true,
+    showColumns: true,
+    showActions: true,
+    showTitle: false,
+    toolbarPanelToggle: "none",
+  } as unknown as Record<string, unknown>,
+  argTypes: {
+    showSearch:         { control: "boolean", description: "Show quick search" },
+    showFilters:        { control: "boolean", description: "Show filter chips" },
+    showColumns:        { control: "boolean", description: "Show column toggle" },
+    showActions:        { control: "boolean", description: "Show action icon buttons" },
+    showTitle:          { control: "boolean", description: "Show title above search row" },
+    toolbarPanelToggle: { control: "select", options: ["none", "left", "right", "both"], description: "Panel toggle button(s)" },
+  } as unknown as Record<string, unknown>,
+  render: (args) => <ToolbarDemo {...(args as unknown as ToolbarDemoProps)} />,
 };
 
 /* ── TableFooter (Pagination) ── */
 
-function FooterDemo() {
+interface FooterDemoProps {
+  showDisplayCount: boolean;
+  showRowsPerPage: boolean;
+  showJumpButtons: boolean;
+}
+
+function FooterDemo({ showDisplayCount, showRowsPerPage, showJumpButtons }: FooterDemoProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const totalRecords = 53;
@@ -407,20 +458,30 @@ function FooterDemo() {
       totalPages={totalPages}
       onPageChange={setCurrentPage}
       rowsPerPage={rowsPerPage}
-      onRowsPerPageChange={(val) => {
-        setRowsPerPage(val);
-        setCurrentPage(1);
-      }}
+      onRowsPerPageChange={(val) => { setRowsPerPage(val); setCurrentPage(1); }}
       totalRecords={totalRecords}
       displayStart={start}
       displayEnd={end}
+      showDisplayCount={showDisplayCount}
+      showRowsPerPage={showRowsPerPage}
+      showJumpButtons={showJumpButtons}
     />
   );
 }
 
 export const Footer: Story = {
   name: "Footer (Pagination)",
-  render: () => <FooterDemo />,
+  argTypes: {
+    showDisplayCount: { control: "boolean", description: "Show display count (Displaying X-Y of Z)" },
+    showRowsPerPage:  { control: "boolean", description: "Show rows per page selector" },
+    showJumpButtons:  { control: "boolean", description: "Show jump to first/last page buttons" },
+  } as unknown as Record<string, unknown>,
+  args: {
+    showDisplayCount: true,
+    showRowsPerPage: true,
+    showJumpButtons: true,
+  } as unknown as Record<string, unknown>,
+  render: (args) => <FooterDemo {...(args as unknown as FooterDemoProps)} />,
 };
 
 /* ── ColumnToggle ── */

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { PageHeader } from "../page-header";
 import { SidePanel } from "../side-panel";
+import { InteriorPanel } from "../interior-panel";
 import { Button } from "../button";
 import { AiIcon } from "../icons/ai-icon";
 
@@ -19,10 +20,10 @@ type Story = StoryObj<typeof PageHeader>;
 
 const defaultActions = (
   <>
-    <Button variant="outline" size="sm">Secondary</Button>
-    <Button size="sm">Primary</Button>
+    <Button variant="outline">Secondary</Button>
+    <Button>Primary</Button>
     <div className="mx-1 h-6 w-px bg-lyra-border-subtle" />
-    <Button variant="outline" size="sm">
+    <Button variant="outline">
       <AiIcon className="h-4 w-4" />
       Ask AI
     </Button>
@@ -33,6 +34,17 @@ export const Default: Story = {
   name: "Default",
   args: {
     title: "Desktop Designs",
+    actions: defaultActions,
+  },
+};
+
+export const WithChip: Story = {
+  name: "With Chip",
+  args: {
+    title: "Desktop Designs",
+    chip: "Active",
+    chipColor: "green",
+    chipVariant: "subtle",
     actions: defaultActions,
   },
 };
@@ -48,7 +60,7 @@ export const WithSingleAction: Story = {
   name: "Single Action",
   args: {
     title: "User Management",
-    actions: <Button size="sm">Add User</Button>,
+    actions: <Button>Add User</Button>,
   },
 };
 
@@ -56,7 +68,7 @@ export const WithPanelToggle: Story = {
   name: "With Panel Toggle",
   args: {
     title: "Desktop Designs",
-    showPanelToggle: true,
+    panelToggle: "left",
     actions: defaultActions,
   },
 };
@@ -81,7 +93,7 @@ export const WithTogglePinned: Story = {
         <div className="flex flex-1 flex-col overflow-hidden">
           <PageHeader
             title="Page Title"
-            showPanelToggle
+            panelToggle="left"
             panelPinned
             onPanelToggle={() => setPanelOpen((v) => !v)}
             breadcrumb={{ label: "ParentName" }}
@@ -120,7 +132,7 @@ export const WithToggleOverlay: Story = {
         <div className="flex flex-1 flex-col overflow-hidden">
           <PageHeader
             title="Page Title"
-            showPanelToggle
+            panelToggle="left"
             panelPinned={false}
             onPanelHoverStart={onHoverStart}
             onPanelHoverEnd={onHoverEnd}
@@ -128,6 +140,39 @@ export const WithToggleOverlay: Story = {
             actions={defaultActions}
           />
           <div className="flex-1 bg-lyra-bg-surface-base" />
+        </div>
+      </div>
+    );
+  },
+};
+
+export const WithInnerPanelToggle: Story = {
+  name: "Interior Panel Toggle",
+  render: () => {
+    const [panelOpen, setPanelOpen] = useState(false);
+
+    return (
+      <div className="flex h-[600px] rounded-lyra-lg border border-lyra-border-subtle overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <PageHeader
+            title="Page Title"
+            panelToggle="right"
+            onInnerPanelToggle={() => setPanelOpen((v) => !v)}
+            actions={defaultActions}
+          />
+          <div className="flex flex-1 overflow-hidden">
+            <div className="flex-1 bg-lyra-bg-surface-base" />
+            <InteriorPanel
+              side="right"
+              open={panelOpen}
+              headerTitle="Details"
+              onClose={() => setPanelOpen(false)}
+            >
+              <div className="p-4">
+                <p className="lyra-body-md text-lyra-fg-secondary">Panel content goes here.</p>
+              </div>
+            </InteriorPanel>
+          </div>
         </div>
       </div>
     );
