@@ -1,5 +1,17 @@
 /* ── Components ── */
 export { Button, buttonVariants } from "./components/button";
+export { TagsInput } from "./components/tags-input";
+export type { TagsInputProps } from "./components/tags-input";
+export { Tag } from "./components/tag";
+export type { TagProps, TagVariant, TagShape } from "./components/tag";
+export { Calendar } from "./components/calendar";
+export type { CalendarProps, CalendarMode, CalendarSingleProps, CalendarRangeProps, CalendarWeekProps, DateRange } from "./components/calendar";
+export { DatePicker, DateRangePicker } from "./components/date-picker";
+export { DateTimePicker, DateRangeTimePicker } from "./components/date-time-picker";
+export { NumberInput } from "./components/number-input";
+export type { NumberInputProps } from "./components/number-input";
+export type { DateTimePickerProps, DateRangeTimePickerProps, DateRangeTimeValue } from "./components/date-time-picker";
+export type { DatePickerProps, DateRangePickerProps } from "./components/date-picker";
 export { Accordion } from "./components/accordion";
 export type { AccordionProps, AccordionItem } from "./components/accordion";
 export { ToggleGroup } from "./components/toggle-group";

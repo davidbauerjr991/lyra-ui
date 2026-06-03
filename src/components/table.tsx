@@ -6,6 +6,7 @@ import { SearchInput } from "./search-input";
 import { Select } from "./select";
 import { Tooltip } from "./tooltip";
 import { Popover } from "./popover";
+import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Button } from "./button";
 import { Input } from "./input";
 import { SlidersHorizontal } from "lucide-react";
@@ -353,7 +354,7 @@ interface TableToolbarProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Called when the right interior panel toggle is clicked */
   onRightPanelToggle?: () => void;
   /**
-   * When true, shows an "Advanced Search" button that opens a filter-builder popover.
+   * When true, shows an "Query Builder" button that opens a filter-builder popover.
    */
   showAdvancedSearch?: boolean;
   /**
@@ -507,21 +508,33 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
         }}
         showArrow={false}
         maxHeight={`calc(100vh - 120px)`}
-        content={
-          <div className="flex flex-col">
-            <div className="flex-1 overflow-auto">
-              {advancedSearchContent}
-            </div>
-            <div className="flex items-center justify-end gap-2 px-4 pb-4 pt-2 border-t border-lyra-border-subtle">
-              {/* Save Search */}
-              {onSaveSearch && (
-                <Popover
-                  open={saveSearchOpen}
-                  onOpenChange={(o) => { setSaveSearchOpen(o); if (!o) setSaveSearchName(""); }}
-                  placement="top"
-                  title="Save Search"
-                  content={
-                    <div className="flex flex-col gap-4 px-5 pb-5">
+        content={advancedSearchContent}
+        footer={
+          <div className="flex items-center justify-end gap-2 px-4 pb-4 pt-2 border-t border-lyra-border-subtle">
+            {/* Save Search */}
+            {onSaveSearch && (
+              <PopoverPrimitive.Root
+                open={saveSearchOpen}
+                onOpenChange={(o) => { setSaveSearchOpen(o); if (!o) setSaveSearchName(""); }}
+              >
+                {/* Anchor instead of Trigger — avoids aria-controls on a portal that may be unmounted */}
+                <PopoverPrimitive.Anchor asChild>
+                  <Button variant="outline" onClick={() => setSaveSearchOpen(v => !v)}>
+                    Save Search
+                  </Button>
+                </PopoverPrimitive.Anchor>
+                <PopoverPrimitive.Portal>
+                  <PopoverPrimitive.Content
+                    side="top"
+                    sideOffset={8}
+                    avoidCollisions
+                    collisionPadding={4}
+                    className="z-50 w-[320px] rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg animate-in fade-in-0 duration-100 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-75"
+                  >
+                    <div className="px-4 pt-4 pb-1">
+                      <h3 className="lyra-heading-sm text-lyra-fg-default mb-3">Save Search</h3>
+                    </div>
+                    <div className="flex flex-col gap-4 px-4 pb-4">
                       <Input
                         label="Search name"
                         placeholder="e.g. Active agents in Engineering"
@@ -554,32 +567,30 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
                         </Button>
                       </div>
                     </div>
-                  }
-                >
-                  <Button variant="outline">Save Search</Button>
-                </Popover>
-              )}
+                  </PopoverPrimitive.Content>
+                </PopoverPrimitive.Portal>
+              </PopoverPrimitive.Root>
+            )}
 
-              <div className="flex-1" />
+            <div className="flex-1" />
 
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setAdvancedOpen(false);
-                  onAdvancedSearchCancel?.();
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  setAdvancedOpen(false);
-                  onAdvancedSearchApply?.();
-                }}
-              >
-                Apply
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAdvancedOpen(false);
+                onAdvancedSearchCancel?.();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setAdvancedOpen(false);
+                onAdvancedSearchApply?.();
+              }}
+            >
+              Apply
+            </Button>
           </div>
         }
         placement="bottom"
@@ -589,7 +600,7 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
         {/* Button is always the direct Popover trigger (asChild requires a DOM element) */}
         <Button variant={advancedSearchApplied ? "default" : "outline"} size="md">
           <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
-          {advancedSearchApplied ? "Applied Filters" : "Advanced Search"}
+          {advancedSearchApplied ? "Applied Filters" : "Query Builder"}
         </Button>
       </Popover>
     ) : null;
@@ -747,20 +758,25 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
             )}
             {/* Filters: inline when wide, collapsed chip when narrow */}
             {hasFilters && (!hasSearch ? (
+              /* No search: filters + Query Builder inline */
               isWide ? (
                 <div className="flex items-center gap-2">{filterChips}{filters}{advancedSearchNode}</div>
-              ) : collapsedFilterChip
+              ) : (
+                <div className="flex items-center gap-2">{collapsedFilterChip}{advancedSearchNode}</div>
+              )
             ) : (
+              /* Search present: wide shows everything inline;
+                 narrow collapses filter chips + keeps QBuilder on the same row */
               isWide
                 ? <div className="flex items-center gap-2">{filterChips}{filters}{advancedSearchNode}</div>
-                : collapsedFilterChip
+                : <div className="flex items-center gap-2">{collapsedFilterChip}{advancedSearchNode}</div>
             ))}
           </div>
           {actionButtons}
         </div>
-        {/* Filters on second row below 1024px when search is present */}
+        {/* Filter chips on second row in narrow mode when search is present */}
         {hasSearch && filters && !isWide && (
-          <div className="flex items-center gap-2">{filters}{advancedSearchNode}</div>
+          <div className="flex items-center gap-2">{filters}</div>
         )}
       </div>
     );

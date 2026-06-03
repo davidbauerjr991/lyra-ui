@@ -21,6 +21,7 @@ import {
 import type { ColumnToggleItem } from "../table";
 import type { SortDirection } from "../table";
 import { Button } from "../button";
+import { Input } from "../input";
 import { FilterChip } from "../filter-chip";
 import { ToggleGroup } from "../toggle-group";
 import { Pencil, Copy, Trash2, RefreshCw, Check, Plus, SlidersHorizontal } from "lucide-react";
@@ -29,7 +30,7 @@ import { cn } from "../../lib/utils";
 import { CircleCheck, Minus, MoreVertical } from "lucide-react";
 
 const meta: Meta<typeof Table> = {
-  title: "UI/Table",
+  title: "Atoms/Table",
   component: Table,
   tags: ["autodocs"],
   parameters: {
@@ -925,16 +926,14 @@ function AdvancedSearchContent({ root, onUpdate }: { root: AsGroup; onUpdate: (g
                    :<><Copy className="h-3.5 w-3.5" strokeWidth={1.5}/>Copy</>}
           </button>
         </div>
-        <div className="w-full rounded-lyra-sm border border-lyra-border-strong bg-lyra-bg-surface-canvas px-3 py-2.5 lyra-body-md text-lyra-fg-default font-mono break-all select-all">
-          {description}
-        </div>
+        <Input value={description} readonly className="w-full" />
       </div>
     </div>
   );
 }
 
 export const AdvancedSearch: Story = {
-  name: "Toolbar — Advanced Search",
+  name: "Toolbar — Query Builder",
   render: () => {
     const [appliedRoot, setAppliedRoot] = useState<AsGroup | null>(null);
     const [root, setRoot] = useState<AsGroup>({ id:"as-root", logicOperator:"and", chips:[], subGroups:[] });

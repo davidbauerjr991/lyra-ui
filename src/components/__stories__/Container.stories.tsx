@@ -1,13 +1,18 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
 import { Container } from "../container";
-import { Panel } from "../panel";
 import { Button } from "../button";
 import { Input } from "../input";
-import { Select } from "../select";
-import { RadioGroup, RadioGroupItem } from "../radio";
-import { X } from "lucide-react";
-import { Tooltip } from "../tooltip";
+
+const ALL_VARIANTS = [
+  "default",
+  "info-none",     "info-subtle",    "info-strong",    "info-dotted",
+  "success-none",  "success-subtle", "success-strong", "success-dotted",
+  "warning-none",  "warning-subtle", "warning-solid",  "warning-dotted",
+  "error-none",    "error-subtle",   "error-strong",   "error-dotted",
+  "neutral-none",  "neutral-subtle", "neutral-strong", "neutral-dotted",
+  "popover", "modal",
+] as const;
 
 const meta: Meta<typeof Container> = {
   title: "Atoms/Container",
@@ -17,145 +22,39 @@ const meta: Meta<typeof Container> = {
     layout: "padded",
     backgrounds: { default: "lyra-shell" },
   },
+  argTypes: {},
 };
 
 export default meta;
 type Story = StoryObj<typeof Container>;
 
+/* ── Interactive (controlled via Storybook controls) ── */
 export const Default: Story = {
   name: "Default",
-  render: () => (
-    <Container headerTitle="Container" className="pb-5">
+  args: {
+    variant: "default",
+  },
+  argTypes: {
+    variant: {
+      control: "select",
+      options: ALL_VARIANTS,
+      description: "Color and border style. Format: {color}-{border-style}",
+    },
+  },
+  render: (args) => (
+    <Container {...args} headerTitle="Container" className="pb-5">
       <p className="lyra-body-md text-lyra-fg-secondary px-5">
-        A base container with surface background, subtle border, and small shadow.
-        Use for cards, panels, and content sections.
+        Use the Controls panel below to switch variant, background and border combinations.
       </p>
     </Container>
   ),
 };
 
-export const Modal: Story = {
-  name: "Modal",
-  parameters: {
-    backgrounds: { default: "lyra-shell" },
-  },
-  render: () => (
-    <div className="flex items-center justify-center py-8">
-      <Container
-        variant="modal"
-        headerTitle="Dialog Title"
-        headerActions={
-          <Tooltip content="Close dialog" placement="bottom" asLabel>
-            <button aria-label="Close dialog" className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2">
-              <X className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />
-            </button>
-          </Tooltip>
-        }
-        className="w-[480px]"
-      >
-        {/* Form fields */}
-        <div className="flex flex-col gap-5 px-5">
-          {/* Text input */}
-          <Input label="Input Label" placeholder="Text" />
-
-          {/* Select 1 */}
-          <Select
-            label="Input Label"
-            options={[
-              { value: "a", label: "Option A" },
-              { value: "b", label: "Option B" },
-              { value: "c", label: "Option C" },
-            ]}
-          />
-
-          {/* Select 2 */}
-          <Select
-            label="Input Label"
-            options={[
-              { value: "x", label: "Option X" },
-              { value: "y", label: "Option Y" },
-              { value: "z", label: "Option Z" },
-            ]}
-          />
-
-          {/* Radio group */}
-          <RadioGroup label="Input Label" defaultValue="option1" name="modal-radio">
-            <RadioGroupItem value="option1" label="Radio label" />
-            <RadioGroupItem value="option2" label="Radio label" />
-            <RadioGroupItem value="option3" label="Radio label" />
-          </RadioGroup>
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-end gap-2 px-5 pb-5 mt-6">
-          <Button variant="outline">Button</Button>
-          <Button>Button</Button>
-        </div>
-      </Container>
-    </div>
-  ),
-};
+// Modal stories moved to Atoms/Modal
 
 // Popover story moved to Atoms/Popover
 
-/* ── Panel variants ── */
-
-export const PanelInterior: Story = {
-  name: "Panel/Interior",
-  parameters: { backgrounds: { default: "lyra-shell" } },
-  render: () => (
-    <div className="h-[500px] flex overflow-hidden rounded-lyra-lg border border-lyra-border-subtle">
-      <div className="flex-1 bg-lyra-bg-surface-base" />
-      <Panel
-        variant="interior"
-        side="right"
-        open
-        headerTitle="Dialog Title"
-        onClose={() => {}}
-        footer={<><Button variant="outline">Cancel</Button><Button>Save</Button></>}
-      >
-        <div className="flex flex-col gap-4 px-4 py-4">
-          <Input label="Name" placeholder="Enter name" />
-          <Input label="Description" placeholder="Enter description" />
-          <Input label="Value" placeholder="Enter value" />
-        </div>
-      </Panel>
-    </div>
-  ),
-};
-
-export const PanelSide: Story = {
-  name: "Panel/Side",
-  parameters: { backgrounds: { default: "lyra-shell" } },
-  render: () => {
-    const [open, setOpen] = useState(true);
-    const [pinned, setPinned] = useState(true);
-    return (
-      <div className="relative h-[500px] flex overflow-hidden rounded-lyra-lg border border-lyra-border-subtle">
-        <Panel
-          variant="side"
-          side="left"
-          open={open}
-          pinned={pinned}
-          headerTitle="Designer"
-          onPinToggle={() => setPinned((v) => !v)}
-        >
-          <div className="px-4 py-4">
-            <p className="lyra-body-md text-lyra-fg-secondary">Side panel content.</p>
-          </div>
-        </Panel>
-        <div className="flex flex-1 flex-col bg-lyra-bg-surface-base p-4 gap-2">
-          <Button onClick={() => setOpen((v) => !v)} variant="outline">
-            {open ? "Close Panel" : "Open Panel"}
-          </Button>
-          <p className="lyra-body-sm text-lyra-fg-secondary">
-            {pinned ? "Pinned — pushes content" : "Unpinned — hovers as overlay"}
-          </p>
-        </div>
-      </div>
-    );
-  },
-};
+// Panel stories moved to UI/Panel
 
 export const Nested: Story = {
   name: "Nested Layout",
@@ -174,4 +73,113 @@ export const Nested: Story = {
       </div>
     </div>
   ),
+};
+
+/* ── Semantic colour variants ── */
+
+export const InfoVariant: Story = {
+  name: "Info (blue)",
+  render: () => (
+    <Container variant="info" className="p-5 max-w-sm">
+      <p className="lyra-body-md text-lyra-fg-active-strong">
+        AI Confidence: 78% — Based on 3 similar resolved cases and firmware documentation match.
+      </p>
+    </Container>
+  ),
+};
+
+export const SuccessVariant: Story = {
+  name: "Success (green)",
+  render: () => (
+    <Container variant="success" className="p-5 max-w-sm">
+      <p className="lyra-body-md text-lyra-status-success-strong">
+        Jordan's case has been successfully resolved. Configuration backed up.
+      </p>
+    </Container>
+  ),
+};
+
+export const WarningVariant: Story = {
+  name: "Warning (dotted amber)",
+  render: () => (
+    <Container variant="warning" className="p-5 max-w-sm">
+      <p className="lyra-body-sm-emphasis text-lyra-status-warning-strong uppercase tracking-wide mb-1">
+        Internal Note
+      </p>
+      <p className="lyra-body-md text-lyra-status-warning-strong">
+        Awaiting Human Agent intervention — click to review AI recommendation.
+      </p>
+    </Container>
+  ),
+};
+
+export const CriticalVariant: Story = {
+  name: "Critical (red)",
+  render: () => (
+    <Container variant="critical" className="p-5 max-w-sm">
+      <p className="lyra-body-md text-lyra-status-critical-strong">
+        Action failed. Please review and try again.
+      </p>
+    </Container>
+  ),
+};
+
+export const NeutralFlat: Story = {
+  name: "Neutral flat (no border)",
+  render: () => (
+    <Container variant="neutral-flat" className="p-5 max-w-sm">
+      <p className="lyra-heading-md text-lyra-fg-default mb-1">Welcome Back, Sarah Jones</p>
+      <p className="lyra-body-sm text-lyra-fg-secondary">Last login Wed, Jun 3, 4:50 PM</p>
+    </Container>
+  ),
+};
+
+export const NeutralCard: Story = {
+  name: "Neutral card (with border)",
+  render: () => (
+    <Container variant="neutral-card" className="p-5 max-w-sm">
+      <p className="lyra-heading-md text-lyra-fg-default mb-1">Total Scenarios</p>
+      <p className="text-[40px] font-bold text-lyra-fg-default leading-none">519</p>
+      <p className="lyra-body-sm text-lyra-fg-secondary mt-2">Completed simulation runs</p>
+    </Container>
+  ),
+};
+
+export const AllColorVariants: Story = {
+  name: "All Colour Variants",
+  render: () => {
+    const groups = [
+      { label: "Info",    variants: ["info-none", "info-subtle", "info-strong", "info-dotted"] },
+      { label: "Success", variants: ["success-none", "success-subtle", "success-strong", "success-dotted"] },
+      { label: "Warning", variants: ["warning-none", "warning-subtle", "warning-solid", "warning-dotted"] },
+      { label: "Error",   variants: ["error-none", "error-subtle", "error-strong", "error-dotted"] },
+      { label: "Neutral", variants: ["neutral-none", "neutral-subtle", "neutral-strong", "neutral-dotted"] },
+    ] as const;
+    return (
+      <div className="flex flex-col gap-6 w-full max-w-3xl">
+        {groups.map(({ label, variants }) => (
+          <div key={label}>
+            <p className="lyra-label text-lyra-fg-secondary mb-2">{label}</p>
+            <div className="grid grid-cols-4 gap-3">
+              {variants.map(v => (
+                <Container key={v} variant={v} className="px-3 py-3">
+                  <p className="lyra-body-sm text-lyra-fg-default">{v}</p>
+                </Container>
+              ))}
+            </div>
+          </div>
+        ))}
+        <div>
+          <p className="lyra-label text-lyra-fg-secondary mb-2">Base surfaces</p>
+          <div className="grid grid-cols-3 gap-3">
+            {(["default", "popover", "modal"] as const).map(v => (
+              <Container key={v} variant={v} className="px-3 py-3">
+                <p className="lyra-body-sm text-lyra-fg-default">{v}</p>
+              </Container>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  },
 };

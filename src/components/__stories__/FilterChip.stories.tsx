@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import ReactDOM from "react-dom";
 import { FilterChip } from "../filter-chip";
 import { Button } from "../button";
+import { Input } from "../input";
 import { ToggleGroup } from "../toggle-group";
 import { Select } from "../select";
 import { Plus, Copy, Check } from "lucide-react";
@@ -764,9 +765,7 @@ function WithOperatorsDemo() {
             }
           </button>
         </div>
-        <div className="w-full rounded-lyra-sm border border-lyra-border-strong bg-lyra-bg-surface-canvas px-3 py-2.5 lyra-body-md text-lyra-fg-default font-mono break-all select-all">
-          {description}
-        </div>
+        <Input value={description} readonly className="w-full" />
       </div>
     </div>
   );

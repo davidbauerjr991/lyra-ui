@@ -10,6 +10,8 @@ export type PopoverPlacement = "top" | "bottom" | "left" | "right";
 export interface PopoverProps {
   children: React.ReactElement;
   content: React.ReactNode;
+  /** Fixed footer rendered outside the scroll area */
+  footer?: React.ReactNode;
   title?: string;
   placement?: PopoverPlacement;
   open?: boolean;
@@ -61,6 +63,7 @@ const PopoverArrow = () => (
 const Popover: React.FC<PopoverProps> = ({
   children,
   content,
+  footer,
   title,
   placement = "bottom",
   open,
@@ -76,7 +79,13 @@ const Popover: React.FC<PopoverProps> = ({
       <PopoverPrimitive.Content
         side={placement}
         sideOffset={10}
-        style={{ maxWidth }}
+        style={{
+          maxWidth,
+          /* overflow:hidden + maxHeight constrains the flex algorithm so children can distribute space */
+          ...(footer && maxHeight
+            ? { maxHeight, display: "flex", flexDirection: "column", overflow: "hidden" }
+            : {}),
+        }}
         className={cn(
           "relative group z-50",
           "rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg",
@@ -86,12 +95,20 @@ const Popover: React.FC<PopoverProps> = ({
         )}
       >
         {title && <PanelHeader title={title} />}
+        {/* Content scrolls; footer is flex-shrink-0 so it stays visible */}
         <div
           className="overflow-auto"
-          style={maxHeight ? { maxHeight } : undefined}
+          style={
+            footer && maxHeight
+              ? { flex: "1 1 auto", minHeight: 0, overflowY: "auto" }
+              : maxHeight
+              ? { maxHeight }
+              : undefined
+          }
         >
           {content}
         </div>
+        {footer && <div style={{ flexShrink: 0 }}>{footer}</div>}
         {showArrow && <PopoverArrow />}
       </PopoverPrimitive.Content>
     </PopoverPrimitive.Portal>
