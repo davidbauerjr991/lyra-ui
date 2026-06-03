@@ -56,7 +56,7 @@ export const Table: Story = {
                   style={{
                     width: 48,
                     height: 48,
-                    backgroundColor: "var(--lyra-bg-primary)",
+                    backgroundColor: "var(--lyra-color-bg-primary)",
                     borderRadius: r.px === "999px" ? "999px" : r.px,
                   }}
                 />

@@ -33,7 +33,7 @@ const PanelHeader = React.forwardRef<HTMLDivElement, PanelHeaderProps>(
       <div className="flex items-center gap-1">
         {actions}
         {onClose && (
-          <Tooltip content="Close" placement="bottom" asLabel>
+          <Tooltip content={`Close ${title}`} placement="bottom" asLabel>
             <button
               aria-label="Close"
               onClick={onClose}

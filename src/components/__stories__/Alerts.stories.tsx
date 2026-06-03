@@ -48,8 +48,8 @@ export const ModalWarning: Story = {
           </p>
         </div>
         <div className="flex justify-end gap-2 px-5 pb-5 mt-6">
-          <Button variant="outline" size="sm">Button</Button>
-          <Button size="sm">Button</Button>
+          <Button variant="outline">Button</Button>
+          <Button>Button</Button>
         </div>
       </Container>
     </div>
@@ -79,8 +79,8 @@ export const ModalDestructive: Story = {
           </ul>
         </div>
         <div className="flex justify-end gap-2 px-5 pb-5 mt-6">
-          <Button variant="outline" size="sm">Button</Button>
-          <Button variant="destructive" size="sm">Button</Button>
+          <Button variant="outline">Button</Button>
+          <Button variant="destructive">Button</Button>
         </div>
       </Container>
     </div>
@@ -110,9 +110,9 @@ export const ModalError: Story = {
           </ul>
         </div>
         <div className="flex justify-end gap-2 px-5 pb-5 mt-6">
-          <Button variant="outline" size="sm">Button</Button>
-          <Button variant="outline" size="sm">Retry</Button>
-          <Button variant="outline" size="sm">Button</Button>
+          <Button variant="outline">Button</Button>
+          <Button variant="outline">Retry</Button>
+          <Button variant="outline">Button</Button>
         </div>
       </Container>
     </div>
@@ -142,7 +142,7 @@ export const ModalInfo: Story = {
           </label>
         </div>
         <div className="flex justify-end gap-2 px-5 pb-5 mt-6">
-          <Button variant="outline" size="sm">Button</Button>
+          <Button variant="outline">Button</Button>
         </div>
       </Container>
     </div>
@@ -176,8 +176,8 @@ export const ModalSuccess: Story = {
           </ul>
         </div>
         <div className="flex justify-end gap-2 px-5 pb-5 mt-6">
-          <Button variant="outline" size="sm">Button</Button>
-          <Button variant="outline" size="sm">Button</Button>
+          <Button variant="outline">Button</Button>
+          <Button variant="outline">Button</Button>
         </div>
       </Container>
     </div>

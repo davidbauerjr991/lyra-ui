@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useState, useCallback, useRef, useEffect, useLayoutEffect } from "react";
 import { X } from "lucide-react";
+import { Tooltip } from "./tooltip";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/utils";
 import { WarningIcon } from "./icons/warning-icon";
@@ -141,13 +142,15 @@ const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
           )}
         </div>
         {onDismiss && (
-          <button
-            onClick={handleDismiss}
-            className="flex-shrink-0 flex h-5 w-5 items-center justify-center rounded-lyra-xs text-lyra-fg-secondary transition-colors hover:text-lyra-fg-default"
-            aria-label="Dismiss"
-          >
-            <X className="h-4 w-4" strokeWidth={1.5} />
-          </button>
+          <Tooltip content="Dismiss notification" placement="left" asLabel>
+            <button
+              onClick={handleDismiss}
+              className="flex-shrink-0 flex h-5 w-5 items-center justify-center rounded-lyra-xs text-lyra-fg-secondary transition-colors hover:text-lyra-fg-default"
+              aria-label="Dismiss"
+            >
+              <X className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+          </Tooltip>
         )}
       </div>
     );

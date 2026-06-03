@@ -3,15 +3,14 @@ import { useState, useRef, useEffect } from "react";
 import { ChevronDown, LogOut, Sun, Moon } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Tooltip } from "./tooltip";
+import { Menu } from "./menu";
+import type { MenuEntry } from "./menu";
 
 /* ── Types ── */
 
 export interface ProfileMenuItem {
-  /** Menu item label */
   label: string;
-  /** Optional leading icon */
   icon?: React.ReactNode;
-  /** Click handler */
   onClick?: () => void;
 }
 
@@ -20,13 +19,9 @@ export interface ProfileMenuGroup {
 }
 
 interface ProfileMenuProps extends React.HTMLAttributes<HTMLDivElement> {
-  /** User initials (1-2 characters) */
   initials: string;
-  /** Background color for the avatar circle */
   avatarColor?: string;
-  /** Menu item groups — separated by dividers */
   groups: ProfileMenuGroup[];
-  /** Show a dark/light mode toggle in the menu */
   showThemeToggle?: boolean;
 }
 
@@ -39,40 +34,63 @@ const ProfileMenu = React.forwardRef<HTMLDivElement, ProfileMenuProps>(
       typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "dark"
     );
 
+    const menuRef = useRef<HTMLDivElement>(null);
+    const triggerRef = useRef<HTMLButtonElement>(null);
+
+    const close = () => setOpen(false);
+
     const toggleTheme = () => {
       const next = !isDark;
       setIsDark(next);
       document.documentElement.setAttribute("data-theme", next ? "dark" : "light");
+      close();
     };
-    const menuRef = useRef<HTMLDivElement>(null);
-    const triggerRef = useRef<HTMLButtonElement>(null);
 
     /* Close on outside click */
     useEffect(() => {
       if (!open) return;
-      function handleClick(e: MouseEvent) {
+      const handler = (e: MouseEvent) => {
         if (
-          menuRef.current &&
-          !menuRef.current.contains(e.target as Node) &&
-          triggerRef.current &&
-          !triggerRef.current.contains(e.target as Node)
-        ) {
-          setOpen(false);
-        }
-      }
-      document.addEventListener("mousedown", handleClick);
-      return () => document.removeEventListener("mousedown", handleClick);
+          menuRef.current && !menuRef.current.contains(e.target as Node) &&
+          triggerRef.current && !triggerRef.current.contains(e.target as Node)
+        ) close();
+      };
+      document.addEventListener("mousedown", handler);
+      return () => document.removeEventListener("mousedown", handler);
     }, [open]);
 
     /* Close on Escape */
     useEffect(() => {
       if (!open) return;
-      function handleKey(e: KeyboardEvent) {
-        if (e.key === "Escape") setOpen(false);
-      }
-      document.addEventListener("keydown", handleKey);
-      return () => document.removeEventListener("keydown", handleKey);
+      const handler = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+      document.addEventListener("keydown", handler);
+      return () => document.removeEventListener("keydown", handler);
     }, [open]);
+
+    /* Build MenuEntry[] from groups + optional theme toggle */
+    const entries: MenuEntry[] = [];
+    groups.forEach((group, gi) => {
+      if (gi > 0) entries.push("separator");
+      group.items.forEach((item, ii) => {
+        entries.push({
+          id: `g${gi}-i${ii}`,
+          label: item.label,
+          icon: item.icon,
+          onClick: () => { item.onClick?.(); close(); },
+        });
+      });
+    });
+    if (showThemeToggle) {
+      entries.push("separator");
+      entries.push({
+        id: "theme-toggle",
+        label: isDark ? "Light Mode" : "Dark Mode",
+        icon: isDark
+          ? <Sun className="h-4 w-4" strokeWidth={1.5} />
+          : <Moon className="h-4 w-4" strokeWidth={1.5} />,
+        onClick: toggleTheme,
+      });
+    }
 
     return (
       <div ref={ref} className={cn("relative", className)} {...props}>
@@ -107,55 +125,13 @@ const ProfileMenu = React.forwardRef<HTMLDivElement, ProfileMenuProps>(
         {open && (
           <div
             ref={menuRef}
-            role="menu"
-            aria-label="User menu"
-            className="absolute right-0 top-full z-50 mt-1 min-w-[220px] rounded-lyra-md border border-lyra-border-subtle bg-lyra-bg-surface-overlay py-1 shadow-lg"
+            className="absolute right-0 top-full z-50 mt-1"
           >
-            {groups.map((group, gi) => (
-              <React.Fragment key={gi}>
-                {gi > 0 && (
-                  <div role="separator" className="my-1 border-t border-lyra-border-subtle" />
-                )}
-                <div className="flex flex-col">
-                  {group.items.map((item, ii) => (
-                    <button
-                      key={ii}
-                      role="menuitem"
-                      onClick={() => {
-                        item.onClick?.();
-                        setOpen(false);
-                      }}
-                      className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left lyra-body-md text-lyra-fg-default transition-colors hover:bg-lyra-state-hover active:bg-lyra-state-pressed focus:outline-none focus-visible:bg-lyra-state-hover"
-                    >
-                      {item.icon && (
-                        <span className="flex-shrink-0 text-lyra-fg-secondary" aria-hidden="true">
-                          {item.icon}
-                        </span>
-                      )}
-                      <span>{item.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </React.Fragment>
-            ))}
-            {showThemeToggle && (
-              <>
-                <div role="separator" className="my-1 border-t border-lyra-border-subtle" />
-                <button
-                  role="menuitem"
-                  onClick={toggleTheme}
-                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left lyra-body-md text-lyra-fg-default transition-colors hover:bg-lyra-state-hover active:bg-lyra-state-pressed focus:outline-none focus-visible:bg-lyra-state-hover"
-                >
-                  <span className="flex-shrink-0 text-lyra-fg-secondary" aria-hidden="true">
-                    {isDark
-                      ? <Sun className="h-4 w-4" strokeWidth={1.5} />
-                      : <Moon className="h-4 w-4" strokeWidth={1.5} />
-                    }
-                  </span>
-                  <span>{isDark ? "Light Mode" : "Dark Mode"}</span>
-                </button>
-              </>
-            )}
+            <Menu
+              items={entries}
+              aria-label="User menu"
+              className="min-w-[220px]"
+            />
           </div>
         )}
       </div>
@@ -164,7 +140,7 @@ const ProfileMenu = React.forwardRef<HTMLDivElement, ProfileMenuProps>(
 );
 ProfileMenu.displayName = "ProfileMenu";
 
-/* ── Default menu groups matching CXone standard ── */
+/* ── Default menu groups ── */
 
 const defaultProfileMenuGroups: ProfileMenuGroup[] = [
   {

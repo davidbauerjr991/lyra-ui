@@ -2,6 +2,7 @@ import * as React from "react";
 import * as SwitchPrimitive from "@radix-ui/react-switch";
 import { Check, Minus } from "lucide-react";
 import { cn } from "../lib/utils";
+import { Label } from "./label";
 
 /* ── Types ── */
 
@@ -18,12 +19,20 @@ interface SwitchProps
   size?: "sm" | "lg";
   /** Label text displayed next to the switch */
   label?: string;
+  /** Help text shown in a tooltip on the label's info icon */
+  labelHelpText?: string;
+  /** Marks the field as required — shows asterisk on label */
+  required?: boolean;
+  /** Marks the field as read-only — affects label styling */
+  readonly?: boolean;
 }
 
 const Switch = React.forwardRef<
   React.ComponentRef<typeof SwitchPrimitive.Root>,
   SwitchProps
->(({ className, checked = false, onCheckedChange, size = "lg", label, disabled, ...props }, ref) => {
+>(({ className, checked = false, onCheckedChange, size = "lg", label, labelHelpText, required, readonly, disabled, id, ...props }, ref) => {
+  const autoId = React.useId();
+  const switchId = id || (label ? autoId : undefined);
   const isOn = checked === true;
   const isIndeterminate = checked === "indeterminate";
   const isCheckedOff = checked === "checked";
@@ -32,7 +41,7 @@ const Switch = React.forwardRef<
   const lg = size === "lg";
 
   return (
-    <label
+    <div
       className={cn(
         "inline-flex items-center gap-2",
         disabled ? "cursor-not-allowed" : "cursor-pointer",
@@ -41,6 +50,7 @@ const Switch = React.forwardRef<
     >
       <SwitchPrimitive.Root
         ref={ref}
+        id={switchId}
         checked={isOn}
         onCheckedChange={onCheckedChange}
         disabled={disabled}
@@ -109,16 +119,17 @@ const Switch = React.forwardRef<
         </SwitchPrimitive.Thumb>
       </SwitchPrimitive.Root>
       {label && (
-        <span
-          className={cn(
-            lg ? "lyra-body-md" : "lyra-body-sm",
-            disabled ? "text-lyra-fg-disabled" : "text-lyra-fg-default"
-          )}
-        >
-          {label}
-        </span>
+        <Label
+          label={label}
+          labelFor={switchId}
+          labelHelpText={labelHelpText}
+          required={required}
+          disabled={disabled}
+          readonly={readonly}
+          className={lg ? "lyra-body-md" : "lyra-body-sm"}
+        />
       )}
-    </label>
+    </div>
   );
 });
 Switch.displayName = "Switch";

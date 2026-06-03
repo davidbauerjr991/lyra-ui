@@ -93,6 +93,38 @@ export const MultiSelect: Story = {
   },
 };
 
+export const MaxSelectionSelect: Story = {
+  name: "Max Selection",
+  render: () => {
+    const [values, setValues] = useState<string[]>([]);
+    const colorOptions: SelectOption[] = [
+      { value: "yellow", label: "Yellow" },
+      { value: "blue", label: "Blue" },
+      { value: "white", label: "White" },
+      { value: "selected-white", label: "Selected White" },
+      { value: "red", label: "Red" },
+      { value: "magenta", label: "Magenta" },
+      { value: "cyan", label: "Cyan" },
+      { value: "dark-red", label: "Dark Red" },
+      { value: "green", label: "Green" },
+      { value: "orange", label: "Orange" },
+    ];
+    return (
+      <div className="max-w-[320px]">
+        <Select
+          label="Color"
+          options={colorOptions}
+          multiple
+          searchable
+          maxSelection={4}
+          values={values}
+          onValuesChange={setValues}
+        />
+      </div>
+    );
+  },
+};
+
 export const MultiSelectEmpty: Story = {
   name: "Multi-Select (Empty)",
   render: () => (

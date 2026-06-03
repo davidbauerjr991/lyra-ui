@@ -38,6 +38,15 @@ export const Disabled: Story = {
   },
 };
 
+export const Readonly: Story = {
+  name: "Readonly",
+  args: {
+    label: "Input Label",
+    value: "Read-only value",
+    readonly: true,
+  },
+};
+
 export const Error: Story = {
   name: "Error",
   args: {

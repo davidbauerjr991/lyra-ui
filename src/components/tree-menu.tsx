@@ -154,7 +154,7 @@ function TreeMenuRow({ item }: { item: TreeMenuItem }) {
         }}
         aria-expanded={hasChildren ? open : undefined}
         className={cn(
-          "flex w-full items-center gap-2.5 rounded-lyra-sm px-2.5 py-[7px] lyra-body-md transition-colors",
+          "relative flex w-full items-center gap-2.5 rounded-lyra-sm px-2.5 h-9 lyra-body-md transition-colors",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
           isLeafActive
             ? "bg-lyra-bg-active-moderate text-lyra-fg-active-strong lyra-body-md-emphasis hover:bg-lyra-bg-active-moderate active:bg-lyra-bg-active-subtle"
@@ -163,6 +163,13 @@ function TreeMenuRow({ item }: { item: TreeMenuItem }) {
               : "text-lyra-fg-default hover:bg-lyra-state-hover active:bg-lyra-state-pressed"
         )}
       >
+        {/* Left accent bar — visible when active */}
+        {(isLeafActive || isParentActive) && (
+          <span
+            aria-hidden="true"
+            className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-lyra-border-active"
+          />
+        )}
         {item.icon && (
           <span aria-hidden="true" className={cn("flex-shrink-0", isParentActive || isLeafActive ? "text-lyra-fg-active-strong" : "text-lyra-fg-default")}>{item.icon}</span>
         )}
@@ -181,20 +188,26 @@ function TreeMenuRow({ item }: { item: TreeMenuItem }) {
       {/* Children — animated expand/collapse */}
       {hasChildren && (
         <CollapsiblePanel open={open}>
-          <ul role="group" className="ml-[18px] mt-0.5 flex flex-col gap-0.5 pl-3 list-none m-0 p-0 pl-3">
+          <ul role="group" className="ml-[18px] mt-0.5 flex flex-col gap-0.5 pl-3 list-none border-l border-lyra-border-subtle">
             {item.children!.map((child, j) => (
               <li key={j} role="treeitem">
                 <button
                   onClick={child.onClick}
                   aria-current={child.active ? "page" : undefined}
                   className={cn(
-                    "w-full rounded-lyra-sm px-2.5 py-[6px] text-left lyra-body-md transition-colors",
+                    "relative w-full rounded-lyra-sm px-2.5 h-9 text-left lyra-body-md transition-colors",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
                     child.active
                       ? "bg-lyra-bg-active-moderate text-lyra-fg-active-strong lyra-body-md-emphasis hover:bg-lyra-bg-active-moderate active:bg-lyra-bg-active-subtle"
                       : "text-lyra-fg-secondary hover:bg-lyra-state-hover hover:text-lyra-fg-default active:bg-lyra-state-pressed"
                   )}
                 >
+                  {child.active && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 rounded-full bg-lyra-border-active"
+                    />
+                  )}
                   {child.label}
                 </button>
               </li>

@@ -1,6 +1,12 @@
 /* ── Components ── */
 export { Button, buttonVariants } from "./components/button";
+export { Accordion } from "./components/accordion";
+export type { AccordionProps, AccordionItem } from "./components/accordion";
+export { ToggleGroup } from "./components/toggle-group";
+export type { ToggleGroupProps, ToggleGroupItem, ToggleGroupType } from "./components/toggle-group";
 export { Checkbox } from "./components/checkbox";
+export { CheckboxGroup } from "./components/checkbox-group";
+export type { CheckboxGroupProps, CheckboxGroupOption } from "./components/checkbox-group";
 export { Switch } from "./components/switch";
 export type { SwitchProps } from "./components/switch";
 export {
@@ -30,7 +36,12 @@ export { ActionIconButton, ActionAvatarButton } from "./components/actions";
 export { ShellIconButton, ShellAvatarButton } from "./components/shell-button";
 export { SearchInput } from "./components/search-input";
 export { Input } from "./components/input";
+export type { InputProps } from "./components/input";
+export { Textarea } from "./components/textarea";
+export type { TextareaProps } from "./components/textarea";
 export { RadioGroup, RadioGroupItem } from "./components/radio";
+export { RadioButtonGroup } from "./components/radio-button-group";
+export type { RadioButtonGroupProps, RadioButtonGroupOption } from "./components/radio-button-group";
 export { LeftNav } from "./components/left-nav";
 export type { NavItem, NavChild } from "./components/left-nav";
 export { CXoneLogo } from "./components/cxone-logo";
@@ -70,6 +81,22 @@ export { InlineNotification } from "./components/inline-notification";
 export { Toast, ToastContainer, useToast } from "./components/toast";
 export type { TooltipProps, TooltipPlacement } from "./components/tooltip";
 export type { ToastProps, ToastVariant, ToastItem } from "./components/toast";
+
+/* ── Spinner ── */
+export { Spinner } from "./components/spinner";
+export type { SpinnerProps, SpinnerVariant, SpinnerSize, SpinnerColor } from "./components/spinner";
+
+/* ── Popover ── */
+export { Popover, PopoverTrigger, PopoverContent, PopoverClose } from "./components/popover";
+export type { PopoverProps, PopoverPlacement } from "./components/popover";
+
+/* ── Label ── */
+export { Label } from "./components/label";
+export type { LabelProps } from "./components/label";
+
+/* ── Icon ── */
+export { Icon } from "./components/icon";
+export type { IconProps, IconSize, IconColor } from "./components/icon";
 
 /* ── Icons ── */
 export { AiIcon } from "./components/icons/ai-icon";

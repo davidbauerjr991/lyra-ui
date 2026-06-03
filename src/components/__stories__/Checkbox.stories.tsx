@@ -47,6 +47,40 @@ export const Indeterminate: Story = {
   ),
 };
 
+export const Required: Story = {
+  name: "Required",
+  render: () => (
+    <div className="flex flex-col gap-3">
+      <Checkbox label="Accept terms and conditions" required />
+      <Checkbox label="Subscribe to newsletter" required checked />
+    </div>
+  ),
+};
+
+export const Readonly: Story = {
+  name: "Readonly",
+  render: () => (
+    <div className="flex flex-col gap-3">
+      <Checkbox
+        label="Unchecked (read-only)"
+        readonly
+        labelHelpText="This value cannot be changed."
+      />
+      <Checkbox
+        label="Checked (read-only)"
+        readonly
+        checked
+        labelHelpText="This value cannot be changed."
+      />
+      <Checkbox
+        label="Indeterminate (read-only)"
+        readonly
+        checked="indeterminate"
+      />
+    </div>
+  ),
+};
+
 export const Disabled: Story = {
   render: () => (
     <label className="flex items-center gap-2 cursor-not-allowed">
@@ -179,78 +213,7 @@ export const Interactive: Story = {
   },
 };
 
-/* ── Checkbox Group — Vertical ── */
-
-export const GroupVertical: Story = {
-  name: "Group / Vertical",
-  render: () => (
-    <div className="space-y-8">
-      <fieldset className="space-y-2">
-        <legend className="lyra-label text-lyra-fg-default mb-1">Input Label</legend>
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="flex items-center gap-2">
-            <Checkbox id={`vg-${i}`} />
-            <label htmlFor={`vg-${i}`} className="lyra-body-md text-lyra-fg-default">Checkbox label</label>
-          </div>
-        ))}
-      </fieldset>
-
-      <fieldset className="space-y-2" disabled>
-        <legend className="lyra-label text-lyra-fg-disabled mb-1">Input Label</legend>
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="flex items-center gap-2">
-            <Checkbox id={`vg-dis-${i}`} disabled />
-            <label htmlFor={`vg-dis-${i}`} className="lyra-body-md text-lyra-fg-disabled">Checkbox label</label>
-          </div>
-        ))}
-      </fieldset>
-
-      <fieldset className="space-y-2">
-        <legend className="lyra-label text-lyra-fg-default mb-1">Input Label</legend>
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="flex items-center gap-2">
-            <Checkbox id={`vg-err-${i}`} error defaultChecked />
-            <label htmlFor={`vg-err-${i}`} className="lyra-body-md text-lyra-fg-default">Checkbox label</label>
-          </div>
-        ))}
-        <p className="lyra-body-sm text-lyra-status-critical-strong">This field is required</p>
-      </fieldset>
-    </div>
-  ),
-};
-
-/* ── Checkbox Group — Horizontal ── */
-
-export const GroupHorizontal: Story = {
-  name: "Group / Horizontal",
-  render: () => (
-    <div className="space-y-8">
-      <fieldset className="space-y-2">
-        <legend className="lyra-label text-lyra-fg-default mb-1">Input Label</legend>
-        <div className="flex items-center gap-6">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="flex items-center gap-2">
-              <Checkbox id={`hg-${i}`} />
-              <label htmlFor={`hg-${i}`} className="lyra-body-md text-lyra-fg-default">Checkbox label</label>
-            </div>
-          ))}
-        </div>
-      </fieldset>
-
-      <fieldset className="space-y-2" disabled>
-        <legend className="lyra-label text-lyra-fg-disabled mb-1">Input Label</legend>
-        <div className="flex items-center gap-6">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="flex items-center gap-2">
-              <Checkbox id={`hg-dis-${i}`} disabled />
-              <label htmlFor={`hg-dis-${i}`} className="lyra-body-md text-lyra-fg-disabled">Checkbox label</label>
-            </div>
-          ))}
-        </div>
-      </fieldset>
-    </div>
-  ),
-};
+// Group stories moved to Atoms/Checkbox Group
 
 /* ── With Secondary Text ── */
 

@@ -75,7 +75,7 @@ const Menu = React.forwardRef<HTMLDivElement, MenuProps>(
         role="menu"
         onKeyDown={handleKeyDown}
         className={cn(
-          "min-w-[200px] rounded-lyra-lg bg-lyra-bg-surface-overlay border border-lyra-border-subtle shadow-lg py-1.5",
+          "min-w-[200px] rounded-lyra-lg bg-lyra-bg-surface-overlay border border-lyra-border-subtle shadow-lg p-2",
           className
         )}
         {...props}
@@ -171,7 +171,7 @@ const MenuItemRow: React.FC<MenuItemRowProps> = ({ item }) => {
         aria-haspopup={hasSubmenu ? "menu" : undefined}
         aria-expanded={hasSubmenu ? submenuOpen : undefined}
         className={cn(
-          "group flex w-full items-center gap-2.5 px-3 py-2.5 lyra-body-md transition-colors text-left relative",
+          "group flex w-full items-center gap-2.5 px-3 py-2.5 lyra-body-md transition-colors text-left relative rounded-lyra-sm",
           "focus:outline-none focus-visible:bg-lyra-state-hover",
           isDestructive
             ? "text-lyra-status-critical-strong hover:bg-lyra-status-critical-subtle active:bg-lyra-status-critical-medium"

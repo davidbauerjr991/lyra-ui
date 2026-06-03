@@ -34,8 +34,8 @@ function getInlineStyles(
   variant: ChipVariant,
   color: ChipColor
 ): React.CSSProperties {
-  const soft = `var(--lyra-accent-${color}-soft)`;
-  const strong = `var(--lyra-accent-${color}-strong)`;
+  const soft = `var(--lyra-color-accent-${color}-soft)`;
+  const strong = `var(--lyra-color-accent-${color}-strong)`;
 
   switch (variant) {
     case "subtle":

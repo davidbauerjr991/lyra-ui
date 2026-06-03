@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import { cn } from "../lib/utils";
+import { Label } from "./label";
 
 /* ── RadioGroup ── */
 
@@ -17,26 +18,29 @@ interface RadioGroupProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "on
   disabled?: boolean;
   /** Label displayed above the radio group */
   label?: string;
+  /** Help text shown in a tooltip on the label */
+  labelHelpText?: string;
+  /** Shows required asterisk on the label */
+  required?: boolean;
   /** Layout orientation of the radio items */
   orientation?: "vertical" | "horizontal";
 }
 
 const RadioGroup = React.forwardRef<HTMLDivElement, RadioGroupProps>(
-  ({ className, value, defaultValue, onValueChange, name, disabled, label, orientation = "vertical", children, ...props }, ref) => {
+  ({ className, value, defaultValue, onValueChange, name, disabled, label, labelHelpText, required, orientation = "vertical", children, ...props }, ref) => {
     const labelId = React.useId();
 
     return (
       <div ref={ref} className={cn("flex flex-col", className)} {...props}>
         {label && (
-          <span
+          <Label
             id={labelId}
-            className={cn(
-              "lyra-label block mb-1.5",
-              disabled ? "text-lyra-fg-disabled" : "text-lyra-fg-default"
-            )}
-          >
-            {label}
-          </span>
+            label={label}
+            labelHelpText={labelHelpText}
+            required={required}
+            disabled={disabled}
+            className="block mb-1.5"
+          />
         )}
         <RadioGroupPrimitive.Root
           value={value}
@@ -77,7 +81,7 @@ const RadioGroupItem = React.forwardRef<HTMLButtonElement, RadioGroupItemProps>(
       <label
         htmlFor={inputId}
         className={cn(
-          "flex items-center gap-2.5",
+          "group/radio flex items-center gap-2.5",
           itemDisabled ? "cursor-not-allowed" : "cursor-pointer",
           className
         )}
@@ -88,7 +92,7 @@ const RadioGroupItem = React.forwardRef<HTMLButtonElement, RadioGroupItemProps>(
           value={value}
           disabled={itemDisabled}
           className={cn(
-            "relative flex-shrink-0 flex h-[18px] w-[18px] items-center justify-center rounded-full border-[1.5px] transition-colors outline-none",
+            "peer group relative flex-shrink-0 flex h-[18px] w-[18px] items-center justify-center rounded-full border-[1.5px] transition-colors outline-none",
             /* Unchecked */
             "data-[state=unchecked]:border-lyra-border-default data-[state=unchecked]:bg-lyra-bg-control",
             "data-[state=unchecked]:hover:border-lyra-border-strong",
@@ -97,28 +101,23 @@ const RadioGroupItem = React.forwardRef<HTMLButtonElement, RadioGroupItemProps>(
             "data-[state=checked]:border-lyra-bg-primary data-[state=checked]:bg-lyra-bg-primary",
             "data-[state=checked]:hover:border-lyra-state-hover-primary data-[state=checked]:hover:bg-lyra-state-hover-primary",
             "data-[state=checked]:active:border-lyra-state-pressed-primary data-[state=checked]:active:bg-lyra-state-pressed-primary",
-            /* Disabled */
-            "disabled:cursor-not-allowed disabled:border-lyra-border-disabled disabled:bg-lyra-bg-disabled",
+            /* Disabled — must come after checked/unchecked to win */
+            "disabled:cursor-not-allowed",
+            "disabled:data-[state=unchecked]:border-lyra-border-disabled disabled:data-[state=unchecked]:bg-lyra-bg-disabled",
+            "disabled:data-[state=checked]:border-lyra-border-disabled disabled:data-[state=checked]:bg-lyra-bg-disabled",
+            "disabled:data-[state=checked]:hover:border-lyra-border-disabled disabled:data-[state=checked]:hover:bg-lyra-bg-disabled",
             /* Focus */
             "focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
           )}
         >
           <RadioGroupPrimitive.Indicator className="flex items-center justify-center">
-            <span
-              className={cn(
-                "h-2 w-2 rounded-full",
-                itemDisabled ? "bg-lyra-fg-disabled" : "bg-lyra-fg-on-primary"
-              )}
-            />
+            {/* group-disabled targets the parent button's :disabled state */}
+            <span className="h-2 w-2 rounded-full bg-lyra-fg-on-primary group-disabled:bg-lyra-fg-disabled" />
           </RadioGroupPrimitive.Indicator>
         </RadioGroupPrimitive.Item>
         {label && (
-          <span
-            className={cn(
-              "lyra-body-md",
-              itemDisabled ? "text-lyra-fg-disabled" : "text-lyra-fg-default"
-            )}
-          >
+          /* peer-disabled targets the button above; drives label text color */
+          <span className="lyra-body-md text-lyra-fg-default peer-disabled:text-lyra-fg-disabled">
             {label}
           </span>
         )}

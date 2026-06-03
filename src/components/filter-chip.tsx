@@ -1,7 +1,9 @@
 import * as React from "react";
 import { useState } from "react";
-import { ChevronDown, AlertCircle, X } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
+import { ErrorIcon } from "./icons/error-icon";
 import { Select } from "./select";
+import { Tooltip } from "./tooltip";
 import { cn } from "../lib/utils";
 
 /* ── Types ── */
@@ -24,6 +26,15 @@ interface FilterChipProps {
   selectedValues?: string[];
   /** Called when selection changes */
   onSelectionChange?: (values: string[]) => void;
+  /**
+   * Operator options (e.g. Contains, Equals, Starts With).
+   * When provided, a separate operator selector is rendered between the label and value.
+   */
+  operators?: FilterChipOption[];
+  /** Currently selected operator value */
+  selectedOperator?: string;
+  /** Called when the operator changes */
+  onOperatorChange?: (operator: string) => void;
   /** Error state — shows red styling and error icon */
   error?: boolean;
   /** Disable the chip */
@@ -43,6 +54,9 @@ const FilterChip = React.forwardRef<HTMLButtonElement, FilterChipProps>(
       options,
       selectedValues = [],
       onSelectionChange,
+      operators,
+      selectedOperator,
+      onOperatorChange,
       error = false,
       disabled = false,
       onRemove,
@@ -51,6 +65,11 @@ const FilterChip = React.forwardRef<HTMLButtonElement, FilterChipProps>(
     ref
   ) => {
     const [open, setOpen] = useState(false);
+    const [operatorOpen, setOperatorOpen] = useState(false);
+    const hasOperators = operators && operators.length > 0;
+    const operatorLabel = hasOperators
+      ? operators!.find((o) => o.value === selectedOperator)?.label ?? operators![0]?.label
+      : null;
 
     const hasValues = selectedValues.length > 0;
     const firstSelectedLabel = hasValues
@@ -77,7 +96,10 @@ const FilterChip = React.forwardRef<HTMLButtonElement, FilterChipProps>(
         aria-expanded={open}
         className={cn(
           "inline-flex items-center gap-1.5 border px-3 h-8 transition-colors",
-          onRemove && !disabled ? "rounded-l-lyra-md" : "rounded-lyra-md",
+          // In operator wrapper, the trigger has no visible border (wrapper provides it)
+          hasOperators
+            ? "border-0 rounded-none"
+            : onRemove && !disabled ? "rounded-l-lyra-md" : "rounded-lyra-md",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
           variant === "default" && [
             "border-lyra-border-default bg-lyra-bg-control-subtle text-lyra-fg-default",
@@ -98,17 +120,27 @@ const FilterChip = React.forwardRef<HTMLButtonElement, FilterChipProps>(
       >
         {/* Error icon */}
         {variant === "error" && (
-          <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" strokeWidth={2} aria-hidden="true" />
+          <ErrorIcon className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
         )}
 
-        {/* Label + value */}
-        {hasValues ? (
-          <span className="inline-flex items-baseline gap-1 max-w-[200px]">
-            <span className="lyra-body-md-emphasis whitespace-nowrap">{label}:</span>
-            <span className="lyra-body-md truncate">{firstSelectedLabel}</span>
-          </span>
-        ) : (
-          <span className="lyra-body-md-emphasis text-lyra-fg-default whitespace-nowrap">{label}</span>
+        {/* Label + value — when no operators, include label inline */}
+        {!hasOperators && (
+          hasValues ? (
+            <span className="inline-flex items-baseline gap-1 max-w-[200px]">
+              <span className="lyra-body-md-emphasis whitespace-nowrap">{label}:</span>
+              <span className="lyra-body-md truncate">{firstSelectedLabel}</span>
+            </span>
+          ) : (
+            <span className="lyra-body-md-emphasis text-lyra-fg-default whitespace-nowrap">{label}</span>
+          )
+        )}
+        {/* Value only — when operators are shown, label+operator are separate segments */}
+        {hasOperators && (
+          hasValues ? (
+            <span className="lyra-body-md truncate max-w-[120px]">{firstSelectedLabel}</span>
+          ) : (
+            <span className="lyra-body-md text-lyra-fg-disabled whitespace-nowrap">Value</span>
+          )
         )}
 
         {/* Extra count badge */}
@@ -136,6 +168,111 @@ const FilterChip = React.forwardRef<HTMLButtonElement, FilterChipProps>(
       </button>
     );
 
+    /* Color/bg/text — no border (used inside operator wrapper) */
+    const segmentColor = cn(
+      variant === "default" && "bg-lyra-bg-control-subtle text-lyra-fg-default",
+      variant === "active" && "bg-lyra-bg-active-subtle text-lyra-fg-active-strong",
+      variant === "error" && "bg-lyra-status-critical-subtle text-lyra-status-critical-strong",
+      variant === "disabled" && "bg-lyra-bg-disabled text-lyra-fg-disabled"
+    );
+
+    /* Outer border color */
+    const outerBorder = cn(
+      variant === "default" && "border-lyra-border-default",
+      variant === "active" && "border-lyra-border-active",
+      variant === "error" && "border-lyra-status-critical-strong",
+      variant === "disabled" && "border-lyra-border-disabled"
+    );
+
+    /* Operator trigger button — no border, just color */
+    const operatorTrigger = hasOperators ? (
+      <button
+        type="button"
+        disabled={disabled}
+        aria-haspopup="listbox"
+        aria-expanded={operatorOpen}
+        className={cn(
+          "inline-flex items-center gap-1.5 h-8 px-2 transition-colors whitespace-nowrap",
+          segmentColor,
+          !disabled && variant === "default" && "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
+          !disabled && variant === "active" && "hover:bg-lyra-state-hover-active-subtle active:bg-lyra-state-pressed-active-subtle",
+          !disabled && "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-inset"
+        )}
+      >
+        <span className="lyra-body-md-emphasis">{operatorLabel}</span>
+        <ChevronDown
+          className={cn("h-3.5 w-3.5 flex-shrink-0 transition-transform", operatorOpen && "rotate-180")}
+          strokeWidth={1.5}
+          aria-hidden="true"
+        />
+      </button>
+    ) : null;
+
+    /* When operators present: render everything inside a single bordered wrapper */
+    if (hasOperators && operators) {
+      return (
+        <div className={cn("inline-flex", className)}>
+          <div className={cn(
+            "inline-flex items-center rounded-l-lyra-md border h-8 overflow-hidden",
+            outerBorder, segmentColor,
+            onRemove && !disabled ? "rounded-r-none" : "rounded-r-lyra-md"
+          )}>
+            {/* Label */}
+            <span className="px-3 lyra-body-md-emphasis whitespace-nowrap select-none">{label}:</span>
+
+            {/* Operator selector */}
+            <Select
+              options={operators}
+              portalDropdown
+              value={selectedOperator ?? operators[0]?.value}
+              onValueChange={onOperatorChange}
+              onOpenChange={setOperatorOpen}
+              disabled={disabled}
+              trigger={operatorTrigger!}
+              dropdownAlign="left"
+              className="inline-flex relative"
+            />
+
+            {/* Value selector — reuse chipTrigger but strip its own border */}
+            <Select
+              options={options}
+              multiple
+              searchable
+              showSelectAll
+              portalDropdown
+              values={selectedValues}
+              onValuesChange={onSelectionChange}
+              onOpenChange={setOpen}
+              disabled={disabled}
+              trigger={chipTrigger}
+              dropdownAlign="left"
+              className="inline-flex relative"
+            />
+          </div>
+
+          {/* Remove button */}
+          {onRemove && !disabled && (
+            <Tooltip content={`Remove ${label} filter`} placement="top" asLabel>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onRemove(); }}
+              aria-label={`Remove ${label} filter`}
+              className={cn(
+                "inline-flex items-center justify-center h-8 w-8 -ml-px rounded-r-lyra-md border transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
+                variant === "active"
+                  ? "border-lyra-border-active bg-lyra-bg-active-subtle text-lyra-fg-active-strong hover:bg-lyra-state-hover-active-subtle active:bg-lyra-state-pressed-active-subtle"
+                  : "border-lyra-border-default bg-lyra-bg-control-subtle text-lyra-fg-secondary hover:bg-lyra-state-hover hover:text-lyra-fg-default active:bg-lyra-state-pressed"
+              )}
+            >
+              <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+            </button>
+            </Tooltip>
+          )}
+        </div>
+      );
+    }
+
     return (
       <div className={cn("inline-flex", className)}>
         <Select
@@ -155,6 +292,7 @@ const FilterChip = React.forwardRef<HTMLButtonElement, FilterChipProps>(
 
         {/* Remove button */}
         {onRemove && !disabled && (
+          <Tooltip content={`Remove ${label} filter`} placement="top" asLabel>
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onRemove(); }}
@@ -178,6 +316,7 @@ const FilterChip = React.forwardRef<HTMLButtonElement, FilterChipProps>(
           >
             <X className="h-3.5 w-3.5" strokeWidth={1.5} />
           </button>
+          </Tooltip>
         )}
       </div>
     );

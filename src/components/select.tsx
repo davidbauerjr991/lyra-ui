@@ -1,7 +1,9 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { ChevronDown, Search, X, Check } from "lucide-react";
+import { ErrorIcon } from "./icons/error-icon";
 import { Checkbox } from "./checkbox";
+import { Label } from "./label";
 import { cn } from "../lib/utils";
 
 /* ── Types ── */
@@ -18,8 +20,14 @@ interface SelectOption {
 /* ── Select ── */
 
 interface SelectProps {
-  /** Label displayed above the select */
+  /** Label text displayed above the select */
   label?: string;
+  /** Help text shown in a tooltip on the label's info icon */
+  labelHelpText?: string;
+  /** Marks the field as required — shows asterisk on label */
+  required?: boolean;
+  /** Marks the field as read-only — affects label and trigger styling */
+  readonly?: boolean;
   /** Placeholder text when nothing is selected */
   placeholder?: string;
   /** Options to display */
@@ -34,6 +42,17 @@ interface SelectProps {
   searchable?: boolean;
   /** Show a "select all" checkbox (only for multiple mode) */
   showSelectAll?: boolean;
+  /**
+   * Maximum number of items that can be selected (multiple mode only).
+   * Shows a header with selection count. When limit is reached, remaining
+   * options are disabled and the header changes to "Limit Reached (N)".
+   */
+  maxSelection?: number;
+  /**
+   * Custom label for the selection header (default: "Select up to N items").
+   * Only used when maxSelection is set.
+   */
+  selectionLabel?: string;
   /** Custom trigger element — replaces the default button. Must accept a ref and onClick. */
   trigger?: React.ReactNode;
 
@@ -66,6 +85,9 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
   (
     {
       label,
+      labelHelpText,
+      required,
+      readonly,
       placeholder = "Select...",
       options,
       error,
@@ -73,6 +95,8 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
       multiple = false,
       searchable = false,
       showSelectAll = false,
+      maxSelection,
+      selectionLabel,
       trigger,
       value,
       onValueChange,
@@ -123,8 +147,8 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
       onOpenChange?.(open);
     }, [open, onOpenChange]);
 
-    /* ── Portal positioning ── */
-    React.useEffect(() => {
+    /* ── Portal positioning — useLayoutEffect so position is set before first paint ── */
+    React.useLayoutEffect(() => {
       if (!open || !portalDropdown || !triggerRef.current) return;
       const rect = triggerRef.current.getBoundingClientRect();
       setPortalStyle({
@@ -235,19 +259,26 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
     const allSelected = allFilteredVals.length > 0 && allFilteredVals.every((v) => currentValues.includes(v));
     const someSelected = !allSelected && allFilteredVals.some((v) => currentValues.includes(v));
 
+    /* ── Max selection ── */
+    const limitReached = multiple && maxSelection !== undefined && currentValues.length >= maxSelection;
+    const handleClear = () => {
+      if (isControlledMulti) onValuesChange?.([]);
+      else setInternalValues([]);
+    };
+
     return (
       <div ref={rootRef} className={cn("relative", className)}>
         {/* Label */}
         {label && (
-          <label
+          <Label
             id={`${autoId}-label`}
-            className={cn(
-              "lyra-label block mb-1.5",
-              disabled ? "text-lyra-fg-disabled" : "text-lyra-fg-default"
-            )}
-          >
-            {label}
-          </label>
+            label={label}
+            labelHelpText={labelHelpText}
+            required={required}
+            disabled={disabled}
+            readonly={readonly}
+            className="block mb-1.5"
+          />
         )}
 
         {/* Trigger */}
@@ -288,9 +319,9 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               "focus:outline-none",
               error
                 ? "border-lyra-status-critical-strong bg-lyra-status-critical-subtle text-lyra-fg-default focus:ring-2 focus:ring-lyra-status-critical-strong/20"
-                : "border-lyra-border-default bg-lyra-bg-field text-lyra-fg-default hover:border-lyra-border-strong focus:border-lyra-border-active focus:ring-2 focus:ring-lyra-border-active/20",
+                : "border-lyra-border-strong bg-lyra-bg-field text-lyra-fg-default hover:border-lyra-state-border-hover-neutral focus:border-lyra-border-active focus:ring-2 focus:ring-lyra-border-active/20",
               disabled &&
-                "bg-lyra-bg-disabled border-lyra-border-disabled text-lyra-fg-disabled cursor-not-allowed hover:border-lyra-border-disabled",
+                "bg-lyra-bg-disabled border-transparent text-lyra-fg-disabled cursor-not-allowed",
               open && !error && "border-lyra-border-active ring-2 ring-lyra-border-active/20"
             )}
           >
@@ -311,7 +342,8 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
 
         {/* Error */}
         {error && (
-          <div id={`${autoId}-error`} className="flex items-center gap-1 mt-1.5">
+          <div id={`${autoId}-error`} role="alert" className="flex items-center gap-1 mt-1.5">
+            <ErrorIcon className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
             <span className="lyra-body-sm text-lyra-status-critical-strong">{error}</span>
           </div>
         )}
@@ -322,7 +354,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
           <div
             ref={dropdownRef}
             className={cn(
-              "rounded-lyra-lg bg-lyra-bg-surface-overlay border border-lyra-border-subtle shadow-lg",
+              "rounded-lyra-lg bg-lyra-bg-surface-overlay border border-lyra-border-subtle shadow-lg p-2",
               portalDropdown ? "" : "absolute top-full z-50 mt-1",
               !portalDropdown && trigger ? cn(dropdownAlign === "left" ? "left-0" : "right-0", "w-[240px]") : !portalDropdown ? "w-full" : ""
             )}
@@ -330,7 +362,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
           >
             {/* Search */}
             {searchable && (
-              <div className="p-2 pb-0">
+              <div className="pb-2">
                 <div className="relative">
                   <Search
                     className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-lyra-fg-secondary pointer-events-none"
@@ -345,9 +377,9 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search"
                     className={cn(
-                      "h-9 w-full rounded-lyra-sm border border-lyra-border-default bg-lyra-bg-field pl-9 pr-9 lyra-body-md text-lyra-fg-default transition-colors",
+                      "h-9 w-full rounded-lyra-sm border border-lyra-border-strong bg-lyra-bg-field pl-9 pr-9 lyra-body-md text-lyra-fg-default transition-colors",
                       "placeholder:text-lyra-fg-disabled",
-                      "hover:border-lyra-border-strong",
+                      "hover:border-lyra-state-border-hover-neutral",
                       "focus:outline-none focus:border-lyra-border-active focus:ring-2 focus:ring-lyra-border-active/20"
                     )}
                   />
@@ -366,12 +398,37 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               </div>
             )}
 
+            {/* Max-selection header */}
+            {multiple && maxSelection !== undefined && (
+              <>
+                <div className="flex items-center justify-between px-3 py-2 border-b border-lyra-border-subtle">
+                  <span className={cn(
+                    "lyra-label",
+                    limitReached ? "text-lyra-status-critical-strong" : "text-lyra-fg-default"
+                  )}>
+                    {limitReached
+                      ? `Limit Reached (${maxSelection})`
+                      : selectionLabel ?? `Select up to ${maxSelection} items`}
+                  </span>
+                  {currentValues.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleClear}
+                      className="lyra-body-sm text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+
             {/* Select All header (multi only) */}
             {multiple && showSelectAll && (
               <>
                 <button
                   type="button"
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-lyra-state-hover active:bg-lyra-state-pressed transition-colors"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-lyra-state-hover active:bg-lyra-state-pressed transition-colors rounded-lyra-sm"
                   onClick={() => toggleAll()}
                 >
                   <Checkbox
@@ -415,7 +472,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                   opts[opts.length - 1]?.focus();
                 }
               }}
-              className="max-h-[240px] overflow-y-auto py-1"
+              className="max-h-[240px] overflow-y-auto"
             >
               {filtered.length === 0 && (
                 <div className="px-3 py-2 lyra-body-sm text-lyra-fg-secondary">
@@ -426,27 +483,32 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               {multiple
                 ? filtered.map((option) => {
                     const isSelected = currentValues.includes(option.value);
+                    const isDisabledByLimit = !isSelected && !!limitReached;
+                    const isDisabled = option.disabled || isDisabledByLimit;
                     return (
                       <button
                         key={option.value}
                         type="button"
                         role="option"
                         aria-selected={isSelected}
-                        disabled={option.disabled}
-                        onClick={() => toggleMultiValue(option.value)}
+                        disabled={isDisabled}
+                        onClick={() => !isDisabled && toggleMultiValue(option.value)}
                         className={cn(
-                          "flex w-full items-center gap-2.5 px-3 py-2 lyra-body-md text-left transition-colors",
+                          "flex w-full items-center gap-2.5 px-3 py-2 lyra-body-md text-left transition-colors rounded-lyra-sm",
                           "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
                           "focus:outline-none focus-visible:bg-lyra-state-hover",
-                          option.disabled && "opacity-40 cursor-not-allowed hover:bg-transparent"
+                          isDisabled && "opacity-40 cursor-not-allowed hover:bg-transparent"
                         )}
                       >
                         <Checkbox
                           checked={isSelected}
+                          disabled={isDisabledByLimit}
                           tabIndex={-1}
                           className="pointer-events-none"
                         />
-                        <span className="text-lyra-fg-default">{option.label}</span>
+                        <span className={cn(
+                          isDisabledByLimit ? "text-lyra-fg-disabled" : "text-lyra-fg-default"
+                        )}>{option.label}</span>
                       </button>
                     );
                   })
@@ -461,7 +523,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                         disabled={option.disabled}
                         onClick={() => selectSingle(option.value)}
                         className={cn(
-                          "flex w-full items-center gap-2.5 px-3 py-2 lyra-body-md text-left transition-colors",
+                          "flex w-full items-center gap-2.5 px-3 py-2 lyra-body-md text-left transition-colors rounded-lyra-sm",
                           "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
                           "focus:outline-none focus-visible:bg-lyra-state-hover",
                           isSelected && "bg-lyra-bg-active-subtle",

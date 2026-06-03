@@ -1,9 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import ReactDOM from "react-dom";
 import { FilterChip } from "../filter-chip";
 import { Button } from "../button";
+import { ToggleGroup } from "../toggle-group";
 import { Select } from "../select";
-import { Plus } from "lucide-react";
+import { Plus, Copy, Check } from "lucide-react";
 
 const addFilterOptions = Array.from({ length: 50 }, (_, i) => ({
   value: `filter-${i + 1}`,
@@ -393,4 +395,384 @@ function AllStatesDemo() {
 export const AllStates: Story = {
   name: "All States",
   render: () => <AllStatesDemo />,
+};
+
+/* ── Shared operators and options per criteria field ── */
+
+const TEXT_OPERATORS = [
+  { value: "contains",         label: "Contains" },
+  { value: "does-not-contain", label: "Does Not Contain" },
+  { value: "equals",           label: "Equals" },
+  { value: "not-equals",       label: "Not Equals" },
+  { value: "starts-with",      label: "Starts With" },
+  { value: "ends-with",        label: "Ends With" },
+];
+
+const NUMBER_OPERATORS = [
+  { value: "equals",        label: "Equals" },
+  { value: "not-equals",    label: "Not Equals" },
+  { value: "greater-than",  label: "Greater Than" },
+  { value: "less-than",     label: "Less Than" },
+];
+
+const CRITERIA_DEFS: Record<string, {
+  label: string;
+  operators: typeof TEXT_OPERATORS;
+  options: { value: string; label: string }[];
+}> = {
+  "first-name": {
+    label: "First Name",
+    operators: TEXT_OPERATORS,
+    options: [
+      { value: "jane", label: "Jane" }, { value: "john", label: "John" },
+      { value: "alice", label: "Alice" }, { value: "bob", label: "Bob" },
+      { value: "carol", label: "Carol" }, { value: "dave", label: "Dave" },
+    ],
+  },
+  "last-name": {
+    label: "Last Name",
+    operators: TEXT_OPERATORS,
+    options: [
+      { value: "smith", label: "Smith" }, { value: "jones", label: "Jones" },
+      { value: "brown", label: "Brown" }, { value: "davis", label: "Davis" },
+    ],
+  },
+  "age": {
+    label: "Age",
+    operators: NUMBER_OPERATORS,
+    options: [
+      { value: "18", label: "18" }, { value: "25", label: "25" },
+      { value: "30", label: "30" }, { value: "40", label: "40" },
+      { value: "50", label: "50" },
+    ],
+  },
+  "gender": {
+    label: "Gender",
+    operators: [
+      { value: "equals",     label: "Equals" },
+      { value: "not-equals", label: "Not Equals" },
+    ],
+    options: [
+      { value: "male", label: "Male" }, { value: "female", label: "Female" },
+      { value: "non-binary", label: "Non-binary" }, { value: "prefer-not", label: "Prefer not to say" },
+    ],
+  },
+  "department": {
+    label: "Department",
+    operators: TEXT_OPERATORS,
+    options: [
+      { value: "engineering", label: "Engineering" }, { value: "design", label: "Design" },
+      { value: "sales", label: "Sales" }, { value: "support", label: "Support" },
+      { value: "hr", label: "HR" },
+    ],
+  },
+  "status": {
+    label: "Status",
+    operators: [
+      { value: "equals",     label: "Equals" },
+      { value: "not-equals", label: "Not Equals" },
+    ],
+    options: [
+      { value: "active", label: "Active" }, { value: "inactive", label: "Inactive" },
+      { value: "pending", label: "Pending" },
+    ],
+  },
+};
+
+/* ── Filter builder types ── */
+
+interface ChipState {
+  uid: string;
+  criteriaId: string;
+  operator: string;
+  values: string[];
+}
+
+type LogicOperator = "and" | "or" | "not";
+
+interface FilterGroupState {
+  id: string;
+  logicOperator: LogicOperator;
+  chips: ChipState[];
+  subGroups: FilterGroupState[];
+}
+
+let _uid = 0;
+const nextUid = () => String(++_uid);
+
+function makeChip(criteriaId: string): ChipState {
+  const def = CRITERIA_DEFS[criteriaId];
+  return { uid: nextUid(), criteriaId, operator: def.operators[0].value, values: [] };
+}
+
+function makeGroup(): FilterGroupState {
+  return { id: nextUid(), logicOperator: "and", chips: [], subGroups: [] };
+}
+
+const LOGIC_ITEMS = [
+  { value: "and", label: "And" },
+  { value: "or",  label: "Or"  },
+  { value: "not", label: "Not" },
+];
+
+/* ── Criteria dropdown (shared) ── */
+
+function CriteriaMenu({ onSelect, items }: {
+  onSelect: (id: string) => void;
+  items?: Record<string, { label: string }>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = React.useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const menuRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const source = items ?? CRITERIA_DEFS;
+
+  const handleOpen = () => {
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 4, left: r.left });
+    }
+    setOpen(v => !v);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current?.contains(e.target as Node)) return;
+      if (btnRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <>
+      <Button ref={btnRef} variant="outline" size="md" onClick={handleOpen}>
+        <Plus className="h-3.5 w-3.5" strokeWidth={2} aria-hidden="true" />
+        Criteria
+      </Button>
+      {open && ReactDOM.createPortal(
+        <div
+          ref={menuRef}
+          style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 9999 }}
+          className="min-w-[180px] rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg p-2"
+        >
+          {Object.entries(source).map(([id, def]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => { onSelect(id); setOpen(false); }}
+              className="w-full flex items-center px-3 py-2 lyra-body-md text-lyra-fg-default rounded-lyra-sm text-left hover:bg-lyra-state-hover active:bg-lyra-state-pressed transition-colors"
+            >
+              {def.label}
+            </button>
+          ))}
+        </div>,
+        document.body
+      )}
+    </>
+
+  );
+}
+
+/* ── Recursive FilterGroup row ── */
+
+function FilterGroupRow({
+  group,
+  isRoot,
+  onUpdate,
+  onDelete,
+}: {
+  group: FilterGroupState;
+  isRoot?: boolean;
+  onUpdate: (updated: FilterGroupState) => void;
+  onDelete?: () => void;
+}) {
+  const addChip = (criteriaId: string) =>
+    onUpdate({ ...group, chips: [...group.chips, makeChip(criteriaId)] });
+
+  const removeChip = (uid: string) =>
+    onUpdate({ ...group, chips: group.chips.filter(c => c.uid !== uid) });
+
+  const updateChip = (uid: string, patch: Partial<ChipState>) =>
+    onUpdate({ ...group, chips: group.chips.map(c => c.uid === uid ? { ...c, ...patch } : c) });
+
+  const addSubGroup = () =>
+    onUpdate({ ...group, subGroups: [...group.subGroups, makeGroup()] });
+
+  const updateSubGroup = (id: string, updated: FilterGroupState) =>
+    onUpdate({ ...group, subGroups: group.subGroups.map(g => g.id === id ? updated : g) });
+
+  const removeSubGroup = (id: string) =>
+    onUpdate({ ...group, subGroups: group.subGroups.filter(g => g.id !== id) });
+
+  return (
+    <div className={!isRoot ? "w-full border border-lyra-border-subtle rounded-lyra-md p-3 bg-lyra-bg-surface-canvas" : "w-full"}>
+      {/* Logic operator toggle */}
+      <div className="flex items-center gap-2 mb-2">
+        <ToggleGroup
+          items={LOGIC_ITEMS}
+          value={group.logicOperator}
+          onValueChange={(v) => v && onUpdate({ ...group, logicOperator: v as LogicOperator })}
+        />
+        <span className="lyra-body-sm text-lyra-fg-secondary">
+          {group.logicOperator === "and" ? "All conditions must match" :
+           group.logicOperator === "or"  ? "Any one condition must match" :
+                                           "No conditions must match"}
+        </span>
+      </div>
+
+      {/* Chips row + action buttons */}
+      <div className="flex flex-wrap items-center gap-2 w-full">
+        {group.chips.map(chip => {
+          const def = CRITERIA_DEFS[chip.criteriaId];
+          return (
+            <FilterChip
+              key={chip.uid}
+              label={def.label}
+              operators={def.operators}
+              selectedOperator={chip.operator}
+              onOperatorChange={op => updateChip(chip.uid, { operator: op })}
+              options={def.options}
+              selectedValues={chip.values}
+              onSelectionChange={vals => updateChip(chip.uid, { values: vals })}
+              onRemove={() => removeChip(chip.uid)}
+            />
+          );
+        })}
+
+        {/* + Criteria */}
+        <CriteriaMenu onSelect={addChip} />
+
+        {/* + Group */}
+        <Button variant="outline" size="md" onClick={addSubGroup}>
+          <Plus className="h-3.5 w-3.5" strokeWidth={2} aria-hidden="true" />
+          Group
+        </Button>
+
+        {/* Delete — only on sub-groups */}
+        {!isRoot && onDelete && (
+          <Button variant="ghost" size="md" onClick={onDelete}>
+            Delete
+          </Button>
+        )}
+      </div>
+
+      {/* Sub-groups */}
+      {group.subGroups.length > 0 && (
+        <div className="mt-3 flex flex-col gap-2">
+          {group.subGroups.map(sub => (
+            <FilterGroupRow
+              key={sub.id}
+              group={sub}
+              onUpdate={updated => updateSubGroup(sub.id, updated)}
+              onDelete={() => removeSubGroup(sub.id)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Criteria description builder ── */
+
+const OPERATOR_LABELS: Record<string, string> = {
+  "contains":         "Contains",
+  "does-not-contain": "Does Not Contain",
+  "equals":           "Equals",
+  "not-equals":       "Not Equals",
+  "starts-with":      "Starts With",
+  "ends-with":        "Ends With",
+  "greater-than":     "Greater Than",
+  "less-than":        "Less Than",
+};
+
+const LOGIC_LABELS: Record<string, string> = {
+  and: "AND",
+  or:  "OR",
+  not: "NOT",
+};
+
+function chipToString(chip: ChipState): string {
+  const def = CRITERIA_DEFS[chip.criteriaId];
+  const opLabel = OPERATOR_LABELS[chip.operator] ?? chip.operator;
+  const valLabel = chip.values.length > 0
+    ? chip.values.map(v => `'${def.options.find(o => o.value === v)?.label ?? v}'`).join(", ")
+    : "''";
+  return `${def.label} ${opLabel} ${valLabel}`;
+}
+
+function groupToString(group: FilterGroupState, depth = 0): string {
+  const logic = group.logicOperator;
+  const joiner = ` ${LOGIC_LABELS[logic] === "NOT" ? "AND" : LOGIC_LABELS[logic]} `;
+
+  const parts: string[] = [
+    ...group.chips.map(chipToString),
+    ...group.subGroups.map(g => groupToString(g, depth + 1)),
+  ];
+
+  if (parts.length === 0) return "";
+  const inner = parts.filter(Boolean).join(joiner);
+
+  if (logic === "not") return depth === 0 ? `NOT (${inner})` : `NOT (${inner})`;
+  return depth === 0 && parts.length === 1 ? inner : `(${inner})`;
+}
+
+/* ── Demo wrapper ── */
+
+function WithOperatorsDemo() {
+  const [root, setRoot] = useState<FilterGroupState>({
+    id: "root",
+    logicOperator: "and",
+    chips: [
+      { uid: "1", criteriaId: "first-name", operator: "does-not-contain", values: ["jane"] },
+      { uid: "2", criteriaId: "age",        operator: "equals",           values: ["30"]  },
+    ],
+    subGroups: [],
+  });
+
+  const [copied, setCopied] = useState(false);
+  const description = groupToString(root) || "No criteria defined";
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(description).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <div className="flex flex-col gap-4 p-4 w-full">
+      {/* Builder */}
+      <FilterGroupRow group={root} isRoot onUpdate={setRoot} />
+
+      {/* Criteria description */}
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center justify-between">
+          <span className="lyra-label text-lyra-fg-default">Criteria Description</span>
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="inline-flex items-center gap-1.5 lyra-body-sm text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus rounded-lyra-xs px-1"
+            aria-label="Copy criteria description"
+          >
+            {copied
+              ? <><Check className="h-3.5 w-3.5 text-lyra-status-success-strong" strokeWidth={2} />Copied</>
+              : <><Copy className="h-3.5 w-3.5" strokeWidth={1.5} />Copy</>
+            }
+          </button>
+        </div>
+        <div className="w-full rounded-lyra-sm border border-lyra-border-strong bg-lyra-bg-surface-canvas px-3 py-2.5 lyra-body-md text-lyra-fg-default font-mono break-all select-all">
+          {description}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export const WithOperators: Story = {
+  name: "With Operators",
+  render: () => <WithOperatorsDemo />,
 };
