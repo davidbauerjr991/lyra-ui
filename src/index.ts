@@ -119,5 +119,15 @@ export { InfoIcon } from "./components/icons/info-icon";
 export { SuccessIcon } from "./components/icons/success-icon";
 export { ColumnsIcon } from "./components/icons/columns-icon";
 
+export { Progress } from "./components/progress";
+export { Overlay, OverlayBackdrop } from "./components/overlay";
+export { StatusBadge } from "./components/status-badge";
+export { TimePicker, TimeRangePicker } from "./components/time-picker";
+export { ActionBar } from "./components/action-bar";
+export { Autocomplete } from "./components/autocomplete";
+export type { AutocompleteOption } from "./components/autocomplete";
+export { PhoneInput, PHONE_COUNTRIES } from "./components/phone-input";
+export type { PhoneValue, PhoneCountry } from "./components/phone-input";
+
 /* ── Utilities ── */
 export { cn } from "./lib/utils";

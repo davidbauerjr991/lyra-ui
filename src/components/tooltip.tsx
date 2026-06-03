@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useState, useEffect } from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { cn } from "../lib/utils";
 
@@ -72,9 +73,17 @@ const Tooltip: React.FC<TooltipProps> = ({
     triggerAriaProps["aria-label"] = contentString;
   }
 
+  // Guard against tooltip firing on mount (e.g. when a modal opens under the cursor).
+  // Force closed for 400ms after mount, then hand control back to Radix.
+  const [allowOpen, setAllowOpen] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setAllowOpen(true), 400);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
     <TooltipPrimitive.Provider delayDuration={delayMs} skipDelayDuration={0}>
-      <TooltipPrimitive.Root>
+      <TooltipPrimitive.Root open={allowOpen ? undefined : false}>
         <TooltipPrimitive.Trigger asChild {...triggerAriaProps}>
           {children}
         </TooltipPrimitive.Trigger>

@@ -10,7 +10,7 @@ import { WarningIcon } from "../icons/warning-icon";
 import { ErrorIcon } from "../icons/error-icon";
 import { InfoIcon } from "../icons/info-icon";
 import { SuccessIcon } from "../icons/success-icon";
-import { X } from "lucide-react";
+import { X, Maximize2, Minimize2 } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 const meta: Meta<typeof Container> = {
@@ -206,6 +206,88 @@ export const Success: Story = {
       </div>
     </Container>
   ),
+};
+
+/* ══════════════════════════════════
+   Fullscreen modal — toggleable expand/collapse
+══════════════════════════════════ */
+
+export const Fullscreen: Story = {
+  name: "Fullscreen (toggleable)",
+  parameters: { layout: "fullscreen" },
+  render: () => {
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    const headerActions = (
+      <div className="flex items-center gap-1">
+        <Tooltip content={isFullscreen ? "Restore" : "Fullscreen"} placement="bottom" asLabel>
+          <button
+            aria-label={isFullscreen ? "Restore modal size" : "Expand to fullscreen"}
+            onClick={() => setIsFullscreen((v) => !v)}
+            className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+          >
+            {isFullscreen
+              ? <Minimize2 className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+              : <Maximize2 className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+            }
+          </button>
+        </Tooltip>
+        <Tooltip content="Close dialog" placement="bottom" asLabel>
+          <button
+            aria-label="Close dialog"
+            className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+          >
+            <X className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />
+          </button>
+        </Tooltip>
+      </div>
+    );
+
+    return (
+      <div className={cn(
+        "flex items-center justify-center w-screen h-screen bg-lyra-bg-surface-canvas",
+        isFullscreen && "bg-black/40"
+      )}>
+        <Container
+          variant="modal"
+          headerTitle="Query Builder"
+          headerActions={headerActions}
+          className={cn(
+            "flex flex-col transition-all duration-200",
+            isFullscreen
+              ? "w-screen h-screen rounded-none"
+              : "w-[1024px] max-w-[calc(100vw-2rem)] h-[768px] max-h-[calc(100vh-2rem)] rounded-lyra-lg"
+          )}
+        >
+          {/* Scrollable body */}
+          <div className="flex-1 overflow-y-auto min-h-0 px-5 py-4">
+            <div className="flex flex-col gap-4">
+              {Array.from({ length: 10 }, (_, i) => (
+                <div key={i} className="p-3 rounded-lyra-md border border-lyra-border-subtle bg-lyra-bg-surface-canvas">
+                  <p className="lyra-body-md text-lyra-fg-default">Row {i + 1} — scrollable content area</p>
+                  <div className="flex gap-3 mt-2">
+                    <Input placeholder="Condition..." className="flex-1" />
+                    <Select options={[
+                      { value: "eq", label: "Equals" },
+                      { value: "ne", label: "Not Equals" },
+                    ]} className="w-40" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Fixed footer */}
+          <div className="flex-shrink-0 flex justify-end gap-2 px-5 py-4 border-t border-lyra-border-subtle">
+            <Button variant="outline">Save Search</Button>
+            <div className="flex-1" />
+            <Button variant="outline">Cancel</Button>
+            <Button>Apply</Button>
+          </div>
+        </Container>
+      </div>
+    );
+  },
 };
 
 /* ══════════════════════════════════
