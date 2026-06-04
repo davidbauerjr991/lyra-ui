@@ -52,11 +52,11 @@ export const MenuPopover: Story = {
   name: "Menu Popover",
   render: () => {
     const items: MenuEntry[] = [
-      { id: "duplicate", label: "Duplicate",        icon: Copy },
-      { id: "open",      label: "Open in new tab",  icon: ExternalLink },
-      { id: "settings",  label: "Settings",         icon: Settings },
+      { id: "duplicate", label: "Duplicate",        icon: <Copy        className="h-4 w-4" strokeWidth={1.5} /> },
+      { id: "open",      label: "Open in new tab",  icon: <ExternalLink className="h-4 w-4" strokeWidth={1.5} /> },
+      { id: "settings",  label: "Settings",         icon: <Settings    className="h-4 w-4" strokeWidth={1.5} /> },
       "separator",
-      { id: "delete",    label: "Delete",            icon: Trash2, variant: "destructive" },
+      { id: "delete",    label: "Delete",            icon: <Trash2      className="h-4 w-4" strokeWidth={1.5} />, destructive: true },
     ];
     return (
       <Popover

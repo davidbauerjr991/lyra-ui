@@ -278,7 +278,7 @@ export const Fullscreen: Story = {
           </div>
 
           {/* Fixed footer */}
-          <div className="flex-shrink-0 flex justify-end gap-2 px-5 py-4 border-t border-lyra-border-subtle">
+          <div className="flex-shrink-0 flex justify-end gap-2 px-5 py-4">
             <Button variant="outline">Save Search</Button>
             <div className="flex-1" />
             <Button variant="outline">Cancel</Button>
@@ -321,7 +321,7 @@ export const Overflow: Story = {
       </div>
 
       {/* Fixed footer */}
-      <div className="flex-shrink-0 flex justify-end gap-2 px-5 py-4 border-t border-lyra-border-subtle">
+      <div className="flex-shrink-0 flex justify-end gap-2 px-5 py-4">
         <Button variant="outline">Save Search</Button>
         <div className="flex-1" />
         <Button variant="outline">Cancel</Button>

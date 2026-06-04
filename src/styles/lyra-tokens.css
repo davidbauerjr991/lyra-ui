@@ -28,7 +28,7 @@
   --lyra-color-bg-conversation-ai: #f3f5f6;
   --lyra-color-bg-conversation-agent: #eef4fe;
   --lyra-color-bg-conversation-customer: #eefaf0;
-  --lyra-color-bg-conversation-user: #eef4fe;
+  --lyra-color-bg-conversation-user: #E5EEFF;
 
   /* ── Foreground / Text ── */
   --lyra-color-fg-default: rgba(0, 0, 0, 0.80);

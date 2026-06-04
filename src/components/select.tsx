@@ -104,7 +104,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
       onValuesChange,
       onOpenChange,
       dropdownAlign = "right",
-      portalDropdown = false,
+      portalDropdown = true,
       className,
     },
     ref

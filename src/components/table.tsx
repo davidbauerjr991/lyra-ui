@@ -510,7 +510,7 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
         maxHeight={`calc(100vh - 120px)`}
         content={advancedSearchContent}
         footer={
-          <div className="flex items-center justify-end gap-2 px-4 pb-4 pt-2 border-t border-lyra-border-subtle">
+          <div className="flex items-center justify-end gap-2 px-4 pb-4 pt-2">
             {/* Save Search */}
             {onSaveSearch && (
               <PopoverPrimitive.Root

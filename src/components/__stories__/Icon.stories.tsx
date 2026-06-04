@@ -22,7 +22,7 @@ import {
   Download,
 } from "lucide-react";
 import { Icon } from "../icon";
-import type { IconColor, IconSize } from "../icon";
+import type { IconColor, IconSize, IconBackground, IconShape } from "../icon";
 import { Input } from "../input";
 
 const meta = {
@@ -42,6 +42,14 @@ const meta = {
         "status-success", "status-warning", "status-critical", "status-info",
         "inherit",
       ] satisfies IconColor[],
+    },
+    background: {
+      control: "select",
+      options: ["none","primary","active","success","warning","critical","neutral","surface"] satisfies IconBackground[],
+    },
+    shape: {
+      control: "select",
+      options: ["none","rounded","circle"] satisfies IconShape[],
     },
   },
 } satisfies Meta<typeof Icon>;
@@ -196,6 +204,55 @@ export const Colors: Story = {
     </div>
   ),
 };
+
+/* ── Background variants ── */
+
+export const BackgroundVariants: Story = {
+  name: "Background variants",
+  render: () => (
+    <div className="flex flex-col gap-8 p-4">
+      {/* Rounded */}
+      <div>
+        <p className="lyra-label text-lyra-fg-secondary mb-3">Rounded</p>
+        <div className="flex flex-wrap gap-4">
+          {(["primary","active","success","warning","critical","neutral","surface"] as const).map((bg) => (
+            <div key={bg} className="flex flex-col items-center gap-2">
+              <Icon icon={Bell} size="md" background={bg} shape="rounded" decorative />
+              <span className="lyra-body-sm text-lyra-fg-secondary">{bg}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Circle */}
+      <div>
+        <p className="lyra-label text-lyra-fg-secondary mb-3">Circle</p>
+        <div className="flex flex-wrap gap-4">
+          {(["primary","active","success","warning","critical","neutral","surface"] as const).map((bg) => (
+            <div key={bg} className="flex flex-col items-center gap-2">
+              <Icon icon={Bell} size="md" background={bg} shape="circle" decorative />
+              <span className="lyra-body-sm text-lyra-fg-secondary">{bg}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Sizes */}
+      <div>
+        <p className="lyra-label text-lyra-fg-secondary mb-3">Sizes</p>
+        <div className="flex items-end gap-4">
+          {(["sm","md","lg"] as const).map((size) => (
+            <div key={size} className="flex flex-col items-center gap-2">
+              <Icon icon={Bell} size={size} background="active" shape="circle" decorative />
+              <span className="lyra-body-sm text-lyra-fg-secondary">{size}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  ),
+};
+
 
 export const CommonIcons: Story = {
   name: "Common Icons",

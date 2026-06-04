@@ -21,59 +21,87 @@ export type IconColor =
   | "status-info"
   | "inherit";
 
+export type IconBackground =
+  | "none"
+  | "primary"
+  | "active"
+  | "success"
+  | "warning"
+  | "critical"
+  | "neutral"
+  | "surface";
+
+export type IconShape = "none" | "rounded" | "circle";
+
 export interface IconProps {
-  /** Lucide icon component to render */
   icon: LucideIcon;
-  /** Visual size of the icon */
   size?: IconSize;
-  /** Token-mapped color */
   color?: IconColor;
-  /** Additional class names */
+  /** Background fill behind the icon */
+  background?: IconBackground;
+  /** Container shape when a background is set */
+  shape?: IconShape;
   className?: string;
-  /**
-   * Decorative icons are hidden from assistive technology.
-   * Use when the icon is purely visual and nearby text already
-   * conveys the meaning. Mutually exclusive with `label`.
-   */
   decorative?: boolean;
-  /**
-   * Accessible label for informative icons.
-   * When provided the icon is announced by screen readers.
-   * Mutually exclusive with `decorative`.
-   */
   label?: string;
-  /**
-   * When true, wraps the icon in a Tooltip using the `label` as
-   * the tooltip content. Requires `label` to be set.
-   */
   tooltip?: boolean;
 }
 
 /* ── Size map ── */
 
 const sizeClasses: Record<IconSize, string> = {
-  sm: "h-4 w-4",   // 16px
-  md: "h-5 w-5",   // 20px
-  lg: "h-6 w-6",   // 24px
+  sm: "h-4 w-4",
+  md: "h-5 w-5",
+  lg: "h-6 w-6",
 };
 
-/* ── Color map (Tailwind classes keyed to lyra tokens) ── */
+/* ── Container size (slightly bigger than icon to give breathing room) ── */
+
+const containerSizeClasses: Record<IconSize, string> = {
+  sm: "h-7 w-7",
+  md: "h-9 w-9",
+  lg: "h-11 w-11",
+};
+
+/* ── Color map ── */
 
 const colorClasses: Record<IconColor, string> = {
-  default:         "text-lyra-fg-default",
-  secondary:       "text-lyra-fg-secondary",
-  action:          "text-lyra-fg-action",
-  disabled:        "text-lyra-fg-disabled",
-  inverse:         "text-lyra-fg-inverse",
-  "on-primary":    "text-lyra-fg-on-primary",
-  "active-strong": "text-lyra-fg-active-strong",
-  "active-subtle": "text-lyra-fg-active-subtle",
+  default:          "text-lyra-fg-default",
+  secondary:        "text-lyra-fg-secondary",
+  action:           "text-lyra-fg-action",
+  disabled:         "text-lyra-fg-disabled",
+  inverse:          "text-lyra-fg-inverse",
+  "on-primary":     "text-lyra-fg-on-primary",
+  "active-strong":  "text-lyra-fg-active-strong",
+  "active-subtle":  "text-lyra-fg-active-subtle",
   "status-success": "text-lyra-status-success-strong",
   "status-warning": "text-lyra-status-warning-strong",
-  "status-critical": "text-lyra-status-critical-strong",
+  "status-critical":"text-lyra-status-critical-strong",
   "status-info":    "text-lyra-status-info-strong",
   inherit:          "text-current",
 };
+
+/* ── Background map ── */
+
+const backgroundClasses: Record<IconBackground, string> = {
+  none:     "",
+  primary:  "bg-lyra-bg-primary text-lyra-fg-on-primary",
+  active:   "bg-lyra-bg-active-subtle text-lyra-fg-active-strong",
+  success:  "bg-lyra-status-success-subtle text-lyra-status-success-strong",
+  warning:  "bg-lyra-status-warning-subtle text-lyra-status-warning-strong",
+  critical: "bg-lyra-status-critical-subtle text-lyra-status-critical-strong",
+  neutral:  "bg-lyra-bg-surface-container-subtle text-lyra-fg-secondary",
+  surface:  "bg-lyra-bg-surface-base border border-lyra-border-subtle text-lyra-fg-default",
+};
+
+/* ── Shape map ── */
+
+const shapeClasses: Record<IconShape, string> = {
+  none:    "",
+  rounded: "rounded-lyra-md",
+  circle:  "rounded-full",
+};
+
 
 /* ── Component ── */
 
@@ -83,6 +111,8 @@ const Icon = React.forwardRef<SVGSVGElement, IconProps>(
       icon: LucideIconComponent,
       size = "md",
       color = "inherit",
+      background = "none",
+      shape = "rounded",
       className,
       decorative = false,
       label,
@@ -96,14 +126,49 @@ const Icon = React.forwardRef<SVGSVGElement, IconProps>(
       ? { role: "img" as const, "aria-label": label }
       : { "aria-hidden": true as const, focusable: false };
 
+    // When a background is set, override the icon color via the background map
+    // (unless the user explicitly chose a color other than inherit)
+    const resolvedColorClass =
+      background !== "none" ? "" : colorClasses[color];
+
     const iconEl = (
       <LucideIconComponent
         ref={ref}
         strokeWidth={1.5}
-        className={cn(sizeClasses[size], colorClasses[color], className)}
+        className={cn(
+          sizeClasses[size],
+          resolvedColorClass,
+          background === "none" && className
+        )}
         {...svgProps}
       />
     );
+
+    // Wrap in a container div when background is requested
+    if (background !== "none") {
+      const wrapped = (
+        <div
+          className={cn(
+            "inline-flex items-center justify-center shrink-0",
+            containerSizeClasses[size],
+            backgroundClasses[background],
+            shapeClasses[shape],
+            className
+          )}
+        >
+          <LucideIconComponent
+            strokeWidth={1.5}
+            className={sizeClasses[size]}
+            {...svgProps}
+          />
+        </div>
+      );
+
+      if (tooltip && label) {
+        return <Tooltip content={label}>{wrapped}</Tooltip>;
+      }
+      return wrapped;
+    }
 
     if (tooltip && label) {
       return <Tooltip content={label}>{iconEl}</Tooltip>;

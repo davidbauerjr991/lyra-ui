@@ -171,7 +171,7 @@ const MenuItemRow: React.FC<MenuItemRowProps> = ({ item }) => {
         aria-haspopup={hasSubmenu ? "menu" : undefined}
         aria-expanded={hasSubmenu ? submenuOpen : undefined}
         className={cn(
-          "group flex w-full items-center gap-2.5 px-3 py-2.5 lyra-body-md transition-colors text-left relative rounded-lyra-sm",
+          "group/item flex w-full items-center gap-2.5 px-3 py-2.5 lyra-body-md transition-colors text-left relative rounded-lyra-sm",
           "focus:outline-none focus-visible:bg-lyra-state-hover",
           isDestructive
             ? "text-lyra-status-critical-strong hover:bg-lyra-status-critical-subtle active:bg-lyra-status-critical-medium"
@@ -179,15 +179,15 @@ const MenuItemRow: React.FC<MenuItemRowProps> = ({ item }) => {
           item.disabled && "opacity-40 cursor-not-allowed hover:bg-transparent active:bg-transparent"
         )}
       >
-        {/* Left accent bar — visible on hover/active */}
+        {/* Left accent bar — visible on hover/active of this button only */}
         <span
           aria-hidden="true"
           className={cn(
             "absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full opacity-0 transition-opacity",
             isDestructive
-              ? "bg-lyra-status-critical-strong group-hover:opacity-100 group-active:opacity-100"
-              : "bg-lyra-fg-default group-hover:opacity-100 group-active:opacity-100",
-            item.disabled && "group-hover:opacity-0 group-active:opacity-0"
+              ? "bg-lyra-status-critical-strong group-hover/item:opacity-100 group-active/item:opacity-100"
+              : "bg-lyra-fg-default group-hover/item:opacity-100 group-active/item:opacity-100",
+            item.disabled && "group-hover/item:opacity-0 group-active/item:opacity-0"
           )}
         />
 
