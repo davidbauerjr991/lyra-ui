@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { ChevronDown, X } from "lucide-react";
+import { ErrorIcon } from "./icons/error-icon";
 import { cn } from "../lib/utils";
 import { Label } from "./label";
 
@@ -201,7 +202,7 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
         ? "border-lyra-status-critical-strong hover:border-lyra-status-critical-strong focus-within:border-lyra-status-critical-strong focus-within:ring-2 focus-within:ring-lyra-status-critical-strong/20"
         : "border-lyra-border-strong hover:border-lyra-state-border-hover-neutral focus-within:border-lyra-border-active focus-within:ring-2 focus-within:ring-lyra-border-active/20",
       disabled && "bg-lyra-bg-disabled border-transparent",
-      readonly  && "bg-lyra-bg-surface-canvas"
+      readonly  && "bg-lyra-bg-surface-canvas pointer-events-none"
     );
 
     return (
@@ -327,7 +328,7 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
         {/* Error */}
         {error && (
           <p id={`${inputId}-error`} className="mt-1.5 lyra-body-sm text-lyra-status-critical-strong flex items-start gap-1">
-            <span aria-hidden="true">⚠</span>
+            <ErrorIcon className="h-4 w-4 shrink-0 mt-px" aria-hidden="true" />
             {error}
           </p>
         )}

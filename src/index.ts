@@ -124,9 +124,17 @@ export { Overlay, OverlayBackdrop } from "./components/overlay";
 export { StatusBadge } from "./components/status-badge";
 export { TimePicker, TimeRangePicker } from "./components/time-picker";
 export { ActionBar } from "./components/action-bar";
+export { TransferBox } from "./components/transfer-box";
+export type { TransferBoxOption } from "./components/transfer-box";
 export { Autocomplete } from "./components/autocomplete";
 export type { AutocompleteOption } from "./components/autocomplete";
 export { PhoneInput, PHONE_COUNTRIES } from "./components/phone-input";
+export { EmailInput } from "./components/email-input";
+export { Slider, SliderRange } from "./components/slider";
+export { ContainerHeader } from "./components/container-header";
+export { PasswordInput, ChangePassword, DEFAULT_REQUIREMENTS } from "./components/password-input";
+export type { PasswordInputProps, ChangePasswordProps, PasswordRequirement } from "./components/password-input";
+export type { ContainerHeaderProps } from "./components/container-header";
 export type { PhoneValue, PhoneCountry } from "./components/phone-input";
 
 /* ── Utilities ── */

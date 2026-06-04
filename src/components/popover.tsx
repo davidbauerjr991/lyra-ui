@@ -94,7 +94,7 @@ const Popover: React.FC<PopoverProps> = ({
           className
         )}
       >
-        {title && <PanelHeader title={title} />}
+        {title && <PanelHeader title={title} bordered={false} />}
         {/* Content scrolls; footer is flex-shrink-0 so it stays visible */}
         <div
           className="overflow-auto"

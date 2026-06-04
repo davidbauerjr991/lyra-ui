@@ -1,6 +1,6 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { PanelHeader } from "./panel-header";
+import { ContainerHeader } from "./container-header";
 import { cn } from "../lib/utils";
 
 /*
@@ -66,20 +66,41 @@ const containerVariants = cva("rounded-lyra-lg", {
 interface ContainerProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof containerVariants> {
+  /** Header title — renders a ContainerHeader when provided */
   headerTitle?: string;
+  /** Icon shown to the left of the title */
   headerIcon?: React.ReactNode;
+  /** Actions rendered on the right of the header */
   headerActions?: React.ReactNode;
+  /** Badge/tag shown inline immediately after the title */
+  headerTitleBadge?: React.ReactNode;
+  /** Subtitle shown below the title in body-sm secondary */
+  headerSubhead?: string;
+  /** Show a dividing border below the header (default: false) */
+  headerBordered?: boolean;
 }
 
 const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
-  ({ className, variant, headerTitle, headerIcon, headerActions, children, ...props }, ref) => (
+  ({
+    className, variant,
+    headerTitle, headerIcon, headerActions,
+    headerTitleBadge, headerSubhead, headerBordered = false,
+    children, ...props
+  }, ref) => (
     <div
       ref={ref}
       className={cn(containerVariants({ variant }), className)}
       {...props}
     >
       {headerTitle && (
-        <PanelHeader title={headerTitle} icon={headerIcon} actions={headerActions} />
+        <ContainerHeader
+          title={headerTitle}
+          icon={headerIcon}
+          actions={headerActions}
+          titleBadge={headerTitleBadge}
+          subhead={headerSubhead}
+          bordered={headerBordered}
+        />
       )}
       {children}
     </div>

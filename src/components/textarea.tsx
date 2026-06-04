@@ -115,7 +115,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
             error
               ? "border-lyra-status-critical-strong bg-lyra-status-critical-subtle text-lyra-fg-default focus:ring-2 focus:ring-lyra-status-critical-strong/20"
               : readonly
-              ? "border-lyra-border-strong bg-lyra-bg-surface-canvas text-lyra-fg-default cursor-default resize-none"
+              ? "border-lyra-border-strong bg-lyra-bg-surface-canvas text-lyra-fg-default cursor-default resize-none pointer-events-none"
               : disabled
               ? "border-transparent bg-lyra-bg-disabled text-lyra-fg-disabled cursor-not-allowed resize-none"
               : "border-lyra-border-strong bg-lyra-bg-field text-lyra-fg-default hover:border-lyra-state-border-hover-neutral focus:border-lyra-border-active focus:ring-2 focus:ring-lyra-border-active/20"

@@ -189,6 +189,7 @@ const Panel = React.forwardRef<HTMLDivElement, PanelProps>(
             icon={headerIcon}
             actions={<>{headerActions}{pinButton}</>}
             onClose={variant === "interior" ? onClose : undefined}
+            bordered={false}
           />
         )}
         <PanelContent>{children}</PanelContent>

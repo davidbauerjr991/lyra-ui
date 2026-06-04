@@ -85,10 +85,10 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
               onMouseEnter={!panelPinned ? onPanelHoverStart : undefined}
               onMouseLeave={!panelPinned ? onPanelHoverEnd : undefined}
             >
-              <Tooltip content="Toggle panel" placement="bottom" asLabel>
+              <Tooltip content="Toggle left panel" placement="right" asLabel>
                 <button
                   onClick={panelPinned ? onPanelToggle : undefined}
-                  aria-label="Toggle panel"
+                  aria-label="Toggle left panel"
                   className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary transition-colors hover:bg-lyra-state-hover active:bg-lyra-state-pressed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
                 >
                   <PanelLeft className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />
@@ -134,7 +134,7 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
               onMouseEnter={onInnerPanelHoverStart}
               onMouseLeave={onInnerPanelHoverEnd}
             >
-              <Tooltip content="Toggle panel" placement="bottom" asLabel>
+              <Tooltip content="Toggle right panel" placement="left" asLabel>
                 <button
                   onClick={onInnerPanelToggle}
                   aria-label="Toggle right panel"

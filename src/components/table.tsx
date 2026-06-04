@@ -628,9 +628,11 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
     /* Right panel toggle only — left appears before search (see below) */
     const panelToggleButtons = (toolbarPanelToggle === "right" || toolbarPanelToggle === "both") ? (
       <div className="flex items-center gap-2 ml-2 pl-2 border-l border-lyra-border-subtle">
-        <Button variant="icon" size="icon" title="Toggle right panel" onClick={onRightPanelToggle}>
-          <PanelRight className="h-4 w-4" strokeWidth={1.5} />
-        </Button>
+        <Tooltip content="Toggle right panel" placement="left" asLabel>
+          <Button variant="icon" size="icon" onClick={onRightPanelToggle} aria-label="Toggle right panel">
+            <PanelRight className="h-4 w-4" strokeWidth={1.5} />
+          </Button>
+        </Tooltip>
       </div>
     ) : null;
 

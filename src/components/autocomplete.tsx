@@ -144,7 +144,7 @@ const Autocomplete = React.forwardRef<HTMLDivElement, AutocompleteProps>(
       "border-lyra-border-strong hover:border-lyra-state-border-hover-neutral",
       open && "border-lyra-border-active ring-2 ring-lyra-border-active/20",
       disabled && "bg-lyra-bg-disabled border-transparent cursor-not-allowed",
-      readonly && "bg-lyra-bg-surface-canvas cursor-default"
+      readonly && "bg-lyra-bg-surface-canvas cursor-default pointer-events-none"
     );
 
     return (

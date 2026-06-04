@@ -322,6 +322,8 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                 : "border-lyra-border-strong bg-lyra-bg-field text-lyra-fg-default hover:border-lyra-state-border-hover-neutral focus:border-lyra-border-active focus:ring-2 focus:ring-lyra-border-active/20",
               disabled &&
                 "bg-lyra-bg-disabled border-transparent text-lyra-fg-disabled cursor-not-allowed",
+              readonly &&
+                "bg-lyra-bg-surface-canvas cursor-default pointer-events-none",
               open && !error && "border-lyra-border-active ring-2 ring-lyra-border-active/20"
             )}
           >

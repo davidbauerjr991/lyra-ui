@@ -198,7 +198,7 @@ const DateTimePicker = React.forwardRef<HTMLDivElement, DateTimePickerProps>(
       "border-lyra-border-strong hover:border-lyra-state-border-hover-neutral",
       "focus-within:border-lyra-border-active focus-within:ring-2 focus-within:ring-lyra-border-active/20",
       disabled && "bg-lyra-bg-disabled border-transparent cursor-not-allowed",
-      readonly && "bg-lyra-bg-surface-canvas cursor-default"
+      readonly && "bg-lyra-bg-surface-canvas cursor-default pointer-events-none"
     );
 
     return (
@@ -357,7 +357,7 @@ const DateRangeTimePicker = React.forwardRef<HTMLDivElement, DateRangeTimePicker
       "border-lyra-border-strong hover:border-lyra-state-border-hover-neutral",
       "focus-within:border-lyra-border-active focus-within:ring-2 focus-within:ring-lyra-border-active/20",
       disabled && "bg-lyra-bg-disabled border-transparent cursor-not-allowed",
-      readonly && "bg-lyra-bg-surface-canvas cursor-default"
+      readonly && "bg-lyra-bg-surface-canvas cursor-default pointer-events-none"
     );
 
     return (

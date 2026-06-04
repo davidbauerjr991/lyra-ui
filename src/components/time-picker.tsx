@@ -85,7 +85,7 @@ const inputShell = (disabled?: boolean, readonly?: boolean) =>
     "border-lyra-border-strong hover:border-lyra-state-border-hover-neutral",
     "focus-within:border-lyra-border-active focus-within:ring-2 focus-within:ring-lyra-border-active/20",
     disabled  && "bg-lyra-bg-disabled border-transparent cursor-not-allowed",
-    readonly  && "bg-lyra-bg-surface-canvas cursor-default"
+    readonly  && "bg-lyra-bg-surface-canvas cursor-default pointer-events-none"
   );
 
 /* ── Popover panel ── */

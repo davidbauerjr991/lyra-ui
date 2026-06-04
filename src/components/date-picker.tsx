@@ -51,7 +51,8 @@ const inputClass = cn(
   "border-lyra-border-strong hover:border-lyra-state-border-hover-neutral",
   "focus-within:border-lyra-border-active focus-within:ring-2 focus-within:ring-lyra-border-active/20",
   "data-[disabled=true]:bg-lyra-bg-disabled data-[disabled=true]:border-transparent",
-  "data-[disabled=true]:text-lyra-fg-disabled data-[disabled=true]:cursor-not-allowed"
+  "data-[disabled=true]:text-lyra-fg-disabled data-[disabled=true]:cursor-not-allowed",
+  "data-[readonly=true]:bg-lyra-bg-surface-canvas data-[readonly=true]:cursor-default data-[readonly=true]:pointer-events-none"
 );
 
 const textInputClass = cn(
@@ -141,7 +142,7 @@ const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
         )}
         <PopoverPrimitive.Root open={!disabled && !readonly && open} onOpenChange={setOpen}>
           <PopoverPrimitive.Anchor asChild>
-            <div data-disabled={disabled || undefined}
+            <div data-disabled={disabled || undefined} data-readonly={readonly || undefined}
               className={inputClass} onClick={() => !disabled && !readonly && setOpen(true)}>
               <input ref={inputRef} id={inputId} type="text" value={text}
                 onChange={handleTextChange} placeholder={placeholder}
@@ -225,7 +226,7 @@ const DateRangePicker = React.forwardRef<HTMLDivElement, DateRangePickerProps>(
         )}
         <PopoverPrimitive.Root open={!disabled && !readonly && open} onOpenChange={setOpen}>
           <PopoverPrimitive.Anchor asChild>
-            <div data-disabled={disabled || undefined}
+            <div data-disabled={disabled || undefined} data-readonly={readonly || undefined}
               className={inputClass} onClick={() => !disabled && !readonly && setOpen(v => !v)}>
               <input ref={inputRef} id={inputId} type="text" value={text}
                 onChange={handleTextChange} placeholder={placeholder}

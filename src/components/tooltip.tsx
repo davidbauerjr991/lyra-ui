@@ -16,16 +16,11 @@ interface TooltipProps {
   asLabel?: boolean;
 }
 
-const placementToSide: Record<TooltipPlacement, "top" | "bottom" | "left" | "right"> = {
-  top: "top", bottom: "bottom", left: "left", right: "right",
-};
-
-/* ── Arrow — CSS rotated square inside Content so it never moves independently ── */
+/* ── Arrow — CSS rotated square, seamless with the tooltip container ── */
 const TooltipArrow = () => (
   <span
     aria-hidden="true"
     className={cn(
-      // Base: rotated square, same bg + border color as the container
       "absolute w-[10px] h-[10px] rotate-45",
       "bg-lyra-bg-surface-overlay",
       "border-lyra-border-subtle",
@@ -74,7 +69,6 @@ const Tooltip: React.FC<TooltipProps> = ({
   }
 
   // Guard against tooltip firing on mount (e.g. when a modal opens under the cursor).
-  // Force closed for 400ms after mount, then hand control back to Radix.
   const [allowOpen, setAllowOpen] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setAllowOpen(true), 400);
@@ -89,8 +83,10 @@ const Tooltip: React.FC<TooltipProps> = ({
         </TooltipPrimitive.Trigger>
         <TooltipPrimitive.Portal>
           <TooltipPrimitive.Content
-            side={placementToSide[placement]}
+            side={placement}
             sideOffset={8}
+            avoidCollisions
+            collisionPadding={8}
             className={cn(
               "relative group z-50",
               "rounded-lyra-md border border-lyra-border-subtle bg-lyra-bg-surface-overlay px-3 py-2 shadow-md",
