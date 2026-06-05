@@ -139,6 +139,16 @@ export { AiPanel, AiIndicatorSmall, AiIndicatorLarge } from "./components/ai-pan
 export type { AiPanelProps, AiPanelSuggestion } from "./components/ai-panel";
 export type { AIProcessStep, AIProcessStepStatus } from "./components/ai-process";
 export { ConversationMessage, ConversationDateStamp } from "./components/conversation-message";
+export { Draggable } from "./components/draggable";
+export type { DraggableProps } from "./components/draggable";
+export { ListItem } from "./components/list-item";
+export type { ListItemProps } from "./components/list-item";
+export { AgentNotifications } from "./components/agent-notifications";
+export type { AgentNotification, NotificationType, AgentNotificationsProps } from "./components/agent-notifications";
+export { AgentProfile } from "./components/agent-profile";
+export type { AgentStatus, AgentProfileProps } from "./components/agent-profile";
+export { ConnectedAppsPanel } from "./components/connected-apps";
+export type { ConnectedApp, AppConnectionStatus, ConnectedAppsPanelProps } from "./components/connected-apps";
 export type { ConversationVariant, ConversationMessageProps, ConversationAlertProps } from "./components/conversation-message";
 export { PasswordInput, ChangePassword, DEFAULT_REQUIREMENTS } from "./components/password-input";
 export type { PasswordInputProps, ChangePasswordProps, PasswordRequirement } from "./components/password-input";

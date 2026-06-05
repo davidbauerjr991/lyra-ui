@@ -21,8 +21,12 @@ interface MenuItemDef {
   icon?: React.ReactNode;
   /** Optional keyboard shortcut label displayed on the right */
   shortcut?: string;
+  /** Optional custom element rendered on the right (overrides shortcut) */
+  rightElement?: React.ReactNode;
   /** Optional secondary/description text below the label */
   description?: string;
+  /** Highlight as the currently selected/active item */
+  selected?: boolean;
 }
 
 type MenuEntry = MenuItemDef | "separator";
@@ -176,6 +180,7 @@ const MenuItemRow: React.FC<MenuItemRowProps> = ({ item }) => {
           isDestructive
             ? "text-lyra-status-critical-strong hover:bg-lyra-status-critical-subtle active:bg-lyra-status-critical-medium"
             : "text-lyra-fg-default hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
+          item.selected && !isDestructive && "bg-lyra-bg-active-subtle text-lyra-fg-active-strong",
           item.disabled && "opacity-40 cursor-not-allowed hover:bg-transparent active:bg-transparent"
         )}
       >
@@ -213,12 +218,14 @@ const MenuItemRow: React.FC<MenuItemRowProps> = ({ item }) => {
           )}
         </span>
 
-        {/* Shortcut */}
-        {item.shortcut && (
-          <span className="lyra-body-sm text-lyra-fg-secondary flex-shrink-0 ml-4">
-            {item.shortcut}
-          </span>
-        )}
+        {/* Right element (custom) or shortcut */}
+        {item.rightElement
+          ? <span className="flex-shrink-0 ml-2">{item.rightElement}</span>
+          : item.shortcut && (
+            <span className="lyra-body-sm text-lyra-fg-secondary flex-shrink-0 ml-4">
+              {item.shortcut}
+            </span>
+          )}
 
         {/* Submenu chevron */}
         {hasSubmenu && (
