@@ -17,6 +17,14 @@ export interface DraggableProps {
   minHeight?: number;
   /** Called when variant changes via the dock toggle button */
   onVariantChange?: (variant: DraggableVariant) => void;
+  /** Hide the built-in grip/dock header controls (use when the consumer renders them inline) */
+  showHeaderControls?: boolean;
+  /** Prevent the variant from being toggled via the header button */
+  lockVariant?: boolean;
+  /** Called when width changes via resize */
+  onWidthChange?: (width: number) => void;
+  /** Called when resize drag starts/ends */
+  onResizeStateChange?: (resizing: boolean) => void;
   className?: string;
 }
 
@@ -31,6 +39,10 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
     minWidth              = 280,
     minHeight             = 200,
     onVariantChange,
+    showHeaderControls = true,
+    lockVariant = false,
+    onWidthChange,
+    onResizeStateChange,
     className,
   }, ref) => {
     const [variant, setVariant] = React.useState<DraggableVariant>(variantProp);
@@ -42,9 +54,10 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
     const resizeStart = React.useRef<{ mx: number; my: number; w: number; h: number } | null>(null);
 
     const toggleVariant = () => {
+      if (lockVariant) return;
       const next: DraggableVariant = variant === "float" ? "docked" : "float";
       setVariant(next);
-      setOffset({ x: 0, y: 0 }); // reset position when toggling
+      setOffset({ x: 0, y: 0 });
       onVariantChange?.(next);
     };
 
@@ -78,15 +91,18 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
       resizeStart.current = { mx: e.clientX, my: e.clientY, w: width, h: height };
       document.body.style.cursor     = "se-resize";
       document.body.style.userSelect = "none";
+      onResizeStateChange?.(true);
       const onMove = (ev: MouseEvent) => {
         if (!resizeStart.current) return;
-        setWidth( Math.max(minWidth,  resizeStart.current.w + ev.clientX - resizeStart.current.mx));
+        const newW = Math.max(minWidth, resizeStart.current.w + ev.clientX - resizeStart.current.mx);
+        setWidth(newW); onWidthChange?.(newW);
         setHeight(Math.max(minHeight, resizeStart.current.h + ev.clientY - resizeStart.current.my));
       };
       const onUp = () => {
         resizeStart.current = null;
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
+        onResizeStateChange?.(false);
         document.removeEventListener("mousemove", onMove);
         document.removeEventListener("mouseup", onUp);
       };
@@ -100,14 +116,17 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
       resizeStart.current = { mx: e.clientX, my: e.clientY, w: width, h: height };
       document.body.style.cursor     = "ew-resize";
       document.body.style.userSelect = "none";
+      onResizeStateChange?.(true);
       const onMove = (ev: MouseEvent) => {
         if (!resizeStart.current) return;
-        setWidth(Math.max(minWidth, resizeStart.current.w + resizeStart.current.mx - ev.clientX));
+        const newW = Math.max(minWidth, resizeStart.current.w + resizeStart.current.mx - ev.clientX);
+        setWidth(newW); onWidthChange?.(newW);
       };
       const onUp = () => {
         resizeStart.current = null;
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
+        onResizeStateChange?.(false);
         document.removeEventListener("mousemove", onMove);
         document.removeEventListener("mouseup", onUp);
       };
@@ -116,9 +135,9 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
     };
 
     /* ── Grip overlay — float only, left-aligned, doesn't block right-side header actions ── */
-    /* h-11 = 44px matches standard lyra header (py-3 + body-md line-height) */
+    /* h-16 = 64px matches ContainerHeader (py-5 + heading-md line-height) */
     const HeaderControls = (
-      <div className="absolute inset-x-0 top-0 h-11 z-20 flex items-center justify-between px-2 pointer-events-none">
+      <div className="absolute inset-x-0 top-0 h-16 z-20 flex items-center justify-between px-2 pointer-events-none">
         {/* Grip — float only */}
         {variant === "float" ? (
           <div
@@ -154,7 +173,7 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
           style={{ width, minWidth }}
           className={cn("relative flex flex-col h-full overflow-hidden", className)}
         >
-          {/* Left edge resize handle */}
+          {/* Left edge resize handle — expands left, right side stays fixed */}
           <div
             onMouseDown={onLeftEdgeResizeDown}
             className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize z-10 group/edge"
@@ -163,9 +182,8 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
             <div className="absolute inset-y-0 left-0 w-px bg-lyra-border-subtle group-hover/edge:bg-lyra-border-active transition-colors" />
           </div>
 
-          {HeaderControls}
-          {/* pr-8 reserves space for the dock/undock button on the right */}
-          <div className="flex flex-col flex-1 min-h-0 [&>*:first-child]:pr-8">{children}</div>
+          {showHeaderControls && HeaderControls}
+          <div className="flex flex-col flex-1 min-h-0">{children}</div>
         </div>
       );
     }
@@ -177,9 +195,9 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
         style={{ transform: `translate(${offset.x}px, ${offset.y}px)`, width, height }}
         className={cn("relative flex flex-col overflow-hidden", className)}
       >
-        {HeaderControls}
-        {/* pl-7 reserves space for the grip; pr-8 reserves space for the dock button */}
-        <div className="flex flex-col flex-1 min-h-0 [&>*:first-child]:pl-7 [&>*:first-child]:pr-8">{children}</div>
+        {showHeaderControls && HeaderControls}
+        {/* pl-7 gives the first child's header room for the grip icon on the left */}
+        <div className="flex flex-col flex-1 min-h-0 [&>*:first-child]:pl-7">{children}</div>
 
         {/* Bottom-right corner resize handle */}
         <div

@@ -1,8 +1,10 @@
 import * as React from "react";
-import { MessageCirclePlus, X, History, Home } from "lucide-react";
+import { MessageCirclePlus, X, History, Home, GripVertical, PanelRight, Move } from "lucide-react";
+import { ContainerHeader } from "./container-header";
 import { cn } from "../lib/utils";
 import { AIInput, type AIInputProps } from "./ai-input";
 import { Tooltip } from "./tooltip";
+import { Draggable, type DraggableVariant } from "./draggable";
 
 /* ── AI Indicator SVG ── */
 
@@ -93,10 +95,16 @@ export interface AiPanelProps {
   inputProps?: Partial<AIInputProps>;
   /** Hide the AIInput footer (e.g. for history view) */
   showInput?: boolean;
-  /** Called when the panel is resized via drag */
-  onWidthChange?: (width: number) => void;
-  /** Called when drag starts/ends — use to disable wrapper transition */
-  onDragStateChange?: (dragging: boolean) => void;
+  /** Enable Draggable wrapper — makes the panel draggable and dockable */
+  draggable?: boolean;
+  /** Initial Draggable variant when draggable=true (default: "docked") */
+  draggableVariant?: DraggableVariant;
+  /** Initial width for the Draggable wrapper (default: 420) */
+  defaultDraggableWidth?: number;
+  /** Initial height for the Draggable wrapper in float mode (default: 480) */
+  defaultDraggableHeight?: number;
+  /** Called when variant changes */
+  onVariantChange?: (variant: DraggableVariant) => void;
   /** Start in history view (default: false) */
   defaultView?: "home" | "history";
   className?: string;
@@ -116,46 +124,34 @@ const AiPanel: React.FC<AiPanelProps> = ({
   children,
   inputProps,
   showInput = true,
-  onWidthChange,
-  onDragStateChange,
+  draggable: isDraggable,
+  draggableVariant: draggableVariantProp = "docked",
+  defaultDraggableWidth = 420,
+  defaultDraggableHeight = 480,
+  onVariantChange,
   defaultView = "home",
   className,
 }) => {
   const [showHistory, setShowHistory] = React.useState(defaultView === "history");
-  const isEmpty = !children && !showHistory;
+  const [draggableVariant, setDraggableVariant] = React.useState<DraggableVariant>(draggableVariantProp);
+  const dragHandleRef = React.useRef<HTMLDivElement>(null);
+  const dragStartRef  = React.useRef<{ mx: number; my: number } | null>(null);
+  const [dragOffset, setDragOffset] = React.useState({ x: 0, y: 0 });
 
-  // ── Resize ──
-  const MIN_WIDTH = 400;
-  const [width, setWidth] = React.useState<number | undefined>(undefined);
-  // Lock width on first render so content changes don't resize the panel
-  const dragging = React.useRef(false);
-  const startX = React.useRef(0);
-  const startWidth = React.useRef(0);
-  const panelRef = React.useRef<HTMLDivElement>(null);
-
-  const onDragStart = (e: React.MouseEvent) => {
+  const handleGripMouseDown = (e: React.MouseEvent) => {
+    if (draggableVariant !== "float") return;
     e.preventDefault();
-    dragging.current = true;
-    startX.current = e.clientX;
-    startWidth.current = panelRef.current?.offsetWidth ?? MIN_WIDTH;
-    // Max width = viewport width minus a minimum 200px left margin for content
-    const maxWidth = window.innerWidth - 200;
-    document.body.style.cursor = "ew-resize";
+    dragStartRef.current = { mx: e.clientX, my: e.clientY };
+    document.body.style.cursor = "grabbing";
     document.body.style.userSelect = "none";
-    onDragStateChange?.(true);
-
     const onMove = (ev: MouseEvent) => {
-      if (!dragging.current) return;
-      const delta = ev.clientX - startX.current; // drag right = smaller, drag left = wider
-      const newWidth = Math.min(maxWidth, Math.max(MIN_WIDTH, startWidth.current - delta));
-      setWidth(newWidth);
-      onWidthChange?.(newWidth);
+      if (!dragStartRef.current) return;
+      setDragOffset({ x: ev.clientX - dragStartRef.current.mx, y: ev.clientY - dragStartRef.current.my });
     };
     const onUp = () => {
-      dragging.current = false;
+      dragStartRef.current = null;
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
-      onDragStateChange?.(false);
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
     };
@@ -163,60 +159,63 @@ const AiPanel: React.FC<AiPanelProps> = ({
     document.addEventListener("mouseup", onUp);
   };
 
-  return (
+  const handleVariantToggle = () => {
+    const next: DraggableVariant = draggableVariant === "float" ? "docked" : "float";
+    setDraggableVariant(next);
+    onVariantChange?.(next);
+  };
+  const isEmpty = !children && !showHistory;
+
+  // ── Resize ──
+
+  const panelContent = (
     <div
-      ref={panelRef}
-      style={{ width: width ?? undefined, minWidth: MIN_WIDTH, flexShrink: 0 }}
       className={cn(
         "relative flex flex-col h-full bg-lyra-bg-surface-base rounded-lyra-lg border border-lyra-border-subtle overflow-hidden",
+        isDraggable ? "w-full" : "",
         className
       )}
     >
-      {/* ── Drag handle — left edge ── */}
-      <div
-        onMouseDown={onDragStart}
-        className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize z-10 group/drag"
-        title="Drag to resize"
-      >
-        <div className="absolute inset-y-0 left-0 w-px bg-lyra-border-subtle group-hover/drag:bg-lyra-border-active transition-colors" />
-      </div>
-      {/* ── Header ── */}
-      <div className="flex items-center gap-2 px-4 py-3 shrink-0">
-        <AiIndicatorSmall />
-        <span className="lyra-heading-md text-lyra-fg-default flex-1">{title}</span>
-        <Tooltip content="New conversation" placement="bottom">
-          <button
-            type="button"
-            onClick={onNewConversation}
-            aria-label="New conversation"
-            className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
-          >
-            <MessageCirclePlus className="h-4 w-4" strokeWidth={1.5} />
-          </button>
-        </Tooltip>
-        <Tooltip content={showHistory ? "Back to home" : "History"} placement="bottom">
-          <button
-            type="button"
-            onClick={() => setShowHistory((v) => !v)}
-            aria-label={showHistory ? "Back to home" : "History"}
-            className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
-          >
-            {showHistory
-              ? <Home className="h-4 w-4" strokeWidth={1.5} />
-              : <History className="h-4 w-4" strokeWidth={1.5} />}
-          </button>
-        </Tooltip>
-        <Tooltip content="Close" placement="bottom">
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
-          >
-            <X className="h-4 w-4" strokeWidth={1.5} />
-          </button>
-        </Tooltip>
-      </div>
+      {/* ── Header — uses ContainerHeader to match interior panels ── */}
+      <ContainerHeader
+        title={title}
+        icon={<AiIndicatorSmall />}
+        bordered={false}
+        actions={
+          <>
+            {isDraggable && draggableVariant === "float" && (
+              <div
+                ref={dragHandleRef}
+                onMouseDown={handleGripMouseDown}
+                className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover cursor-grab active:cursor-grabbing transition-colors shrink-0"
+              >
+                <GripVertical className="h-4 w-4" strokeWidth={1.5} />
+              </div>
+            )}
+            <Tooltip content="New conversation" placement="bottom">
+              <button type="button" onClick={onNewConversation} aria-label="New conversation"
+                className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus">
+                <MessageCirclePlus className="h-4 w-4" strokeWidth={1.5} />
+              </button>
+            </Tooltip>
+            <Tooltip content={showHistory ? "Back to home" : "History"} placement="bottom">
+              <button type="button" onClick={() => setShowHistory((v) => !v)} aria-label={showHistory ? "Back to home" : "History"}
+                className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus">
+                {showHistory ? <Home className="h-4 w-4" strokeWidth={1.5} /> : <History className="h-4 w-4" strokeWidth={1.5} />}
+              </button>
+            </Tooltip>
+            {isDraggable && (
+              <Tooltip content={draggableVariant === "float" ? "Dock to side" : "Undock"} placement="bottom">
+                <button type="button" onClick={handleVariantToggle} aria-label={draggableVariant === "float" ? "Dock to side" : "Undock"}
+                  className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus">
+                  {draggableVariant === "float" ? <PanelRight className="h-4 w-4" strokeWidth={1.5} /> : <Move className="h-4 w-4" strokeWidth={1.5} />}
+                </button>
+              </Tooltip>
+            )}
+          </>
+        }
+        onClose={onClose}
+      />
 
       {/* ── Body ── */}
       <div className="flex-1 overflow-y-auto min-h-0 px-4">
@@ -262,6 +261,27 @@ const AiPanel: React.FC<AiPanelProps> = ({
       )}
     </div>
   );
+
+  if (isDraggable) {
+    return (
+      <Draggable
+        variant={draggableVariant}
+        defaultWidth={defaultDraggableWidth}
+        defaultHeight={defaultDraggableHeight}
+        minWidth={280}
+        minHeight={300}
+        onVariantChange={(v) => { setDraggableVariant(v); onVariantChange?.(v); }}
+        onWidthChange={onWidthChange}
+        onResizeStateChange={onDragStateChange}
+        showHeaderControls={false}
+        className="h-full"
+      >
+        {panelContent}
+      </Draggable>
+    );
+  }
+
+  return panelContent;
 };
 
 AiPanel.displayName = "AiPanel";
