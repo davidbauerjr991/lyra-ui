@@ -6,7 +6,8 @@ import type { DateRangeTimeValue } from "../date-time-picker";
 const meta: Meta<typeof DateTimePicker> = {
   title: "Atoms/DateTimePicker",
   component: DateTimePicker,
-  parameters: { layout: "padded" },
+  tags: ["autodocs"],
+  parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
 };
 
 export default meta;

@@ -2,7 +2,7 @@
 export { Button, buttonVariants } from "./components/button";
 export { TagsInput } from "./components/tags-input";
 export type { TagsInputProps } from "./components/tags-input";
-export { Tag } from "./components/tag";
+export { Tag, tagVariants } from "./components/tag";
 export type { TagProps, TagVariant, TagShape } from "./components/tag";
 export { Calendar } from "./components/calendar";
 export type { CalendarProps, CalendarMode, CalendarSingleProps, CalendarRangeProps, CalendarWeekProps, DateRange } from "./components/calendar";
@@ -17,6 +17,7 @@ export type { AccordionProps, AccordionItem } from "./components/accordion";
 export { ToggleGroup } from "./components/toggle-group";
 export type { ToggleGroupProps, ToggleGroupItem, ToggleGroupType } from "./components/toggle-group";
 export { Checkbox } from "./components/checkbox";
+export type { CheckboxProps } from "./components/checkbox";
 export { CheckboxGroup } from "./components/checkbox-group";
 export type { CheckboxGroupProps, CheckboxGroupOption } from "./components/checkbox-group";
 export { Switch } from "./components/switch";
@@ -40,27 +41,36 @@ export {
 } from "./components/table";
 export type { SortDirection, ColumnDragHandlers, TableToolbarProps, ToolbarFilterDef, ToolbarActionDef, TableFooterProps, ColumnToggleItem, ColumnToggleProps, TableGroupRowProps, GroupedData, UseTableGroupingReturn, UseAutoFitRowsReturn } from "./components/table";
 export { TabList, Tab, TabPanel } from "./components/tabs";
+export type { TabListProps, TabProps, TabPanelProps } from "./components/tabs";
 export { AppName } from "./components/app-name";
+export type { AppNameProps } from "./components/app-name";
 export { AppHeader } from "./components/app-header";
+export type { AppHeaderProps } from "./components/app-header";
 export { AppMenu } from "./components/app-menu";
-export type { AppMenuItem, AppMenuGroup } from "./components/app-menu";
-export { ActionIconButton, ActionAvatarButton } from "./components/actions";
+export type { AppMenuItem, AppMenuGroup, AppMenuProps } from "./components/app-menu";
+export { ActionIconButton, ActionAvatarButton, actionIconButtonVariants } from "./components/actions";
+export type { ActionIconButtonProps, ActionAvatarButtonProps } from "./components/actions";
 export { ShellIconButton, ShellAvatarButton } from "./components/shell-button";
 export { SearchInput } from "./components/search-input";
+export type { SearchInputProps } from "./components/search-input";
 export { Input } from "./components/input";
 export type { InputProps } from "./components/input";
 export { Textarea } from "./components/textarea";
 export type { TextareaProps } from "./components/textarea";
 export { RadioGroup, RadioGroupItem } from "./components/radio";
+export type { RadioGroupProps, RadioGroupItemProps } from "./components/radio";
 export { RadioButtonGroup } from "./components/radio-button-group";
 export type { RadioButtonGroupProps, RadioButtonGroupOption } from "./components/radio-button-group";
 export { LeftNav } from "./components/left-nav";
-export type { NavItem, NavChild } from "./components/left-nav";
+export type { NavItem, NavChild, LeftNavProps } from "./components/left-nav";
 export { CXoneLogo } from "./components/cxone-logo";
+export type { CXoneLogoProps } from "./components/cxone-logo";
 export { PageHeader } from "./components/page-header";
+export type { PageHeaderBreadcrumb, PageHeaderProps } from "./components/page-header";
 export { SidePanel } from "./components/side-panel";
-export type { PageHeaderBreadcrumb } from "./components/page-header";
+export type { SidePanelProps } from "./components/side-panel";
 export { Container } from "./components/container";
+export type { ContainerProps } from "./components/container";
 export { Panel, PanelContent } from "./components/panel";
 export type { PanelProps, PanelVariant, PanelSide } from "./components/panel";
 export { PanelContent as PanelContentComponent } from "./components/panel-content";
@@ -72,30 +82,33 @@ export type { PanelHeaderProps } from "./components/panel-header";
 export { PanelFooter } from "./components/panel-footer";
 export type { PanelFooterProps } from "./components/panel-footer";
 export { ContentArea } from "./components/content-area";
+export type { ContentAreaProps } from "./components/content-area";
 export { Select } from "./components/select";
 export type { SelectOption } from "./components/select";
 export { Menu } from "./components/menu";
-export type { MenuItemDef, MenuEntry } from "./components/menu";
+export type { MenuItemDef, MenuEntry, MenuProps } from "./components/menu";
 export { TreeMenu } from "./components/tree-menu";
-export type { TreeMenuItem, TreeMenuChild } from "./components/tree-menu";
+export type { TreeMenuItem, TreeMenuChild, TreeMenuProps } from "./components/tree-menu";
 export { CXoneSmiley } from "./components/cxone-smiley";
+export type { CXoneSmileyProps } from "./components/cxone-smiley";
 export { ProfileMenu, defaultProfileMenuGroups } from "./components/profile-menu";
-export type { ProfileMenuItem, ProfileMenuGroup } from "./components/profile-menu";
+export type { ProfileMenuItem, ProfileMenuGroup, ProfileMenuProps } from "./components/profile-menu";
 
 export { Chip } from "./components/chip";
 export type { ChipProps, ChipColor, ChipVariant } from "./components/chip";
 
-export { FilterChip } from "./components/filter-chip";
+export { FilterChip, filterChipVariants } from "./components/filter-chip";
 export type { FilterChipProps, FilterChipOption, FilterChipVariant } from "./components/filter-chip";
 
 export { Tooltip } from "./components/tooltip";
 export { InlineNotification } from "./components/inline-notification";
+export type { InlineNotificationProps } from "./components/inline-notification";
 export { Toast, ToastContainer, useToast } from "./components/toast";
 export type { TooltipProps, TooltipPlacement } from "./components/tooltip";
 export type { ToastProps, ToastVariant, ToastItem } from "./components/toast";
 
 /* ── Spinner ── */
-export { Spinner } from "./components/spinner";
+export { Spinner, spinnerBarVariants, spinnerCircleVariants } from "./components/spinner";
 export type { SpinnerProps, SpinnerVariant, SpinnerSize, SpinnerColor } from "./components/spinner";
 
 /* ── Popover ── */
@@ -107,7 +120,7 @@ export { Label } from "./components/label";
 export type { LabelProps } from "./components/label";
 
 /* ── Icon ── */
-export { Icon } from "./components/icon";
+export { Icon, iconVariants, iconContainerVariants } from "./components/icon";
 export type { IconProps, IconSize, IconColor } from "./components/icon";
 
 /* ── Icons ── */
@@ -125,10 +138,11 @@ export { StatusBadge } from "./components/status-badge";
 export { TimePicker, TimeRangePicker } from "./components/time-picker";
 export { ActionBar } from "./components/action-bar";
 export { TransferBox } from "./components/transfer-box";
-export type { TransferBoxOption } from "./components/transfer-box";
+export type { TransferBoxOption, TransferBoxProps } from "./components/transfer-box";
 export { Autocomplete } from "./components/autocomplete";
-export type { AutocompleteOption } from "./components/autocomplete";
+export type { AutocompleteOption, AutocompleteProps } from "./components/autocomplete";
 export { PhoneInput, PHONE_COUNTRIES } from "./components/phone-input";
+export type { PhoneInputProps } from "./components/phone-input";
 export { EmailInput } from "./components/email-input";
 export { Slider, SliderRange } from "./components/slider";
 export { ContainerHeader } from "./components/container-header";
@@ -147,6 +161,8 @@ export { AgentNotifications } from "./components/agent-notifications";
 export type { AgentNotification, NotificationType, AgentNotificationsProps } from "./components/agent-notifications";
 export { AgentProfile } from "./components/agent-profile";
 export type { AgentStatus, AgentProfileProps } from "./components/agent-profile";
+export { NotificationsBell } from "./components/notifications-bell";
+export type { NotificationsBellProps } from "./components/notifications-bell";
 export { ConnectedAppsPanel } from "./components/connected-apps";
 export type { ConnectedApp, AppConnectionStatus, ConnectedAppsPanelProps } from "./components/connected-apps";
 export type { ConversationVariant, ConversationMessageProps, ConversationAlertProps } from "./components/conversation-message";

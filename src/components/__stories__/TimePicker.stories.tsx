@@ -5,6 +5,7 @@ import { TimeRangePicker } from "../time-picker";
 
 const meta: Meta = {
   title: "Atoms/TimePicker",
+  tags: ["autodocs"],
   parameters: {
     layout: "padded",
     backgrounds: { default: "lyra-shell" },

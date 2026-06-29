@@ -33,7 +33,7 @@ const meta: Meta<typeof AppMenu> = {
   tags: ["autodocs"],
   parameters: {
     layout: "centered",
-    backgrounds: { default: "light" },
+    backgrounds: { default: "lyra-shell" },
   },
 };
 

@@ -5,6 +5,7 @@ import { Calendar, type DateRange } from "../calendar";
 const meta: Meta<typeof Calendar> = {
   title: "Atoms/Calendar",
   component: Calendar,
+  tags: ["autodocs"],
   parameters: {
     layout: "centered",
     backgrounds: { default: "lyra-shell" },

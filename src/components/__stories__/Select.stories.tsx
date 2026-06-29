@@ -8,6 +8,7 @@ const meta: Meta<typeof Select> = {
   tags: ["autodocs"],
   parameters: {
     layout: "padded",
+    backgrounds: { default: "lyra-shell" },
   },
 };
 

@@ -6,7 +6,8 @@ import type { TagVariant } from "../tag";
 const meta: Meta<typeof Tag> = {
   title: "Atoms/Tag",
   component: Tag,
-  parameters: { layout: "centered" },
+  tags: ["autodocs"],
+  parameters: { layout: "centered", backgrounds: { default: "lyra-shell" } },
   argTypes: {
     variant: { control: "select", options: ["default","success","warning","critical","info","neutral"] },
   },

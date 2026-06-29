@@ -5,7 +5,8 @@ import { Accordion } from "../accordion";
 const meta: Meta<typeof Accordion> = {
   title: "Atoms/Accordion",
   component: Accordion,
-  parameters: { layout: "padded" },
+  tags: ["autodocs"],
+  parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
 };
 
 export default meta;

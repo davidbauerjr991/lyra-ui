@@ -32,6 +32,17 @@ type Story = StoryObj;
    Inline Notifications
    ══════════════════════════════════════════ */
 
+export const Default: Story = {
+  name: "Default",
+  render: () => (
+    <div className="w-full">
+      <InlineNotification variant="info" onDismiss={() => {}}>
+        Important background information, upcoming changes, or neutral system status updates.
+      </InlineNotification>
+    </div>
+  ),
+};
+
 export const InlineAll: Story = {
   name: "Inline — All Variants",
   render: () => (

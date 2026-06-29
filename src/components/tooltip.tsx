@@ -88,7 +88,7 @@ const Tooltip: React.FC<TooltipProps> = ({
             avoidCollisions
             collisionPadding={8}
             className={cn(
-              "relative group z-50",
+              "relative group z-[10000]",
               "rounded-lyra-md border border-lyra-border-subtle bg-lyra-bg-surface-overlay px-3 py-2 shadow-md",
               "lyra-body-md text-lyra-fg-default",
               "animate-in fade-in-0 duration-100",

@@ -24,7 +24,7 @@ const AppName = React.forwardRef<HTMLButtonElement, AppNameProps>(
       {...props}
     >
       <span className="flex-shrink-0" aria-hidden="true">{icon}</span>
-      <span className="text-[16px] font-medium text-lyra-fg-default">{name}</span>
+      <span className="lyra-body-lg-emphasis text-lyra-fg-default">{name}</span>
       <ChevronDown
         className="h-3.5 w-3.5 text-lyra-fg-secondary"
         strokeWidth={1.5}
@@ -36,3 +36,4 @@ const AppName = React.forwardRef<HTMLButtonElement, AppNameProps>(
 AppName.displayName = "AppName";
 
 export { AppName };
+export type { AppNameProps };

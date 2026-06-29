@@ -5,7 +5,8 @@ import { TagsInput } from "../tags-input";
 const meta: Meta<typeof TagsInput> = {
   title: "Atoms/Tags Input",
   component: TagsInput,
-  parameters: { layout: "padded" },
+  tags: ["autodocs"],
+  parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
 };
 
 export default meta;

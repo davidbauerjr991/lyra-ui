@@ -8,6 +8,7 @@ import { Tooltip } from "../tooltip";
 
 const meta: Meta = {
   title: "Atoms/Overlay",
+  tags: ["autodocs"],
   parameters: {
     layout: "padded",
     backgrounds: { default: "lyra-shell" },

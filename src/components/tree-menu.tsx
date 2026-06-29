@@ -220,3 +220,4 @@ function TreeMenuRow({ item }: { item: TreeMenuItem }) {
 }
 
 export { TreeMenu, CollapsiblePanel };
+export type { TreeMenuProps };

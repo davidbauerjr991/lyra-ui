@@ -143,3 +143,4 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
 SidePanel.displayName = "SidePanel";
 
 export { SidePanel };
+export type { SidePanelProps };

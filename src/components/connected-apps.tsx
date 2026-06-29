@@ -1,5 +1,5 @@
 import * as React from "react";
-import { RotateCw } from "lucide-react";
+import { RotateCw, Activity } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Tooltip } from "./tooltip";
 
@@ -139,21 +139,31 @@ const ConnectedAppsPanel = React.forwardRef<HTMLDivElement, ConnectedAppsPanelPr
         <div className="px-4 py-3 border-b border-lyra-border-subtle">
           <div className="flex items-center justify-between">
             <p className="lyra-body-md-emphasis text-lyra-fg-default">Connected Applications</p>
-            <span className={cn(
-              "lyra-body-sm font-medium tabular-nums",
-              issueCount > 0 ? "text-lyra-status-warning-strong" : "text-lyra-status-success-strong"
-            )}>
-              {effectiveHealthy}/{apps.length} healthy
-            </span>
+            {apps.length > 0 && (
+              <span className={cn(
+                "lyra-body-sm font-medium tabular-nums",
+                issueCount > 0 ? "text-lyra-status-warning-strong" : "text-lyra-status-success-strong"
+              )}>
+                {effectiveHealthy}/{apps.length} healthy
+              </span>
+            )}
           </div>
           <p className="lyra-body-sm text-lyra-fg-secondary mt-0.5">System health overview</p>
         </div>
 
         {/* App list */}
         <div className="overflow-y-auto max-h-80">
-          {apps.map((app) => (
-            <AppRow key={app.id} app={app} onReconnect={handleReconnect} />
-          ))}
+          {apps.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-1 px-4 py-8 text-center">
+              <Activity className="h-6 w-6 text-lyra-fg-disabled mb-1" strokeWidth={1.4} />
+              <p className="lyra-body-md-emphasis text-lyra-fg-secondary">No connected apps</p>
+              <p className="lyra-body-sm text-lyra-fg-disabled">Apps will appear here once connected.</p>
+            </div>
+          ) : (
+            apps.map((app) => (
+              <AppRow key={app.id} app={app} onReconnect={handleReconnect} />
+            ))
+          )}
         </div>
       </div>
     );

@@ -6,6 +6,7 @@ const meta: Meta<typeof Button> = {
   title: "Atoms/Button",
   component: Button,
   tags: ["autodocs"],
+  parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
   argTypes: {
     variant: {
       control: "select",

@@ -8,6 +8,7 @@ const meta: Meta<typeof ProfileMenu> = {
   tags: ["autodocs"],
   parameters: {
     layout: "centered",
+    backgrounds: { default: "lyra-shell" },
   },
 };
 

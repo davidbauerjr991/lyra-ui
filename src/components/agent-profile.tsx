@@ -1,6 +1,6 @@
 import * as React from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
-import { ChevronDown, Moon, Activity, LogOut } from "lucide-react";
+import { ChevronDown, ChevronLeft, Moon, Activity, LogOut, Link2Off, Link2, Loader2, Search } from "lucide-react";
 import { cn } from "../lib/utils";
 import * as ReactDOM from "react-dom";
 import { Menu, type MenuEntry } from "./menu";
@@ -70,27 +70,61 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
     className,
   }, ref) => {
     const [open, setOpen] = React.useState(false);
+    const [statusSearch, setStatusSearch] = React.useState("");
     const [appsOpen, setAppsOpen] = React.useState(false);
     const [appsPos, setAppsPos] = React.useState({ top: 0, right: 0 });
+    const [agentLegStatus, setAgentLegStatus] = React.useState<"disconnected" | "connecting" | "connected">("disconnected");
+    const [reconnectedIds, setReconnectedIds] = React.useState<Set<string>>(new Set());
     const contentRef = React.useRef<HTMLDivElement>(null);
-    const issueCount = connectedApps.filter((a) => a.status !== "healthy").length;
+    const appsPanelRef = React.useRef<HTMLDivElement>(null);
+    const issueCount = connectedApps.filter((a) => a.status !== "healthy" && !reconnectedIds.has(a.id)).length;
 
-    // Close apps panel when main menu closes
-    React.useEffect(() => { if (!open) setAppsOpen(false); }, [open]);
-    const closeTimer = React.useRef<ReturnType<typeof setTimeout>>();
+    const handleReconnect = (appId: string) => {
+      onReconnect?.(appId);
+      setTimeout(() => setReconnectedIds((prev) => new Set([...prev, appId])), 2500);
+    };
 
-    const openMenu  = () => { clearTimeout(closeTimer.current); setOpen(true); };
-    const scheduleClose = () => { closeTimer.current = setTimeout(() => setOpen(false), 250); };
+    const handleAgentLegToggle = () => {
+      if (agentLegStatus === "connecting") return;
+      if (agentLegStatus === "disconnected") {
+        setAgentLegStatus("connecting");
+        setTimeout(() => setAgentLegStatus("connected"), 2000);
+      } else {
+        setAgentLegStatus("disconnected");
+      }
+    };
 
+    const agentLegIconMap = {
+      disconnected: { icon: <Link2Off className="h-4 w-4" strokeWidth={1.4} />, color: "text-lyra-fg-secondary",          tooltip: "Click to connect"    },
+      connecting:   { icon: <Loader2  className="h-4 w-4 animate-spin" strokeWidth={1.4} />, color: "text-lyra-status-warning-strong", tooltip: "Connecting..."       },
+      connected:    { icon: <Link2    className="h-4 w-4" strokeWidth={1.4} />, color: "text-lyra-status-success-strong", tooltip: "Click to disconnect" },
+    };
+
+    // Close apps panel and clear search when main menu closes
+    React.useEffect(() => {
+      if (!open) { setAppsOpen(false); setStatusSearch(""); }
+    }, [open]);
     /* Build Menu entries using the Menu component's interface */
+    const allStatuses = ["available", "busy", "away", "offline"] as AgentStatus[];
+    const filteredStatuses = statusSearch.trim()
+      ? allStatuses.filter((s) => statusConfig[s].label.toLowerCase().includes(statusSearch.toLowerCase()))
+      : allStatuses;
+
+    const noStatusMatch = filteredStatuses.length === 0;
+
     const menuItems: MenuEntry[] = [
-      ...( ["available", "busy", "away", "offline"] as AgentStatus[] ).map((s) => ({
+      ...(noStatusMatch ? [{
+        id: "_no-results",
+        label: "No matching statuses",
+        disabled: true,
+        icon: <span className="h-5 w-5" />,
+      }] : filteredStatuses.map((s) => ({
         id: s,
         label: statusConfig[s].label,
         icon: <StatusDot status={s} />,
         selected: status === s,
         onClick: () => { onStatusChange?.(s); setOpen(false); },
-      })),
+      }))),
       "separator" as const,
       {
         id: "dark-mode",
@@ -102,6 +136,7 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
         id: "connected-apps",
         label: "Connected Apps",
         icon: <Activity className="h-4 w-4" strokeWidth={1.5} />,
+        active: appsOpen,
         onClick: () => {
           if (contentRef.current) {
             const rect = contentRef.current.getBoundingClientRect();
@@ -109,15 +144,34 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
           }
           setAppsOpen((v) => !v);
         },
-        rightElement: issueCount > 0 ? (
-          <Tooltip content={`${issueCount} app${issueCount > 1 ? "s" : ""} not fully connected`} placement="left">
-            <span>
-              <StatusBadge variant="warning" size="sm">{issueCount}</StatusBadge>
+        rightElement: (
+          <span className="flex items-center gap-1.5">
+            {issueCount > 0 ? (
+              <Tooltip content={`${issueCount} app${issueCount > 1 ? "s" : ""} not fully connected`} placement="left">
+                <span>
+                  <StatusBadge variant="warning" size="sm">{connectedApps.length}</StatusBadge>
+                </span>
+              </Tooltip>
+            ) : connectedApps.length > 0 ? (
+              <StatusBadge variant="success" size="sm">{connectedApps.length}</StatusBadge>
+            ) : (
+              <StatusBadge variant="neutral" size="sm">0</StatusBadge>
+            )}
+            <ChevronLeft className="h-4 w-4 text-lyra-fg-secondary" strokeWidth={1.5} aria-hidden="true" />
+          </span>
+        ),
+      },
+      {
+        id: "agent-leg",
+        label: agentLegStatus === "connected" ? "Agent Leg Connected" : agentLegStatus === "connecting" ? "Agent Leg Connecting…" : "Agent Leg Disconnected",
+        icon: (
+          <Tooltip content={agentLegIconMap[agentLegStatus].tooltip} placement="left">
+            <span className={cn("flex items-center", agentLegIconMap[agentLegStatus].color)}>
+              {agentLegIconMap[agentLegStatus].icon}
             </span>
           </Tooltip>
-        ) : connectedApps.length > 0 ? (
-          <StatusBadge variant="neutral" size="sm">{connectedApps.length}</StatusBadge>
-        ) : undefined,
+        ),
+        onClick: handleAgentLegToggle,
       },
       "separator" as const,
       {
@@ -131,45 +185,55 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
 
     return (
       <div ref={ref} className={className}>
-        <PopoverPrimitive.Root open={open} onOpenChange={(v) => { if (!v && appsOpen) return; setOpen(v); }}>
-          <PopoverPrimitive.Trigger asChild>
-            <button
-              type="button"
-              onMouseEnter={openMenu}
-              onMouseLeave={scheduleClose}
-              aria-label="Agent profile"
-              className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-lyra-lg hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
-            >
-              <Avatar initials={initials} src={avatarSrc} status={status} />
-              <div className="flex flex-col items-start min-w-0">
-                <span className={cn("lyra-label leading-tight", statusConfig[status].textColor)}>{statusConfig[status].label}</span>
-                {timer && <span className={cn("lyra-body-sm tabular-nums", statusConfig[status].textColor)}>{timer}</span>}
-              </div>
-              <ChevronDown className={cn("h-4 w-4 text-lyra-fg-secondary shrink-0 transition-transform duration-200", open && "rotate-180")} strokeWidth={1.5} />
-            </button>
-          </PopoverPrimitive.Trigger>
+        <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
+          <Tooltip content="Agent Status and More" placement="bottom" asLabel>
+            <PopoverPrimitive.Trigger asChild>
+              <button
+                type="button"
+                aria-label="Agent Status and More"
+                className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-lyra-lg hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
+              >
+                <Avatar initials={initials} src={avatarSrc} status={status} />
+                <div className="flex flex-col items-start min-w-0">
+                  <span className={cn("lyra-label leading-tight", statusConfig[status].textColor)}>{statusConfig[status].label}</span>
+                  {timer && <span className={cn("lyra-body-sm tabular-nums", statusConfig[status].textColor)}>{timer}</span>}
+                </div>
+                <ChevronDown className={cn("h-4 w-4 text-lyra-fg-secondary shrink-0 transition-transform duration-200", open && "rotate-180")} strokeWidth={1.5} />
+              </button>
+            </PopoverPrimitive.Trigger>
+          </Tooltip>
 
           <PopoverPrimitive.Portal>
             <PopoverPrimitive.Content
               side="bottom"
               align="end"
               sideOffset={6}
-              onOpenAutoFocus={(e) => e.preventDefault()}
-              onMouseEnter={openMenu}
-              onMouseLeave={scheduleClose}
+              onOpenAutoFocus={(e) => {
+                e.preventDefault();
+                // Focus the search input instead
+                setTimeout(() => contentRef.current?.querySelector<HTMLInputElement>("input")?.focus(), 0);
+              }}
+              onInteractOutside={(e) => {
+                if (appsPanelRef.current?.contains(e.target as Node)) e.preventDefault();
+              }}
               ref={contentRef}
               className={cn(
-                "z-50 w-64 rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg",
-                "animate-in fade-in-0 duration-100",
-                "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-75"
+                "z-[10001] w-64 rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg",
+                "animate-in fade-in-0 slide-in-from-top-2 duration-150",
+                "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-100"
               )}
             >
-              {/* Agent info header */}
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-lyra-border-subtle">
-                <Avatar initials={initials} src={avatarSrc} status={status} />
-                <div className="min-w-0">
-                  <p className="lyra-body-md-emphasis text-lyra-fg-default truncate">{name}</p>
-                  <p className="lyra-body-sm text-lyra-fg-secondary">{statusConfig[status].label}</p>
+              {/* Search statuses */}
+              <div className="px-3 py-2.5 border-b border-lyra-border-subtle">
+                <div className="relative flex items-center">
+                  <Search className="absolute left-2.5 h-4 w-4 text-lyra-fg-disabled pointer-events-none" strokeWidth={1.4} aria-hidden="true" />
+                  <input
+                    type="text"
+                    placeholder="Search statuses"
+                    value={statusSearch}
+                    onChange={(e) => setStatusSearch(e.target.value)}
+                    className="w-full rounded-lyra-md border border-lyra-border-default bg-lyra-bg-surface-base pl-8 pr-3 py-1.5 lyra-body-md text-lyra-fg-default placeholder:text-lyra-fg-disabled focus:outline-none focus:ring-2 focus:ring-lyra-border-focus transition-colors"
+                  />
                 </div>
               </div>
 
@@ -184,16 +248,13 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
         </PopoverPrimitive.Root>
 
         {/* Connected Apps flyout — rendered in a separate portal to escape all clipping */}
-        {appsOpen && connectedApps.length > 0 && ReactDOM.createPortal(
+        {appsOpen && ReactDOM.createPortal(
           <div
+            ref={appsPanelRef}
             style={{ position: "fixed", top: appsPos.top, right: appsPos.right, zIndex: 9999 }}
-            className="animate-in fade-in-0 duration-100"
-            onMouseEnter={openMenu}
-            onMouseLeave={scheduleClose}
-            onPointerDown={(e) => { e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); }}
-            onMouseDown={(e) => { e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); }}
+            className="animate-in fade-in-0 slide-in-from-right-2 duration-150"
           >
-            <ConnectedAppsPanel apps={connectedApps} onReconnect={onReconnect} />
+            <ConnectedAppsPanel apps={connectedApps} onReconnect={handleReconnect} />
           </div>,
           document.body
         )}

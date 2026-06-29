@@ -8,6 +8,7 @@ const meta: Meta<typeof ContentArea> = {
   tags: ["autodocs"],
   parameters: {
     layout: "fullscreen",
+    backgrounds: { default: "lyra-shell" },
   },
 };
 

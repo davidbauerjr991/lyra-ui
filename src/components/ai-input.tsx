@@ -96,7 +96,7 @@ const AIInput = React.forwardRef<HTMLTextAreaElement, AIInputProps>(
       <div className={cn("flex flex-col gap-2", className)}>
         {/* Input container */}
         <div className={cn(
-          "flex flex-col rounded-[16px] border bg-lyra-bg-surface-container-subtle transition-colors",
+          "flex flex-col rounded-lyra-xl border bg-lyra-bg-surface-container-subtle transition-colors",
           "border-lyra-border-strong",
           "focus-within:border-lyra-border-active focus-within:ring-2 focus-within:ring-lyra-border-active/20",
           disabled && "opacity-50 pointer-events-none bg-lyra-bg-disabled border-transparent"
@@ -149,8 +149,8 @@ const AIInput = React.forwardRef<HTMLTextAreaElement, AIInputProps>(
                       onOpenAutoFocus={(e) => e.preventDefault()}
                       className={cn(
                         "z-50 min-w-[220px] rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg p-2",
-                        "animate-in fade-in-0 duration-100",
-                        "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-75"
+                        "animate-in fade-in-0 slide-in-from-top-2 duration-150",
+                        "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-100"
                       )}
                     >
                       {/* Add files or photos */}

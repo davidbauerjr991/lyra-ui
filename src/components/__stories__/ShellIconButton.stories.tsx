@@ -6,6 +6,10 @@ const meta: Meta<typeof ActionIconButton> = {
   title: "UI/AppHeader/IconButton",
   component: ActionIconButton,
   tags: ["autodocs"],
+  parameters: {
+    layout: "padded",
+    backgrounds: { default: "lyra-shell" },
+  },
   argTypes: {
     badge: { control: "number" },
   },

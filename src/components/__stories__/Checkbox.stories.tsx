@@ -6,6 +6,7 @@ const meta: Meta<typeof Checkbox> = {
   title: "Atoms/Checkbox",
   component: Checkbox,
   tags: ["autodocs"],
+  parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
   argTypes: {
     checked: {
       control: "select",

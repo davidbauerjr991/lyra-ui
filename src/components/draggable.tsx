@@ -7,6 +7,27 @@ import { Tooltip } from "./tooltip";
 
 export type DraggableVariant = "float" | "docked";
 
+/** Props passed to renderHeaderControls so the consumer can inline grip + dock. */
+export interface DraggableHeaderControls {
+  /** Spread onto a draggable handle element (float mode only — noop in docked). */
+  gripProps: {
+    onMouseDown: React.MouseEventHandler<HTMLElement>;
+    "aria-hidden": true;
+    className: string;
+  };
+  /** Spread onto the dock/undock button. */
+  dockButtonProps: {
+    type: "button";
+    onClick: () => void;
+    "aria-label": string;
+    className: string;
+  };
+  /** Current icon for the dock button (already correct for the active variant). */
+  dockIcon: React.ReactNode;
+  /** Current variant — lets the consumer conditionally render the grip. */
+  variant: DraggableVariant;
+}
+
 export interface DraggableProps {
   children: React.ReactNode;
   /** "float" — freely draggable. "docked" — pinned to right edge. */
@@ -17,6 +38,12 @@ export interface DraggableProps {
   minHeight?: number;
   /** Called when variant changes via the dock toggle button */
   onVariantChange?: (variant: DraggableVariant) => void;
+  /**
+   * When provided, Draggable skips its built-in overlay and calls this instead,
+   * passing grip + dock props so the consumer can place them inside its own header.
+   * When used, the automatic pl-7 padding on the first child is also suppressed.
+   */
+  renderHeaderControls?: (controls: DraggableHeaderControls) => React.ReactNode;
   /** Hide the built-in grip/dock header controls (use when the consumer renders them inline) */
   showHeaderControls?: boolean;
   /** Prevent the variant from being toggled via the header button */
@@ -39,6 +66,7 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
     minWidth              = 280,
     minHeight             = 200,
     onVariantChange,
+    renderHeaderControls,
     showHeaderControls = true,
     lockVariant = false,
     onWidthChange,
@@ -134,9 +162,9 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
       document.addEventListener("mouseup", onUp);
     };
 
-    /* ── Grip overlay — float only, left-aligned, doesn't block right-side header actions ── */
+    /* ── Built-in overlay (used when renderHeaderControls is NOT provided) ── */
     /* h-16 = 64px matches ContainerHeader (py-5 + heading-md line-height) */
-    const HeaderControls = (
+    const BuiltInHeaderControls = (
       <div className="absolute inset-x-0 top-0 h-16 z-20 flex items-center justify-between px-2 pointer-events-none">
         {/* Grip — float only */}
         {variant === "float" ? (
@@ -165,6 +193,27 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
       </div>
     );
 
+    /* Controls object passed to renderHeaderControls consumers */
+    const headerControlProps: DraggableHeaderControls = {
+      gripProps: {
+        onMouseDown: onDragMouseDown,
+        "aria-hidden": true,
+        className: "flex items-center cursor-grab active:cursor-grabbing text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors",
+      },
+      dockButtonProps: {
+        type: "button",
+        onClick: toggleVariant,
+        "aria-label": variant === "float" ? "Dock to side" : "Undock",
+        className: "flex h-6 w-6 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:text-lyra-fg-default hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus",
+      },
+      dockIcon: variant === "float"
+        ? <PanelRight className="h-3.5 w-3.5" strokeWidth={1.5} />
+        : <Move       className="h-3.5 w-3.5" strokeWidth={1.5} />,
+      variant,
+    };
+
+    const useInlineControls = !!renderHeaderControls;
+
     /* ── Docked ── */
     if (variant === "docked") {
       return (
@@ -182,8 +231,11 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
             <div className="absolute inset-y-0 left-0 w-px bg-lyra-border-subtle group-hover/edge:bg-lyra-border-active transition-colors" />
           </div>
 
-          {showHeaderControls && HeaderControls}
-          <div className="flex flex-col flex-1 min-h-0">{children}</div>
+          {!useInlineControls && showHeaderControls && BuiltInHeaderControls}
+          <div className="flex flex-col flex-1 min-h-0">
+            {useInlineControls ? renderHeaderControls!(headerControlProps) : null}
+            {children}
+          </div>
         </div>
       );
     }
@@ -195,9 +247,12 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
         style={{ transform: `translate(${offset.x}px, ${offset.y}px)`, width, height }}
         className={cn("relative flex flex-col overflow-hidden", className)}
       >
-        {showHeaderControls && HeaderControls}
-        {/* pl-7 gives the first child's header room for the grip icon on the left */}
-        <div className="flex flex-col flex-1 min-h-0 [&>*:first-child]:pl-7">{children}</div>
+        {!useInlineControls && showHeaderControls && BuiltInHeaderControls}
+        {/* pl-7 gives the first child's header room for the grip icon — only when using built-in overlay */}
+        <div className={cn("flex flex-col flex-1 min-h-0", !useInlineControls && "[&>*:first-child]:pl-7")}>
+          {useInlineControls ? renderHeaderControls!(headerControlProps) : null}
+          {children}
+        </div>
 
         {/* Bottom-right corner resize handle */}
         <div

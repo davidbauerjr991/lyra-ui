@@ -4,6 +4,7 @@ import { PasswordInput, ChangePassword } from "../password-input";
 
 const meta: Meta = {
   title: "Atoms/PasswordInput",
+  tags: ["autodocs"],
   parameters: {
     layout: "padded",
     backgrounds: { default: "lyra-shell" },

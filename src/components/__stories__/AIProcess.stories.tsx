@@ -4,9 +4,10 @@ import { AIProcess } from "../ai-process";
 const meta: Meta<typeof AIProcess> = {
   title: "Atoms/AIProcess",
   component: AIProcess,
+  tags: ["autodocs"],
   parameters: {
     layout: "padded",
-    backgrounds: { default: "lyra-base" },
+    backgrounds: { default: "lyra-shell" },
   },
 };
 

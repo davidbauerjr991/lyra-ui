@@ -6,6 +6,7 @@ const meta: Meta<typeof Switch> = {
   title: "Atoms/Switch",
   component: Switch,
   tags: ["autodocs"],
+  parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
   argTypes: {
     checked: {
       control: "select",
@@ -127,6 +128,47 @@ export const Small: Story = {
         <span className="lyra-body-sm text-lyra-fg-secondary font-medium">Dark</span>
       </div>
       <AllStatesRow size="sm" />
+    </div>
+  ),
+};
+
+export const AllVariants: Story = {
+  name: "All Variants",
+  render: () => (
+    <div className="flex flex-col gap-8">
+      {(["lg", "sm"] as const).map((size) => (
+        <div key={size}>
+          <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">
+            Size: {size === "lg" ? "Large" : "Small"}
+          </p>
+          <div className="grid grid-cols-4 gap-x-8 gap-y-4">
+            <div className="flex flex-col items-start gap-2">
+              <span className="lyra-body-sm text-lyra-fg-secondary">Checked</span>
+              <Switch checked={true} size={size} label="Switch Label" />
+            </div>
+            <div className="flex flex-col items-start gap-2">
+              <span className="lyra-body-sm text-lyra-fg-secondary">Unchecked</span>
+              <Switch checked={false} size={size} label="Switch Label" />
+            </div>
+            <div className="flex flex-col items-start gap-2">
+              <span className="lyra-body-sm text-lyra-fg-secondary">Indeterminate</span>
+              <Switch checked="indeterminate" size={size} label="Switch Label" />
+            </div>
+            <div className="flex flex-col items-start gap-2">
+              <span className="lyra-body-sm text-lyra-fg-secondary">Checked variant</span>
+              <Switch checked="checked" size={size} label="Switch Label" />
+            </div>
+            <div className="flex flex-col items-start gap-2">
+              <span className="lyra-body-sm text-lyra-fg-secondary">Disabled off</span>
+              <Switch checked={false} disabled size={size} label="Switch Label" />
+            </div>
+            <div className="flex flex-col items-start gap-2">
+              <span className="lyra-body-sm text-lyra-fg-secondary">Disabled on</span>
+              <Switch checked={true} disabled size={size} label="Switch Label" />
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   ),
 };

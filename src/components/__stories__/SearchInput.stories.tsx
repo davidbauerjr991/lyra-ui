@@ -6,6 +6,7 @@ const meta: Meta<typeof SearchInput> = {
   title: "Atoms/SearchInput",
   component: SearchInput,
   tags: ["autodocs"],
+  parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
   argTypes: {
     disabled: { control: "boolean" },
     placeholder: { control: "text" },

@@ -4,13 +4,26 @@ import { Textarea } from "../textarea";
 const meta: Meta<typeof Textarea> = {
   title: "Atoms/Textarea",
   component: Textarea,
-  parameters: { layout: "padded" },
+  tags: ["autodocs"],
+  parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
 };
 
 export default meta;
 type Story = StoryObj<typeof Textarea>;
 
 /* ── SOL-matched stories ── */
+
+export const Default: Story = {
+  name: "Default",
+  render: () => (
+    <Textarea
+      label="Input Label"
+      placeholder="Placeholder"
+      maxLength={100}
+      rows={4}
+    />
+  ),
+};
 
 export const WithValue: Story = {
   name: "With Value",

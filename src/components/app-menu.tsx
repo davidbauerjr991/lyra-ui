@@ -101,3 +101,4 @@ function AppMenuItemRow({ item }: { item: AppMenuItem }) {
 }
 
 export { AppMenu };
+export type { AppMenuProps };

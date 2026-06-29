@@ -5,7 +5,8 @@ import { RadioButtonGroup } from "../radio-button-group";
 const meta: Meta<typeof RadioButtonGroup> = {
   title: "Atoms/Radio Button Group",
   component: RadioButtonGroup,
-  parameters: { layout: "padded" },
+  tags: ["autodocs"],
+  parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
 };
 
 export default meta;

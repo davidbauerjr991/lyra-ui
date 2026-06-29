@@ -41,7 +41,7 @@ function getInlineStyles(
     case "subtle":
       return { backgroundColor: soft, color: strong };
     case "solid":
-      return { backgroundColor: strong, color: "white" };
+      return { backgroundColor: strong, color: "var(--lyra-color-fg-on-primary)" };
   }
 }
 

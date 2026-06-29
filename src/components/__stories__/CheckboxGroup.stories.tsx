@@ -5,7 +5,8 @@ import { CheckboxGroup } from "../checkbox-group";
 const meta: Meta<typeof CheckboxGroup> = {
   title: "Atoms/Checkbox Group",
   component: CheckboxGroup,
-  parameters: { layout: "padded" },
+  tags: ["autodocs"],
+  parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
 };
 
 export default meta;

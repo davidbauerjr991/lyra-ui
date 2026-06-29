@@ -71,7 +71,7 @@ interface SelectProps {
   /** Called when the dropdown opens or closes */
   onOpenChange?: (open: boolean) => void;
 
-  /** Dropdown alignment when using a custom trigger */
+  /** Dropdown alignment relative to the trigger. Defaults to "left". */
   dropdownAlign?: "left" | "right";
 
   /** Render dropdown in a portal (fixed position) to escape overflow containers */
@@ -103,7 +103,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
       values,
       onValuesChange,
       onOpenChange,
-      dropdownAlign = "right",
+      dropdownAlign = "left",
       portalDropdown = true,
       className,
     },
@@ -356,15 +356,15 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
           <div
             ref={dropdownRef}
             className={cn(
-              "rounded-lyra-lg bg-lyra-bg-surface-overlay border border-lyra-border-subtle shadow-lg p-2",
+              "rounded-lyra-lg bg-lyra-bg-surface-overlay border border-lyra-border-subtle shadow-lg flex flex-col max-h-[300px]",
               portalDropdown ? "" : "absolute top-full z-50 mt-1",
               !portalDropdown && trigger ? cn(dropdownAlign === "left" ? "left-0" : "right-0", "w-[240px]") : !portalDropdown ? "w-full" : ""
             )}
             style={portalDropdown ? portalStyle : undefined}
           >
-            {/* Search */}
+            {/* Search — fixed, does not scroll */}
             {searchable && (
-              <div className="pb-2">
+              <div className="shrink-0 px-2 pt-2 pb-1">
                 <div className="relative">
                   <Search
                     className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-lyra-fg-secondary pointer-events-none"
@@ -400,34 +400,32 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               </div>
             )}
 
-            {/* Max-selection header */}
+            {/* Max-selection header — fixed, does not scroll */}
             {multiple && maxSelection !== undefined && (
-              <>
-                <div className="flex items-center justify-between px-3 py-2 border-b border-lyra-border-subtle">
-                  <span className={cn(
-                    "lyra-label",
-                    limitReached ? "text-lyra-status-critical-strong" : "text-lyra-fg-default"
-                  )}>
-                    {limitReached
-                      ? `Limit Reached (${maxSelection})`
-                      : selectionLabel ?? `Select up to ${maxSelection} items`}
-                  </span>
-                  {currentValues.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={handleClear}
-                      className="lyra-body-sm text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-              </>
+              <div className="shrink-0 flex items-center justify-between px-3 py-2 border-b border-lyra-border-subtle">
+                <span className={cn(
+                  "lyra-label",
+                  limitReached ? "text-lyra-status-critical-strong" : "text-lyra-fg-default"
+                )}>
+                  {limitReached
+                    ? `Limit Reached (${maxSelection})`
+                    : selectionLabel ?? `Select up to ${maxSelection} items`}
+                </span>
+                {currentValues.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClear}
+                    className="lyra-body-sm text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
             )}
 
-            {/* Select All header (multi only) */}
+            {/* Select All — fixed, does not scroll */}
             {multiple && showSelectAll && (
-              <>
+              <div className="shrink-0 px-1 pt-1">
                 <button
                   type="button"
                   className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-lyra-state-hover active:bg-lyra-state-pressed transition-colors rounded-lyra-sm"
@@ -440,11 +438,11 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                   />
                   <span className="lyra-body-md text-lyra-fg-default">Select All</span>
                 </button>
-                <div className="border-b border-lyra-border-subtle" />
-              </>
+                <div className="border-b border-lyra-border-subtle mt-1" />
+              </div>
             )}
 
-            {/* Options list */}
+            {/* Options list — scrollable, no right padding so scrollbar sits at border edge */}
             <div
               ref={listRef}
               role="listbox"
@@ -474,7 +472,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                   opts[opts.length - 1]?.focus();
                 }
               }}
-              className="max-h-[240px] overflow-y-auto"
+              className="overflow-y-auto p-1"
             >
               {filtered.length === 0 && (
                 <div className="px-3 py-2 lyra-body-sm text-lyra-fg-secondary">

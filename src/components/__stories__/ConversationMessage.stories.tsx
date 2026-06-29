@@ -6,8 +6,9 @@ const meta: Meta<typeof ConversationMessage> = {
   component: ConversationMessage,
   parameters: {
     layout: "padded",
-    backgrounds: { default: "lyra-base" },
+    backgrounds: { default: "lyra-shell" },
   },
+  tags: ["autodocs"],
   argTypes: {
     variant: { control: "select", options: ["user", "ai", "agent", "dark"] },
   },

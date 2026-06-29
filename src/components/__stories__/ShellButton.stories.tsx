@@ -10,6 +10,10 @@ const avatarMeta: Meta<typeof ActionAvatarButton> = {
   title: "UI/AppHeader/Avatar",
   component: ActionAvatarButton,
   tags: ["autodocs"],
+  parameters: {
+    layout: "padded",
+    backgrounds: { default: "lyra-shell" },
+  },
   argTypes: {
     initials: { control: "text" },
     avatarColor: { control: "color" },

@@ -10,6 +10,7 @@ import type { MenuEntry } from "../menu";
 const meta: Meta<typeof Popover> = {
   title: "Atoms/Popover",
   component: Popover,
+  tags: ["autodocs"],
   parameters: {
     layout: "centered",
     backgrounds: { default: "lyra-shell" },
@@ -105,27 +106,21 @@ export const MaxWidthPopover: Story = {
       content={
         <div className="px-5 pb-5 flex flex-col gap-4">
           <Input label="Name" placeholder="Enter name" />
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <Select
-                label="Type"
-                options={[
-                  { value: "back-office", label: "Back Office" },
-                  { value: "knowledge", label: "Knowledge Worker" },
-                  { value: "bpo", label: "BPO" },
-                ]}
-              />
-            </div>
-            <div className="flex-1">
-              <Select
-                label="Region"
-                options={[
-                  { value: "na1", label: "NA1" },
-                  { value: "eu1", label: "EU1" },
-                ]}
-              />
-            </div>
-          </div>
+          <Select
+            label="Type"
+            options={[
+              { value: "back-office", label: "Back Office" },
+              { value: "knowledge", label: "Knowledge Worker" },
+              { value: "bpo", label: "BPO" },
+            ]}
+          />
+          <Select
+            label="Region"
+            options={[
+              { value: "na1", label: "NA1" },
+              { value: "eu1", label: "EU1" },
+            ]}
+          />
           <div className="flex justify-end gap-2 mt-2">
             <Button variant="outline">Cancel</Button>
             <Button>Save</Button>
@@ -161,6 +156,79 @@ export const Placements: Story = {
           </Button>
         </Popover>
       ))}
+    </div>
+  ),
+};
+
+export const AllVariants: Story = {
+  name: "All Variants",
+  render: () => (
+    <div className="flex flex-col gap-10 p-8">
+      {/* Placements */}
+      <div>
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-4">Placements</p>
+        <div className="grid grid-cols-2 gap-4">
+          {(["top", "bottom", "left", "right"] as const).map((placement) => (
+            <Popover
+              key={placement}
+              placement={placement}
+              title={`Placement: ${placement}`}
+              content={
+                <div className="px-4 pb-4">
+                  <p className="lyra-body-md text-lyra-fg-secondary">
+                    This popover opens to the <strong>{placement}</strong>.
+                  </p>
+                </div>
+              }
+            >
+              <Button variant="outline" className="w-full capitalize">{placement}</Button>
+            </Popover>
+          ))}
+        </div>
+      </div>
+
+      {/* With / without arrow */}
+      <div>
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-4">Arrow variants</p>
+        <div className="flex gap-4">
+          <Popover
+            placement="bottom"
+            title="With Arrow"
+            showArrow
+            content={<div className="px-4 pb-4"><p className="lyra-body-md text-lyra-fg-secondary">Arrow is visible.</p></div>}
+          >
+            <Button variant="outline">With Arrow</Button>
+          </Popover>
+          <Popover
+            placement="bottom"
+            title="No Arrow"
+            showArrow={false}
+            content={<div className="px-4 pb-4"><p className="lyra-body-md text-lyra-fg-secondary">Arrow is hidden.</p></div>}
+          >
+            <Button variant="outline">No Arrow</Button>
+          </Popover>
+        </div>
+      </div>
+
+      {/* With title / without title */}
+      <div>
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-4">Title variants</p>
+        <div className="flex gap-4">
+          <Popover
+            placement="bottom"
+            title="With Title"
+            content={<div className="px-4 pb-4"><p className="lyra-body-md text-lyra-fg-secondary">Title is shown in the header.</p></div>}
+          >
+            <Button variant="outline">With Title</Button>
+          </Popover>
+          <Popover
+            placement="bottom"
+            content={<div className="px-5 py-4"><p className="lyra-body-md text-lyra-fg-secondary">No title header — content only.</p></div>}
+          >
+            <Button variant="outline">No Title</Button>
+          </Popover>
+        </div>
+      </div>
     </div>
   ),
 };

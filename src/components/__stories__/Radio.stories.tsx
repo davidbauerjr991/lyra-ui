@@ -7,6 +7,7 @@ const meta: Meta<typeof RadioGroup> = {
   tags: ["autodocs"],
   parameters: {
     layout: "padded",
+    backgrounds: { default: "lyra-shell" },
   },
 };
 
@@ -88,5 +89,65 @@ export const AllStates: Story = {
   ),
 };
 
+
+export const AllVariants: Story = {
+  name: "All Variants",
+  render: () => (
+    <div className="flex flex-col gap-8">
+      {/* Vertical layout (default) */}
+      <div>
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">Vertical — unselected</p>
+        <RadioGroup name="allvariants-vertical-unselected">
+          <RadioGroupItem value="option1" label="Radio label" />
+          <RadioGroupItem value="option2" label="Radio label" />
+          <RadioGroupItem value="option3" label="Radio label" />
+        </RadioGroup>
+      </div>
+
+      <div>
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">Vertical — selected</p>
+        <RadioGroup name="allvariants-vertical-selected" defaultValue="option2">
+          <RadioGroupItem value="option1" label="Radio label" />
+          <RadioGroupItem value="option2" label="Radio label" />
+          <RadioGroupItem value="option3" label="Radio label" />
+        </RadioGroup>
+      </div>
+
+      <div>
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">Horizontal — unselected</p>
+        <RadioGroup name="allvariants-horizontal-unselected" orientation="horizontal">
+          <RadioGroupItem value="option1" label="Radio label" />
+          <RadioGroupItem value="option2" label="Radio label" />
+          <RadioGroupItem value="option3" label="Radio label" />
+        </RadioGroup>
+      </div>
+
+      <div>
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">Horizontal — selected</p>
+        <RadioGroup name="allvariants-horizontal-selected" orientation="horizontal" defaultValue="option1">
+          <RadioGroupItem value="option1" label="Radio label" />
+          <RadioGroupItem value="option2" label="Radio label" />
+          <RadioGroupItem value="option3" label="Radio label" />
+        </RadioGroup>
+      </div>
+
+      <div>
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">Disabled</p>
+        <RadioGroup name="allvariants-disabled" disabled>
+          <RadioGroupItem value="option1" label="Radio label" />
+          <RadioGroupItem value="option2" label="Radio label" />
+        </RadioGroup>
+      </div>
+
+      <div>
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">Disabled with selection</p>
+        <RadioGroup name="allvariants-disabled-selected" defaultValue="option1" disabled>
+          <RadioGroupItem value="option1" label="Radio label" />
+          <RadioGroupItem value="option2" label="Radio label" />
+        </RadioGroup>
+      </div>
+    </div>
+  ),
+};
 
 // Group stories moved to Atoms/Radio Button Group

@@ -7,6 +7,7 @@ import { AIProcess } from "../ai-process";
 const meta: Meta<typeof AiPanel> = {
   title: "UI/AiPanel",
   component: AiPanel,
+  tags: ["autodocs"],
   parameters: {
     layout: "centered",
     backgrounds: { default: "lyra-shell" },

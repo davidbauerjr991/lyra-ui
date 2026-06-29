@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as SwitchPrimitive from "@radix-ui/react-switch";
 import { Check, Minus } from "lucide-react";
+import { cva } from "class-variance-authority";
 import { cn } from "../lib/utils";
 import { Label } from "./label";
 
@@ -27,6 +28,58 @@ interface SwitchProps
   readonly?: boolean;
 }
 
+/* ── CVA definitions ── */
+
+const switchTrackVariants = cva("", {
+  variants: {
+    size: {
+      lg: "h-[28px] w-[52px]",
+      sm: "h-[20px] w-[36px]",
+    },
+  },
+  defaultVariants: { size: "lg" },
+});
+
+const switchThumbVariants = cva("", {
+  variants: {
+    size: {
+      lg: "h-[20px] w-[20px]",
+      sm: "h-[14px] w-[14px]",
+    },
+  },
+  defaultVariants: { size: "lg" },
+});
+
+const switchThumbTranslateVariants = cva("", {
+  variants: {
+    size: {
+      lg: "translate-x-[24px]",
+      sm: "translate-x-[16px]",
+    },
+  },
+  defaultVariants: { size: "lg" },
+});
+
+const switchIconVariants = cva("", {
+  variants: {
+    size: {
+      lg: "h-3 w-3",
+      sm: "h-2.5 w-2.5",
+    },
+  },
+  defaultVariants: { size: "lg" },
+});
+
+const switchLabelVariants = cva("", {
+  variants: {
+    size: {
+      lg: "lyra-body-md",
+      sm: "lyra-body-sm",
+    },
+  },
+  defaultVariants: { size: "lg" },
+});
+
 const Switch = React.forwardRef<
   React.ComponentRef<typeof SwitchPrimitive.Root>,
   SwitchProps
@@ -37,8 +90,6 @@ const Switch = React.forwardRef<
   const isIndeterminate = checked === "indeterminate";
   const isCheckedOff = checked === "checked";
   const isOff = checked === false;
-
-  const lg = size === "lg";
 
   return (
     <div
@@ -59,7 +110,7 @@ const Switch = React.forwardRef<
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
 
           /* Size */
-          lg ? "h-[28px] w-[52px]" : "h-[20px] w-[36px]",
+          switchTrackVariants({ size }),
 
           /* ── Track colors ── */
           /* On */
@@ -92,29 +143,27 @@ const Switch = React.forwardRef<
             "pointer-events-none flex items-center justify-center rounded-full shadow-sm transition-transform",
 
             /* Size */
-            lg ? "h-[20px] w-[20px]" : "h-[14px] w-[14px]",
+            switchThumbVariants({ size }),
 
             /* Position */
-            isOn
-              ? lg ? "translate-x-[24px]" : "translate-x-[16px]"
-              : "translate-x-[2px]",
+            isOn ? switchThumbTranslateVariants({ size }) : "translate-x-[2px]",
 
             /* Thumb color */
-            isOn ? "bg-white" : "bg-lyra-fg-secondary"
+            isOn ? "bg-lyra-bg-surface-base" : "bg-lyra-fg-secondary"
           )}
         >
           {/* Icons inside thumb */}
           {isOn && (
-            <Check className={cn(lg ? "h-3 w-3" : "h-2.5 w-2.5", "text-lyra-bg-primary")} strokeWidth={3} />
+            <Check className={cn(switchIconVariants({ size }), "text-lyra-bg-primary")} strokeWidth={3} />
           )}
           {isOff && (
-            <Minus className={cn(lg ? "h-3 w-3" : "h-2.5 w-2.5", "text-white")} strokeWidth={3} />
+            <Minus className={cn(switchIconVariants({ size }), "text-lyra-fg-on-primary")} strokeWidth={3} />
           )}
           {isIndeterminate && (
-            <Minus className={cn(lg ? "h-3 w-3" : "h-2.5 w-2.5", "text-white")} strokeWidth={3} />
+            <Minus className={cn(switchIconVariants({ size }), "text-lyra-fg-on-primary")} strokeWidth={3} />
           )}
           {isCheckedOff && (
-            <Check className={cn(lg ? "h-3 w-3" : "h-2.5 w-2.5", "text-white")} strokeWidth={3} />
+            <Check className={cn(switchIconVariants({ size }), "text-lyra-fg-on-primary")} strokeWidth={3} />
           )}
         </SwitchPrimitive.Thumb>
       </SwitchPrimitive.Root>
@@ -126,7 +175,7 @@ const Switch = React.forwardRef<
           required={required}
           disabled={disabled}
           readonly={readonly}
-          className={lg ? "lyra-body-md" : "lyra-body-sm"}
+          className={switchLabelVariants({ size })}
         />
       )}
     </div>

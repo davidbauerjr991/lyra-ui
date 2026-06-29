@@ -130,3 +130,4 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
 LeftNav.displayName = "LeftNav";
 
 export { LeftNav };
+export type { LeftNavProps };

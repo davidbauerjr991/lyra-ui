@@ -16,6 +16,7 @@ const meta: Meta<typeof TreeMenu> = {
   tags: ["autodocs"],
   parameters: {
     layout: "padded",
+    backgrounds: { default: "lyra-shell" },
   },
   decorators: [
     (Story) => (

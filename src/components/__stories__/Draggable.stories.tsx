@@ -8,6 +8,7 @@ import { Button } from "../button";
 const meta: Meta<typeof Draggable> = {
   title: "Atoms/Draggable",
   component: Draggable,
+  tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
 };
 export default meta;

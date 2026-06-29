@@ -30,3 +30,4 @@ const AppHeader = React.forwardRef<HTMLElement, AppHeaderProps>(
 AppHeader.displayName = "AppHeader";
 
 export { AppHeader };
+export type { AppHeaderProps };

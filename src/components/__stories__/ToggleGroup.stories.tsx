@@ -6,7 +6,8 @@ import { cn } from "../../lib/utils";
 const meta: Meta<typeof ToggleGroup> = {
   title: "Atoms/Toggle Group",
   component: ToggleGroup,
-  parameters: { layout: "centered" },
+  tags: ["autodocs"],
+  parameters: { layout: "centered", backgrounds: { default: "lyra-shell" } },
 };
 
 export default meta;

@@ -39,3 +39,4 @@ const ContentArea = React.forwardRef<HTMLDivElement, ContentAreaProps>(
 ContentArea.displayName = "ContentArea";
 
 export { ContentArea };
+export type { ContentAreaProps };

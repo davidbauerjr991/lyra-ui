@@ -153,4 +153,4 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
 PageHeader.displayName = "PageHeader";
 
 export { PageHeader };
-export type { PageHeaderBreadcrumb };
+export type { PageHeaderBreadcrumb, PageHeaderProps };

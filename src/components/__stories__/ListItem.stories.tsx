@@ -6,7 +6,8 @@ import { StatusBadge } from "../status-badge";
 const meta: Meta<typeof ListItem> = {
   title: "Atoms/ListItem",
   component: ListItem,
-  parameters: { layout: "padded", backgrounds: { default: "lyra-base" } },
+  tags: ["autodocs"],
+  parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
 };
 export default meta;
 type Story = StoryObj<typeof ListItem>;

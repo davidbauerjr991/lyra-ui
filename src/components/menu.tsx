@@ -27,6 +27,8 @@ interface MenuItemDef {
   description?: string;
   /** Highlight as the currently selected/active item */
   selected?: boolean;
+  /** Keep the item in its hover background state (e.g. while a flyout is open) */
+  active?: boolean;
 }
 
 type MenuEntry = MenuItemDef | "separator";
@@ -36,10 +38,16 @@ type MenuEntry = MenuItemDef | "separator";
 interface MenuProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Array of items and separators */
   items: MenuEntry[];
+  /** Override the ARIA role on the menu container. Defaults to "menu".
+   *  Use "listbox" for combobox/autocomplete dropdowns. */
+  menuRole?: React.AriaRole;
+  /** Override the ARIA role on each item. Defaults to "menuitem".
+   *  Use "option" when menuRole is "listbox". */
+  itemRole?: React.AriaRole;
 }
 
 const Menu = React.forwardRef<HTMLDivElement, MenuProps>(
-  ({ className, items, ...props }, ref) => {
+  ({ className, items, menuRole = "menu", itemRole = "menuitem", ...props }, ref) => {
     const menuRef = React.useRef<HTMLDivElement>(null);
 
     const handleKeyDown = React.useCallback((e: React.KeyboardEvent) => {
@@ -76,10 +84,10 @@ const Menu = React.forwardRef<HTMLDivElement, MenuProps>(
           if (typeof ref === "function") ref(node);
           else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
         }}
-        role="menu"
+        role={menuRole}
         onKeyDown={handleKeyDown}
         className={cn(
-          "min-w-[200px] rounded-lyra-lg bg-lyra-bg-surface-overlay border border-lyra-border-subtle shadow-lg p-2",
+          "min-w-[200px] rounded-lyra-lg bg-lyra-bg-surface-overlay border border-lyra-border-subtle shadow-lg p-1 overflow-hidden",
           className
         )}
         {...props}
@@ -95,7 +103,7 @@ const Menu = React.forwardRef<HTMLDivElement, MenuProps>(
             );
           }
 
-          return <MenuItemRow key={entry.id} item={entry} />;
+          return <MenuItemRow key={entry.id} item={entry} itemRole={itemRole} />;
         })}
       </div>
     );
@@ -107,9 +115,10 @@ Menu.displayName = "Menu";
 
 interface MenuItemRowProps {
   item: MenuItemDef;
+  itemRole?: React.AriaRole;
 }
 
-const MenuItemRow: React.FC<MenuItemRowProps> = ({ item }) => {
+const MenuItemRow: React.FC<MenuItemRowProps> = ({ item, itemRole = "menuitem" }) => {
   const [submenuOpen, setSubmenuOpen] = React.useState(false);
   const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasSubmenu = item.submenu && item.submenu.length > 0;
@@ -168,7 +177,7 @@ const MenuItemRow: React.FC<MenuItemRowProps> = ({ item }) => {
     >
       <button
         type="button"
-        role="menuitem"
+        role={itemRole}
         disabled={item.disabled}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
@@ -181,6 +190,7 @@ const MenuItemRow: React.FC<MenuItemRowProps> = ({ item }) => {
             ? "text-lyra-status-critical-strong hover:bg-lyra-status-critical-subtle active:bg-lyra-status-critical-medium"
             : "text-lyra-fg-default hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
           item.selected && !isDestructive && "bg-lyra-bg-active-subtle text-lyra-fg-active-strong",
+          item.active && !isDestructive && !item.selected && "bg-lyra-state-hover",
           item.disabled && "opacity-40 cursor-not-allowed hover:bg-transparent active:bg-transparent"
         )}
       >
@@ -191,7 +201,7 @@ const MenuItemRow: React.FC<MenuItemRowProps> = ({ item }) => {
             "absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full opacity-0 transition-opacity",
             isDestructive
               ? "bg-lyra-status-critical-strong group-hover/item:opacity-100 group-active/item:opacity-100"
-              : "bg-lyra-fg-default group-hover/item:opacity-100 group-active/item:opacity-100",
+              : cn("bg-lyra-fg-default group-hover/item:opacity-100 group-active/item:opacity-100", item.active && "opacity-100"),
             item.disabled && "group-hover/item:opacity-0 group-active/item:opacity-0"
           )}
         />
@@ -252,4 +262,4 @@ const MenuItemRow: React.FC<MenuItemRowProps> = ({ item }) => {
 };
 
 export { Menu };
-export type { MenuItemDef, MenuEntry };
+export type { MenuItemDef, MenuEntry, MenuProps };

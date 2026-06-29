@@ -9,7 +9,7 @@ const overlayVariants = cva(
   {
     variants: {
       variant: {
-        dark:  "bg-black/50",
+        dark:  "bg-lyra-bg-surface-backdrop",
         light: "bg-white/70 backdrop-blur-sm",
       },
     },
@@ -104,7 +104,7 @@ const OverlayBackdrop = React.forwardRef<HTMLDivElement, OverlayBackdropProps>(
       ref={ref}
       className={cn(
         "fixed inset-0 z-40",
-        variant === "light" ? "bg-white/70 backdrop-blur-sm" : "bg-black/50",
+        variant === "light" ? "bg-white/70 backdrop-blur-sm" : "bg-lyra-bg-surface-backdrop",
         className
       )}
       {...props}

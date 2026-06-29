@@ -1,10 +1,12 @@
 import * as React from "react";
-import { X, UserPlus, MessageSquare, AlertTriangle, PhoneMissed, Bell } from "lucide-react";
+import { UserPlus, MessageSquare, AlertTriangle, PhoneMissed, Bell, Trash2, GripVertical, MoreHorizontal } from "lucide-react";
 import { cn } from "../lib/utils";
 import { ListItem } from "./list-item";
 import { StatusBadge } from "./status-badge";
 import { Tooltip } from "./tooltip";
 import { Draggable } from "./draggable";
+import { ContainerHeader } from "./container-header";
+import { Menu } from "./menu";
 
 /* ── Types ── */
 
@@ -24,13 +26,14 @@ export interface AgentNotification {
 export interface AgentNotificationsProps {
   notifications: AgentNotification[];
   onClearAll?: () => void;
+  onMarkAllRead?: () => void;
   onClose?: () => void;
   onNotificationClick?: (notification: AgentNotification) => void;
   onDismiss?: (id: string) => void;
   className?: string;
 }
 
-/* ── Notification icon config ── */
+/* ── Notification type config ── */
 
 const typeConfig: Record<NotificationType, { icon: React.ReactNode; bg: string; color: string }> = {
   "new-case": {
@@ -69,22 +72,24 @@ function NotificationIcon({ type, icon }: { type: NotificationType; icon?: React
   );
 }
 
-/* ── Grid dots icon (header) ── */
-function GridDotsIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" className="text-lyra-fg-secondary">
-      {[0,1,2].map((row) => [0,1,2].map((col) => (
-        <circle key={`${row}-${col}`} cx={3 + col * 5} cy={3 + row * 5} r={1.2} />
-      )))}
-    </svg>
-  );
-}
 
 /* ── Component ── */
 
 const AgentNotifications = React.forwardRef<HTMLDivElement, AgentNotificationsProps>(
-  ({ notifications, onClearAll, onClose, onNotificationClick, onDismiss, className }, ref) => {
-    const unreadCount = notifications.length;
+  ({ notifications, onClearAll, onMarkAllRead, onClose, onNotificationClick, onDismiss, className }, ref) => {
+    const unreadCount = notifications.filter((n) => !n.read).length;
+    const hasUnread = notifications.some((n) => !n.read);
+    const [overflowOpen, setOverflowOpen] = React.useState(false);
+
+    // Pre-compute outside JSX to avoid IIFE type-widening issues
+    const overflowItems: Array<{ id: string; label: string; onClick: () => void; destructive?: boolean }> = [
+      ...(onMarkAllRead && hasUnread
+        ? [{ id: "mark-read", label: "Mark all as read", onClick: onMarkAllRead }]
+        : []),
+      ...(onClearAll
+        ? [{ id: "clear-all", label: "Clear all", onClick: onClearAll, destructive: true }]
+        : []),
+    ];
 
     return (
       <Draggable
@@ -97,36 +102,69 @@ const AgentNotifications = React.forwardRef<HTMLDivElement, AgentNotificationsPr
           "rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg",
           className
         )}
+        renderHeaderControls={({ gripProps, dockButtonProps, dockIcon, variant }) => (
+          <ContainerHeader
+            title="Notifications"
+            /* Grip icon in float mode; spacer div to preserve header height in docked mode */
+            icon={
+              variant === "float" ? (
+                <div {...gripProps}><GripVertical className="h-4 w-4" strokeWidth={1.5} /></div>
+              ) : (
+                <div className="w-4" aria-hidden="true" />
+              )
+            }
+            /* Count badge sits inline right after the title */
+            titleBadge={
+              unreadCount > 0
+                ? <StatusBadge variant="info" size="sm" className="-translate-y-0.5">{unreadCount}</StatusBadge>
+                : undefined
+            }
+            /* lyra-heading-md line-height collapses so items-center aligns the badge correctly */
+            titleClassName="lyra-heading-md leading-none"
+            actions={
+              <>
+                {/* Overflow menu — "Mark all as read" + "Clear all" */}
+                {overflowItems.length > 0 && (
+                  <div className="relative">
+                    <Tooltip content="More options" placement="bottom" asLabel>
+                      <button
+                        type="button"
+                        aria-label="More options"
+                        aria-expanded={overflowOpen}
+                        onClick={() => setOverflowOpen((v) => !v)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover hover:text-lyra-fg-default transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+                      >
+                        <MoreHorizontal className="h-4 w-4" strokeWidth={1.5} />
+                      </button>
+                    </Tooltip>
+                    {overflowOpen && (
+                      <div className="absolute right-0 top-full mt-1 z-50">
+                        <Menu
+                          items={overflowItems.map((item) => ({
+                            ...item,
+                            onClick: () => { item.onClick(); setOverflowOpen(false); },
+                          }))}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* Dock / undock toggle */}
+                <Tooltip content={dockButtonProps["aria-label"]} placement="bottom" asLabel>
+                  <button
+                    {...dockButtonProps}
+                    className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover hover:text-lyra-fg-default transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+                  >
+                    {dockIcon}
+                  </button>
+                </Tooltip>
+              </>
+            }
+            onClose={onClose}
+            bordered
+          />
+        )}
       >
-        {/* ── Header (also serves as drag handle via Draggable's h-12 overlay) ── */}
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-lyra-border-subtle shrink-0 bg-lyra-bg-surface-container-subtle select-none">
-          <span className="lyra-heading-md text-lyra-fg-default flex-1">Notifications</span>
-          {unreadCount > 0 && (
-            <StatusBadge variant="info" size="sm">{unreadCount}</StatusBadge>
-          )}
-          {onClearAll && (
-            <button
-              type="button"
-              onClick={onClearAll}
-              className="lyra-body-sm text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors focus-visible:outline-none focus-visible:underline ml-2"
-            >
-              Clear all
-            </button>
-          )}
-          {onClose && (
-            <Tooltip content="Close" placement="bottom">
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="Close notifications"
-                className="flex h-7 w-7 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover hover:text-lyra-fg-default transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus ml-1"
-              >
-                <X className="h-4 w-4" strokeWidth={1.5} />
-              </button>
-            </Tooltip>
-          )}
-        </div>
-
         {/* ── Notification list ── */}
         <div className="overflow-y-auto flex-1">
           {notifications.length === 0 ? (
@@ -136,7 +174,13 @@ const AgentNotifications = React.forwardRef<HTMLDivElement, AgentNotificationsPr
             </div>
           ) : (
             notifications.map((n) => (
-              <div key={n.id} className="group/notif relative">
+              <div
+                key={n.id}
+                className={cn(
+                  "group/notif relative border-l-2",
+                  !n.read ? "border-lyra-bg-primary" : "border-transparent"
+                )}
+              >
                 <ListItem
                   onClick={() => onNotificationClick?.(n)}
                   leading={<NotificationIcon type={n.type} icon={n.icon} />}
@@ -144,23 +188,25 @@ const AgentNotifications = React.forwardRef<HTMLDivElement, AgentNotificationsPr
                   subtitle={n.subtitle}
                   meta={n.timestamp}
                   divider
-                  className={!n.read ? "bg-lyra-bg-active-subtle/40 pr-10" : "pr-10"}
+                  className={cn("pr-10", !n.read && "bg-lyra-bg-active-subtle")}
                 />
-                {/* Dismiss button — appears on row hover */}
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); onDismiss?.(n.id); }}
-                  aria-label={`Dismiss ${n.title}`}
-                  className={cn(
-                    "absolute right-3 top-1/2 -translate-y-1/2",
-                    "flex h-6 w-6 items-center justify-center rounded-lyra-sm",
-                    "text-lyra-fg-secondary hover:text-lyra-fg-default hover:bg-lyra-state-hover transition-colors",
-                    "opacity-0 group-hover/notif:opacity-100",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
-                  )}
-                >
-                  <X className="h-3.5 w-3.5" strokeWidth={2} />
-                </button>
+                {/* Dismiss button — visible on row hover */}
+                <Tooltip content="Clear" placement="left" asLabel>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onDismiss?.(n.id); }}
+                    aria-label={`Clear ${n.title}`}
+                    className={cn(
+                      "absolute right-3 top-1/2 -translate-y-1/2",
+                      "flex h-6 w-6 items-center justify-center rounded-lyra-sm",
+                      "text-lyra-fg-secondary hover:text-lyra-fg-default hover:bg-lyra-state-hover transition-colors",
+                      "opacity-0 group-hover/notif:opacity-100",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
+                    )}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  </button>
+                </Tooltip>
               </div>
             ))
           )}

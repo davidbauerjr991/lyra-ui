@@ -3,6 +3,7 @@ import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { X } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Label } from "./label";
+import { Menu } from "./menu";
 
 /* ── Types ── */
 
@@ -211,8 +212,6 @@ const Autocomplete = React.forwardRef<HTMLDivElement, AutocompleteProps>(
           <PopoverPrimitive.Portal>
             <PopoverPrimitive.Content
               id={listId}
-              role="listbox"
-              aria-label={label ?? "Options"}
               onOpenAutoFocus={(e) => e.preventDefault()}
               onInteractOutside={() => {
                 setOpen(false);
@@ -225,43 +224,30 @@ const Autocomplete = React.forwardRef<HTMLDivElement, AutocompleteProps>(
               collisionPadding={4}
               style={{ width: "var(--radix-popover-trigger-width)" }}
               className={cn(
-                "z-50 rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg py-1 max-h-60 overflow-y-auto",
-                "animate-in fade-in-0 duration-100",
-                "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-75"
+                "z-50",
+                "animate-in fade-in-0 slide-in-from-top-2 duration-150",
+                "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-100"
               )}
             >
               {filtered.length === 0 ? (
-                <div className="px-3 py-2.5 lyra-body-md text-lyra-fg-disabled select-none">
+                <div className="rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg px-3 py-2.5 lyra-body-md text-lyra-fg-disabled select-none">
                   {emptyMessage}
                 </div>
               ) : (
-                filtered.map((option, i) => (
-                  <div
-                    key={option.value}
-                    id={`${inputId}-opt-${i}`}
-                    role="option"
-                    aria-selected={option.value === value}
-                    aria-disabled={option.disabled}
-                    onMouseDown={(e) => {
-                      e.preventDefault(); // prevent blur before click
-                      if (!option.disabled) handleSelect(option);
-                    }}
-                    onMouseEnter={() => setActiveIndex(i)}
-                    className={cn(
-                      "flex items-center gap-2 px-3 py-2 lyra-body-md cursor-pointer transition-colors select-none",
-                      option.value === value
-                        ? "bg-lyra-bg-active-subtle text-lyra-fg-active-strong"
-                        : "text-lyra-fg-default",
-                      i === activeIndex && option.value !== value && "bg-lyra-state-hover",
-                      option.disabled && "text-lyra-fg-disabled cursor-not-allowed pointer-events-none"
-                    )}
-                  >
-                    {option.icon && (
-                      <span className="text-base leading-none shrink-0">{option.icon}</span>
-                    )}
-                    {option.label}
-                  </div>
-                ))
+                <Menu
+                  aria-label={label ?? "Options"}
+                  menuRole="listbox"
+                  itemRole="option"
+                  className="max-h-60 overflow-y-auto"
+                  items={filtered.map((option) => ({
+                    id: option.value,
+                    label: option.label,
+                    icon: option.icon,
+                    disabled: option.disabled,
+                    selected: option.value === value,
+                    onClick: () => handleSelect(option),
+                  }))}
+                />
               )}
             </PopoverPrimitive.Content>
           </PopoverPrimitive.Portal>

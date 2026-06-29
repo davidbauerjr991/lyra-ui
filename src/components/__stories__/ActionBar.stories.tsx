@@ -144,6 +144,73 @@ export const AllStates: Story = {
   ),
 };
 
+/* ── All Variants ── */
+export const AllVariants: Story = {
+  name: "All Variants",
+  render: () => (
+    <div className="flex flex-col">
+      {/* Info — many actions */}
+      <ActionBar
+        variant="info"
+        title="Reviewing this conversation"
+        description="You are reviewing the AI Agent's live conversation - immediate action is requested."
+        actions={
+          <>
+            <Button variant="outline">Guide Conversation</Button>
+            <Button variant="outline">Transfer</Button>
+            <Button variant="destructive">Takeover</Button>
+          </>
+        }
+      />
+
+      {/* Warning — stop action */}
+      <ActionBar
+        variant="warning"
+        title="Guiding this conversation"
+        description="You are guiding the AI agent in real time"
+        actions={
+          <>
+            <Button variant="warning" className="gap-1.5">
+              <StopCircle className="h-4 w-4" strokeWidth={1.5} />
+              Stop Guiding
+            </Button>
+            <Button variant="outline">Transfer</Button>
+            <Button variant="destructive">Takeover</Button>
+          </>
+        }
+      />
+
+      {/* Error — minimal actions */}
+      <ActionBar
+        variant="error"
+        title="Connection lost"
+        description="The AI agent has disconnected. Immediate action is required."
+        actions={
+          <>
+            <Button variant="outline">Retry</Button>
+            <Button variant="destructive">Takeover</Button>
+          </>
+        }
+      />
+
+      {/* Info — single action */}
+      <ActionBar
+        variant="info"
+        title="Update available"
+        description="A new version of the AI model is available."
+        actions={<Button variant="outline">Update now</Button>}
+      />
+
+      {/* Warning — no description */}
+      <ActionBar
+        variant="warning"
+        title="Session expiring soon"
+        actions={<Button variant="warning">Extend session</Button>}
+      />
+    </div>
+  ),
+};
+
 /* ── Interactive / controlled ── */
 export const Interactive: Story = {
   name: "Interactive",

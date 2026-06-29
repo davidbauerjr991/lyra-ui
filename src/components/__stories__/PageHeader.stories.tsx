@@ -12,6 +12,7 @@ const meta: Meta<typeof PageHeader> = {
   tags: ["autodocs"],
   parameters: {
     layout: "fullscreen",
+    backgrounds: { default: "lyra-shell" },
   },
 };
 

@@ -8,6 +8,7 @@ const meta: Meta<typeof Menu> = {
   tags: ["autodocs"],
   parameters: {
     layout: "padded",
+    backgrounds: { default: "lyra-shell" },
   },
 };
 
@@ -161,6 +162,96 @@ export const WithDescriptions: Story = {
       ]}
       className="w-[280px]"
     />
+  ),
+};
+
+/* ── All Variants ── */
+
+export const AllVariants: Story = {
+  name: "All Variants",
+  render: () => (
+    <div className="flex flex-wrap gap-8 items-start">
+      {/* No icons */}
+      <div className="flex flex-col gap-2">
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary">Without icons</p>
+        <Menu
+          items={[
+            { id: "1", label: "Menu Item" },
+            { id: "2", label: "Menu Item" },
+            { id: "3", label: "Menu Item" },
+          ]}
+          className="w-[200px]"
+        />
+      </div>
+
+      {/* With icons */}
+      <div className="flex flex-col gap-2">
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary">With icons</p>
+        <Menu
+          items={[
+            { id: "1", label: "Copy", icon: <Copy className="h-4 w-4" strokeWidth={1.5} /> },
+            { id: "2", label: "Share", icon: <Share2 className="h-4 w-4" strokeWidth={1.5} /> },
+            { id: "3", label: "Download", icon: <Download className="h-4 w-4" strokeWidth={1.5} /> },
+          ]}
+          className="w-[200px]"
+        />
+      </div>
+
+      {/* With shortcuts */}
+      <div className="flex flex-col gap-2">
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary">With shortcuts</p>
+        <Menu
+          items={[
+            { id: "1", label: "Cut", icon: <Scissors className="h-4 w-4" strokeWidth={1.5} />, shortcut: "⌘X" },
+            { id: "2", label: "Copy", icon: <Copy className="h-4 w-4" strokeWidth={1.5} />, shortcut: "⌘C" },
+            { id: "3", label: "Paste", icon: <Clipboard className="h-4 w-4" strokeWidth={1.5} />, shortcut: "⌘V" },
+          ]}
+          className="w-[220px]"
+        />
+      </div>
+
+      {/* With dividers */}
+      <div className="flex flex-col gap-2">
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary">With dividers</p>
+        <Menu
+          items={[
+            { id: "1", label: "Edit", icon: <FileText className="h-4 w-4" strokeWidth={1.5} /> },
+            { id: "2", label: "Duplicate", icon: <Copy className="h-4 w-4" strokeWidth={1.5} /> },
+            "separator",
+            { id: "3", label: "Download", icon: <Download className="h-4 w-4" strokeWidth={1.5} /> },
+            "separator",
+            { id: "4", label: "Delete", icon: <Trash2 className="h-4 w-4" strokeWidth={1.5} />, destructive: true },
+          ]}
+          className="w-[220px]"
+        />
+      </div>
+
+      {/* With disabled items */}
+      <div className="flex flex-col gap-2">
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary">With disabled items</p>
+        <Menu
+          items={[
+            { id: "1", label: "Edit", icon: <FileText className="h-4 w-4" strokeWidth={1.5} /> },
+            { id: "2", label: "Archive", disabled: true },
+            "separator",
+            { id: "3", label: "Delete", destructive: true, icon: <Trash2 className="h-4 w-4" strokeWidth={1.5} /> },
+          ]}
+          className="w-[220px]"
+        />
+      </div>
+
+      {/* With descriptions */}
+      <div className="flex flex-col gap-2">
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary">With descriptions</p>
+        <Menu
+          items={[
+            { id: "1", label: "Import from file", icon: <FileText className="h-4 w-4" strokeWidth={1.5} />, description: "Upload a CSV or JSON file" },
+            { id: "2", label: "Connect service", icon: <Share2 className="h-4 w-4" strokeWidth={1.5} />, description: "Link an external data source" },
+          ]}
+          className="w-[260px]"
+        />
+      </div>
+    </div>
   ),
 };
 

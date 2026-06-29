@@ -28,7 +28,8 @@ import { Input } from "../input";
 const meta = {
   title: "Atoms/Icon",
   component: Icon,
-  parameters: { layout: "centered" },
+  tags: ["autodocs"],
+  parameters: { layout: "centered", backgrounds: { default: "lyra-shell" } },
   argTypes: {
     size: {
       control: "select",
@@ -253,6 +254,55 @@ export const BackgroundVariants: Story = {
   ),
 };
 
+
+export const AllVariants: Story = {
+  name: "All Variants",
+  render: () => {
+    const sizes = ["sm", "md", "lg"] as IconSize[];
+    const colors = [
+      ["default", "Default"],
+      ["secondary", "Secondary"],
+      ["action", "Action"],
+      ["disabled", "Disabled"],
+      ["active-strong", "Active Strong"],
+      ["status-success", "Success"],
+      ["status-warning", "Warning"],
+      ["status-critical", "Critical"],
+      ["status-info", "Info"],
+    ] as [IconColor, string][];
+
+    return (
+      <div className="flex flex-col gap-8 p-4">
+        <div className="overflow-x-auto">
+          <table className="border-collapse">
+            <thead>
+              <tr>
+                <th className="text-left pr-6 pb-3 lyra-body-sm text-lyra-fg-secondary font-medium">Color \ Size</th>
+                {sizes.map((size) => (
+                  <th key={size} className="px-6 pb-3 lyra-body-sm text-lyra-fg-secondary font-medium text-center">
+                    {size}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {colors.map(([color, label]) => (
+                <tr key={color}>
+                  <td className="pr-6 py-3 lyra-body-sm text-lyra-fg-secondary whitespace-nowrap">{label}</td>
+                  {sizes.map((size) => (
+                    <td key={size} className="px-6 py-3 text-center">
+                      <Icon icon={Star} size={size} color={color} decorative />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  },
+};
 
 export const CommonIcons: Story = {
   name: "Common Icons",

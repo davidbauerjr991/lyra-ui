@@ -18,6 +18,7 @@ const PRESELECTED = ["api_cc2_quick_connect", "basicskill", "billingqueue"];
 const meta: Meta<typeof TransferBox> = {
   title: "Atoms/TransferBox",
   component: TransferBox,
+  tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
 };
 
@@ -95,4 +96,93 @@ export const Readonly: Story = {
       availableLabelTooltip={TOOLTIP}
     />
   ),
+};
+
+function AllVariantsDemo() {
+  const [emptyValue, setEmptyValue] = useState<string[]>([]);
+  const [withItemsValue, setWithItemsValue] = useState<string[]>(["atg_inbound", "basicskill"]);
+  const [withSelectionsValue, setWithSelectionsValue] = useState<string[]>(PRESELECTED);
+
+  return (
+    <div className="flex flex-col gap-10">
+      <div>
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">Empty (no selections)</p>
+        <TransferBox
+          options={SKILLS}
+          value={emptyValue}
+          onChange={setEmptyValue}
+          availableLabel="Available"
+          selectedLabel="Selected"
+          availableLabelTooltip={TOOLTIP}
+        />
+      </div>
+
+      <div>
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">With items selected</p>
+        <TransferBox
+          options={SKILLS}
+          value={withItemsValue}
+          onChange={setWithItemsValue}
+          availableLabel="Available"
+          selectedLabel="Selected"
+          availableLabelTooltip={TOOLTIP}
+        />
+      </div>
+
+      <div>
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">With max selection limit (max 5)</p>
+        <TransferBox
+          options={SKILLS}
+          value={withSelectionsValue}
+          onChange={setWithSelectionsValue}
+          availableLabel="Available"
+          selectedLabel="Selected"
+          availableLabelTooltip={TOOLTIP}
+          max={5}
+        />
+      </div>
+
+      <div>
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">Error state</p>
+        <TransferBox
+          options={SKILLS}
+          value={[]}
+          onChange={() => {}}
+          availableLabel="Available"
+          selectedLabel="Selected"
+          availableLabelTooltip={TOOLTIP}
+          error="At least one skill must be selected."
+        />
+      </div>
+
+      <div>
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">Disabled</p>
+        <TransferBox
+          options={SKILLS}
+          value={["atg_inbound", "basicskill"]}
+          disabled
+          availableLabel="Available"
+          selectedLabel="Selected"
+          availableLabelTooltip={TOOLTIP}
+        />
+      </div>
+
+      <div>
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">Read only</p>
+        <TransferBox
+          options={SKILLS}
+          value={["atg_inbound", "basicskill", "billingqueue"]}
+          readonly
+          availableLabel="Available"
+          selectedLabel="Selected"
+          availableLabelTooltip={TOOLTIP}
+        />
+      </div>
+    </div>
+  );
+}
+
+export const AllVariants: Story = {
+  name: "All Variants",
+  render: () => <AllVariantsDemo />,
 };

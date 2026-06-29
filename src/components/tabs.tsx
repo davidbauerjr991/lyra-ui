@@ -179,3 +179,4 @@ const TabPanel = React.forwardRef<HTMLDivElement, TabPanelProps>(
 TabPanel.displayName = "TabPanel";
 
 export { TabList, Tab, TabPanel };
+export type { TabListProps, TabProps, TabPanelProps };

@@ -5,6 +5,7 @@ import { AgentNotifications, type AgentNotification } from "../agent-notificatio
 const meta: Meta<typeof AgentNotifications> = {
   title: "UI/AgentNotifications",
   component: AgentNotifications,
+  tags: ["autodocs"],
   parameters: { layout: "fullscreen", backgrounds: { default: "lyra-shell" } },
 };
 export default meta;
@@ -30,6 +31,7 @@ export const Default: Story = {
       <div className="absolute top-4 left-4">
       <AgentNotifications
         notifications={items}
+        onMarkAllRead={() => setItems((prev) => prev.map((i) => ({ ...i, read: true })))}
         onClearAll={() => setItems([])}
         onClose={() => alert("Close")}
         onDismiss={(id) => setItems((prev) => prev.filter((i) => i.id !== id))}

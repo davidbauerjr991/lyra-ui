@@ -77,3 +77,4 @@ const InlineNotification = React.forwardRef<
 InlineNotification.displayName = "InlineNotification";
 
 export { InlineNotification, notificationVariants };
+export type { InlineNotificationProps };

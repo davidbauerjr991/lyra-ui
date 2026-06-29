@@ -14,9 +14,9 @@ const buttonVariants = cva(
         destructive:
           "bg-lyra-bg-destructive text-lyra-fg-on-primary hover:bg-lyra-state-hover-destructive active:bg-lyra-state-pressed-destructive",
         warning:
-          "bg-lyra-status-warning-strong text-white hover:bg-lyra-status-warning-strong/90 active:bg-lyra-status-warning-strong/80",
+          "bg-lyra-status-warning-strong text-lyra-fg-on-primary hover:bg-lyra-status-warning-strong/90 active:bg-lyra-status-warning-strong/80",
         success:
-          "bg-lyra-status-success-strong text-white hover:bg-lyra-status-success-strong/90 active:bg-lyra-status-success-strong/80",
+          "bg-lyra-status-success-strong text-lyra-fg-on-primary hover:bg-lyra-status-success-strong/90 active:bg-lyra-status-success-strong/80",
         outline:
           "border border-lyra-border-default bg-lyra-bg-control text-lyra-fg-action hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
         ghost:

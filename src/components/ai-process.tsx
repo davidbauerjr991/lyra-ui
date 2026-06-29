@@ -59,16 +59,17 @@ function StepIcon({ status }: { status: AIProcessStepStatus }) {
 
 /* ── Component ── */
 
-const AIProcess: React.FC<AIProcessProps> = ({
-  steps,
-  label = "Thought process",
-  defaultExpanded = false,
-  className,
-}) => {
+const AIProcess = React.forwardRef<HTMLDivElement, AIProcessProps>(
+  ({
+    steps,
+    label = "Thought process",
+    defaultExpanded = false,
+    className,
+  }, ref) => {
   const [expanded, setExpanded] = React.useState(defaultExpanded);
 
   return (
-    <div className={cn("w-full", className)}>
+    <div ref={ref} className={cn("w-full", className)}>
       {/* Toggle header */}
       <button
         type="button"
@@ -120,7 +121,7 @@ const AIProcess: React.FC<AIProcessProps> = ({
       )}
     </div>
   );
-};
+});
 
 AIProcess.displayName = "AIProcess";
 

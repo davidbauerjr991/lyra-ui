@@ -17,6 +17,7 @@ const APPS: ConnectedApp[] = [
 const meta: Meta<typeof AgentProfile> = {
   title: "UI/AgentProfile",
   component: AgentProfile,
+  tags: ["autodocs"],
   parameters: {
     layout: "centered",
     backgrounds: { default: "lyra-shell" },

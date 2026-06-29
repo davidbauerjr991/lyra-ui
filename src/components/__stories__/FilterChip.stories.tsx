@@ -19,6 +19,7 @@ const meta: Meta<typeof FilterChip> = {
   tags: ["autodocs"],
   parameters: {
     layout: "padded",
+    backgrounds: { default: "lyra-shell" },
   },
 };
 
@@ -774,4 +775,71 @@ function WithOperatorsDemo() {
 export const WithOperators: Story = {
   name: "With Operators",
   render: () => <WithOperatorsDemo />,
+};
+
+/* ── All Variants ── */
+
+export const AllVariants: Story = {
+  name: "All Variants",
+  render: () => (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <span className="lyra-body-sm-emphasis text-lyra-fg-secondary">Default (empty, no selection)</span>
+        <FilterChip
+          label="Filter"
+          options={sampleOptions}
+          selectedValues={[]}
+        />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span className="lyra-body-sm-emphasis text-lyra-fg-secondary">Active (with selected values)</span>
+        <FilterChip
+          label="Filter"
+          options={sampleOptions}
+          selectedValues={["option-1", "option-2", "option-3"]}
+        />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span className="lyra-body-sm-emphasis text-lyra-fg-secondary">Error</span>
+        <FilterChip
+          label="Filter"
+          options={sampleOptions}
+          selectedValues={["option-1", "option-2"]}
+          error
+        />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span className="lyra-body-sm-emphasis text-lyra-fg-secondary">Disabled (empty)</span>
+        <FilterChip
+          label="Filter"
+          options={sampleOptions}
+          selectedValues={[]}
+          disabled
+        />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span className="lyra-body-sm-emphasis text-lyra-fg-secondary">Disabled (with values)</span>
+        <FilterChip
+          label="Filter"
+          options={sampleOptions}
+          selectedValues={["option-1", "option-2"]}
+          disabled
+        />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span className="lyra-body-sm-emphasis text-lyra-fg-secondary">Removable (with remove button)</span>
+        <FilterChip
+          label="Filter"
+          options={sampleOptions}
+          selectedValues={["option-1", "option-2"]}
+          onRemove={() => {}}
+        />
+      </div>
+    </div>
+  ),
 };

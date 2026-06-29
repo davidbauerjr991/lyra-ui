@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useState } from "react";
 import { ChevronDown, X } from "lucide-react";
+import { cva, type VariantProps } from "class-variance-authority";
 import { ErrorIcon } from "./icons/error-icon";
 import { Select } from "./select";
 import { Tooltip } from "./tooltip";
@@ -16,6 +17,65 @@ interface FilterChipOption {
 }
 
 type FilterChipVariant = "default" | "active" | "error" | "disabled";
+
+/* ── CVA definitions ── */
+
+const filterChipVariants = cva(
+  "inline-flex items-center gap-1.5 border px-3 h-8 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
+  {
+    variants: {
+      variant: {
+        default:  "border-lyra-border-default bg-lyra-bg-control-subtle text-lyra-fg-default hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
+        active:   "border-lyra-border-active bg-lyra-bg-active-subtle text-lyra-fg-active-strong hover:bg-lyra-state-hover-active-subtle active:bg-lyra-state-pressed-active-subtle",
+        error:    "border-lyra-status-critical-strong bg-lyra-status-critical-subtle text-lyra-status-critical-strong hover:bg-lyra-state-hover-critical-subtle active:bg-lyra-state-pressed-critical-subtle",
+        disabled: "border-lyra-border-disabled bg-lyra-bg-disabled text-lyra-fg-disabled cursor-not-allowed",
+      },
+    },
+    defaultVariants: { variant: "default" },
+  }
+);
+
+/** Segment color classes (bg + text only, no border) — used in operator wrapper */
+const filterChipSegmentColorVariants = cva("", {
+  variants: {
+    variant: {
+      default:  "bg-lyra-bg-control-subtle text-lyra-fg-default",
+      active:   "bg-lyra-bg-active-subtle text-lyra-fg-active-strong",
+      error:    "bg-lyra-status-critical-subtle text-lyra-status-critical-strong",
+      disabled: "bg-lyra-bg-disabled text-lyra-fg-disabled",
+    },
+  },
+  defaultVariants: { variant: "default" },
+});
+
+/** Outer border color — used for the operator wrapper div */
+const filterChipOuterBorderVariants = cva("", {
+  variants: {
+    variant: {
+      default:  "border-lyra-border-default",
+      active:   "border-lyra-border-active",
+      error:    "border-lyra-status-critical-strong",
+      disabled: "border-lyra-border-disabled",
+    },
+  },
+  defaultVariants: { variant: "default" },
+});
+
+/** Remove button classes */
+const filterChipRemoveButtonVariants = cva(
+  "inline-flex items-center justify-center h-8 w-8 -ml-px rounded-r-lyra-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
+  {
+    variants: {
+      variant: {
+        default:  "border-lyra-border-default bg-lyra-bg-control-subtle text-lyra-fg-secondary hover:bg-lyra-state-hover hover:text-lyra-fg-default active:bg-lyra-state-pressed",
+        active:   "border-lyra-border-active bg-lyra-bg-active-subtle text-lyra-fg-active-strong hover:bg-lyra-state-hover-active-subtle active:bg-lyra-state-pressed-active-subtle",
+        error:    "border-lyra-status-critical-strong bg-lyra-status-critical-subtle text-lyra-status-critical-strong hover:bg-lyra-state-hover-critical-subtle active:bg-lyra-state-pressed-critical-subtle",
+        disabled: "border-lyra-border-disabled bg-lyra-bg-disabled text-lyra-fg-disabled cursor-not-allowed",
+      },
+    },
+    defaultVariants: { variant: "default" },
+  }
+);
 
 interface FilterChipProps {
   /** Filter label (e.g. "Status", "Region") */
@@ -95,27 +155,11 @@ const FilterChip = React.forwardRef<HTMLButtonElement, FilterChipProps>(
         aria-haspopup="listbox"
         aria-expanded={open}
         className={cn(
-          "inline-flex items-center gap-1.5 border px-3 h-8 transition-colors",
+          filterChipVariants({ variant }),
           // In operator wrapper, the trigger has no visible border (wrapper provides it)
           hasOperators
             ? "border-0 rounded-none"
             : onRemove && !disabled ? "rounded-l-lyra-md" : "rounded-lyra-md",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
-          variant === "default" && [
-            "border-lyra-border-default bg-lyra-bg-control-subtle text-lyra-fg-default",
-            "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
-          ],
-          variant === "active" && [
-            "border-lyra-border-active bg-lyra-bg-active-subtle text-lyra-fg-active-strong",
-            "hover:bg-lyra-state-hover-active-subtle active:bg-lyra-state-pressed-active-subtle",
-          ],
-          variant === "error" && [
-            "border-lyra-status-critical-strong bg-lyra-status-critical-subtle text-lyra-status-critical-strong",
-            "hover:bg-lyra-state-hover-critical-subtle active:bg-lyra-state-pressed-critical-subtle",
-          ],
-          variant === "disabled" && [
-            "border-lyra-border-disabled bg-lyra-bg-disabled text-lyra-fg-disabled cursor-not-allowed",
-          ]
         )}
       >
         {/* Error icon */}
@@ -169,20 +213,10 @@ const FilterChip = React.forwardRef<HTMLButtonElement, FilterChipProps>(
     );
 
     /* Color/bg/text — no border (used inside operator wrapper) */
-    const segmentColor = cn(
-      variant === "default" && "bg-lyra-bg-control-subtle text-lyra-fg-default",
-      variant === "active" && "bg-lyra-bg-active-subtle text-lyra-fg-active-strong",
-      variant === "error" && "bg-lyra-status-critical-subtle text-lyra-status-critical-strong",
-      variant === "disabled" && "bg-lyra-bg-disabled text-lyra-fg-disabled"
-    );
+    const segmentColor = filterChipSegmentColorVariants({ variant });
 
     /* Outer border color */
-    const outerBorder = cn(
-      variant === "default" && "border-lyra-border-default",
-      variant === "active" && "border-lyra-border-active",
-      variant === "error" && "border-lyra-status-critical-strong",
-      variant === "disabled" && "border-lyra-border-disabled"
-    );
+    const outerBorder = filterChipOuterBorderVariants({ variant });
 
     /* Operator trigger button — no border, just color */
     const operatorTrigger = hasOperators ? (
@@ -257,13 +291,7 @@ const FilterChip = React.forwardRef<HTMLButtonElement, FilterChipProps>(
               type="button"
               onClick={(e) => { e.stopPropagation(); onRemove(); }}
               aria-label={`Remove ${label} filter`}
-              className={cn(
-                "inline-flex items-center justify-center h-8 w-8 -ml-px rounded-r-lyra-md border transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
-                variant === "active"
-                  ? "border-lyra-border-active bg-lyra-bg-active-subtle text-lyra-fg-active-strong hover:bg-lyra-state-hover-active-subtle active:bg-lyra-state-pressed-active-subtle"
-                  : "border-lyra-border-default bg-lyra-bg-control-subtle text-lyra-fg-secondary hover:bg-lyra-state-hover hover:text-lyra-fg-default active:bg-lyra-state-pressed"
-              )}
+              className={filterChipRemoveButtonVariants({ variant })}
             >
               <X className="h-3.5 w-3.5" strokeWidth={1.5} />
             </button>
@@ -297,22 +325,7 @@ const FilterChip = React.forwardRef<HTMLButtonElement, FilterChipProps>(
             type="button"
             onClick={(e) => { e.stopPropagation(); onRemove(); }}
             aria-label={`Remove ${label} filter`}
-            className={cn(
-              "inline-flex items-center justify-center h-8 w-8 -ml-px rounded-r-lyra-md border transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
-              variant === "default" && [
-                "border-lyra-border-default bg-lyra-bg-control-subtle text-lyra-fg-secondary",
-                "hover:bg-lyra-state-hover hover:text-lyra-fg-default active:bg-lyra-state-pressed",
-              ],
-              variant === "active" && [
-                "border-lyra-border-active bg-lyra-bg-active-subtle text-lyra-fg-active-strong",
-                "hover:bg-lyra-state-hover-active-subtle active:bg-lyra-state-pressed-active-subtle",
-              ],
-              variant === "error" && [
-                "border-lyra-status-critical-strong bg-lyra-status-critical-subtle text-lyra-status-critical-strong",
-                "hover:bg-lyra-state-hover-critical-subtle active:bg-lyra-state-pressed-critical-subtle",
-              ],
-            )}
+            className={filterChipRemoveButtonVariants({ variant })}
           >
             <X className="h-3.5 w-3.5" strokeWidth={1.5} />
           </button>
@@ -324,5 +337,5 @@ const FilterChip = React.forwardRef<HTMLButtonElement, FilterChipProps>(
 );
 FilterChip.displayName = "FilterChip";
 
-export { FilterChip };
+export { FilterChip, filterChipVariants };
 export type { FilterChipProps, FilterChipOption, FilterChipVariant };

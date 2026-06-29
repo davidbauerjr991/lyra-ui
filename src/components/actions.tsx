@@ -1,5 +1,6 @@
 import * as React from "react";
 import { ChevronDown } from "lucide-react";
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/utils";
 import { Tooltip } from "./tooltip";
 
@@ -13,12 +14,20 @@ interface ActionIconButtonProps
   size?: "sm" | "default" | "lg" | "xl";
 }
 
-const actionIconSizeMap = {
-  sm: "h-8 w-8",
-  default: "h-9 w-9",
-  lg: "h-10 w-10",
-  xl: "h-11 w-11",
-} as const;
+const actionIconButtonVariants = cva(
+  "relative flex items-center justify-center rounded-lyra-sm text-lyra-fg-action transition-colors hover:bg-lyra-state-hover active:bg-lyra-state-pressed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
+  {
+    variants: {
+      size: {
+        sm:      "h-8 w-8",
+        default: "h-9 w-9",
+        lg:      "h-10 w-10",
+        xl:      "h-11 w-11",
+      },
+    },
+    defaultVariants: { size: "default" },
+  }
+);
 
 const ActionIconButton = React.forwardRef<
   HTMLButtonElement,
@@ -28,13 +37,7 @@ const ActionIconButton = React.forwardRef<
     <button
       ref={ref}
       aria-label={title}
-      className={cn(
-        "relative flex items-center justify-center rounded-lyra-sm text-lyra-fg-action transition-colors",
-        actionIconSizeMap[size],
-        "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
-        className
-      )}
+      className={cn(actionIconButtonVariants({ size }), className)}
       {...props}
     >
       <span aria-hidden="true">{children}</span>
@@ -114,4 +117,6 @@ export {
   ActionAvatarButton,
   ShellIconButton,
   ShellAvatarButton,
+  actionIconButtonVariants,
 };
+export type { ActionIconButtonProps, ActionAvatarButtonProps };

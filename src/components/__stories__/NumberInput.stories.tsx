@@ -5,7 +5,8 @@ import { NumberInput } from "../number-input";
 const meta: Meta<typeof NumberInput> = {
   title: "Atoms/Number Input",
   component: NumberInput,
-  parameters: { layout: "centered" },
+  tags: ["autodocs"],
+  parameters: { layout: "centered", backgrounds: { default: "lyra-shell" } },
 };
 
 export default meta;

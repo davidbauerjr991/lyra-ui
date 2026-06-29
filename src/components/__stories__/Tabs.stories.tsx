@@ -7,6 +7,7 @@ const meta: Meta<typeof TabList> = {
   title: "Atoms/Tabs",
   component: TabList,
   tags: ["autodocs"],
+  parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
 };
 
 export default meta;

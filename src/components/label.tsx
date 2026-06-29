@@ -76,7 +76,7 @@ const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
         )}
 
         {showHelp && (
-          <Tooltip content={labelHelpText!}>
+          <Tooltip content={labelHelpText!} placement="right">
             <span className="inline-flex items-center text-lyra-fg-secondary hover:text-lyra-fg-action transition-colors cursor-default">
               <Info
                 className="h-3.5 w-3.5"

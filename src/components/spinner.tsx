@@ -1,4 +1,5 @@
 import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/utils";
 
 /* ── Types ── */
@@ -20,21 +21,45 @@ export interface SpinnerProps {
   className?: string;
 }
 
-/* ── Size maps ── */
+/* ── CVA definitions ── */
 
-const barSizeMap: Record<SpinnerSize, { bar: string; gap: string }> = {
-  sm: { bar: "h-3 w-[3px]",  gap: "gap-[2px]" },
-  md: { bar: "h-5 w-1",      gap: "gap-0.5"   },
-  lg: { bar: "h-6 w-[5px]",  gap: "gap-[3px]" },
-};
+/** Bar wrapper gap classes */
+const spinnerBarGapVariants = cva("flex items-center", {
+  variants: {
+    size: {
+      sm: "gap-[2px]",
+      md: "gap-0.5",
+      lg: "gap-[3px]",
+    },
+  },
+  defaultVariants: { size: "md" },
+});
 
-const circleSizeMap: Record<SpinnerSize, string> = {
-  sm: "h-4 w-4",
-  md: "h-6 w-6",
-  lg: "h-8 w-8",
-};
+/** Individual bar size classes */
+const spinnerBarVariants = cva("rounded-sm origin-center", {
+  variants: {
+    size: {
+      sm: "h-3 w-[3px]",
+      md: "h-5 w-1",
+      lg: "h-6 w-[5px]",
+    },
+  },
+  defaultVariants: { size: "md" },
+});
 
-/* ── Color map ── */
+/** Circle size classes */
+const spinnerCircleVariants = cva("relative rounded-full", {
+  variants: {
+    size: {
+      sm: "h-4 w-4",
+      md: "h-6 w-6",
+      lg: "h-8 w-8",
+    },
+  },
+  defaultVariants: { size: "md" },
+});
+
+/* ── Color map (CSS variable values — used in inline style, not Tailwind classes) ── */
 
 const colorVar: Record<SpinnerColor, string> = {
   primary: "var(--lyra-color-bg-primary)",
@@ -67,14 +92,13 @@ function ensureKeyframes() {
 
 const BarSpinner: React.FC<{ size: SpinnerSize; color: SpinnerColor }> = ({ size, color }) => {
   React.useEffect(() => { ensureKeyframes(); }, []);
-  const { bar, gap } = barSizeMap[size];
   const bg = colorVar[color];
   return (
-    <div className={cn("flex items-center", gap)}>
+    <div className={spinnerBarGapVariants({ size })}>
       {[0.1, 0.2, 0.3].map((delay, i) => (
         <span
           key={i}
-          className={cn("rounded-sm origin-center", bar)}
+          className={spinnerBarVariants({ size })}
           style={{
             backgroundColor: bg,
             animation: `lyra-bar-pulse 0.6s linear ${delay}s infinite`,
@@ -89,10 +113,9 @@ const BarSpinner: React.FC<{ size: SpinnerSize; color: SpinnerColor }> = ({ size
 
 const CircleSpinner: React.FC<{ size: SpinnerSize; color: SpinnerColor }> = ({ size, color }) => {
   React.useEffect(() => { ensureKeyframes(); }, []);
-  const sizeClass = circleSizeMap[size];
   const bg = colorVar[color];
   return (
-    <div className={cn("relative rounded-full", sizeClass)}>
+    <div className={spinnerCircleVariants({ size })}>
       {[0, 0.5].map((delay, i) => (
         <span
           key={i}
@@ -136,4 +159,4 @@ const Spinner = React.forwardRef<HTMLDivElement, SpinnerProps>(
 
 Spinner.displayName = "Spinner";
 
-export { Spinner };
+export { Spinner, spinnerBarVariants, spinnerCircleVariants };

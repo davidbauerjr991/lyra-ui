@@ -86,7 +86,7 @@ const TableHead = React.forwardRef<
     role="columnheader"
     title={title ?? (typeof children === "string" ? children : undefined)}
     className={cn(
-      "flex items-center h-10 px-3 text-left text-[14px] font-medium text-lyra-fg-default border-b border-lyra-border-default [&:has([role=checkbox])]:pr-0 [&:has([role=checkbox])]:w-[40px] min-w-0",
+      "flex items-center h-10 px-3 text-left lyra-label text-lyra-fg-default border-b border-lyra-border-default [&:has([role=checkbox])]:pr-0 [&:has([role=checkbox])]:w-[40px] min-w-0",
       className
     )}
     {...props}
@@ -153,7 +153,7 @@ const SortableTableHead = React.forwardRef<
       onDragEnd={draggable ? dragHandlers.onDragEnd : undefined}
       onDragLeave={draggable ? dragHandlers.onDragLeave : undefined}
       className={cn(
-        "flex items-center h-10 px-3 text-left text-[14px] font-medium text-lyra-fg-default border-b border-lyra-border-default whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&:has([role=checkbox])]:w-[40px] min-w-0 relative",
+        "flex items-center h-10 px-3 text-left lyra-label text-lyra-fg-default border-b border-lyra-border-default whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&:has([role=checkbox])]:w-[40px] min-w-0 relative",
         "group/sort cursor-pointer select-none hover:bg-lyra-state-hover active:bg-lyra-state-pressed transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-inset",
         sortDirection && "border-b-2 border-b-lyra-bg-primary",
@@ -529,7 +529,7 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
                     sideOffset={8}
                     avoidCollisions
                     collisionPadding={4}
-                    className="z-50 w-[320px] rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg animate-in fade-in-0 duration-100 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-75"
+                    className="z-50 w-[320px] rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-100"
                   >
                     <div className="px-4 pt-4 pb-1">
                       <h3 className="lyra-heading-sm text-lyra-fg-default mb-3">Save Search</h3>

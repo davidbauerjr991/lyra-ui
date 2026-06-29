@@ -6,7 +6,8 @@ import { Select } from "../select";
 const meta = {
   title: "Atoms/Label",
   component: Label,
-  parameters: { layout: "centered" },
+  tags: ["autodocs"],
+  parameters: { layout: "centered", backgrounds: { default: "lyra-shell" } },
   argTypes: {
     required: { control: "boolean" },
     disabled: { control: "boolean" },

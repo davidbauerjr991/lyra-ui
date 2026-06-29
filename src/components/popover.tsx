@@ -90,7 +90,11 @@ const Popover: React.FC<PopoverProps> = ({
           "relative group z-50",
           "rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg",
           "animate-in fade-in-0 duration-150",
+          "data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2",
+          "data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2",
           "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-100",
+          "data-[state=closed]:data-[side=bottom]:slide-out-to-top-1 data-[state=closed]:data-[side=top]:slide-out-to-bottom-1",
+          "data-[state=closed]:data-[side=left]:slide-out-to-right-1 data-[state=closed]:data-[side=right]:slide-out-to-left-1",
           className
         )}
       >

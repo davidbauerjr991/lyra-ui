@@ -7,6 +7,7 @@ const meta: Meta<typeof Input> = {
   tags: ["autodocs"],
   parameters: {
     layout: "padded",
+    backgrounds: { default: "lyra-shell" },
   },
 };
 

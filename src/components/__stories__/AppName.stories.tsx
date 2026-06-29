@@ -7,6 +7,10 @@ const meta: Meta<typeof AppName> = {
   title: "UI/AppHeader/AppName",
   component: AppName,
   tags: ["autodocs"],
+  parameters: {
+    layout: "padded",
+    backgrounds: { default: "lyra-shell" },
+  },
   argTypes: {
     name: { control: "text" },
   },

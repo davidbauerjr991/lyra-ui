@@ -107,3 +107,4 @@ const CXoneSmiley = React.forwardRef<SVGSVGElement, CXoneSmileyProps>(
 CXoneSmiley.displayName = "CXoneSmiley";
 
 export { CXoneSmiley };
+export type { CXoneSmileyProps };

@@ -6,7 +6,8 @@ import { Button } from "../button";
 const meta: Meta<typeof Spinner> = {
   title: "Atoms/Spinner",
   component: Spinner,
-  parameters: { layout: "centered" },
+  tags: ["autodocs"],
+  parameters: { layout: "centered", backgrounds: { default: "lyra-shell" } },
   argTypes: {
     variant: { control: "select", options: ["bar", "circle"] },
     size:    { control: "select", options: ["sm", "md", "lg"] },
@@ -76,7 +77,7 @@ export const MultipleSpinner: Story = {
 
 export const OnDarkBackground: Story = {
   name: "On Dark Background",
-  parameters: { backgrounds: { default: "dark" } },
+  parameters: { backgrounds: { default: "lyra-shell" } },
   render: () => (
     <div className="flex items-center gap-8 p-6 rounded-lyra-md bg-lyra-bg-surface-inverse">
       <Spinner variant="bar"    color="inverse" size="md" />

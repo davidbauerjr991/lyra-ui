@@ -11,7 +11,7 @@ const meta: Meta<typeof AIInput> = {
   tags: ["autodocs"],
   parameters: {
     layout: "padded",
-    backgrounds: { default: "lyra-base" },
+    backgrounds: { default: "lyra-shell" },
   },
 };
 

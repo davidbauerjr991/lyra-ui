@@ -163,3 +163,4 @@ const defaultProfileMenuGroups: ProfileMenuGroup[] = [
 ];
 
 export { ProfileMenu, defaultProfileMenuGroups };
+export type { ProfileMenuProps };

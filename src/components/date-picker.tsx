@@ -73,8 +73,8 @@ function CalendarPanel({ children }: { children: React.ReactNode }) {
 
       className={cn(
         "z-50 w-[288px] rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg p-3",
-        "animate-in fade-in-0 duration-100",
-        "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-75"
+        "animate-in fade-in-0 slide-in-from-top-2 duration-150",
+        "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-100"
       )}
     >
       {children}
