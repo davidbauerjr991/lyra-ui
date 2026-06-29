@@ -1,18 +1,18 @@
-name: Deploy Storybook to GitHub Pages
+name: Build Storybook
 
 on:
   push:
+    branches: [main]
+  pull_request:
     branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: "storybook-${{ github.ref }}"
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -32,22 +32,3 @@ jobs:
 
       - name: Build Storybook
         run: npm run build-storybook
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: storybook-static
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4

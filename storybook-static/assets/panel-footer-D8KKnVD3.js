@@ -1,0 +1,6 @@
+import{c as m}from"./createLucideIcon-DEcfmm_F.js";import{j as e}from"./jsx-runtime-D_zvdyIk.js";import{r as s}from"./index-CXOcBcs0.js";import{c as h}from"./utils-BLSKlp9E.js";/**
+ * @license lucide-react v0.468.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const j=m("Pin",[["path",{d:"M12 17v5",key:"bb1du9"}],["path",{d:"M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z",key:"1nkz8b"}]]),a=s.forwardRef(({className:o,children:i,...c},d)=>{const t=s.useRef(null),[l,p]=s.useState(!1);return s.useEffect(()=>{const r=t.current;if(!r)return;const n=new IntersectionObserver(([f])=>p(!f.isIntersecting),{threshold:0});return n.observe(r),()=>n.disconnect()},[]),e.jsxs(e.Fragment,{children:[e.jsx("div",{ref:t,className:"shrink-0 h-px","aria-hidden":"true"}),e.jsx("div",{ref:d,className:h("flex items-center justify-end gap-2 px-4 py-3 shrink-0 transition-shadow duration-150",l?"shadow-[0_-4px_12px_0_rgba(0,0,0,0.08)]":"shadow-none",o),...c,children:i})]})});a.displayName="PanelFooter";a.__docgenInfo={description:"",methods:[],displayName:"PanelFooter"};export{j as P,a};
