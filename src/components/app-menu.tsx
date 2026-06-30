@@ -25,10 +25,12 @@ interface AppMenuProps extends React.HTMLAttributes<HTMLDivElement> {
   groups: AppMenuGroup[];
   /** Optional footer content (e.g., logo) */
   footer?: React.ReactNode;
+  /** Optional header shown at the top of the menu (e.g. app name in compact mode) */
+  header?: React.ReactNode;
 }
 
 const AppMenu = React.forwardRef<HTMLDivElement, AppMenuProps>(
-  ({ className, groups, footer, ...props }, ref) => (
+  ({ className, groups, footer, header, ...props }, ref) => (
     <div
       ref={ref}
       className={cn(
@@ -38,6 +40,13 @@ const AppMenu = React.forwardRef<HTMLDivElement, AppMenuProps>(
       )}
       {...props}
     >
+      {/* Header — app name shown here in compact/narrow mode */}
+      {header && (
+        <div className="px-5 pb-1 pt-4">
+          <span className="lyra-body-lg-emphasis text-lyra-fg-default">{header}</span>
+        </div>
+      )}
+
       <div
         role="menu"
         aria-label="Applications"

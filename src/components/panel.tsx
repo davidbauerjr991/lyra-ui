@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState, useRef, useCallback, useLayoutEffect } from "react";
+import { useState, useRef, useCallback, useLayoutEffect, useEffect } from "react";
 import { Pin } from "lucide-react";
 import { PanelHeader } from "./panel-header";
 import { PanelContent } from "./panel-content";
@@ -38,8 +38,12 @@ export interface PanelProps extends React.HTMLAttributes<HTMLDivElement> {
   resizable?: boolean;
   /** Min width when resizing in px (default: 200) */
   minWidth?: number;
-  /** Max width when resizing in px (default: 800) */
+  /** Max width when resizing in px (default: 425) */
   maxWidth?: number;
+  /** Called when a resize drag starts (true) or ends (false) */
+  onResizeStateChange?: (isResizing: boolean) => void;
+  /** Called whenever the panel width changes during a drag */
+  onWidthChange?: (width: number) => void;
 
   /* ── Layout ── */
   /** Width in px. Defaults: side = 256, interior = 340 */
@@ -60,7 +64,9 @@ function useDragResize(
   side: PanelSide,
   initialWidth: number,
   min: number,
-  max: number
+  max: number,
+  onResizeStateChange?: (isResizing: boolean) => void,
+  onWidthChange?: (width: number) => void
 ) {
   const [dragWidth, setDragWidth] = useState<number | null>(null);
   const dragging = useRef(false);
@@ -73,18 +79,22 @@ function useDragResize(
       dragging.current = true;
       startX.current = e.clientX;
       startW.current = dragWidth ?? initialWidth;
+      onResizeStateChange?.(true);
 
       const onMove = (ev: MouseEvent) => {
         if (!dragging.current) return;
         const delta = side === "right"
           ? startX.current - ev.clientX
           : ev.clientX - startX.current;
-        setDragWidth(Math.min(max, Math.max(min, startW.current + delta)));
+        const newW = Math.min(max, Math.max(min, startW.current + delta));
+        setDragWidth(newW);
+        onWidthChange?.(newW);
       };
       const onUp = () => {
         dragging.current = false;
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
+        onResizeStateChange?.(false);
         document.removeEventListener("mousemove", onMove);
         document.removeEventListener("mouseup", onUp);
       };
@@ -93,10 +103,10 @@ function useDragResize(
       document.addEventListener("mousemove", onMove);
       document.addEventListener("mouseup", onUp);
     },
-    [side, dragWidth, initialWidth, min, max]
+    [side, dragWidth, initialWidth, min, max, onResizeStateChange, onWidthChange]
   );
 
-  return { width: dragWidth ?? initialWidth, isDragging: dragging, onMouseDown };
+  return { width: dragWidth ?? initialWidth, onMouseDown };
 }
 
 /* ── Panel ── */
@@ -113,7 +123,9 @@ const Panel = React.forwardRef<HTMLDivElement, PanelProps>(
       onClose,
       resizable = true,
       minWidth = 200,
-      maxWidth = 800,
+      maxWidth,
+      onResizeStateChange,
+      onWidthChange,
       width,
       headerTitle,
       headerIcon,
@@ -126,7 +138,28 @@ const Panel = React.forwardRef<HTMLDivElement, PanelProps>(
   ) => {
     const defaultWidth = variant === "side" ? 256 : 340;
     const baseWidth = width ?? defaultWidth;
-    const { width: currentWidth, isDragging, onMouseDown } = useDragResize(side, baseWidth, minWidth, maxWidth);
+    const resolvedMaxWidth = maxWidth ?? 425;
+    const [isResizing, setIsResizing] = useState(false);
+    const handleResizeStateChange = useCallback((r: boolean) => {
+      setIsResizing(r);
+      onResizeStateChange?.(r);
+    }, [onResizeStateChange]);
+    const { width: currentWidth, onMouseDown } = useDragResize(side, baseWidth, minWidth, resolvedMaxWidth, handleResizeStateChange, onWidthChange);
+    const widthTransition = isResizing ? "none" : "width 250ms cubic-bezier(0.4, 0, 0.2, 1)";
+
+    // Track closing so border + background stay visible during the width animation
+    const [isClosing, setIsClosing] = useState(false);
+    const closeTimerRef = useRef<ReturnType<typeof setTimeout>>();
+    useEffect(() => {
+      if (!open) {
+        setIsClosing(true);
+        closeTimerRef.current = setTimeout(() => setIsClosing(false), 260);
+      } else {
+        clearTimeout(closeTimerRef.current);
+        setIsClosing(false);
+      }
+      return () => clearTimeout(closeTimerRef.current);
+    }, [open]);
 
     /* ── Interior: go full-width when parent container < 991px ── */
     const outerRef = useRef<HTMLDivElement>(null);
@@ -176,28 +209,38 @@ const Panel = React.forwardRef<HTMLDivElement, PanelProps>(
     ) : null;
 
     /* ── Inner content ── */
-    const innerWidth = isNarrow ? "100%" : currentWidth;
+    const innerWidth = currentWidth;
     const inner = (
       <div
         className="relative flex flex-col h-full"
         style={{ width: innerWidth, minWidth: innerWidth }}
       >
         {dragHandle}
-        {headerTitle && (
-          <PanelHeader
-            title={headerTitle}
-            icon={headerIcon}
-            actions={<>{headerActions}{pinButton}</>}
-            onClose={variant === "interior" ? onClose : undefined}
-            bordered={false}
-          />
-        )}
-        <PanelContent>{children}</PanelContent>
-        {footer && (
-          variant === "interior"
-            ? <PanelFooter>{footer}</PanelFooter>
-            : <div className="shrink-0">{footer}</div>
-        )}
+        {/* Snap content invisible on close (no squish); fade in on open */}
+        <div
+          className="flex flex-col flex-1 min-h-0"
+          style={{
+            opacity: open ? 1 : 0,
+            visibility: open ? "visible" : "hidden",
+            transition: open ? "opacity 150ms ease 30ms" : "none",
+          }}
+        >
+          {headerTitle && (
+            <PanelHeader
+              title={headerTitle}
+              icon={headerIcon}
+              actions={<>{headerActions}{pinButton}</>}
+              onClose={variant === "interior" ? onClose : undefined}
+              bordered={false}
+            />
+          )}
+          <PanelContent>{children}</PanelContent>
+          {footer && (
+            variant === "interior"
+              ? <PanelFooter>{footer}</PanelFooter>
+              : <div className="shrink-0">{footer}</div>
+          )}
+        </div>
       </div>
     );
 
@@ -210,7 +253,7 @@ const Panel = React.forwardRef<HTMLDivElement, PanelProps>(
           role="region"
           aria-label={headerTitle || "Side panel"}
           className={cn("shrink-0 overflow-hidden bg-lyra-bg-surface-container-subtle", open && border, className)}
-          style={{ width: open ? currentWidth : 0, transition: isDragging.current ? "none" : "width 250ms cubic-bezier(0.4, 0, 0.2, 1)" }}
+          style={{ width: open ? currentWidth : 0, transition: widthTransition }}
           {...props}
         >
           {inner}
@@ -228,7 +271,7 @@ const Panel = React.forwardRef<HTMLDivElement, PanelProps>(
           role="region"
           aria-label={headerTitle || "Side panel"}
           className={cn("absolute top-0 z-[5] h-full overflow-hidden bg-lyra-bg-surface-container-subtle shadow-lg", pos, open ? border : "pointer-events-none", className)}
-          style={{ width: open ? currentWidth : 0, transition: isDragging.current ? "none" : "width 250ms cubic-bezier(0.4, 0, 0.2, 1)" }}
+          style={{ width: open ? currentWidth : 0, transition: widthTransition }}
           {...props}
         >
           {inner}
@@ -237,10 +280,27 @@ const Panel = React.forwardRef<HTMLDivElement, PanelProps>(
     }
 
     /* ── Interior ── */
-    const border = open
+    // Keep border visible during close animation so it doesn't snap away
+    const border = (open || isClosing)
       ? (side === "right" ? "border-l border-lyra-border-subtle" : "border-r border-lyra-border-subtle")
       : "";
-    const interiorWidth = open ? (isNarrow ? "100%" : currentWidth) : 0;
+    const interiorWidth = open ? currentWidth : 0;
+    const pos = side === "right" ? "right-0" : "left-0";
+
+    // Narrow: overlay like an unpinned side panel instead of pushing content full-width
+    if (isNarrow) {
+      return (
+        <div
+          ref={stableOuterRef}
+          className={cn("absolute top-0 z-[5] h-full overflow-hidden bg-lyra-bg-surface-overlay shadow-lg", pos, border, className)}
+          style={{ width: interiorWidth, transition: widthTransition }}
+          {...props}
+        >
+          {inner}
+        </div>
+      );
+    }
+
     return (
       <div
         ref={stableOuterRef}
@@ -249,7 +309,7 @@ const Panel = React.forwardRef<HTMLDivElement, PanelProps>(
           width: interiorWidth,
           minWidth: 0,
           overflow: "hidden",
-          transition: isDragging.current ? "none" : "width 250ms cubic-bezier(0.4, 0, 0.2, 1)",
+          transition: widthTransition,
         }}
         {...props}
       >

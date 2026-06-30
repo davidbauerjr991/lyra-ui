@@ -7,10 +7,15 @@ interface AppNameProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon: React.ReactNode;
   /** Application name text */
   name: string;
+  /**
+   * Compact mode (narrow viewports): show only the icon.
+   * Name and chevron are hidden; the app name moves into the menu header.
+   */
+  compact?: boolean;
 }
 
 const AppName = React.forwardRef<HTMLButtonElement, AppNameProps>(
-  ({ className, icon, name, ...props }, ref) => (
+  ({ className, icon, name, compact = false, ...props }, ref) => (
     <button
       ref={ref}
       aria-haspopup="true"
@@ -24,12 +29,16 @@ const AppName = React.forwardRef<HTMLButtonElement, AppNameProps>(
       {...props}
     >
       <span className="flex-shrink-0" aria-hidden="true">{icon}</span>
-      <span className="lyra-body-lg-emphasis text-lyra-fg-default">{name}</span>
-      <ChevronDown
-        className="h-3.5 w-3.5 text-lyra-fg-secondary"
-        strokeWidth={1.5}
-        aria-hidden="true"
-      />
+      {!compact && (
+        <>
+          <span className="lyra-body-lg-emphasis text-lyra-fg-default">{name}</span>
+          <ChevronDown
+            className="h-3.5 w-3.5 text-lyra-fg-secondary"
+            strokeWidth={1.5}
+            aria-hidden="true"
+          />
+        </>
+      )}
     </button>
   )
 );

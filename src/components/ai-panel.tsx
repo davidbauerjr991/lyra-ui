@@ -105,6 +105,8 @@ export interface AiPanelProps {
   draggableVariant?: DraggableVariant;
   /** Initial width for the Draggable wrapper (default: 420) */
   defaultDraggableWidth?: number;
+  /** Max width for the Draggable wrapper (default: unlimited) */
+  maxDraggableWidth?: number;
   /** Initial height for the Draggable wrapper in float mode (default: 600) */
   defaultDraggableHeight?: number;
   /** Called when variant changes */
@@ -138,6 +140,7 @@ const AiPanel = React.forwardRef<HTMLDivElement, AiPanelProps>(
     draggable: isDraggable,
     draggableVariant: draggableVariantProp = "docked",
     defaultDraggableWidth = 420,
+    maxDraggableWidth,
     defaultDraggableHeight = 600,
     onVariantChange,
     onWidthChange,
@@ -234,13 +237,15 @@ const AiPanel = React.forwardRef<HTMLDivElement, AiPanelProps>(
           defaultWidth={defaultDraggableWidth}
           defaultHeight={defaultDraggableHeight}
           minWidth={280}
+          maxWidth={maxDraggableWidth}
           minHeight={400}
           onVariantChange={(v) => { setDraggableVariant(v); onVariantChange?.(v); }}
           onWidthChange={onWidthChange}
           onResizeStateChange={onResizeStateChange}
           onInteract={onInteract}
           className={cn(
-            "rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-base shadow-lg",
+            "rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-base",
+            draggableVariant === "float" && "shadow-lg",
             className
           )}
           renderHeaderControls={({ gripProps, dockButtonProps, dockIcon, variant: dVariant }) => (

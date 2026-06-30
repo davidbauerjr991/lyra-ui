@@ -11,18 +11,24 @@ import { NotificationsBell } from "../notifications-bell";
 import { AgentNotifications, type AgentNotification } from "../agent-notifications";
 import { AgentProfile, type AgentStatus } from "../agent-profile";
 import { LeftNav, type NavItem } from "../left-nav";
+import { AddChannel, type AddChannelItem } from "../add-channel";
 import { ContentArea } from "../content-area";
 import { Container } from "../container";
+import { Panel } from "../panel";
+import { PageHeader } from "../page-header";
+import { Button } from "../button";
 import appIcon from "../../assets/app-icon.svg";
+import { Input } from "../input";
 import {
-  LayoutDashboard,
-  Inbox,
-  Phone,
-  MessageSquare,
+  Home,
   Users,
-  Clock,
-  BarChart2,
+  BookUser,
+  CalendarDays,
   Settings,
+  Plus,
+  Phone,
+  Mail,
+  MessageSquare,
 } from "lucide-react";
 
 /* ── Sparkle icon ── */
@@ -62,50 +68,42 @@ const APP_MENU_GROUPS: AppMenuGroup[] = [
   },
 ];
 
+/* ── Add channel data ── */
+
+function WhatsAppIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden="true">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+    </svg>
+  );
+}
+
+const ADD_CHANNEL_ITEMS: AddChannelItem[] = [
+  { label: "Call",     icon: <Phone         className="h-5 w-5" strokeWidth={1.5} /> },
+  { label: "Email",    icon: <Mail          className="h-5 w-5" strokeWidth={1.5} /> },
+  { label: "SMS",      icon: <MessageSquare className="h-5 w-5" strokeWidth={1.5} /> },
+  { label: "WhatsApp", icon: <WhatsAppIcon /> },
+];
+
 /* ── Left nav data ── */
 
 const NAV_ITEMS: NavItem[] = [
   {
-    icon: <LayoutDashboard className="h-4 w-4" strokeWidth={1.5} />,
-    label: "Dashboard",
+    icon: <Home className="h-4 w-4" strokeWidth={1.5} />,
+    label: "Home",
     active: true,
-  },
-  {
-    icon: <Inbox className="h-4 w-4" strokeWidth={1.5} />,
-    label: "My Queue",
-    expandable: true,
-    defaultOpen: false,
-    children: [
-      { label: "Active" },
-      { label: "Pending" },
-      { label: "Parked" },
-    ],
-  },
-  {
-    icon: <Phone className="h-4 w-4" strokeWidth={1.5} />,
-    label: "Voice",
-  },
-  {
-    icon: <MessageSquare className="h-4 w-4" strokeWidth={1.5} />,
-    label: "Chat",
   },
   {
     icon: <Users className="h-4 w-4" strokeWidth={1.5} />,
     label: "Contacts",
   },
   {
-    icon: <Clock className="h-4 w-4" strokeWidth={1.5} />,
-    label: "History",
+    icon: <BookUser className="h-4 w-4" strokeWidth={1.5} />,
+    label: "Directory",
   },
   {
-    icon: <BarChart2 className="h-4 w-4" strokeWidth={1.5} />,
-    label: "Reporting",
-    expandable: true,
-    defaultOpen: false,
-    children: [
-      { label: "My Stats" },
-      { label: "Team Stats" },
-    ],
+    icon: <CalendarDays className="h-4 w-4" strokeWidth={1.5} />,
+    label: "Schedule",
   },
   {
     icon: <Settings className="h-4 w-4" strokeWidth={1.5} />,
@@ -126,10 +124,19 @@ const INITIAL_NOTIFICATIONS: AgentNotification[] = [
 
 /* ── Template component ── */
 
-const AI_PANEL_DEFAULT_WIDTH = 420;
+const AI_PANEL_DEFAULT_WIDTH = 360;
 
-function AgentNextGenTemplate() {
-  const [navOpen, setNavOpen] = useState(true);
+function AgentNextGenTemplate({
+  showPageHeader = false,
+  showPanelToggle = false,
+  showInteriorPanel = true,
+}: {
+  showPageHeader?: boolean;
+  showPanelToggle?: boolean;
+  showInteriorPanel?: boolean;
+}) {
+  const [navOpen, setNavOpen] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(() => window.innerWidth);
   const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
   const [agentStatus, setAgentStatus] = useState<AgentStatus>("available");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -156,6 +163,10 @@ function AgentNextGenTemplate() {
   const [aiIsResizing,  setAiIsResizing]  = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const aiFloatLeft = useRef<number | null>(null);
+  const aiFloatTop  = useRef<number | null>(null);
+  // Ref on the AiPanel/Draggable root — getBoundingClientRect() here includes the CSS
+  // transform drag offset, so we capture the actual visual position before docking.
+  const aiPanelRef  = useRef<HTMLDivElement>(null);
   const aiAnimTimer = useRef<ReturnType<typeof setTimeout>>();
 
   /* Notifications panel state */
@@ -163,19 +174,87 @@ function AgentNextGenTemplate() {
   const [notifMounted,    setNotifMounted]    = useState(false); // true after first open, never resets
   const [notifState,      setNotifState]      = useState<PanelState>("closed");
   const [notifVariant,    setNotifVariant]    = useState<DraggableVariant>("float");
-  const [notifWidth,      setNotifWidth]      = useState(320);
+  const [notifWidth,      setNotifWidth]      = useState(360);
   const [notifHeight,     setNotifHeight]     = useState(860);
   const [notifIsResizing, setNotifIsResizing] = useState(false);
   const [topPanel,        setTopPanel]        = useState<"ai" | "notif" | null>(null);
   const notifFloatLeft = useRef<number | null>(null);
+  const notifFloatTop  = useRef<number | null>(null);
+  const notifPanelRef  = useRef<HTMLDivElement>(null);
   const notifAnimTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  /* Interior panel (right) */
+  const [interiorPanelOpen, setInteriorPanelOpen] = useState(false);
+
+  /* Side panel */
+  const [sidePanelOpen,      setSidePanelOpen]      = useState(false);
+  const [sidePanelPinned,    setSidePanelPinned]    = useState(false);
+  const [sidePanelResizing,  setSidePanelResizing]  = useState(false);
+  const [sidePanelWidth,     setSidePanelWidth]     = useState(256);
+  const [containerWidth,     setContainerWidth]     = useState(9999);
+  const sidePanelTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  // Track container width to force unpinned below 768px
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    setContainerWidth(el.getBoundingClientRect().width);
+    const ro = new ResizeObserver(([entry]) => setContainerWidth(entry.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const isNarrowContainer = containerWidth < 768;
+  // When narrow: force overlay mode and hide pin button
+  const effectivePinned = isNarrowContainer ? false : sidePanelPinned;
+
+  // Track window width for nav overlay breakpoint
+  useEffect(() => {
+    const onResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const isNavNarrow = windowWidth < 1280;
+  const isCompactHeader = windowWidth < 760;
+
+  // Auto-collapse the expanded nav when viewport drops below 1280px
+  useEffect(() => {
+    if (isNavNarrow && navOpen) setNavOpen(false);
+  }, [isNavNarrow]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Close and undock any docked panels when viewport drops below 1280px
+  useEffect(() => {
+    if (isNavNarrow) {
+      if (aiVariant === "docked") {
+        setAiVariant("float");
+        setAiPanelOpen(false);
+      }
+      if (notifVariant === "docked") {
+        setNotifVariant("float");
+        setNotifOpen(false);
+      }
+    }
+  }, [isNavNarrow]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onSidePanelHoverStart = () => {
+    clearTimeout(sidePanelTimer.current);
+    setSidePanelOpen(true);
+  };
+  const onSidePanelHoverEnd = () => {
+    sidePanelTimer.current = setTimeout(() => setSidePanelOpen(false), 300);
+  };
+  const handleSidePanelPinToggle = () => {
+    setSidePanelPinned((v) => !v);
+    setSidePanelOpen(true); // keep open when toggling pin state
+  };
 
   const MAX_PANEL_HEIGHT = 860;
   const BOTTOM_PADDING   = 8;
 
   const computePanelHeight = () => {
     if (!containerRef.current) return MAX_PANEL_HEIGHT;
-    const top = containerRef.current.getBoundingClientRect().top + 16;
+    const top = containerRef.current.getBoundingClientRect().top;
     return Math.min(window.innerHeight - top - BOTTOM_PADDING, MAX_PANEL_HEIGHT);
   };
 
@@ -211,8 +290,8 @@ function AgentNextGenTemplate() {
     } else {
       setAiState("closing"); // data-state="closed" → exit animation plays
       aiAnimTimer.current = setTimeout(() => {
-        setAiState("closed"); // past the 250ms width transition — docked wrapper removed from flex flow
-      }, 260);
+        setAiState("closed");
+      }, 150);
     }
     return () => clearTimeout(aiAnimTimer.current);
   }, [aiPanelOpen]);
@@ -240,8 +319,8 @@ function AgentNextGenTemplate() {
     } else {
       setNotifState("closing");
       notifAnimTimer.current = setTimeout(() => {
-        setNotifState("closed"); // past the 250ms width transition — docked wrapper removed from flex flow
-      }, 260);
+        setNotifState("closed");
+      }, 150);
     }
     return () => clearTimeout(notifAnimTimer.current);
   }, [notifOpen]);
@@ -254,14 +333,19 @@ function AgentNextGenTemplate() {
   }, [notifOpen]);
 
   const handleNotifVariantChange = (v: DraggableVariant) => {
-    if (v === "float" && containerRef.current) {
-      const r = containerRef.current.getBoundingClientRect();
-      notifFloatLeft.current = r.left + containerRef.current.offsetWidth - notifWidth - 16;
+    // When docking: read from the Draggable root element (not the fixed wrapper) so that
+    // getBoundingClientRect() includes the CSS transform drag offset — the true visual position.
+    if (v === "docked" && notifPanelRef.current) {
+      const r = notifPanelRef.current.getBoundingClientRect();
+      notifFloatLeft.current = r.left;
+      notifFloatTop.current  = r.top;
     }
-    // Single-dock rule: if docking and AI panel is already docked, force AI to float
+    // Single-dock rule: if docking and AI panel is already docked, force AI to float.
+    // AI has no float wrapper right now so fall back to a computed default position.
     if (v === "docked" && aiVariant === "docked" && containerRef.current) {
       const r = containerRef.current.getBoundingClientRect();
       aiFloatLeft.current = r.left + containerRef.current.offsetWidth - aiWidth - 16;
+      aiFloatTop.current  = null; // use computed default top
       setAiVariant("float");
     }
     setNotifVariant(v);
@@ -276,9 +360,12 @@ function AgentNextGenTemplate() {
       : containerRef.current
         ? (rect?.left ?? 0) + containerRef.current.offsetWidth - notifWidth - 16
         : 0;
+    const top = notifFloatTop.current !== null
+      ? notifFloatTop.current
+      : (rect?.top ?? 0);
     return {
       position: "fixed",
-      top: (rect?.top ?? 0) + 16,
+      top,
       left,
       zIndex: topPanel === "notif" ? 10000 : 9999,
     };
@@ -286,6 +373,7 @@ function AgentNextGenTemplate() {
 
   const notifPanel = notifMounted ? (
     <AgentNotifications
+      ref={notifPanelRef}
       notifications={notifications}
       draggableVariant={notifVariant}
       onVariantChange={handleNotifVariantChange}
@@ -298,19 +386,25 @@ function AgentNextGenTemplate() {
       onNotificationClick={(n) => setNotifications((prev) => prev.map((i) => i.id === n.id ? { ...i, read: true } : i))}
       onClose={() => setNotifOpen(false)}
       defaultWidth={notifWidth}
+      maxWidth={600}
       height={notifHeight}
     />
   ) : null;
 
   const handleAiVariantChange = (v: DraggableVariant) => {
-    if (v === "float" && containerRef.current) {
-      const r = containerRef.current.getBoundingClientRect();
-      aiFloatLeft.current = r.left + containerRef.current.offsetWidth - aiWidth - 16;
+    // When docking: read from the Draggable root element (not the fixed wrapper) so that
+    // getBoundingClientRect() includes the CSS transform drag offset — the true visual position.
+    if (v === "docked" && aiPanelRef.current) {
+      const r = aiPanelRef.current.getBoundingClientRect();
+      aiFloatLeft.current = r.left;
+      aiFloatTop.current  = r.top;
     }
-    // Single-dock rule: if docking and notif panel is already docked, force notif to float
+    // Single-dock rule: if docking and notif panel is already docked, force notif to float.
+    // Notif has no float wrapper right now so fall back to a computed default position.
     if (v === "docked" && notifVariant === "docked" && containerRef.current) {
       const r = containerRef.current.getBoundingClientRect();
       notifFloatLeft.current = r.left + containerRef.current.offsetWidth - notifWidth - 16;
+      notifFloatTop.current  = null; // use computed default top
       setNotifVariant("float");
     }
     setAiVariant(v);
@@ -324,9 +418,12 @@ function AgentNextGenTemplate() {
       : containerRef.current
         ? (rect?.left ?? 0) + containerRef.current.offsetWidth - aiWidth - 16
         : 0;
+    const top = aiFloatTop.current !== null
+      ? aiFloatTop.current
+      : (rect?.top ?? 0);
     return {
       position: "fixed",
-      top: (rect?.top ?? 0) + 16,
+      top,
       left,
       zIndex: topPanel === "ai" ? 10000 : 9999,
     };
@@ -334,9 +431,11 @@ function AgentNextGenTemplate() {
 
   const aiPanel = aiMounted ? (
     <AiPanel
+      ref={aiPanelRef}
       draggable
       draggableVariant={aiVariant}
       defaultDraggableWidth={aiWidth}
+      maxDraggableWidth={600}
       defaultDraggableHeight={aiHeight}
       onVariantChange={handleAiVariantChange}
       onWidthChange={setAiWidth}
@@ -364,6 +463,7 @@ function AgentNextGenTemplate() {
               <AppName
                 icon={<img src={appIcon} alt="Agent Next Gen" className="h-6 w-6" />}
                 name="Agent Next Gen"
+                compact={isCompactHeader}
                 aria-expanded={appMenuOpen}
               />
             </PopoverPrimitive.Trigger>
@@ -375,7 +475,11 @@ function AgentNextGenTemplate() {
                 onOpenAutoFocus={(e: Event) => e.preventDefault()}
                 className="z-[9999] animate-in fade-in-0 slide-in-from-top-2 duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-100"
               >
-                <AppMenu groups={APP_MENU_GROUPS} footer={<CXoneLogo />} />
+                <AppMenu
+                  groups={APP_MENU_GROUPS}
+                  footer={<CXoneLogo />}
+                  header={isCompactHeader ? "Agent Next Gen" : undefined}
+                />
               </PopoverPrimitive.Content>
             </PopoverPrimitive.Portal>
           </PopoverPrimitive.Root>
@@ -410,37 +514,105 @@ function AgentNextGenTemplate() {
       />
 
       {/* ── Body: LeftNav + Content ── */}
-      <div className="flex flex-1 min-h-0">
+      {/* overflow-hidden ensures docked panels never push layout past the viewport */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
 
         <LeftNav
           items={NAV_ITEMS}
           open={navOpen}
           onToggle={() => setNavOpen((v) => !v)}
+          overlay={isNavNarrow}
+          footer={<AddChannel items={ADD_CHANNEL_ITEMS} expanded={navOpen} />}
         />
 
-        {/* Content area — ref used to position float panel */}
-        <div ref={containerRef} className="relative flex flex-1 overflow-hidden pr-3 pb-3 gap-2">
+        {/* Content area — flex-1 shrinks to give space to docked panels.
+            ref used to position float panels. */}
+        <div ref={containerRef} className="relative flex flex-1 min-w-0 overflow-hidden pr-3 pb-3">
 
-          {/* Main Container */}
-          <Container className="flex flex-1 min-w-0 overflow-hidden" />
+          {/* Main Container — flex row so pinned Panel sits left of PageHeader + content.
+              relative so unpinned Panel can overlay the full surface. */}
+          <Container className="flex flex-1 overflow-hidden relative">
 
-          {/* Notifications — docked */}
-          {notifVariant === "docked" && notifState !== "closed" && (
-            <div style={{
-              width: notifState === "open" ? notifWidth + 8 : 0,
-              overflow: "hidden",
-              flexShrink: 0,
-              transition: notifIsResizing ? "none" : "width 250ms cubic-bezier(0.4, 0, 0.2, 1)",
-            }}>
-              <div
-                data-state={notifState === "open" ? "open" : "closed"}
-                className="h-full pl-2 animate-in fade-in-0 duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-100"
-                style={{ width: notifWidth + 8 }}
-              >
-                {notifPanel}
+            {/* Pinned Panel — flex sibling, pushes everything (incl. PageHeader) to the right */}
+            {showPanelToggle && effectivePinned && (
+              <Panel
+                variant="side"
+                side="left"
+                open={sidePanelOpen}
+                pinned
+                headerTitle="Designer"
+                onPinToggle={handleSidePanelPinToggle}
+                width={sidePanelWidth}
+                onWidthChange={setSidePanelWidth}
+              />
+            )}
+
+            {/* Content column: PageHeader + page body */}
+            <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
+              {showPageHeader && (
+                <PageHeader
+                  title="Home"
+                  panelToggle={
+                    showPanelToggle && showInteriorPanel ? "both"
+                    : showPanelToggle ? "left"
+                    : showInteriorPanel ? "right"
+                    : undefined
+                  }
+                  panelPinned={effectivePinned}
+                  onPanelToggle={effectivePinned ? () => setSidePanelOpen((v) => !v) : undefined}
+                  onPanelHoverStart={!effectivePinned ? onSidePanelHoverStart : undefined}
+                  onPanelHoverEnd={!effectivePinned ? onSidePanelHoverEnd : undefined}
+                  onInnerPanelToggle={showInteriorPanel ? () => setInteriorPanelOpen((v) => !v) : undefined}
+                  actions={
+                    <>
+                      <Button variant="outline">Export</Button>
+                      <Button>
+                        <Plus className="h-4 w-4" strokeWidth={1.5} />
+                        New Case
+                      </Button>
+                    </>
+                  }
+                />
+              )}
+              {/* Body row: main content + interior panel */}
+              <div className="relative flex flex-1 overflow-hidden">
+                <div className="flex-1" />
+                {showInteriorPanel && (
+                  <Panel
+                    variant="interior"
+                    side="right"
+                    open={interiorPanelOpen}
+                    headerTitle="Case Details"
+                    onClose={() => setInteriorPanelOpen(false)}
+                  >
+                    <div className="flex flex-col gap-4 px-4 py-4">
+                      <Input label="Subject" placeholder="Enter subject" />
+                      <Input label="Priority" placeholder="Select priority" />
+                      <Input label="Assignee" placeholder="Search agents" />
+                      <Input label="Tags" placeholder="Add tags" />
+                    </div>
+                  </Panel>
+                )}
               </div>
             </div>
-          )}
+
+            {/* Unpinned Panel — absolute overlay covering full Container incl. PageHeader */}
+            {showPanelToggle && !effectivePinned && (
+              <Panel
+                variant="side"
+                side="left"
+                open={sidePanelOpen}
+                pinned={false}
+                headerTitle="Designer"
+                onPinToggle={isNarrowContainer ? undefined : handleSidePanelPinToggle}
+                width={sidePanelWidth}
+                onWidthChange={setSidePanelWidth}
+                onResizeStateChange={setSidePanelResizing}
+                onMouseEnter={onSidePanelHoverStart}
+                onMouseLeave={sidePanelResizing ? undefined : onSidePanelHoverEnd}
+              />
+            )}
+          </Container>
 
           {/* Notifications — float
             * Uses CSS transitions (not keyframe animations) to avoid the GPU compositor
@@ -464,24 +636,6 @@ function AgentNextGenTemplate() {
             </div>
           )}
 
-          {/* AI Panel — docked */}
-          {aiVariant === "docked" && aiState !== "closed" && (
-            <div style={{
-              width: aiState === "open" ? aiWidth + 8 : 0,
-              overflow: "hidden",
-              flexShrink: 0,
-              transition: aiIsResizing ? "none" : "width 250ms cubic-bezier(0.4, 0, 0.2, 1)",
-            }}>
-              <div
-                data-state={aiState === "open" ? "open" : "closed"}
-                className="h-full pl-2 animate-in fade-in-0 duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-100"
-                style={{ width: aiWidth + 8 }}
-              >
-                {aiPanel}
-              </div>
-            </div>
-          )}
-
           {/* AI Panel — float (same CSS transition pattern as Notifications) */}
           {aiVariant === "float" && aiMounted && (
             <div
@@ -501,6 +655,49 @@ function AgentNextGenTemplate() {
           )}
 
         </div>
+
+        {/* Notifications — docked (sibling of containerRef so flex layout keeps it in-bounds) */}
+        {notifVariant === "docked" && (
+          <div className="pb-3" style={{
+            width: notifState === "open" ? notifWidth : 0,
+            marginRight: notifState === "open" ? 12 : 0,
+            overflow: "hidden",
+            flexShrink: 0,
+            transition: notifIsResizing ? "none" : "width 250ms cubic-bezier(0.4, 0, 0.2, 1)",
+          }}>
+            <div
+              className="h-full animate-in fade-in-0 duration-150"
+              style={{
+                width: notifWidth,
+                display: notifState === "open" ? "block" : "none",
+              }}
+            >
+              {notifPanel}
+            </div>
+          </div>
+        )}
+
+        {/* AI Panel — docked (sibling of containerRef so flex layout keeps it in-bounds) */}
+        {aiVariant === "docked" && (
+          <div className="pb-3" style={{
+            width: aiState === "open" ? aiWidth : 0,
+            marginRight: aiState === "open" ? 12 : 0,
+            overflow: "hidden",
+            flexShrink: 0,
+            transition: aiIsResizing ? "none" : "width 250ms cubic-bezier(0.4, 0, 0.2, 1)",
+          }}>
+            <div
+              className="h-full animate-in fade-in-0 duration-150"
+              style={{
+                width: aiWidth,
+                display: aiState === "open" ? "block" : "none",
+              }}
+            >
+              {aiPanel}
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
@@ -521,6 +718,31 @@ export default meta;
 type Story = StoryObj<typeof AgentNextGenTemplate>;
 
 export const Default: Story = {
-  name: "Agent Next Gen",
+  name: "Agent Next Gen – Shell",
   render: () => <AgentNextGenTemplate />,
+};
+
+export const WithPageHeader: Story = {
+  name: "Agent Next Gen – With Page Header",
+  args: {
+    showPanelToggle: true,
+    showInteriorPanel: true,
+  },
+  argTypes: {
+    showPanelToggle: {
+      control: "boolean",
+      description: "Show the left panel toggle button in the page header",
+    },
+    showInteriorPanel: {
+      control: "boolean",
+      description: "Show the right interior (Case Details) panel",
+    },
+  },
+  render: (args) => (
+    <AgentNextGenTemplate
+      showPageHeader
+      showPanelToggle={args.showPanelToggle}
+      showInteriorPanel={args.showInteriorPanel}
+    />
+  ),
 };

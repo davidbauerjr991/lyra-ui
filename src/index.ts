@@ -48,6 +48,8 @@ export { AppHeader } from "./components/app-header";
 export type { AppHeaderProps } from "./components/app-header";
 export { AppMenu } from "./components/app-menu";
 export type { AppMenuItem, AppMenuGroup, AppMenuProps } from "./components/app-menu";
+export { AddChannel } from "./components/add-channel";
+export type { AddChannelItem, AddChannelProps } from "./components/add-channel";
 export { ActionIconButton, ActionAvatarButton, actionIconButtonVariants } from "./components/actions";
 export type { ActionIconButtonProps, ActionAvatarButtonProps } from "./components/actions";
 export { ShellIconButton, ShellAvatarButton } from "./components/shell-button";

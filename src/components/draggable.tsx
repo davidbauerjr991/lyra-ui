@@ -98,6 +98,7 @@ export interface DraggableProps {
   defaultWidth?: number;
   defaultHeight?: number;
   minWidth?: number;
+  maxWidth?: number;
   minHeight?: number;
   /** Called when variant changes via the dock toggle button */
   onVariantChange?: (variant: DraggableVariant) => void;
@@ -135,6 +136,7 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
     defaultWidth          = 320,
     defaultHeight         = 480,
     minWidth              = 280,
+    maxWidth              = Infinity,
     minHeight             = 200,
     onVariantChange,
     renderHeaderControls,
@@ -200,7 +202,7 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
       onResizeStateChange?.(true);
       const onMove = (ev: MouseEvent) => {
         if (!resizeStart.current) return;
-        const newW = Math.max(minWidth, resizeStart.current.w + ev.clientX - resizeStart.current.mx);
+        const newW = Math.min(maxWidth, Math.max(minWidth, resizeStart.current.w + ev.clientX - resizeStart.current.mx));
         setWidth(newW); onWidthChange?.(newW);
         setHeight(Math.max(minHeight, resizeStart.current.h + ev.clientY - resizeStart.current.my));
       };
@@ -225,7 +227,7 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
       onResizeStateChange?.(true);
       const onMove = (ev: MouseEvent) => {
         if (!resizeStart.current) return;
-        const newW = Math.max(minWidth, resizeStart.current.w + resizeStart.current.mx - ev.clientX);
+        const newW = Math.min(maxWidth, Math.max(minWidth, resizeStart.current.w + resizeStart.current.mx - ev.clientX));
         setWidth(newW); onWidthChange?.(newW);
       };
       const onUp = () => {

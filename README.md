@@ -81,6 +81,31 @@ import {
 } from "@nicecxone/lyra-ui";
 ```
 
+## Usage Notes
+
+### PageHeader placement
+
+`PageHeader` belongs **inside** the content surface (`Container`), not at the layout level above it. Place it as the first child of your `Container` so it renders flush against the top of the white card with its bottom border acting as the section divider.
+
+The `title` prop must always match the label of the currently active item in the left nav — it represents the page the user is on, not a sub-section title. For example, if "Dashboard" is the active nav item, the `PageHeader` title is "Dashboard".
+
+```tsx
+<Container className="flex flex-col flex-1 overflow-hidden">
+  <PageHeader
+    title="Dashboard" {/* matches the active left nav item */}
+    actions={
+      <>
+        <Button variant="outline">Export</Button>
+        <Button>New Case</Button>
+      </>
+    }
+  />
+  {/* page content */}
+</Container>
+```
+
+Do **not** render `PageHeader` as a sibling of `Container` at the template body level — it would appear outside the surface, breaking the visual hierarchy.
+
 ## Development
 
 ```bash

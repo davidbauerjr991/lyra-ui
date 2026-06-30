@@ -109,7 +109,7 @@ const INITIAL_NOTIFICATIONS = [
 ];
 
 export const AgentNextGen: Story = {
-  name: "Agent Next Gen",
+  name: "Agent Next Gen Header",
   render: () => {
     const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
     const [agentStatus, setAgentStatus] = useState<AgentStatus>("available");

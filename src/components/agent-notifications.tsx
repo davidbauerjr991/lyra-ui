@@ -32,6 +32,8 @@ export interface AgentNotificationsProps {
   onDismiss?: (id: string) => void;
   /** Restored width on each remount so resize is preserved across float↔docked switches */
   defaultWidth?: number;
+  /** Max width for the Draggable wrapper (default: unlimited) */
+  maxWidth?: number;
   /** Controlled height — overrides defaultHeight on the Draggable (e.g. for viewport-responsive sizing) */
   height?: number;
   /** Initial Draggable variant (default: "float") */
@@ -91,7 +93,7 @@ function NotificationIcon({ type, icon }: { type: NotificationType; icon?: React
 
 const AgentNotifications = React.forwardRef<HTMLDivElement, AgentNotificationsProps>(
   ({ notifications, onClearAll, onMarkAllRead, onClose, onNotificationClick, onDismiss,
-     defaultWidth = 320, height,
+     defaultWidth = 320, maxWidth, height,
      draggableVariant: draggableVariantProp = "float", onVariantChange, onWidthChange, onResizeStateChange,
      onInteract, className }, ref) => {
     const [draggableVariant, setDraggableVariant] = React.useState<DraggableVariant>(draggableVariantProp);
@@ -120,6 +122,7 @@ const AgentNotifications = React.forwardRef<HTMLDivElement, AgentNotificationsPr
         defaultWidth={defaultWidth}
         defaultHeight={height ?? 480}
         minWidth={280}
+        maxWidth={maxWidth}
         minHeight={200}
         onVariantChange={(v) => { setDraggableVariant(v); onVariantChange?.(v); }}
         onWidthChange={onWidthChange}
