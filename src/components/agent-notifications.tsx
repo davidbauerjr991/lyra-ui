@@ -4,7 +4,7 @@ import { cn } from "../lib/utils";
 import { ListItem } from "./list-item";
 import { StatusBadge } from "./status-badge";
 import { Tooltip } from "./tooltip";
-import { Draggable } from "./draggable";
+import { Draggable, type DraggableVariant } from "./draggable";
 import { ContainerHeader } from "./container-header";
 import { Menu } from "./menu";
 
@@ -30,6 +30,20 @@ export interface AgentNotificationsProps {
   onClose?: () => void;
   onNotificationClick?: (notification: AgentNotification) => void;
   onDismiss?: (id: string) => void;
+  /** Restored width on each remount so resize is preserved across float↔docked switches */
+  defaultWidth?: number;
+  /** Controlled height — overrides defaultHeight on the Draggable (e.g. for viewport-responsive sizing) */
+  height?: number;
+  /** Initial Draggable variant (default: "float") */
+  draggableVariant?: DraggableVariant;
+  /** Called when variant changes (float ↔ docked) */
+  onVariantChange?: (variant: DraggableVariant) => void;
+  /** Called when the draggable width changes (for animating docked wrapper) */
+  onWidthChange?: (width: number) => void;
+  /** Called when resize drag starts/ends (suppress transition during drag) */
+  onResizeStateChange?: (isResizing: boolean) => void;
+  /** Called on any mousedown inside the panel — use for z-index "bring to front" logic */
+  onInteract?: () => void;
   className?: string;
 }
 
@@ -76,7 +90,15 @@ function NotificationIcon({ type, icon }: { type: NotificationType; icon?: React
 /* ── Component ── */
 
 const AgentNotifications = React.forwardRef<HTMLDivElement, AgentNotificationsProps>(
-  ({ notifications, onClearAll, onMarkAllRead, onClose, onNotificationClick, onDismiss, className }, ref) => {
+  ({ notifications, onClearAll, onMarkAllRead, onClose, onNotificationClick, onDismiss,
+     defaultWidth = 320, height,
+     draggableVariant: draggableVariantProp = "float", onVariantChange, onWidthChange, onResizeStateChange,
+     onInteract, className }, ref) => {
+    const [draggableVariant, setDraggableVariant] = React.useState<DraggableVariant>(draggableVariantProp);
+
+    // Sync when parent forces a variant change (single-dock rule)
+    React.useEffect(() => { setDraggableVariant(draggableVariantProp); }, [draggableVariantProp]);
+
     const unreadCount = notifications.filter((n) => !n.read).length;
     const hasUnread = notifications.some((n) => !n.read);
     const [overflowOpen, setOverflowOpen] = React.useState(false);
@@ -94,12 +116,18 @@ const AgentNotifications = React.forwardRef<HTMLDivElement, AgentNotificationsPr
     return (
       <Draggable
         ref={ref}
-        defaultWidth={320}
-        defaultHeight={480}
+        variant={draggableVariant}
+        defaultWidth={defaultWidth}
+        defaultHeight={height ?? 480}
         minWidth={280}
         minHeight={200}
+        onVariantChange={(v) => { setDraggableVariant(v); onVariantChange?.(v); }}
+        onWidthChange={onWidthChange}
+        onResizeStateChange={onResizeStateChange}
+        onInteract={onInteract}
         className={cn(
-          "rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg",
+          "rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay",
+          draggableVariant === "float" ? "shadow-lg" : "h-full",
           className
         )}
         renderHeaderControls={({ gripProps, dockButtonProps, dockIcon, variant }) => (

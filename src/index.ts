@@ -154,7 +154,7 @@ export type { AiPanelProps, AiPanelSuggestion } from "./components/ai-panel";
 export type { AIProcessStep, AIProcessStepStatus } from "./components/ai-process";
 export { ConversationMessage, ConversationDateStamp } from "./components/conversation-message";
 export { Draggable } from "./components/draggable";
-export type { DraggableProps } from "./components/draggable";
+export type { DraggableProps, DraggableVariant } from "./components/draggable";
 export { ListItem } from "./components/list-item";
 export type { ListItemProps } from "./components/list-item";
 export { AgentNotifications } from "./components/agent-notifications";

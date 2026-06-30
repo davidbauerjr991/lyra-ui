@@ -105,10 +105,16 @@ export interface AiPanelProps {
   draggableVariant?: DraggableVariant;
   /** Initial width for the Draggable wrapper (default: 420) */
   defaultDraggableWidth?: number;
-  /** Initial height for the Draggable wrapper in float mode (default: 480) */
+  /** Initial height for the Draggable wrapper in float mode (default: 600) */
   defaultDraggableHeight?: number;
   /** Called when variant changes */
   onVariantChange?: (variant: DraggableVariant) => void;
+  /** Called when the draggable width changes (for animating docked wrapper) */
+  onWidthChange?: (width: number) => void;
+  /** Called when resize drag starts/ends (suppress transition during drag) */
+  onResizeStateChange?: (isResizing: boolean) => void;
+  /** Called on any mousedown inside the panel — use for z-index "bring to front" logic */
+  onInteract?: () => void;
   /** Start in history view (default: false) */
   defaultView?: "home" | "history";
   className?: string;
@@ -132,13 +138,19 @@ const AiPanel = React.forwardRef<HTMLDivElement, AiPanelProps>(
     draggable: isDraggable,
     draggableVariant: draggableVariantProp = "docked",
     defaultDraggableWidth = 420,
-    defaultDraggableHeight = 480,
+    defaultDraggableHeight = 600,
     onVariantChange,
+    onWidthChange,
+    onResizeStateChange,
+    onInteract,
     defaultView = "home",
     className,
   }, ref) => {
     const [showHistory, setShowHistory] = React.useState(defaultView === "history");
     const [draggableVariant, setDraggableVariant] = React.useState<DraggableVariant>(draggableVariantProp);
+
+    // Sync when parent forces a variant change (single-dock rule)
+    React.useEffect(() => { setDraggableVariant(draggableVariantProp); }, [draggableVariantProp]);
 
     const isEmpty = !children && !showHistory;
 
@@ -222,8 +234,11 @@ const AiPanel = React.forwardRef<HTMLDivElement, AiPanelProps>(
           defaultWidth={defaultDraggableWidth}
           defaultHeight={defaultDraggableHeight}
           minWidth={280}
-          minHeight={700}
+          minHeight={400}
           onVariantChange={(v) => { setDraggableVariant(v); onVariantChange?.(v); }}
+          onWidthChange={onWidthChange}
+          onResizeStateChange={onResizeStateChange}
+          onInteract={onInteract}
           className={cn(
             "rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-base shadow-lg",
             className

@@ -117,15 +117,32 @@ export const AgentNextGen: Story = {
     const [appMenuOpen, setAppMenuOpen] = useState(false);
     const [aiPanelOpen, setAiPanelOpen] = useState(false);
     const [aiPanelPos, setAiPanelPos] = useState({ top: 0, left: 0 });
+    const [aiPanelHeight, setAiPanelHeight] = useState(700);
     const aiBtnRef = useRef<HTMLButtonElement>(null);
+    const AI_PANEL_WIDTH = 420;
+    const MAX_PANEL_HEIGHT = 860;
+    const BOTTOM_PADDING = 8;
+
+    const computeAiHeight = (top: number) =>
+      Math.min(window.innerHeight - top - BOTTOM_PADDING, MAX_PANEL_HEIGHT);
 
     const handleAiButtonClick = () => {
       if (aiBtnRef.current) {
         const rect = aiBtnRef.current.getBoundingClientRect();
-        setAiPanelPos({ top: rect.bottom + 6, left: rect.right - 420 });
+        const top = rect.bottom + 6;
+        setAiPanelPos({ top, left: rect.right - AI_PANEL_WIDTH });
+        setAiPanelHeight(computeAiHeight(top));
       }
       setAiPanelOpen((v) => !v);
     };
+
+    // Update AI panel height on viewport resize while open
+    useEffect(() => {
+      if (!aiPanelOpen) return;
+      const onResize = () => setAiPanelHeight(computeAiHeight(aiPanelPos.top));
+      window.addEventListener("resize", onResize);
+      return () => window.removeEventListener("resize", onResize);
+    }, [aiPanelOpen, aiPanelPos.top]);
 
     useEffect(() => {
       const interval = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
@@ -207,8 +224,8 @@ export const AgentNextGen: Story = {
           <AiPanel
             draggable
             draggableVariant="float"
-            defaultDraggableWidth={420}
-            defaultDraggableHeight={700}
+            defaultDraggableWidth={AI_PANEL_WIDTH}
+            defaultDraggableHeight={aiPanelHeight}
             userName="John"
             suggestions={[
               { id: "1", label: "Summarise this contact's history" },
