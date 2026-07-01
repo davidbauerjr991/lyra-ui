@@ -46,7 +46,7 @@ const meta = {
     },
     background: {
       control: "select",
-      options: ["none","primary","active","success","warning","critical","neutral","surface"] satisfies IconBackground[],
+      options: ["none","primary","active","success","warning","critical","info","neutral","surface"] satisfies IconBackground[],
     },
     shape: {
       control: "select",
@@ -216,7 +216,7 @@ export const BackgroundVariants: Story = {
       <div>
         <p className="lyra-label text-lyra-fg-secondary mb-3">Rounded</p>
         <div className="flex flex-wrap gap-4">
-          {(["primary","active","success","warning","critical","neutral","surface"] as const).map((bg) => (
+          {(["primary","active","success","warning","critical","info","neutral","surface"] as const).map((bg) => (
             <div key={bg} className="flex flex-col items-center gap-2">
               <Icon icon={Bell} size="md" background={bg} shape="rounded" decorative />
               <span className="lyra-body-sm text-lyra-fg-secondary">{bg}</span>
@@ -229,7 +229,7 @@ export const BackgroundVariants: Story = {
       <div>
         <p className="lyra-label text-lyra-fg-secondary mb-3">Circle</p>
         <div className="flex flex-wrap gap-4">
-          {(["primary","active","success","warning","critical","neutral","surface"] as const).map((bg) => (
+          {(["primary","active","success","warning","critical","info","neutral","surface"] as const).map((bg) => (
             <div key={bg} className="flex flex-col items-center gap-2">
               <Icon icon={Bell} size="md" background={bg} shape="circle" decorative />
               <span className="lyra-body-sm text-lyra-fg-secondary">{bg}</span>

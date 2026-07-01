@@ -121,6 +121,14 @@ export type { PopoverProps, PopoverPlacement } from "./components/popover";
 export { Label } from "./components/label";
 export type { LabelProps } from "./components/label";
 
+/* ── Divider ── */
+export { Divider } from "./components/divider";
+export type { DividerProps, DividerOrientation } from "./components/divider";
+
+/* ── Login Card ── */
+export { LoginCard } from "./components/login-card";
+export type { LoginCardProps, LoginCardPhoneSetup } from "./components/login-card";
+
 /* ── Icon ── */
 export { Icon, iconVariants, iconContainerVariants } from "./components/icon";
 export type { IconProps, IconSize, IconColor } from "./components/icon";

@@ -1034,6 +1034,7 @@ function ColumnToggle({ columns, visibleColumns, onVisibilityChange, className }
           onOpenChange={setMenuOpen}
           className="w-auto"
           trigger={<ColumnsIcon className="h-4 w-4" aria-hidden="true" />}
+          dropdownAlign="right"
         />
       </div>
     </Tooltip>

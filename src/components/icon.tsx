@@ -29,6 +29,7 @@ export type IconBackground =
   | "success"
   | "warning"
   | "critical"
+  | "info"
   | "neutral"
   | "surface";
 
@@ -95,6 +96,7 @@ const iconContainerVariants = cva(
         success:  "bg-lyra-status-success-subtle text-lyra-status-success-strong",
         warning:  "bg-lyra-status-warning-subtle text-lyra-status-warning-strong",
         critical: "bg-lyra-status-critical-subtle text-lyra-status-critical-strong",
+        info:     "bg-lyra-accent-purple-soft text-lyra-accent-purple-strong",
         neutral:  "bg-lyra-bg-surface-container-subtle text-lyra-fg-secondary",
         surface:  "bg-lyra-bg-surface-base border border-lyra-border-subtle text-lyra-fg-default",
       },

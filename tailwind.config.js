@@ -121,6 +121,7 @@ export default {
         "lyra-accent-purple-soft":   "var(--lyra-color-accent-purple-soft)",
         "lyra-accent-red-strong":    "var(--lyra-color-accent-red-strong)",
         "lyra-accent-red-soft":      "var(--lyra-color-accent-red-soft)",
+        "lyra-avatar-default-bg":    "var(--lyra-color-avatar-default-bg)",
         "lyra-accent-slate-strong":  "var(--lyra-color-accent-slate-strong)",
         "lyra-accent-slate-soft":    "var(--lyra-color-accent-slate-soft)",
         "lyra-accent-teal-strong":   "var(--lyra-color-accent-teal-strong)",

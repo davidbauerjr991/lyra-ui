@@ -11,7 +11,7 @@
   --lyra-color-bg-surface-base: #ffffff;
   --lyra-color-bg-surface-canvas: #fcfcfd;
   --lyra-color-bg-surface-container: #ffffff;
-  --lyra-color-bg-surface-container-subtle: #fcfcfd;
+  --lyra-color-bg-surface-container-subtle: #fbfcfe;
   --lyra-color-bg-surface-shell: #f3f5f6;
   --lyra-color-bg-surface-backdrop: rgba(0, 0, 0, 0.24);
   --lyra-color-bg-surface-overlay: #ffffff;
@@ -82,6 +82,7 @@
   --lyra-color-state-bg-pressed-critical-subtle: #ffe0e0;
   --lyra-color-state-border-hover-neutral: rgba(0, 0, 0, 0.80);
 
+  --lyra-color-avatar-default-bg: #5d6a79;
   --lyra-color-accent-slate-soft: #e8ebed;
   --lyra-color-accent-slate-strong: #5d6a79;
   --lyra-color-accent-red-soft: #ffdbdb;

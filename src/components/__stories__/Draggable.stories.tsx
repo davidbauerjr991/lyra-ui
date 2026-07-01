@@ -65,40 +65,55 @@ export const WithMainContainer: Story = {
   name: "With main container",
   parameters: { layout: "fullscreen" },
   render: () => {
-    const [panelOpen,   setPanelOpen]   = useState(true);
-    const [mounted,     setMounted]     = useState(true);
-    const [visible,     setVisible]     = useState(true);
-    const [variant,     setVariant]     = useState<DraggableVariant>("docked");
-    const [width,       setWidth]       = useState(320);
-    const [isResizing,  setIsResizing]  = useState(false);
-    const containerRef  = useRef<HTMLDivElement>(null);
-    const floatLeft     = useRef<number | null>(null);
-    const animTimer     = useRef<ReturnType<typeof setTimeout>>();
+    type PanelState = "closed" | "open" | "closing";
 
-    // Animate open/close
+    const [panelOpen,  setPanelOpen]  = useState(true);
+    const [mounted,    setMounted]    = useState(true);
+    const [panelState, setPanelState] = useState<PanelState>("open");
+    const [variant,    setVariant]    = useState<DraggableVariant>("docked");
+    const [width,      setWidth]      = useState(320);
+    const [isResizing, setIsResizing] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const floatLeft    = useRef<number | null>(null);
+    const animTimer    = useRef<ReturnType<typeof setTimeout>>();
+
+    // Open/close state machine (matches AgentNextGen pattern)
     useEffect(() => {
       clearTimeout(animTimer.current);
       if (panelOpen) {
+        if (containerRef.current && floatLeft.current === null) {
+          const r = containerRef.current.getBoundingClientRect();
+          floatLeft.current = r.left + containerRef.current.offsetWidth - width - 16;
+        }
         setMounted(true);
-        animTimer.current = setTimeout(() => setVisible(true), 10);
+        setPanelState("open");
       } else {
-        setVisible(false);
-        animTimer.current = setTimeout(() => setMounted(false), 300);
+        setPanelState("closing");
+        animTimer.current = setTimeout(() => setPanelState("closed"), 150);
       }
       return () => clearTimeout(animTimer.current);
-    }, [panelOpen]);
+    }, [panelOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleVariantChange = (v: DraggableVariant) => {
       if (v === "float" && containerRef.current) {
-        // Position right-edge at 16px from right, below the PageHeader
-        floatLeft.current = containerRef.current.offsetWidth - width - 16;
+        const r = containerRef.current.getBoundingClientRect();
+        floatLeft.current = r.left + containerRef.current.offsetWidth - width - 16;
       } else {
         floatLeft.current = null;
       }
       setVariant(v);
     };
 
-    const handleWidthChange = (w: number) => setWidth(w);
+    // Float position — absolute viewport coordinates so panel doesn't shift when layout changes
+    const getFloatStyle = (): React.CSSProperties => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      const left = floatLeft.current !== null
+        ? floatLeft.current
+        : containerRef.current
+          ? (rect?.left ?? 0) + containerRef.current.offsetWidth - width - 16
+          : 0;
+      return { position: "fixed", top: rect?.top ?? 0, left, zIndex: 40 };
+    };
 
     const panel = mounted ? (
       <Draggable
@@ -108,7 +123,7 @@ export const WithMainContainer: Story = {
         minWidth={280}
         minHeight={200}
         onVariantChange={handleVariantChange}
-        onWidthChange={handleWidthChange}
+        onWidthChange={setWidth}
         onResizeStateChange={setIsResizing}
         className={[
           "rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay",
@@ -121,54 +136,56 @@ export const WithMainContainer: Story = {
     ) : null;
 
     return (
-      <div ref={containerRef} className="relative flex h-screen overflow-hidden bg-lyra-bg-surface-shell p-4 gap-2">
-        {/* Main container */}
-        <div className="flex flex-col flex-1 min-w-0 rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-base overflow-hidden">
-          <PageHeader
-            title="Page Title"
-            actions={
-              <Button variant="outline" onClick={() => setPanelOpen((v) => !v)}>
-                Toggle right panel
-              </Button>
-            }
-          />
+      <div className="flex h-screen overflow-hidden bg-lyra-bg-surface-shell p-4">
+
+        {/* Content area — ref used to position float panel */}
+        <div ref={containerRef} className="relative flex flex-1 min-w-0 overflow-hidden">
+          <div className="flex flex-col flex-1 rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-base overflow-hidden">
+            <PageHeader
+              title="Page Title"
+              actions={
+                <Button variant="outline" onClick={() => setPanelOpen((v) => !v)}>
+                  Toggle right panel
+                </Button>
+              }
+            />
+          </div>
+
+          {/* Float: position:fixed viewport coords, visibility+opacity transition */}
+          {variant === "float" && mounted && (
+            <div style={{
+              ...getFloatStyle(),
+              pointerEvents: panelState === "closed" ? "none" : "auto",
+              visibility: panelState === "closed" ? "hidden" : "visible",
+              opacity: panelState === "open" ? 1 : 0,
+              transform: panelState === "open" ? "translateY(0)" : "translateY(-8px)",
+              transition: panelState === "open"
+                ? "opacity 150ms ease, transform 150ms ease"
+                : "opacity 100ms ease, transform 100ms ease",
+            }}>
+              {panel}
+            </div>
+          )}
         </div>
 
-        {/* Docked: animated width wrapper */}
+        {/* Docked: sibling of containerRef — gap (pl-4) is baked into the animating width
+             so it collapses to zero with the panel. No extra padding on the content area. */}
         {variant === "docked" && (
           <div style={{
-            width: visible ? width + 8 : 0,
+            width: panelState === "open" ? width + 16 : 0,
             overflow: "hidden",
             flexShrink: 0,
             transition: isResizing ? "none" : "width 250ms cubic-bezier(0.4, 0, 0.2, 1)",
           }}>
-            <div className="h-full pl-2" style={{ width: width + 8 }}>
+            <div
+              className="h-full pl-4"
+              style={{ width: width + 16, display: panelState === "open" ? "block" : "none" }}
+            >
               {panel}
             </div>
           </div>
         )}
 
-        {/* Float: left-anchored, expands right */}
-        {variant === "float" && panelOpen && (() => {
-          const rect = containerRef.current?.getBoundingClientRect();
-          const localLeft = floatLeft.current !== null
-            ? floatLeft.current
-            : containerRef.current
-              ? containerRef.current.offsetWidth - width - 16
-              : 0;
-          return (
-            <div
-              style={{
-                position: "fixed",
-                top: (rect?.top ?? 0) + 84,
-                left: (rect?.left ?? 0) + localLeft,
-                zIndex: 40,
-              }}
-            >
-              {panel}
-            </div>
-          );
-        })()}
       </div>
     );
   },

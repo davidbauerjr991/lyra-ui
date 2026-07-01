@@ -8,7 +8,7 @@
   --lyra-color-bg-surface-base: #ffffff;
   --lyra-color-bg-surface-canvas: #fcfcfd;
   --lyra-color-bg-surface-container: #ffffff;
-  --lyra-color-bg-surface-container-subtle: #fcfcfd;
+  --lyra-color-bg-surface-container-subtle: #fbfcfe;
   --lyra-color-bg-surface-shell: #f3f5f6;
   --lyra-color-bg-surface-backdrop: rgba(0, 0, 0, 0.24);
   --lyra-color-bg-surface-overlay: #ffffff;
@@ -86,6 +86,10 @@
   --lyra-color-state-bg-hover-destructive: #902222;
   --lyra-color-state-bg-pressed-destructive: #6d2222;
   --lyra-color-state-border-hover-neutral: rgba(0, 0, 0, 0.80);
+
+  /* ── Avatar ── */
+  /* Avatar bg is intentionally theme-invariant — same value in light and dark */
+  --lyra-color-avatar-default-bg: #5d6a79;
 
   /* ── Accent ── */
   --lyra-color-accent-slate-soft: #e8ebed;
@@ -225,6 +229,9 @@
   --lyra-color-state-bg-hover-destructive: #a32424;
   --lyra-color-state-bg-pressed-destructive: #8a1f1f;
   --lyra-color-state-border-hover-neutral: rgba(255, 255, 255, 0.80);
+
+  /* ── Avatar ── */
+  --lyra-color-avatar-default-bg: #5d6a79;
 
   /* ── Accent ── */
   --lyra-color-accent-slate-soft: #49515a;

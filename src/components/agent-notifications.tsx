@@ -129,7 +129,7 @@ const AgentNotifications = React.forwardRef<HTMLDivElement, AgentNotificationsPr
         onResizeStateChange={onResizeStateChange}
         onInteract={onInteract}
         className={cn(
-          "rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay",
+          "rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-base",
           draggableVariant === "float" ? "shadow-lg" : "h-full",
           className
         )}

@@ -147,7 +147,7 @@ export const AllColors: Story = {
           { name: "Base", token: "lyra-bg-surface-base", value: "#ffffff", description: "Default background for pages, panels, and non-primary components." },
           { name: "Canvas", token: "lyra-bg-surface-canvas", value: "#fcfcfd", description: "Second-level backgrounds like sidebars." },
           { name: "Container", token: "lyra-bg-surface-container", value: "#ffffff", description: "Grouped content areas within a page." },
-          { name: "Container Subtle", token: "lyra-bg-surface-container-subtle", value: "#fcfcfd", description: "Lighter container variant for subtle differentiation." },
+          { name: "Container Subtle", token: "lyra-bg-surface-container-subtle", value: "#fbfcfe", description: "Lighter container variant for subtle differentiation." },
           { name: "Shell", token: "lyra-bg-surface-shell", value: "#f3f5f6", description: "Adaptive background slightly darker than parent." },
           { name: "Backdrop", token: "lyra-bg-surface-backdrop", value: "rgba(0,0,0,0.24)", description: "Overlay behind modals and dialogs." },
           { name: "Overlay", token: "lyra-bg-surface-overlay", value: "#ffffff", description: "Popovers, dropdowns, tooltips, and modals." },
@@ -444,7 +444,7 @@ export const NeutralColors: Story = {
       <AliasRow name="surface-base" value="#ffffff" darkValue="#1f1f1e" token="lyra-bg-surface-base" />
       <AliasRow name="surface-canvas" value="#fcfcfd" darkValue="#141414" token="lyra-bg-surface-canvas" />
       <AliasRow name="surface-container" value="#ffffff" darkValue="#1f1f1e" token="lyra-bg-surface-container" />
-      <AliasRow name="surface-container-subtle" value="#fcfcfd" darkValue="#262626" token="lyra-bg-surface-container-subtle" />
+      <AliasRow name="surface-container-subtle" value="#fbfcfe" darkValue="#262626" token="lyra-bg-surface-container-subtle" />
       <AliasRow name="surface-shell" value="#f3f5f6" darkValue="#2e2e2e" token="lyra-bg-surface-shell" />
       <AliasRow name="surface-backdrop" value="rgba(0,0,0,0.24)" darkValue="rgba(0,0,0,0.24)" token="lyra-bg-surface-backdrop" />
       <AliasRow name="surface-overlay" value="#ffffff" darkValue="#2e2e2e" token="lyra-bg-surface-overlay" />

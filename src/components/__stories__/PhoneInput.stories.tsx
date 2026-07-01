@@ -72,3 +72,24 @@ export const DefaultCountries: Story = {
     </div>
   ),
 };
+
+export const WithoutCountrySelector: Story = {
+  name: "Without country selector",
+  render: () => {
+    const [value, setValue] = useState<PhoneValue>({ countryCode: "us", number: "" });
+    return (
+      <div className="w-80">
+        <PhoneInput
+          label="Phone number"
+          hideCountrySelector
+          value={value}
+          onChange={setValue}
+        />
+        <p className="lyra-body-sm text-lyra-fg-secondary mt-2">
+          No flag or dial-code picker — use when the app only ever needs a single, known
+          country's numbers (the mask/format still comes from `defaultCountry`).
+        </p>
+      </div>
+    );
+  },
+};

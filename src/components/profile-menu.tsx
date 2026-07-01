@@ -43,7 +43,6 @@ const ProfileMenu = React.forwardRef<HTMLDivElement, ProfileMenuProps>(
       const next = !isDark;
       setIsDark(next);
       document.documentElement.setAttribute("data-theme", next ? "dark" : "light");
-      close();
     };
 
     /* Close on outside click */

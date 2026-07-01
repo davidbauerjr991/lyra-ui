@@ -1,6 +1,15 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { Box } from "lucide-react";
+import { Box, Clock } from "lucide-react";
 import { Accordion } from "../accordion";
+import { Tag } from "../tag";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "../table";
 
 const meta: Meta<typeof Accordion> = {
   title: "Atoms/Accordion",
@@ -145,6 +154,81 @@ export const WithSubhead: Story = {
           icon,
           disabled: true,
           content: null,
+        },
+      ]}
+    />
+  ),
+};
+
+/* ── Rich content: title/subhead accept ReactNode (e.g. name + Tag, multi-line
+   summary), and content can be any component — here a Default-style Table ── */
+
+const richInteractions = [
+  { id: "1", when: "09/05/25 7:53 PM", agent: "Kevin Jensen",  status: "Closed", queue: "CXi SME Email", skill: "Email_General" },
+  { id: "2", when: "09/05/25 8:11 PM", agent: "Andres Arenas", status: "Closed", queue: "Chat_General",  skill: "Chat_General"  },
+  { id: "3", when: "09/07/25 12:56 PM", agent: "KrishnaCharan Mohanrao", status: "Closed", queue: "CXi SME Email", skill: "Email_General" },
+];
+
+export const WithRichHeaderAndTable: Story = {
+  name: "Rich Header + Table Content",
+  render: () => (
+    <Accordion
+      defaultValue="1"
+      items={[
+        {
+          id: "1",
+          title: (
+            <span className="inline-flex items-center gap-2">
+              Lily Chen
+              <Tag label="open" variant="success" shape="pill" />
+            </span>
+          ),
+          subhead: (
+            <span className="flex flex-col gap-0.5">
+              <span className="lyra-body-md text-lyra-fg-default">
+                Unaccompanied minor (age 11) stuck at ORD — connecting flight canceled
+              </span>
+              <span className="inline-flex items-center gap-1">
+                Atlas
+                <span aria-hidden="true">•</span>
+                <Clock className="h-3 w-3" strokeWidth={1.5} />
+                Wait: 1m
+                <span aria-hidden="true">•</span>
+                CST-21009
+              </span>
+            </span>
+          ),
+          content: (
+            <div className="rounded-lyra-lg border border-lyra-border-subtle overflow-hidden" style={{ height: 160 }}>
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="flex-1">Date/Time</TableHead>
+                    <TableHead className="flex-[1.3]">Name</TableHead>
+                    <TableHead className="flex-1">Status</TableHead>
+                    <TableHead className="flex-[1.3]">Queue</TableHead>
+                    <TableHead className="flex-[1.3]">Skill</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {richInteractions.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell className="flex-1">{row.when}</TableCell>
+                      <TableCell className="flex-[1.3]">{row.agent}</TableCell>
+                      <TableCell className="flex-1">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-lyra-status-critical-strong shrink-0" aria-hidden="true" />
+                          {row.status}
+                        </span>
+                      </TableCell>
+                      <TableCell className="flex-[1.3]">{row.queue}</TableCell>
+                      <TableCell className="flex-[1.3]">{row.skill}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ),
         },
       ]}
     />

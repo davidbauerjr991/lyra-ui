@@ -1,6 +1,6 @@
 import * as React from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
-import { ChevronDown, ChevronLeft, Moon, Activity, LogOut, Link2Off, Link2, Loader2, Search } from "lucide-react";
+import { ChevronDown, ChevronLeft, Moon, Sun, Activity, LogOut, Link2Off, Link2, Loader2, Search } from "lucide-react";
 import { cn } from "../lib/utils";
 import * as ReactDOM from "react-dom";
 import { Menu, type MenuEntry } from "./menu";
@@ -24,6 +24,8 @@ export interface AgentProfileProps {
   /** Called when reconnect is triggered for an app */
   onReconnect?: (appId: string) => void;
   onDarkModeToggle?: () => void;
+  /** Whether dark mode is currently active — controls the label/icon shown in the menu */
+  isDarkMode?: boolean;
   onLogOut?: () => void;
   className?: string;
 }
@@ -44,7 +46,7 @@ function StatusDot({ status }: { status: AgentStatus }) {
 function Avatar({ initials, src, status }: { initials?: string; src?: string; status: AgentStatus }) {
   return (
     <div className="relative shrink-0">
-      <div className="h-9 w-9 rounded-full overflow-hidden bg-lyra-accent-slate-strong flex items-center justify-center">
+      <div className="h-9 w-9 rounded-full overflow-hidden bg-lyra-avatar-default-bg flex items-center justify-center">
         {src
           ? <img src={src} alt={initials} className="h-full w-full object-cover" />
           : <span className="lyra-label text-white">{initials}</span>}
@@ -66,7 +68,7 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
     timer,
     connectedApps = [],
     onReconnect,
-    onDarkModeToggle, onLogOut,
+    onDarkModeToggle, isDarkMode = false, onLogOut,
     className,
   }, ref) => {
     const [open, setOpen] = React.useState(false);
@@ -128,8 +130,10 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
       "separator" as const,
       {
         id: "dark-mode",
-        label: "Dark Mode",
-        icon: <Moon className="h-4 w-4" strokeWidth={1.5} />,
+        label: isDarkMode ? "Light Mode" : "Dark Mode",
+        icon: isDarkMode
+          ? <Sun  className="h-4 w-4" strokeWidth={1.5} />
+          : <Moon className="h-4 w-4" strokeWidth={1.5} />,
         onClick: onDarkModeToggle,
       },
       {

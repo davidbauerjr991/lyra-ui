@@ -126,6 +126,12 @@ export interface PhoneInputProps {
   required?: boolean;
   className?: string;
   id?: string;
+  /**
+   * Hides the country/dial-code selector, rendering a plain single-country number field.
+   * `defaultCountry` (or `value.countryCode`) still determines the mask/format used —
+   * it just can't be changed from the UI. Defaults to false.
+   */
+  hideCountrySelector?: boolean;
 }
 
 /* ── Component ── */
@@ -143,6 +149,7 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
     required,
     className,
     id,
+    hideCountrySelector = false,
   }, ref) => {
     const autoId    = React.useId();
     const inputId   = id ?? autoId;
@@ -205,6 +212,25 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
       readonly  && "bg-lyra-bg-surface-canvas pointer-events-none"
     );
 
+    /* Number input — displays formatted, stores digits. Shared between both layouts. */
+    const numberInput = (
+      <input
+        id={inputId}
+        type="tel"
+        value={formatted}
+        onChange={handleNumberChange}
+        onBlur={() => setTouched(true)}
+        placeholder={ph}
+        disabled={disabled}
+        readOnly={readonly}
+        autoComplete="tel"
+        className="flex-1 bg-transparent outline-none px-3 truncate placeholder:text-lyra-fg-disabled disabled:cursor-not-allowed"
+        aria-label={label ?? "Phone number"}
+        aria-invalid={!!error}
+        aria-describedby={error ? `${inputId}-error` : undefined}
+      />
+    );
+
     return (
       <div ref={ref} className={className}>
         {label && (
@@ -213,117 +239,107 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
             className="block mb-1.5" />
         )}
 
-        <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
-          <PopoverPrimitive.Anchor asChild>
-            <div className={shellClass}>
-              {/* Country selector */}
-              <PopoverPrimitive.Trigger asChild>
-                <button
-                  type="button"
-                  disabled={disabled || readonly}
-                  aria-label={`Select country, currently ${selected.name}`}
-                  aria-expanded={open} aria-haspopup="listbox"
-                  onClick={() => !disabled && !readonly && setOpen((v) => !v)}
-                  className={cn(
-                    "flex items-center gap-1.5 pl-3 pr-2 border-r shrink-0 transition-colors focus:outline-none",
-                    error ? "border-lyra-status-critical-strong" : "border-lyra-border-strong",
-                    "hover:bg-lyra-state-hover disabled:cursor-not-allowed disabled:opacity-40"
-                  )}
-                >
-                  <span className="text-base leading-none">{flag(selected.code)}</span>
-                  <span className="lyra-body-md text-lyra-fg-secondary tabular-nums">{selected.dial}</span>
-                  <ChevronDown
-                    className={cn("h-3.5 w-3.5 text-lyra-fg-secondary transition-transform", open && "rotate-180")}
-                    strokeWidth={1.5}
-                  />
-                </button>
-              </PopoverPrimitive.Trigger>
-
-              {/* Number input — displays formatted, stores digits */}
-              <input
-                id={inputId}
-                type="tel"
-                value={formatted}
-                onChange={handleNumberChange}
-                onBlur={() => setTouched(true)}
-                placeholder={ph}
-                disabled={disabled}
-                readOnly={readonly}
-                autoComplete="tel"
-                className="flex-1 bg-transparent outline-none px-3 truncate placeholder:text-lyra-fg-disabled disabled:cursor-not-allowed"
-                aria-label={label ?? "Phone number"}
-                aria-invalid={!!error}
-                aria-describedby={error ? `${inputId}-error` : undefined}
-              />
-            </div>
-          </PopoverPrimitive.Anchor>
-
-          <PopoverPrimitive.Portal>
-            <PopoverPrimitive.Content
-              onOpenAutoFocus={(e) => e.preventDefault()}
-              side="bottom" sideOffset={4} align="start"
-              avoidCollisions collisionPadding={4}
-              style={{ width: "var(--radix-popover-trigger-width)" }}
-              className={cn(
-                "z-50 rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg",
-                "flex flex-col max-h-72",
-                "animate-in fade-in-0 slide-in-from-top-2 duration-150",
-                "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-100"
-              )}
-            >
-              {/* Search */}
-              <div className="p-2 border-b border-lyra-border-subtle shrink-0">
-                <div className="relative flex items-center">
-                  <input
-                    ref={searchRef} type="text" value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    onKeyDown={handleSearchKeyDown}
-                    placeholder="Search country…"
+        {hideCountrySelector ? (
+          /* Single-country mode — no dial-code selector, just the formatted number field */
+          <div className={shellClass}>{numberInput}</div>
+        ) : (
+          <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
+            <PopoverPrimitive.Anchor asChild>
+              <div className={shellClass}>
+                {/* Country selector */}
+                <PopoverPrimitive.Trigger asChild>
+                  <button
+                    type="button"
+                    disabled={disabled || readonly}
+                    aria-label={`Select country, currently ${selected.name}`}
+                    aria-expanded={open} aria-haspopup="listbox"
+                    onClick={() => !disabled && !readonly && setOpen((v) => !v)}
                     className={cn(
-                      "w-full h-8 pl-3 pr-8 rounded-lyra-sm border lyra-body-md",
-                      "bg-lyra-bg-field border-lyra-border-strong",
-                      "focus:outline-none focus:border-lyra-border-active focus:ring-2 focus:ring-lyra-border-active/20",
-                      "placeholder:text-lyra-fg-disabled"
+                      "flex items-center gap-1.5 pl-3 pr-2 border-r shrink-0 transition-colors focus:outline-none",
+                      error ? "border-lyra-status-critical-strong" : "border-lyra-border-strong",
+                      "hover:bg-lyra-state-hover disabled:cursor-not-allowed disabled:opacity-40"
                     )}
-                  />
-                  {search && (
-                    <button type="button" tabIndex={-1} onClick={() => setSearch("")}
-                      className="absolute right-2 text-lyra-fg-secondary hover:text-lyra-fg-default">
-                      <X className="h-3.5 w-3.5" strokeWidth={1.5} />
-                    </button>
+                  >
+                    <span className="text-base leading-none">{flag(selected.code)}</span>
+                    <span className="lyra-body-md text-lyra-fg-secondary tabular-nums">{selected.dial}</span>
+                    <ChevronDown
+                      className={cn("h-3.5 w-3.5 text-lyra-fg-secondary transition-transform", open && "rotate-180")}
+                      strokeWidth={1.5}
+                    />
+                  </button>
+                </PopoverPrimitive.Trigger>
+
+                {numberInput}
+              </div>
+            </PopoverPrimitive.Anchor>
+
+            <PopoverPrimitive.Portal>
+              <PopoverPrimitive.Content
+                onOpenAutoFocus={(e) => e.preventDefault()}
+                side="bottom" sideOffset={4} align="start"
+                avoidCollisions collisionPadding={4}
+                style={{ width: "var(--radix-popover-trigger-width)" }}
+                className={cn(
+                  "z-50 rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg",
+                  "flex flex-col max-h-72",
+                  "animate-in fade-in-0 slide-in-from-top-2 duration-150",
+                  "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-100"
+                )}
+              >
+                {/* Search */}
+                <div className="p-2 border-b border-lyra-border-subtle shrink-0">
+                  <div className="relative flex items-center">
+                    <input
+                      ref={searchRef} type="text" value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      onKeyDown={handleSearchKeyDown}
+                      placeholder="Search country…"
+                      className={cn(
+                        "w-full h-8 pl-3 pr-8 rounded-lyra-sm border lyra-body-md",
+                        "bg-lyra-bg-field border-lyra-border-strong",
+                        "focus:outline-none focus:border-lyra-border-active focus:ring-2 focus:ring-lyra-border-active/20",
+                        "placeholder:text-lyra-fg-disabled"
+                      )}
+                    />
+                    {search && (
+                      <button type="button" tabIndex={-1} onClick={() => setSearch("")}
+                        className="absolute right-2 text-lyra-fg-secondary hover:text-lyra-fg-default">
+                        <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* List */}
+                <div role="listbox" aria-label="Countries" className="overflow-y-auto p-2">
+                  {filtered.length === 0 ? (
+                    <div className="px-3 py-2.5 lyra-body-md text-lyra-fg-disabled">No countries found</div>
+                  ) : (
+                    filtered.map((c, i) => (
+                      <div
+                        key={`${c.code}-${c.dial}`}
+                        role="option" aria-selected={c.code === countryCode}
+                        onMouseDown={(e) => { e.preventDefault(); selectCountry(c); }}
+                        onMouseEnter={() => setActiveIndex(i)}
+                        className={cn(
+                          "flex items-center gap-2.5 px-3 py-2.5 rounded-lyra-sm lyra-body-md cursor-pointer transition-colors select-none",
+                          c.code === countryCode
+                            ? "bg-lyra-bg-active-subtle text-lyra-fg-active-strong"
+                            : "text-lyra-fg-default",
+                          i === activeIndex && c.code !== countryCode && "bg-lyra-state-hover"
+                        )}
+                      >
+                        <span className="text-base leading-none shrink-0">{flag(c.code)}</span>
+                        <span className="flex-1 truncate">{c.name}</span>
+                        <span className="lyra-body-sm text-lyra-fg-secondary tabular-nums shrink-0">{c.dial}</span>
+                      </div>
+                    ))
                   )}
                 </div>
-              </div>
-
-              {/* List */}
-              <div role="listbox" aria-label="Countries" className="overflow-y-auto p-2">
-                {filtered.length === 0 ? (
-                  <div className="px-3 py-2.5 lyra-body-md text-lyra-fg-disabled">No countries found</div>
-                ) : (
-                  filtered.map((c, i) => (
-                    <div
-                      key={`${c.code}-${c.dial}`}
-                      role="option" aria-selected={c.code === countryCode}
-                      onMouseDown={(e) => { e.preventDefault(); selectCountry(c); }}
-                      onMouseEnter={() => setActiveIndex(i)}
-                      className={cn(
-                        "flex items-center gap-2.5 px-3 py-2.5 rounded-lyra-sm lyra-body-md cursor-pointer transition-colors select-none",
-                        c.code === countryCode
-                          ? "bg-lyra-bg-active-subtle text-lyra-fg-active-strong"
-                          : "text-lyra-fg-default",
-                        i === activeIndex && c.code !== countryCode && "bg-lyra-state-hover"
-                      )}
-                    >
-                      <span className="text-base leading-none shrink-0">{flag(c.code)}</span>
-                      <span className="flex-1 truncate">{c.name}</span>
-                      <span className="lyra-body-sm text-lyra-fg-secondary tabular-nums shrink-0">{c.dial}</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </PopoverPrimitive.Content>
-          </PopoverPrimitive.Portal>
-        </PopoverPrimitive.Root>
+              </PopoverPrimitive.Content>
+            </PopoverPrimitive.Portal>
+          </PopoverPrimitive.Root>
+        )}
 
         {/* Error */}
         {error && (

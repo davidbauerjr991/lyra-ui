@@ -8,10 +8,10 @@ import { CollapsiblePanel } from "./tree-menu";
 export interface AccordionItem {
   /** Unique identifier */
   id: string;
-  /** Trigger label */
-  title: string;
-  /** Optional secondary text rendered below the title */
-  subhead?: string;
+  /** Trigger label. Accepts a plain string or richer content (e.g. a name + status Tag) */
+  title: React.ReactNode;
+  /** Optional secondary text rendered below the title. Accepts a plain string or richer content (e.g. a multi-line summary) */
+  subhead?: React.ReactNode;
   /** Optional icon rendered left of the title */
   icon?: React.ReactNode;
   /** Content rendered when the item is open */
