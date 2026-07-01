@@ -78,6 +78,8 @@ interface ContainerProps
   headerSubhead?: string;
   /** Show a dividing border below the header (default: false) */
   headerBordered?: boolean;
+  /** Typography class for the header title (default: "lyra-heading-md", set on ContainerHeader) */
+  headerTitleClassName?: string;
 }
 
 const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
@@ -85,6 +87,7 @@ const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
     className, variant,
     headerTitle, headerIcon, headerActions,
     headerTitleBadge, headerSubhead, headerBordered = false,
+    headerTitleClassName,
     children, ...props
   }, ref) => (
     <div
@@ -100,6 +103,7 @@ const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
           titleBadge={headerTitleBadge}
           subhead={headerSubhead}
           bordered={headerBordered}
+          {...(headerTitleClassName ? { titleClassName: headerTitleClassName } : {})}
         />
       )}
       {children}

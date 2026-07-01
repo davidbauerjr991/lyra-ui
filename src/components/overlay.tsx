@@ -67,7 +67,7 @@ const Overlay = React.forwardRef<
       />
       {children && (
         <DialogPrimitive.Content
-          className="fixed inset-0 z-50 flex items-center justify-center focus:outline-none"
+          className="fixed inset-0 z-50 flex items-center justify-center focus:outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
           aria-describedby={undefined}
           // Prevent Radix from closing on outside interaction — we handle it manually below
           onInteractOutside={(e) => e.preventDefault()}

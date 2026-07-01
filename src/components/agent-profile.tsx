@@ -7,6 +7,7 @@ import { Menu, type MenuEntry } from "./menu";
 import { ConnectedAppsPanel, type ConnectedApp } from "./connected-apps";
 import { Tooltip } from "./tooltip";
 import { StatusBadge } from "./status-badge";
+import { Input } from "./input";
 
 /* ── Types ── */
 
@@ -229,16 +230,13 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
             >
               {/* Search statuses */}
               <div className="px-3 py-2.5 border-b border-lyra-border-subtle">
-                <div className="relative flex items-center">
-                  <Search className="absolute left-2.5 h-4 w-4 text-lyra-fg-disabled pointer-events-none" strokeWidth={1.4} aria-hidden="true" />
-                  <input
-                    type="text"
-                    placeholder="Search statuses"
-                    value={statusSearch}
-                    onChange={(e) => setStatusSearch(e.target.value)}
-                    className="w-full rounded-lyra-md border border-lyra-border-default bg-lyra-bg-surface-base pl-8 pr-3 py-1.5 lyra-body-md text-lyra-fg-default placeholder:text-lyra-fg-disabled focus:outline-none focus:ring-2 focus:ring-lyra-border-focus transition-colors"
-                  />
-                </div>
+                <Input
+                  type="text"
+                  placeholder="Search statuses"
+                  value={statusSearch}
+                  onChange={(e) => setStatusSearch(e.target.value)}
+                  startIcon={<Search className="h-4 w-4 text-lyra-fg-disabled" strokeWidth={1.4} aria-hidden="true" />}
+                />
               </div>
 
               {/* Menu — uses the existing Menu component for consistent styling */}

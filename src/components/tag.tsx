@@ -32,12 +32,23 @@ const tagVariants = cva(
   "inline-flex items-center border transition-colors px-1.5 py-0.5 lyra-body-sm gap-0.5",
   {
     variants: {
+      /* Note: border colors use a CSS color-mix() Tailwind arbitrary value
+         rather than Tailwind's built-in slash opacity-modifier syntax (e.g.
+         border-lyra-border-active at 30 percent). Tailwind can only generate
+         opacity-modified utilities for theme colors defined as raw RGB/HSL
+         channel triples; our design tokens are CSS custom properties holding
+         full hex/rgba strings (see lyra-tokens.css), so a slash-opacity
+         modifier on them silently produces no matching CSS rule at all and
+         the border falls back to Tailwind's Preflight default (#e5e7eb gray)
+         — which is why Tags previously rendered with a washed-out gray border
+         instead of a tinted one. color-mix() works with any color value and
+         has broad modern browser support. */
       variant: {
-        default:  "bg-lyra-bg-active-subtle text-lyra-fg-active-strong border-lyra-border-active/30",
-        success:  "bg-lyra-status-success-subtle text-lyra-status-success-strong border-lyra-status-success-strong/30",
-        warning:  "bg-lyra-status-warning-subtle text-lyra-status-warning-strong border-lyra-status-warning-strong/30",
-        critical: "bg-lyra-status-critical-subtle text-lyra-status-critical-strong border-lyra-status-critical-strong/30",
-        info:     "bg-lyra-status-info-subtle text-lyra-status-info-strong border-lyra-status-info-strong/30",
+        default:  "bg-lyra-bg-active-subtle text-lyra-fg-active-strong border-[color-mix(in_srgb,var(--lyra-color-border-active)_30%,transparent)]",
+        success:  "bg-lyra-status-success-subtle text-lyra-status-success-strong border-[color-mix(in_srgb,var(--lyra-color-status-success-strong)_30%,transparent)]",
+        warning:  "bg-lyra-status-warning-subtle text-lyra-status-warning-strong border-[color-mix(in_srgb,var(--lyra-color-status-warning-strong)_30%,transparent)]",
+        critical: "bg-lyra-status-critical-subtle text-lyra-status-critical-strong border-[color-mix(in_srgb,var(--lyra-color-status-critical-strong)_30%,transparent)]",
+        info:     "bg-lyra-status-info-subtle text-lyra-status-info-strong border-[color-mix(in_srgb,var(--lyra-color-status-info-strong)_30%,transparent)]",
         neutral:  "bg-lyra-bg-surface-canvas text-lyra-fg-secondary border-lyra-border-subtle",
       },
       shape: {

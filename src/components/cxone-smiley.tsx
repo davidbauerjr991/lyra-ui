@@ -9,6 +9,14 @@ interface CXoneSmileyProps extends React.SVGAttributes<SVGSVGElement> {
    * - `false` / omitted → static
    */
   blinking?: boolean | "on-hover";
+  /**
+   * Render the eyes and smile in a single color instead of the default
+   * multicolor (blue/green/orange/magenta) scheme — e.g. for a small
+   * single-tone welcome-modal mark. Pass `true` for the brand blue
+   * (`#2196F3`, matching the left eye/first smile segment), or any CSS
+   * color string.
+   */
+  monochrome?: boolean | string;
 }
 
 /**
@@ -19,13 +27,15 @@ interface CXoneSmileyProps extends React.SVGAttributes<SVGSVGElement> {
  * Tailwind `.group` ancestor is hovered (e.g. the AppName button).
  */
 const CXoneSmiley = React.forwardRef<SVGSVGElement, CXoneSmileyProps>(
-  ({ className, blinking, ...props }, ref) => {
+  ({ className, blinking, monochrome, ...props }, ref) => {
     const eyeClass =
       blinking === true
         ? "smiley-eye-blink"
         : blinking === "on-hover"
           ? "smiley-eye-hover-blink"
           : undefined;
+
+    const soloColor = monochrome ? (monochrome === true ? "#2196F3" : monochrome) : undefined;
 
     return (
       <svg
@@ -50,28 +60,28 @@ const CXoneSmiley = React.forwardRef<SVGSVGElement, CXoneSmileyProps>(
             transform-origin: center;
           }
         `}</style>
-        {/* Left eye — blue */}
+        {/* Left eye — blue (or solo color when monochrome) */}
         <circle
           cx="11"
           cy="11"
           r="2.5"
-          fill="#2196F3"
+          fill={soloColor ?? "#2196F3"}
           className={eyeClass}
         />
-        {/* Right eye — green */}
+        {/* Right eye — green (or solo color when monochrome) */}
         <circle
           cx="21"
           cy="11"
           r="2.5"
-          fill="#4CAF50"
+          fill={soloColor ?? "#4CAF50"}
           className={eyeClass}
           style={blinking ? { animationDelay: "0.1s" } : undefined}
         />
-        {/* Smile arc — multicolored segments */}
+        {/* Smile arc — multicolored segments (or solo color when monochrome) */}
         {/* Blue segment (left) */}
         <path
           d="M8 19c0.8 2.4 2.4 4 4.5 5"
-          stroke="#2196F3"
+          stroke={soloColor ?? "#2196F3"}
           strokeWidth="2.5"
           strokeLinecap="round"
           fill="none"
@@ -79,7 +89,7 @@ const CXoneSmiley = React.forwardRef<SVGSVGElement, CXoneSmileyProps>(
         {/* Green segment */}
         <path
           d="M12.5 24c1.2 0.5 2.3 0.7 3.5 0.7"
-          stroke="#4CAF50"
+          stroke={soloColor ?? "#4CAF50"}
           strokeWidth="2.5"
           strokeLinecap="round"
           fill="none"
@@ -87,7 +97,7 @@ const CXoneSmiley = React.forwardRef<SVGSVGElement, CXoneSmileyProps>(
         {/* Orange segment */}
         <path
           d="M16 24.7c1.2 0 2.3-0.2 3.5-0.7"
-          stroke="#FF9800"
+          stroke={soloColor ?? "#FF9800"}
           strokeWidth="2.5"
           strokeLinecap="round"
           fill="none"
@@ -95,7 +105,7 @@ const CXoneSmiley = React.forwardRef<SVGSVGElement, CXoneSmileyProps>(
         {/* Magenta segment (right) */}
         <path
           d="M19.5 24c2.1-1 3.7-2.6 4.5-5"
-          stroke="#E91E63"
+          stroke={soloColor ?? "#E91E63"}
           strokeWidth="2.5"
           strokeLinecap="round"
           fill="none"

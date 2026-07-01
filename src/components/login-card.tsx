@@ -136,6 +136,7 @@ const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
         ref={ref}
         variant="modal"
         headerTitle={appName}
+        headerTitleClassName="lyra-heading-lg"
         headerIcon={appIcon ?? <img src={defaultAppIconSrc} alt="" className="h-5 w-5" />}
         className={cn(
           "w-[360px] transition-opacity ease-out",
