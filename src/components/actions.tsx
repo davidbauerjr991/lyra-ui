@@ -40,15 +40,17 @@ const ActionIconButton = React.forwardRef<
       className={cn(actionIconButtonVariants({ size }), className)}
       {...props}
     >
-      <span aria-hidden="true">{children}</span>
-      {badge != null && badge > 0 && (
-        <span
-          className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-lyra-bg-destructive px-1 text-[10px] font-bold text-lyra-fg-on-primary"
-          aria-label={`${badge} notifications`}
-        >
-          <span aria-hidden="true">{badge}</span>
-        </span>
-      )}
+      <span className="relative inline-flex">
+        <span aria-hidden="true">{children}</span>
+        {badge != null && badge > 0 && (
+          <span
+            className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-lyra-bg-destructive px-1 text-[10px] font-bold text-lyra-fg-on-primary"
+            aria-label={`${badge} notifications`}
+          >
+            <span aria-hidden="true">{badge}</span>
+          </span>
+        )}
+      </span>
     </button>
   );
 

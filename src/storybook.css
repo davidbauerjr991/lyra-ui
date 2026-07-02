@@ -142,8 +142,26 @@
 .lyra-body-md-emphasis { font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0; }
 .lyra-body-sm          { font-size: 12px; line-height: 16px; font-weight: 400; letter-spacing: 0.01rem; }
 .lyra-body-sm-emphasis { font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.01rem; }
+.lyra-body-xs          { font-size: 10px; line-height: 14px; font-weight: 400; letter-spacing: 0.01rem; }
+.lyra-body-xs-emphasis { font-size: 10px; line-height: 14px; font-weight: 500; letter-spacing: 0.01rem; }
 
 .lyra-label { font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0; }
+
+/* ── Main container content grid (CSS container query) — kept in sync with
+   lyra-tokens.css; see that file for the full explanation. ── */
+.lyra-container-grid-wrap {
+  container-type: inline-size;
+}
+.lyra-container-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@container (max-width: 761px) {
+  .lyra-container-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
 /* ── Base resets for Storybook ── */
 * {

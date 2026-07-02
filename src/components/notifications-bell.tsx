@@ -104,15 +104,17 @@ const NotificationsBell = React.forwardRef<HTMLDivElement, NotificationsBellProp
               open && "bg-lyra-state-hover"
             )}
           >
-            <Bell className="h-5 w-5" strokeWidth={1.5} />
-            {count > 0 && (
-              <StatusBadge
-                variant="critical"
-                size="sm"
-                count={count}
-                className="absolute -top-0.5 -right-0.5"
-              />
-            )}
+            <span className="relative inline-flex">
+              <Bell className="h-5 w-5" strokeWidth={1.5} />
+              {count > 0 && (
+                <StatusBadge
+                  variant="critical"
+                  size="sm"
+                  count={count}
+                  className="absolute -right-1.5 -top-1.5"
+                />
+              )}
+            </span>
           </button>
         </Tooltip>
 

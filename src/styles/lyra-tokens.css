@@ -289,6 +289,41 @@
 .lyra-body-md-emphasis { font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0; }
 .lyra-body-sm          { font-size: 12px; line-height: 16px; font-weight: 400; letter-spacing: 0.01rem; }
 .lyra-body-sm-emphasis { font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.01rem; }
+.lyra-body-xs          { font-size: 10px; line-height: 14px; font-weight: 400; letter-spacing: 0.01rem; }
+.lyra-body-xs-emphasis { font-size: 10px; line-height: 14px; font-weight: 500; letter-spacing: 0.01rem; }
 
 /* Label */
 .lyra-label { font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0; }
+
+/* ════════════════════════════════════════════════════
+   Main container content grid (CSS container query)
+   ════════════════════════════════════════════════════
+   For a row of cards inside a page's main content area (e.g. dashboard
+   summary/stat cards) that needs to collapse to a single column once space
+   gets tight — driven by the ACTUAL AVAILABLE WIDTH of the content area
+   itself, not the browser window. A plain `@media` query only reacts to the
+   window resizing, so it can't catch a side panel/nav opening and shrinking
+   the content area while the window stays the same size; a container query
+   can, because it measures the nearest ancestor container element instead.
+
+   Usage: put `.lyra-container-grid-wrap` on the content-area wrapper (it
+   just establishes the query boundary) and `.lyra-container-grid` on the
+   grid of cards somewhere inside it. Per the CSS container-query spec, an
+   element can't query its own size, so these must be two different
+   elements — usually parent + child, as in this example:
+     <div class="lyra-container-grid-wrap">
+       <div class="lyra-container-grid"> ...cards... </div>
+     </div> */
+.lyra-container-grid-wrap {
+  container-type: inline-size;
+}
+.lyra-container-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@container (max-width: 761px) {
+  .lyra-container-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -187,6 +187,8 @@ const presets = [
   { class: "lyra-body-md-emphasis", category: "Body", name: "MD Emphasis", size: "14px", lineHeight: "20px", weight: "500", letterSpacing: "0" },
   { class: "lyra-body-sm", category: "Body", name: "SM", size: "12px", lineHeight: "16px", weight: "400", letterSpacing: "0.01rem" },
   { class: "lyra-body-sm-emphasis", category: "Body", name: "SM Emphasis", size: "12px", lineHeight: "16px", weight: "500", letterSpacing: "0.01rem" },
+  { class: "lyra-body-xs", category: "Body", name: "XS", size: "10px", lineHeight: "14px", weight: "400", letterSpacing: "0.01rem" },
+  { class: "lyra-body-xs-emphasis", category: "Body", name: "XS Emphasis", size: "10px", lineHeight: "14px", weight: "500", letterSpacing: "0.01rem" },
   { class: "lyra-label", category: "Label", name: "Default", size: "14px", lineHeight: "20px", weight: "500", letterSpacing: "0" },
 ];
 

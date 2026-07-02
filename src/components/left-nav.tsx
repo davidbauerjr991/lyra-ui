@@ -41,6 +41,13 @@ interface LeftNavProps extends React.HTMLAttributes<HTMLElement> {
   overlay?: boolean;
   /** Content pinned to the bottom of the nav rail (e.g. an AddChannel button) */
   footer?: React.ReactNode;
+  /**
+   * Content pinned to the top of the nav rail, above the item list (e.g. a
+   * list of InteractionNavItem active-interaction cards). Like `footer`,
+   * consumers should pass their own `expanded` prop tied to `open` in
+   * inline mode; overlay mode auto-injects it based on hover state.
+   */
+  header?: React.ReactNode;
 }
 
 /** Convert NavItem[] → TreeMenuItem[] so TreeMenu can render them */
@@ -65,6 +72,7 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
       collapsible = true,
       overlay = false,
       footer,
+      header,
       ...props
     },
     ref
@@ -148,6 +156,13 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
               boxShadow: hoverOpen ? "4px 0 12px rgba(0,0,0,0.1)" : "none",
             }}
           >
+            {header && (
+              <div className={cn("flex-shrink-0 flex flex-col items-center px-2 pt-3", hoverOpen ? "gap-2" : "gap-1")}>
+                {React.isValidElement(header)
+                  ? React.cloneElement(header as React.ReactElement<{ expanded?: boolean }>, { expanded: hoverOpen })
+                  : header}
+              </div>
+            )}
             <div className="flex flex-1 flex-col overflow-hidden min-h-0">
               {hoverOpen ? (
                 <TreeMenu items={treeItems} className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-3" />
@@ -180,6 +195,12 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
         {...props}
       >
         {toggleButton}
+
+        {header && (
+          <div className={cn("flex-shrink-0 flex flex-col items-center px-2 pt-3", open ? "gap-2" : "gap-1")}>
+            {header}
+          </div>
+        )}
 
         {/* Scroll wrapper — overflow-hidden + min-h-0 constrains height so overflow-y-auto
             on the inner content triggers. The aside keeps overflow-visible for the toggle
