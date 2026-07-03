@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { LeftNav, type NavItem } from "../left-nav";
-import { AddChannel } from "../add-channel";
-import { InteractionNavItem } from "../interaction-nav-item";
+import { NewOutbound } from "../new-outbound";
+import { InteractionNavItem, type InteractionChannel } from "../interaction-nav-item";
 
 /** Body copy below each channel chip shows the routing skill, not a message
  *  preview — randomized per channel from this pool of sample skill names. */
@@ -36,30 +36,27 @@ const WhatsAppIcon = () => (
 // Computed once at module load (not inside the story's render function) so
 // the randomized skill name stays fixed across re-renders — e.g. toggling
 // which InteractionNavItem card is active shouldn't reshuffle these.
-const AGENT_NEXT_GEN_SOFIA_CHANNELS = [
+const AGENT_NEXT_GEN_SOFIA_CHANNELS: InteractionChannel[] = [
   {
-    icon: <MessageSquare className="h-3 w-3" strokeWidth={1.5} />,
-    label: "Chat",
+    type: "chat",
     elapsed: "08:27",
     current: true,
     awaitingResponse: true,
     preview: randomSkill(),
   },
 ];
-const AGENT_NEXT_GEN_RAY_CHANNELS = [
+const AGENT_NEXT_GEN_RAY_CHANNELS: InteractionChannel[] = [
   {
-    icon: <MessageSquare className="h-3 w-3" strokeWidth={1.5} />,
-    label: "Chat",
+    type: "chat",
     elapsed: "06:12",
     current: true,
     awaitingResponse: true,
     preview: randomSkill(),
   },
 ];
-const AGENT_NEXT_GEN_CALL_CHANNELS = [
+const AGENT_NEXT_GEN_CALL_CHANNELS: InteractionChannel[] = [
   {
-    icon: <Phone className="h-3 w-3" strokeWidth={1.5} />,
-    label: "Call",
+    type: "voice",
     elapsed: "02:05",
     current: true,
     preview: randomSkill(),
@@ -242,7 +239,7 @@ export const AgentNextGen: Story = {
             />
           </>
         }
-        footer={<AddChannel items={CHANNELS} expanded={open} />}
+        footer={<NewOutbound items={CHANNELS} expanded={open} />}
       />
     );
   },

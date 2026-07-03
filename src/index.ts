@@ -48,10 +48,19 @@ export { AppHeader } from "./components/app-header";
 export type { AppHeaderProps } from "./components/app-header";
 export { AppMenu } from "./components/app-menu";
 export type { AppMenuItem, AppMenuGroup, AppMenuProps } from "./components/app-menu";
-export { AddChannel } from "./components/add-channel";
-export type { AddChannelItem, AddChannelProps } from "./components/add-channel";
+export { NewOutbound } from "./components/new-outbound";
+export type { NewOutboundItem, NewOutboundProps } from "./components/new-outbound";
 export { InteractionNavItem } from "./components/interaction-nav-item";
-export type { InteractionNavItemProps, InteractionChannel } from "./components/interaction-nav-item";
+export type { InteractionNavItemProps, InteractionChannel, ChannelType } from "./components/interaction-nav-item";
+export {
+  ChannelRow,
+  ChatChannelRow,
+  EmailChannelRow,
+  SmsChannelRow,
+  WhatsAppChannelRow,
+  VoiceChannelRow,
+} from "./components/channel-row";
+export type { ChannelRowInstanceProps } from "./components/channel-row";
 export { ActionIconButton, ActionAvatarButton, actionIconButtonVariants } from "./components/actions";
 export type { ActionIconButtonProps, ActionAvatarButtonProps } from "./components/actions";
 export { ShellIconButton, ShellAvatarButton } from "./components/shell-button";

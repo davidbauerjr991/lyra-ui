@@ -1,10 +1,9 @@
 import * as React from "react";
-import * as PopoverPrimitive from "@radix-ui/react-popover";
-import { ChevronDown, ChevronLeft, Moon, Sun, Activity, LogOut, Link2Off, Link2, Loader2, Search } from "lucide-react";
+import { ChevronDown, Moon, Sun, Activity, LogOut, Link2Off, Link2, Loader2, Search } from "lucide-react";
 import { cn } from "../lib/utils";
-import * as ReactDOM from "react-dom";
 import { Menu, type MenuEntry } from "./menu";
 import { ConnectedAppsPanel, type ConnectedApp } from "./connected-apps";
+import { Popover } from "./popover";
 import { Tooltip } from "./tooltip";
 import { StatusBadge } from "./status-badge";
 import { Input } from "./input";
@@ -74,12 +73,9 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
   }, ref) => {
     const [open, setOpen] = React.useState(false);
     const [statusSearch, setStatusSearch] = React.useState("");
-    const [appsOpen, setAppsOpen] = React.useState(false);
-    const [appsPos, setAppsPos] = React.useState({ top: 0, right: 0 });
     const [agentLegStatus, setAgentLegStatus] = React.useState<"disconnected" | "connecting" | "connected">("disconnected");
     const [reconnectedIds, setReconnectedIds] = React.useState<Set<string>>(new Set());
     const contentRef = React.useRef<HTMLDivElement>(null);
-    const appsPanelRef = React.useRef<HTMLDivElement>(null);
     const issueCount = connectedApps.filter((a) => a.status !== "healthy" && !reconnectedIds.has(a.id)).length;
 
     const handleReconnect = (appId: string) => {
@@ -103,10 +99,14 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
       connected:    { icon: <Link2    className="h-4 w-4" strokeWidth={1.4} />, color: "text-lyra-status-success-strong", tooltip: "Click to disconnect" },
     };
 
-    // Close apps panel and clear search when main menu closes
+    // Clear search when main menu closes. The Connected Apps flyout no
+    // longer needs a matching reset — its open state now lives inside
+    // Menu's own MenuItemRow (via submenuContent) and unmounts along with
+    // the rest of the popover content.
     React.useEffect(() => {
-      if (!open) { setAppsOpen(false); setStatusSearch(""); }
+      if (!open) setStatusSearch("");
     }, [open]);
+
     /* Build Menu entries using the Menu component's interface */
     const allStatuses = ["available", "busy", "away", "offline"] as AgentStatus[];
     const filteredStatuses = statusSearch.trim()
@@ -141,29 +141,23 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
         id: "connected-apps",
         label: "Connected Apps",
         icon: <Activity className="h-4 w-4" strokeWidth={1.5} />,
-        active: appsOpen,
-        onClick: () => {
-          if (contentRef.current) {
-            const rect = contentRef.current.getBoundingClientRect();
-            setAppsPos({ top: rect.top, right: window.innerWidth - rect.left + 8 });
-          }
-          setAppsOpen((v) => !v);
-        },
+        // Submenu hover/click-to-open, portal-to-body, and viewport-edge
+        // flip positioning are all handled by Menu itself (same mechanism
+        // as a regular `submenu`) — this just supplies the rich panel
+        // content instead of a flat list of menu items.
+        submenuContent: <ConnectedAppsPanel apps={connectedApps} onReconnect={handleReconnect} />,
         rightElement: (
-          <span className="flex items-center gap-1.5">
-            {issueCount > 0 ? (
-              <Tooltip content={`${issueCount} app${issueCount > 1 ? "s" : ""} not fully connected`} placement="left">
-                <span>
-                  <StatusBadge variant="warning" size="sm">{connectedApps.length}</StatusBadge>
-                </span>
-              </Tooltip>
-            ) : connectedApps.length > 0 ? (
-              <StatusBadge variant="success" size="sm">{connectedApps.length}</StatusBadge>
-            ) : (
-              <StatusBadge variant="neutral" size="sm">0</StatusBadge>
-            )}
-            <ChevronLeft className="h-4 w-4 text-lyra-fg-secondary" strokeWidth={1.5} aria-hidden="true" />
-          </span>
+          issueCount > 0 ? (
+            <Tooltip content={`${issueCount} app${issueCount > 1 ? "s" : ""} not fully connected`} placement="left">
+              <span>
+                <StatusBadge variant="warning" size="sm">{connectedApps.length}</StatusBadge>
+              </span>
+            </Tooltip>
+          ) : connectedApps.length > 0 ? (
+            <StatusBadge variant="success" size="sm">{connectedApps.length}</StatusBadge>
+          ) : (
+            <StatusBadge variant="neutral" size="sm">0</StatusBadge>
+          )
         ),
       },
       {
@@ -190,9 +184,63 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
 
     return (
       <div ref={ref} className={className}>
-        <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
-          <Tooltip content="Agent Status and More" placement="bottom" asLabel>
-            <PopoverPrimitive.Trigger asChild>
+        <Tooltip content="Agent Status and More" placement="bottom" asLabel>
+          {/* Wrap the whole Popover (not just its trigger) in a plain span —
+              Tooltip's own Trigger clones its hover/focus props onto its
+              immediate child via Radix Slot, which only works on a plain
+              DOM element or another Slot-forwarding component. Popover
+              itself doesn't forward arbitrary cloned props to its internals,
+              so it has to sit *inside* the span, not be the span's stand-in.
+              Same pattern as the advanced-search Popover+Tooltip combo in
+              table.tsx. */}
+          <span className="inline-flex">
+            <Popover
+              ref={contentRef}
+              open={open}
+              onOpenChange={setOpen}
+              placement="bottom"
+              align="end"
+              sideOffset={6}
+              showArrow={false}
+              onOpenAutoFocus={(e) => {
+                e.preventDefault();
+                // Focus the search input instead
+                setTimeout(() => contentRef.current?.querySelector<HTMLInputElement>("input")?.focus(), 0);
+              }}
+              onInteractOutside={(e) => {
+                // The Connected Apps submenu (rendered by Menu via
+                // submenuContent) is portaled to document.body, outside this
+                // popover's own DOM subtree — without this it would register
+                // as an "outside" click and close the whole status menu the
+                // moment someone clicks reconnect on an app.
+                if ((e.target as HTMLElement)?.closest('[data-menu-submenu-for="connected-apps"]')) e.preventDefault();
+              }}
+              className={cn(
+                /* "md" on the Menu/Popover width scale (CONTRIBUTING.md) —
+                   a search row above the list warrants one step above sm. */
+                "z-[10001] w-64"
+              )}
+              content={
+                <>
+                  {/* Search statuses */}
+                  <div className="px-3 py-2.5 border-b border-lyra-border-subtle">
+                    <Input
+                      type="text"
+                      placeholder="Search statuses"
+                      value={statusSearch}
+                      onChange={(e) => setStatusSearch(e.target.value)}
+                      startIcon={<Search className="h-4 w-4 text-lyra-fg-disabled" strokeWidth={1.4} aria-hidden="true" />}
+                    />
+                  </div>
+
+                  {/* Menu — uses the existing Menu component for consistent styling */}
+                  <Menu
+                    items={menuItems}
+                    className="border-0 shadow-none rounded-none rounded-b-lyra-lg bg-transparent"
+                  />
+                </>
+              }
+            >
               <button
                 type="button"
                 aria-label="Agent Status and More"
@@ -205,61 +253,9 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
                 </div>
                 <ChevronDown className={cn("h-4 w-4 text-lyra-fg-secondary shrink-0 transition-transform duration-200", open && "rotate-180")} strokeWidth={1.5} />
               </button>
-            </PopoverPrimitive.Trigger>
-          </Tooltip>
-
-          <PopoverPrimitive.Portal>
-            <PopoverPrimitive.Content
-              side="bottom"
-              align="end"
-              sideOffset={6}
-              onOpenAutoFocus={(e) => {
-                e.preventDefault();
-                // Focus the search input instead
-                setTimeout(() => contentRef.current?.querySelector<HTMLInputElement>("input")?.focus(), 0);
-              }}
-              onInteractOutside={(e) => {
-                if (appsPanelRef.current?.contains(e.target as Node)) e.preventDefault();
-              }}
-              ref={contentRef}
-              className={cn(
-                "z-[10001] w-64 rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg",
-                "animate-in fade-in-0 slide-in-from-top-2 duration-150",
-                "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-100"
-              )}
-            >
-              {/* Search statuses */}
-              <div className="px-3 py-2.5 border-b border-lyra-border-subtle">
-                <Input
-                  type="text"
-                  placeholder="Search statuses"
-                  value={statusSearch}
-                  onChange={(e) => setStatusSearch(e.target.value)}
-                  startIcon={<Search className="h-4 w-4 text-lyra-fg-disabled" strokeWidth={1.4} aria-hidden="true" />}
-                />
-              </div>
-
-              {/* Menu — uses the existing Menu component for consistent styling */}
-              <Menu
-                items={menuItems}
-                className="border-0 shadow-none rounded-none rounded-b-lyra-lg bg-transparent"
-              />
-
-            </PopoverPrimitive.Content>
-          </PopoverPrimitive.Portal>
-        </PopoverPrimitive.Root>
-
-        {/* Connected Apps flyout — rendered in a separate portal to escape all clipping */}
-        {appsOpen && ReactDOM.createPortal(
-          <div
-            ref={appsPanelRef}
-            style={{ position: "fixed", top: appsPos.top, right: appsPos.right, zIndex: 9999 }}
-            className="animate-in fade-in-0 slide-in-from-right-2 duration-150"
-          >
-            <ConnectedAppsPanel apps={connectedApps} onReconnect={handleReconnect} />
-          </div>,
-          document.body
-        )}
+            </Popover>
+          </span>
+        </Tooltip>
       </div>
     );
   }

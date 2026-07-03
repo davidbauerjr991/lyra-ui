@@ -11,7 +11,7 @@ import { NotificationsBell } from "../notifications-bell";
 import { AgentNotifications, type AgentNotification } from "../agent-notifications";
 import { AgentProfile, type AgentStatus } from "../agent-profile";
 import { LeftNav, type NavItem } from "../left-nav";
-import { AddChannel, type AddChannelItem } from "../add-channel";
+import { NewOutbound, type NewOutboundItem } from "../new-outbound";
 import { ContentArea } from "../content-area";
 import { Container } from "../container";
 import { Panel } from "../panel";
@@ -78,7 +78,7 @@ function WhatsAppIcon() {
   );
 }
 
-const ADD_CHANNEL_ITEMS: AddChannelItem[] = [
+const NEW_OUTBOUND_ITEMS: NewOutboundItem[] = [
   { label: "Call",     icon: <Phone         className="h-5 w-5" strokeWidth={1.5} /> },
   { label: "Email",    icon: <Mail          className="h-5 w-5" strokeWidth={1.5} /> },
   { label: "SMS",      icon: <MessageSquare className="h-5 w-5" strokeWidth={1.5} /> },
@@ -522,7 +522,7 @@ function AgentNextGenTemplate({
           open={navOpen}
           onToggle={() => setNavOpen((v) => !v)}
           overlay={isNavNarrow}
-          footer={<AddChannel items={ADD_CHANNEL_ITEMS} expanded={navOpen} />}
+          footer={<NewOutbound items={NEW_OUTBOUND_ITEMS} expanded={navOpen} />}
         />
 
         {/* Content area — flex-1 shrinks to give space to docked panels.

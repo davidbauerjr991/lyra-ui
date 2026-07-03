@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { LoginCard } from "../login-card";
 
 const meta = {
-  title: "Templates/Login Card",
+  title: "UI/LoginCard",
   component: LoginCard,
   tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },

@@ -7,6 +7,10 @@ import { PanelHeader } from "./panel-header";
 
 export type PopoverPlacement = "top" | "bottom" | "left" | "right";
 
+/** Radix's own Content prop types, reused below so the passthrough handlers
+ *  can't drift out of sync with the primitive they forward to. */
+type PopoverContentProps = React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>;
+
 export interface PopoverProps {
   children: React.ReactElement;
   content: React.ReactNode;
@@ -14,12 +18,25 @@ export interface PopoverProps {
   footer?: React.ReactNode;
   title?: string;
   placement?: PopoverPlacement;
+  /** Alignment relative to the trigger along the placement axis (default: "center") */
+  align?: "start" | "center" | "end";
+  /** Gap between the trigger and the content, in pixels (default: 10) */
+  sideOffset?: number;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   showArrow?: boolean;
   maxHeight?: string;
   maxWidth?: string;
   className?: string;
+  /** Passthrough Radix Content event hooks for cases that need more control
+   *  than the default behavior — e.g. focusing a specific field on open
+   *  instead of the first focusable element, or ignoring outside-clicks on
+   *  a portaled submenu rendered outside this popover's own DOM subtree.
+   *  Left undefined, Radix's defaults apply exactly as before. */
+  onOpenAutoFocus?: PopoverContentProps["onOpenAutoFocus"];
+  onCloseAutoFocus?: PopoverContentProps["onCloseAutoFocus"];
+  onEscapeKeyDown?: PopoverContentProps["onEscapeKeyDown"];
+  onInteractOutside?: PopoverContentProps["onInteractOutside"];
 }
 
 /* ── Arrow — CSS rotated square inside Content so it never moves independently ── */
@@ -60,25 +77,37 @@ const PopoverArrow = () => (
 
 /* ── Component ── */
 
-const Popover: React.FC<PopoverProps> = ({
+const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Content>, PopoverProps>(({
   children,
   content,
   footer,
   title,
   placement = "bottom",
+  align = "center",
+  sideOffset = 10,
   open,
   onOpenChange,
   showArrow = true,
   maxHeight,
   maxWidth,
   className,
-}) => (
+  onOpenAutoFocus,
+  onCloseAutoFocus,
+  onEscapeKeyDown,
+  onInteractOutside,
+}, ref) => (
   <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange}>
     <PopoverPrimitive.Trigger asChild>{children}</PopoverPrimitive.Trigger>
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
+        ref={ref}
         side={placement}
-        sideOffset={10}
+        align={align}
+        sideOffset={sideOffset}
+        onOpenAutoFocus={onOpenAutoFocus}
+        onCloseAutoFocus={onCloseAutoFocus}
+        onEscapeKeyDown={onEscapeKeyDown}
+        onInteractOutside={onInteractOutside}
         style={{
           maxWidth,
           /* overflow:hidden + maxHeight constrains the flex algorithm so children can distribute space */
@@ -99,9 +128,14 @@ const Popover: React.FC<PopoverProps> = ({
         )}
       >
         {title && <PanelHeader title={title} bordered={false} />}
-        {/* Content scrolls; footer is flex-shrink-0 so it stays visible */}
+        {/* Content scrolls; footer is flex-shrink-0 so it stays visible.
+            overflow-auto is only applied when maxHeight actually constrains
+            the height — otherwise it's dead weight that can backfire: a
+            CSS-transform entrance animation on something inside (e.g. a
+            slide-in) can register as scrollable overflow and paint a
+            horizontal scrollbar even though nothing is meant to scroll here. */}
         <div
-          className="overflow-auto"
+          className={maxHeight ? "overflow-auto" : undefined}
           style={
             footer && maxHeight
               ? { flex: "1 1 auto", minHeight: 0, overflowY: "auto" }
@@ -117,7 +151,7 @@ const Popover: React.FC<PopoverProps> = ({
       </PopoverPrimitive.Content>
     </PopoverPrimitive.Portal>
   </PopoverPrimitive.Root>
-);
+));
 
 Popover.displayName = "Popover";
 

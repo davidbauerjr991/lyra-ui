@@ -159,12 +159,12 @@ function TreeMenuRow({ item }: { item: TreeMenuItem }) {
           isLeafActive
             ? "bg-lyra-bg-active-moderate text-lyra-fg-active-strong lyra-body-md-emphasis hover:bg-lyra-bg-active-moderate active:bg-lyra-bg-active-subtle"
             : isParentActive
-              ? "bg-lyra-bg-active-subtle text-lyra-fg-active-strong lyra-body-md-emphasis hover:bg-lyra-bg-active-moderate active:bg-lyra-bg-active-subtle"
+              ? "text-lyra-fg-active-strong lyra-body-md-emphasis hover:bg-lyra-state-hover active:bg-lyra-state-pressed"
               : "text-lyra-fg-default hover:bg-lyra-state-hover active:bg-lyra-state-pressed"
         )}
       >
-        {/* Left accent bar — visible when active */}
-        {(isLeafActive || isParentActive) && (
+        {/* Left accent bar — visible only on leaf (non-expandable) active items */}
+        {isLeafActive && (
           <span
             aria-hidden="true"
             className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-lyra-border-active"

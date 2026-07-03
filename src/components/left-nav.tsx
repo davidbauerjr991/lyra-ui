@@ -39,7 +39,7 @@ interface LeftNavProps extends React.HTMLAttributes<HTMLElement> {
    * the expanded panel slides out as an absolutely-positioned overlay.
    */
   overlay?: boolean;
-  /** Content pinned to the bottom of the nav rail (e.g. an AddChannel button) */
+  /** Content pinned to the bottom of the nav rail (e.g. a NewOutbound button) */
   footer?: React.ReactNode;
   /**
    * Content pinned to the top of the nav rail, above the item list (e.g. a

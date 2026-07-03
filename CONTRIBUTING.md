@@ -72,6 +72,18 @@ If a higher-level component needs a dropdown, trigger, input, panel, or any othe
 </div>
 ```
 
+### Menu / Popover width scale (canonical reference)
+
+`Menu` itself has no fixed width — only a `min-w-[200px]` floor, sizing to content above that. When a component wraps `Menu` (or another item-list dropdown) in a `Popover`/`PopoverPrimitive.Content` that needs a *fixed* width rather than content-sizing, pick from this scale instead of choosing an arbitrary pixel value:
+
+| Size | Width | Use | Example |
+|---|---|---|---|
+| `sm` | 200 px (`Menu`'s own `min-w-[200px]` default) | Simple item-only menus, no header or search row | `channel-row.tsx` kebab menu, `agent-notifications.tsx` |
+| `md` | 256 px (`w-64`) | A small header/search/filter row above the list | `agent-profile.tsx` status picker |
+| `lg` | 320 px (`w-[320px]`) | A title header + close button, or richer items with icons | `new-outbound.tsx` |
+
+This scale applies to `Menu`/`Popover`-based item-list panels specifically — calendar/time pickers (`date-picker.tsx`, `time-picker.tsx`) and trigger-matched dropdowns (`autocomplete.tsx`, `phone-input.tsx`, which intentionally size to `var(--radix-popover-trigger-width)`) have their own width drivers and are exempt. Do not invent a new fixed width for a `Menu`/`Popover` combo without checking this table first — this is exactly the kind of raw-Tailwind-value drift the "Important Patterns" section of `PROJECT_SUMMARY.md` already warns about (see the `h-3.5` vs `h-3` badge-sizing incident).
+
 ### How to check what exists
 
 1. Search `src/index.ts` — every public component is listed there.
