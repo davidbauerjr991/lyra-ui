@@ -7,23 +7,55 @@
 
 ## Table of Contents
 
-1. [Cross-repo sync rule](#1-cross-repo-sync-rule)
-2. [Composition over reimplementation](#2-composition-over-reimplementation)
-3. [Controlled components](#3-controlled-components)
-4. [Z-index hierarchy](#4-z-index-hierarchy)
-5. [Icons](#5-icons)
-6. [File naming & location](#6-file-naming--location)
-7. [Component structure](#7-component-structure)
-8. [TypeScript conventions](#8-typescript-conventions)
-9. [Variants with CVA](#9-variants-with-cva)
-10. [Tailwind & theming](#10-tailwind--theming)
-11. [Storybook stories](#11-storybook-stories)
-12. [Index exports](#12-index-exports)
-13. [Checklist](#13-new-component-checklist)
+1. [Use Lyra components as designed — never hard-code](#1-use-lyra-components-as-designed--never-hard-code)
+2. [Cross-repo sync rule](#2-cross-repo-sync-rule)
+3. [Composition over reimplementation](#3-composition-over-reimplementation)
+4. [Controlled components](#4-controlled-components)
+5. [Z-index hierarchy](#5-z-index-hierarchy)
+6. [Icons](#6-icons)
+7. [File naming & location](#7-file-naming--location)
+8. [Component structure](#8-component-structure)
+9. [TypeScript conventions](#9-typescript-conventions)
+10. [Variants with CVA](#10-variants-with-cva)
+11. [Tailwind & theming](#11-tailwind--theming)
+12. [Storybook stories](#12-storybook-stories)
+13. [Index exports](#13-index-exports)
+14. [Checklist](#14-new-component-checklist)
+15. [Debugging: diagnose rendering before behavior](#15-debugging-diagnose-rendering-before-behavior)
+16. [Tooltip placement](#16-tooltip-placement)
+17. [Portals still bubble through the React tree](#17-portals-still-bubble-through-the-react-tree)
 
 ---
 
-## 1. Cross-repo sync rule
+## 1. Use Lyra components as designed — never hard-code
+
+**Use lyra-ui components exactly as they're built, no matter what a design mockup, screenshot, or existing code shows. Never hard-code a value that a real component already computes correctly on its own.**
+
+A design image or screenshot is a target for what the *finished, correctly-wired* component should look like — it is never license to hard-code text, styling, formatting, or behavior that fights a component's own built-in logic just to match a static picture. If a component's actual behavior doesn't match what a design shows, that is a signal to ask whether the design is stale or the component genuinely needs a new capability — it is not a reason to paper over the mismatch with a hard-coded value.
+
+**Hard-coding is only acceptable in exactly two cases:**
+
+1. **The user explicitly asked for that specific hard-coded value or behavior**, or
+2. **No lyra-ui component exists yet for this need, and one will be built to replace the placeholder later** — in that case, mark it clearly as temporary (e.g. `// TODO: replace with <FutureComponent> once it exists`) so it isn't mistaken for the intended final state.
+
+Outside of those two cases, treat a hard-coded value sitting next to a real component as a bug, not a style choice.
+
+### What this looks like in practice
+
+- **Don't override a component's own computed defaults with a fixed string.** If a component already derives a sensible placeholder, label, or formatted value from its own state, passing a static override defeats the reason that logic exists.
+- **Don't hand-roll markup that duplicates an existing component.** A star icon + button + tooltip, a phone field, a dropdown, a tooltip-triggered flyout — if lyra-ui already has it, compose it (see §3, Composition over reimplementation, for how to find and reuse the right component).
+- **Don't reach for a raw Tailwind value, hex color, or one-off style** where an existing lyra token or component prop already covers it (see §11, Tailwind & theming).
+
+### Recent incidents this rule would have prevented
+
+- `CreateNew`'s dial-pad field was given a hard-coded `placeholder="Enter phone number"`, which silently overrode `PhoneInput`'s own correct per-country example placeholder (`"(555) 555-5555"` for the US, `"76 123 45 67"` for Switzerland, etc.) — the real component already did the right thing; the override actively made it worse.
+- Several places (`ContactRow`'s favorite star, `AgentProfile`'s status-favorite toggle) hand-rolled their own `<button>` + `Star` icon + `Tooltip` combination instead of using the shared `FavoriteButton` atom that already existed for exactly this.
+
+**When in doubt: trust the component, don't hard-code around it.**
+
+---
+
+## 2. Cross-repo sync rule
 
 **Any component change in `lyra-ui` must be mirrored in `lyra-ux-templates`, and vice versa.**
 
@@ -31,7 +63,7 @@ If you fix or update a component in `lyra-ux-templates`, apply the identical str
 
 ---
 
-## 2. Composition over reimplementation
+## 3. Composition over reimplementation
 
 **Before writing any new UI logic, check whether an existing lyra-ui component already provides it.**
 
@@ -80,7 +112,7 @@ If a higher-level component needs a dropdown, trigger, input, panel, or any othe
 |---|---|---|---|
 | `sm` | 200 px (`Menu`'s own `min-w-[200px]` default) | Simple item-only menus, no header or search row | `channel-row.tsx` kebab menu, `agent-notifications.tsx` |
 | `md` | 256 px (`w-64`) | A small header/search/filter row above the list | `agent-profile.tsx` status picker |
-| `lg` | 320 px (`w-[320px]`) | A title header + close button, or richer items with icons | `new-outbound.tsx` |
+| `lg` | 320 px (`w-[320px]`) | A title header + close button, or richer items with icons | `create-new.tsx` |
 
 This scale applies to `Menu`/`Popover`-based item-list panels specifically — calendar/time pickers (`date-picker.tsx`, `time-picker.tsx`) and trigger-matched dropdowns (`autocomplete.tsx`, `phone-input.tsx`, which intentionally size to `var(--radix-popover-trigger-width)`) have their own width drivers and are exempt. Do not invent a new fixed width for a `Menu`/`Popover` combo without checking this table first — this is exactly the kind of raw-Tailwind-value drift the "Important Patterns" section of `PROJECT_SUMMARY.md` already warns about (see the `h-3.5` vs `h-3` badge-sizing incident).
 
@@ -100,7 +132,7 @@ In all other cases, prefer composition.
 
 ---
 
-## 3. Controlled components
+## 4. Controlled components
 
 **Every interactive component must be fully controlled — it owns no internal state for its primary value.**
 
@@ -164,7 +196,7 @@ const [status, setStatus] = useState<AgentStatus>("available");
 
 ---
 
-## 4. Z-index hierarchy
+## 5. Z-index hierarchy
 
 All overlapping layers in Lyra UI follow a fixed z-index scale. **Never use an arbitrary z-index outside this table** — doing so breaks the guaranteed stacking order for every component rendered in the same viewport.
 
@@ -174,12 +206,17 @@ All overlapping layers in Lyra UI follow a fixed z-index scale. **Never use an a
 | Overlays & dropdowns | `9999` | Portal wrappers (e.g. `NotificationsBell` panel portal) |
 | Tooltips | `10000` | `Tooltip` (`TooltipPrimitive.Content`) |
 | Priority menus | `10001` | `AgentProfile` status menu — always the topmost interactive layer |
+| Tooltips nested inside a priority menu | `10002` | `AgentProfile`'s favorite-star, agent-leg, and connected-apps-badge tooltips — must clear their own `z-[10001]` parent panel |
+| Popovers nested inside another popover | `10003` | `CreateNew`'s per-row channel flyout (Outbound picker); `PhoneInput`'s country dropdown when used inside `CreateNew` (dialpad group and drill-down screen 1, via its `dropdownClassName` prop) — both must clear their own `z-[9999]` parent panel |
 
 ### Rules
 
 - **Portal wrappers** that use `ReactDOM.createPortal` or `position: fixed` must use `z-index: 9999` (Tailwind: `z-[9999]`).
 - **Tooltips** must use `z-[10000]` so they always clear portal wrappers. The Lyra `Tooltip` component already enforces this — do not override it lower.
 - **The agent status menu** uses `z-[10001]` and must remain the highest interactive layer. Never add a new component at `z-[10001]` or above without updating this table.
+- **A tooltip nested inside the agent status menu is a special case:** the default `z-[10000]` tooltip stacking level sits *below* the menu's own `z-[10001]` panel, so a tooltip triggered by something inside that menu (e.g. hovering the favorite-star button) renders behind its own parent and is invisible even though it's technically open. Pass `className="z-[10002]"` to `<Tooltip>` for any tooltip that lives inside the agent status menu (or any future `z-[10001]`-level component) so it clears its own container. Do not raise the shared `Tooltip` component's own default — override per-instance via `className` only where the tooltip's trigger genuinely lives inside a `z-[10001]` layer.
+- **The same problem applies to a `Popover` nested inside another `Popover`** — e.g. a per-row hover flyout inside an already-open picker panel. The default `Popover` z-index (`z-50`, see below) sits well below its own parent's `z-[9999]`, so pass `className="z-[10003]"` to the nested instance. General rule: whenever you nest one overlay-ish component inside another, check this table and give the nested one the next unused integer above its own parent's tier — don't assume defaults compose correctly just because each component works fine in isolation.
+- **This isn't limited to components literally named `Popover`.** Anything with its own internal Radix Popover/Popper (a searchable dropdown, a country selector, a color picker, etc.) has the exact same failure mode when it's nested inside something else's `z-[9999]` panel — `PhoneInput`'s country dropdown is a concrete example: it hardcodes `z-50` internally for its normal-flow case, so it needed a dedicated `dropdownClassName` prop (not just `className`, which targets the field shell instead) so a consumer like `CreateNew` can raise it to `z-[10003]` when nesting it. When adding a new overlay-ish component, ask "can this be nested inside another popover/menu?" — if yes, expose a way to override its overlay's z-index rather than assuming it'll only ever be used at the top level.
 - **Why `z-50` breaks in portals:** Tailwind's `z-50` is z-index 50, which loses to any stacking context created by a `z-[9999]` portal container rendered later in the DOM. Always use the scale above for any component that renders outside normal document flow.
 
 ### Adding a new layer
@@ -192,7 +229,7 @@ If a new component genuinely needs to appear above the current ceiling:
 
 ---
 
-## 5. Icons
+## 6. Icons
 
 **Always use [Lucide React](https://lucide.dev/icons/) for icons.** Before adding any icon, verify the exact icon name exists in Lucide — do not guess or approximate.
 
@@ -225,7 +262,7 @@ All Lucide icons must use the following defaults unless the surrounding context 
 
 ---
 
-## 6. File naming & location
+## 7. File naming & location
 
 | Artifact | Convention | Example |
 |---|---|---|
@@ -238,7 +275,7 @@ Never create a per-component `index.ts`. All exports are centralised in `src/ind
 
 ---
 
-## 7. Component structure
+## 8. Component structure
 
 Every component follows this structure in order:
 
@@ -298,7 +335,7 @@ export type { MyComponentProps };
 
 ---
 
-## 8. TypeScript conventions
+## 9. TypeScript conventions
 
 ### Naming
 
@@ -335,7 +372,7 @@ Use the most specific HTML element type available (`HTMLButtonElement`, `HTMLSpa
 
 ---
 
-## 9. Variants with CVA
+## 10. Variants with CVA
 
 Use `class-variance-authority` for any component with visual variants or size scales.
 
@@ -373,7 +410,7 @@ const chipVariants = cva(
 
 ---
 
-## 10. Tailwind & theming
+## 11. Tailwind & theming
 
 ### Use `cn()` for all class merging
 
@@ -454,7 +491,7 @@ useLayoutEffect(() => {
 
 ---
 
-## 11. Storybook stories
+## 12. Storybook stories
 
 ### File location
 
@@ -544,7 +581,7 @@ export const Interactive: Story = {
 
 ---
 
-## 12. Index exports
+## 13. Index exports
 
 All exports live in `src/index.ts`. Never create per-component `index.ts` files.
 
@@ -573,12 +610,13 @@ Add new exports in the most logical existing section, or create a new section wi
 
 ---
 
-## 13. New component checklist
+## 14. New component checklist
 
 Work through this list top-to-bottom before marking a component done.
 
 ```
 [ ] Checked src/index.ts and Storybook — no existing component covers this use case
+[ ] No hard-coded value overrides a real component's own correct behavior just to match a mockup (§1)
 [ ] File named kebab-case.tsx in src/components/
 [ ] Uses React.forwardRef
 [ ] displayName set
@@ -591,7 +629,7 @@ Work through this list top-to-bottom before marking a component done.
 [ ] Named exports only (no default export)
 [ ] Exported from src/index.ts (component + variants + all types)
 [ ] Every interactive value prop has a matching callback prop (controlled pattern)
-[ ] Any z-index used follows the hierarchy table in §4 (portals: 9999, tooltips: 10000, agent status: 10001)
+[ ] Any z-index used follows the hierarchy table in §5 (portals: 9999, tooltips: 10000, agent status: 10001)
 [ ] Story file at src/components/__stories__/{ComponentName}.stories.tsx
 [ ] Story title follows "Category/ComponentName" format
 [ ] Default story added
@@ -600,4 +638,84 @@ Work through this list top-to-bottom before marking a component done.
 [ ] Every interactive prop wired to useState in stories (no hardcoded values for runtime-changing props)
 [ ] Composite stories (component used inside a larger component) wire all child callbacks to state
 [ ] Mirrored in lyra-ux-templates if change affects an existing template component
+[ ] If debugging "doesn't appear/show up," ruled out rendering causes (§15) before touching event/state logic
+[ ] Any new Tooltip usage has its placement checked against the component's actual layout context, not left at a reflexive default (§16)
+[ ] Any new portal-rendering component (Popover-like, custom flyout, etc.) stops pointer/focus events from bubbling past its own content root, so it can't be wrapped by a Tooltip or similar hover-triggered wrapper without misfiring it (§17)
 ```
+
+---
+
+## 15. Debugging: diagnose rendering before behavior
+
+When a bug report says something "doesn't appear," "doesn't show up," or "isn't visible" — including on hover, focus, or click — treat that as a *rendering* bug until proven otherwise, not a *behavior* bug. These are different failure classes with different fixes, and diagnosing the wrong one burns significant time chasing event handlers, hook state, and timing races on a component that was already mounted and open the whole time, just invisible.
+
+This rule exists because of a real incident: a tooltip nested inside `AgentProfile`'s status menu was reported as "not appearing on hover." The investigation went straight to event/timing logic — Radix `Tooltip` trigger composition, `asChild` prop merging, a mount-guard delay — and found and fixed a real (but secondary) timing race. The tooltip still didn't appear. The actual cause was two lines away the whole time: the tooltip's `z-[10000]` was lower than its own parent panel's `z-[10001]` (see §5), so it was opening correctly and rendering behind its own container on every single hover. That fact was checkable in seconds by comparing two class names against the table in §5 — no live testing required — but wasn't checked until after a much more expensive investigation had already run.
+
+**Check in this order:**
+
+1. **Is the element actually in the DOM when the bug happens?** If yes, this is a rendering/visibility problem, not a logic problem — go straight to step 2 and do not start reading event-handler or hook code yet.
+2. **Is it hidden by stacking order?** Compare the z-index in play against the hierarchy table in §5. Two elements portaled to the same container (e.g. `document.body`) stack by z-index number, not DOM order or mount time — a component can be fully open and still paint underneath an opaque sibling with a higher z-index. This is easiest to miss when a component is nested *inside* a higher-stacked parent (e.g. a tooltip triggered by something inside a `z-[10001]` menu): the child's own default z-index can be lower than the very parent it's rendered inside, which silently swallows it. See §5's rule on tooltips nested inside a priority menu for the concrete fix pattern (override the nested instance's z-index via `className`, don't change the shared component's default).
+3. **Is it clipped by overflow?** An ancestor with `overflow-hidden` or `overflow-auto` will clip anything inside it that isn't portaled out.
+4. **Is it hidden by CSS rather than by not being triggered?** `opacity-0`, `visibility: hidden`, `display: none`, inherited `pointer-events-none`, or a Tailwind named-group mismatch (`group/name` on the ancestor vs. a differently-named `group-hover/other:` on the child) can all make a correctly-triggered, fully-functional element invisible or unclickable.
+5. **Only once 1–4 are ruled out** — the element genuinely never mounts, or the state that should open it never flips — move on to event handlers, hook state, and timing (delays, guards, race conditions). That's a real class of bug too, just a more expensive one to diagnose, so it belongs after the cheap static checks, not before them.
+
+---
+
+## 16. Tooltip placement
+
+`placement` is not a cosmetic default to leave alone — it must open *into* available space, away from whatever edge or rail the trigger sits closest to. Picking a direction without checking the trigger's actual position causes the tooltip to fight for room against the edge, get flipped by `avoidCollisions` in a way that reads backwards, or open toward a boundary with no space at all.
+
+**When asked to add a tooltip to a component:**
+
+1. **If the component's position in the larger layout is genuinely ambiguous** from the request alone (e.g. a standalone component with no fixed home, or one used in multiple very different layout contexts), ask which direction it should open before implementing.
+2. **Otherwise, infer it.** Look at how the component is actually composed in its own stories and real usage — a left nav rail, a top header, a bottom bar, a right-aligned panel — and pick the direction that opens away from that edge, not toward it.
+
+**Default placement by layout context:**
+
+| Trigger lives in... | Use `placement=` |
+|---|---|
+| A left rail / left nav (e.g. a collapsed icon button in `LeftNav`) | `"right"` |
+| A right-aligned panel or right rail | `"left"` |
+| A top app header / top bar | `"bottom"` |
+| A bottom bar / footer | `"top"` |
+| Inline in body content with no strong directional context | `"top"` (the `Tooltip` component's own default) |
+
+Don't reach for `"bottom"` (or any single direction) as a reflexive default for every new tooltip. That's exactly what happened when a tooltip was first added to `CreateNew`'s icon-button trigger: it was given `placement="bottom"` without checking where `CreateNew` actually lives (a collapsed left nav rail, per its own stories), so it opened top/bottom against the rail's edge instead of out into the page. The fix was `placement="right"` — check the surrounding layout before choosing, every time.
+
+---
+
+## 17. Portals still bubble through the React tree
+
+Any time a `Tooltip` (or anything else with hover/focus-triggered open logic) wraps a `Popover`, `Menu` submenu, or other portal-rendering component **from the outside**, hovering or focusing something *inside* that portal's content can incorrectly re-trigger the outer wrapper. The fix belongs on the portal-rendering component itself (stop propagation at its content root), not on every individual place that happens to wrap one in a Tooltip.
+
+**Why this happens:** React re-dispatches synthetic events up the *React* fiber tree, not the DOM tree. A component rendered via `ReactDOM.createPortal` (which `Popover`, `Menu` submenus, and `Tooltip` itself all use) is physically mounted elsewhere in the DOM — but for event bubbling purposes, React still treats it as a normal descendant of wherever it's declared in JSX. So in a composition like:
+
+```tsx
+<Tooltip content="New Outbound" placement="right">
+  <span className="inline-flex">
+    <Popover content={<Menu items={...} />}>
+      <button>+</button>
+    </Popover>
+  </span>
+</Tooltip>
+```
+
+`Popover`'s content is portaled to `document.body`, nowhere near the `<span>` in the DOM — but it's still a React child of that `<span>`, which is exactly the element `Tooltip`'s `Trigger` clones its hover/focus handlers onto (`asChild`). Radix `Tooltip.Trigger` opens on `onPointerMove` / `onPointerDown` / `onFocus` and closes on `onPointerLeave` / `onBlur`. Hovering a menu item deep inside the popover panel fires a native `pointermove`, which React's synthetic system bubbles all the way up through the React tree — Menu item → Menu → popover content → `Popover` → `span` — reopening (or closing) a tooltip that has nothing to do with what the user is actually pointing at.
+
+**This was a real, shipped bug:** hovering the "Outbound" row inside `CreateNew`'s popover (opened from the collapsed icon-button trigger) re-displayed that same icon button's own "New Outbound" tooltip, even though the cursor was nowhere near the button. The same composition pattern is used by `AgentProfile`'s avatar trigger and any other icon-button-with-popover-and-tooltip, so this wasn't a one-off — it affected every component built this way.
+
+**The fix (already applied in `popover.tsx`):** stop the relevant synthetic events from propagating past `PopoverPrimitive.Content`'s own root, so nothing that happens inside a popover's panel can reach an ancestor outside it:
+
+```tsx
+const stopSyntheticBubble = (e: React.SyntheticEvent) => e.stopPropagation();
+// ...on PopoverPrimitive.Content:
+onPointerMove={stopSyntheticBubble}
+onPointerDown={stopSyntheticBubble}
+onPointerLeave={stopSyntheticBubble}
+onFocus={stopSyntheticBubble}
+onBlur={stopSyntheticBubble}
+```
+
+This is safe: Radix's own outside-click/focus-trap detection is implemented via native document-level listeners, not React bubbling, so it's unaffected. `onClick` is deliberately left alone — Radix's composed `onClick` handler on `Tooltip.Trigger` only *closes* the tooltip, and letting that bubble is harmless.
+
+**Rule:** any new component that renders content via a portal (a new `Popover`-like primitive, a custom flyout, etc.) needs this same containment at its content root — don't rely on every consumer remembering not to wrap it in a Tooltip carelessly. If you're building something that *could* reasonably be wrapped by a Tooltip or similar hover-triggered wrapper from the outside, stop the bubbling at the source.

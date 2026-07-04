@@ -14,6 +14,22 @@ interface TooltipProps {
   className?: string;
   children: React.ReactElement;
   asLabel?: boolean;
+  /** Let Radix flip `placement` to whichever side actually has room
+   *  (default: true). Set to `false` when the caller needs a deterministic
+   *  side regardless of viewport/container edges — e.g. a short tooltip
+   *  that's always meant to open toward a specific side of its trigger. */
+  avoidCollisions?: boolean;
+  /** Force the tooltip permanently closed (default: false) without
+   *  conditionally removing the `<Tooltip>` wrapper from the tree. Useful
+   *  when a trigger sometimes doesn't need a tooltip (e.g. it already shows
+   *  its own visible label) but must keep the exact same wrapper structure
+   *  across that state change — conditionally wrapping vs. not wrapping a
+   *  child in `<Tooltip>` changes the JSX tree shape, which forces React to
+   *  unmount and remount everything inside it (including a `Popover` and
+   *  its own open state), breaking any CSS transition on the trigger and
+   *  losing in-progress interaction state. Keep the wrapper, toggle
+   *  `disabled` instead. */
+  disabled?: boolean;
 }
 
 /* ── Arrow — CSS rotated square, seamless with the tooltip container ── */
@@ -61,6 +77,8 @@ const Tooltip: React.FC<TooltipProps> = ({
   className,
   children,
   asLabel = false,
+  avoidCollisions = true,
+  disabled = false,
 }) => {
   const contentString = typeof content === "string" ? content : undefined;
   const triggerAriaProps: Record<string, unknown> = {};
@@ -68,16 +86,26 @@ const Tooltip: React.FC<TooltipProps> = ({
     triggerAriaProps["aria-label"] = contentString;
   }
 
-  // Guard against tooltip firing on mount (e.g. when a modal opens under the cursor).
+  // Guard against tooltip firing on mount (e.g. when a modal opens under the cursor —
+  // browsers synthesize a pointer event for whatever now sits under a stationary
+  // cursor when new DOM appears, which would otherwise pop the tooltip open with no
+  // real hover intent). That phantom event fires in the same tick the content mounts,
+  // so a short guard is enough to catch it. Keep this short: any Tooltip that lives
+  // inside a Popover/Menu remounts (and restarts this guard) every time that content
+  // reopens, since Radix unmounts it on close. A long guard here previously raced
+  // against completely normal, fast hovering right after opening a menu — e.g. the
+  // favorite-star tooltip in AgentProfile's status menu, which only becomes reachable
+  // after hovering its row, an interaction that easily happens within a couple hundred
+  // ms of the menu opening.
   const [allowOpen, setAllowOpen] = useState(false);
   useEffect(() => {
-    const t = setTimeout(() => setAllowOpen(true), 400);
+    const t = setTimeout(() => setAllowOpen(true), 50);
     return () => clearTimeout(t);
   }, []);
 
   return (
     <TooltipPrimitive.Provider delayDuration={delayMs} skipDelayDuration={0}>
-      <TooltipPrimitive.Root open={allowOpen ? undefined : false}>
+      <TooltipPrimitive.Root open={disabled || !allowOpen ? false : undefined}>
         <TooltipPrimitive.Trigger asChild {...triggerAriaProps}>
           {children}
         </TooltipPrimitive.Trigger>
@@ -85,7 +113,7 @@ const Tooltip: React.FC<TooltipProps> = ({
           <TooltipPrimitive.Content
             side={placement}
             sideOffset={8}
-            avoidCollisions
+            avoidCollisions={avoidCollisions}
             collisionPadding={8}
             className={cn(
               "relative group z-[10000]",

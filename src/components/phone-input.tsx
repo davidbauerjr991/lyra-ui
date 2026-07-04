@@ -107,6 +107,17 @@ function validatePhone(digits: string, country: PhoneCountry): string | null {
   return null;
 }
 
+/** True once `digits` (raw, unformatted — same shape as `PhoneValue.number`)
+ *  is a complete number for `country` — the same completeness check
+ *  PhoneInput uses internally to decide whether to show its own validation
+ *  error. Exported so a consumer that wants to gate an action (e.g. enabling
+ *  a "Dial Number" submit button) on a valid number can reuse this instead
+ *  of re-deriving the per-country digit count itself — see CONTRIBUTING.md
+ *  §1 ("never hard-code around a real component's own logic"). */
+export function isPhoneNumberComplete(digits: string, country: PhoneCountry): boolean {
+  return digits.length === maskDigitCount(country.mask);
+}
+
 /* ── Types ── */
 export interface PhoneValue {
   countryCode: string;
@@ -132,6 +143,16 @@ export interface PhoneInputProps {
    * it just can't be changed from the UI. Defaults to false.
    */
   hideCountrySelector?: boolean;
+  /**
+   * Extra className for the country dropdown panel itself (not the field
+   * shell — use `className` for that). Mainly for overriding its z-index:
+   * the dropdown defaults to `z-50`, which is correct in normal flow but
+   * sits below any `z-[9999]`+ portal it might be nested inside (e.g.
+   * CreateNew's own popover panel) — see CONTRIBUTING.md §5 "Z-index
+   * hierarchy", the same nested-popover case as `Popover`'s own
+   * `z-[10003]` per-row flyout.
+   */
+  dropdownClassName?: string;
 }
 
 /* ── Component ── */
@@ -150,6 +171,7 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
     className,
     id,
     hideCountrySelector = false,
+    dropdownClassName,
   }, ref) => {
     const autoId    = React.useId();
     const inputId   = id ?? autoId;
@@ -283,7 +305,8 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
                   "z-50 rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg",
                   "flex flex-col max-h-72",
                   "animate-in fade-in-0 slide-in-from-top-2 duration-150",
-                  "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-100"
+                  "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-100",
+                  dropdownClassName
                 )}
               >
                 {/* Search */}

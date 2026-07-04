@@ -48,8 +48,19 @@ export { AppHeader } from "./components/app-header";
 export type { AppHeaderProps } from "./components/app-header";
 export { AppMenu } from "./components/app-menu";
 export type { AppMenuItem, AppMenuGroup, AppMenuProps } from "./components/app-menu";
-export { NewOutbound } from "./components/new-outbound";
-export type { NewOutboundItem, NewOutboundProps } from "./components/new-outbound";
+export { CreateNew } from "./components/create-new";
+export type {
+  CreateNewItem,
+  CreateNewProps,
+  CreateNewContact,
+  CreateNewCategory,
+  CreateNewChannel,
+  CreateNewSelection,
+  CreateNewOutboundContact,
+  CreateNewOutboundGroup,
+  CreateNewChannelOption,
+  CreateNewOutboundConfig,
+} from "./components/create-new";
 export { InteractionNavItem } from "./components/interaction-nav-item";
 export type { InteractionNavItemProps, InteractionChannel, ChannelType } from "./components/interaction-nav-item";
 export {
@@ -101,7 +112,7 @@ export type { ContentAreaProps } from "./components/content-area";
 export { Select } from "./components/select";
 export type { SelectOption } from "./components/select";
 export { Menu } from "./components/menu";
-export type { MenuItemDef, MenuEntry, MenuProps } from "./components/menu";
+export type { MenuItemDef, MenuEntry, MenuProps, MenuSectionLabel } from "./components/menu";
 export { TreeMenu } from "./components/tree-menu";
 export type { TreeMenuItem, TreeMenuChild, TreeMenuProps } from "./components/tree-menu";
 export { CXoneSmiley } from "./components/cxone-smiley";
@@ -114,6 +125,9 @@ export type { ChipProps, ChipColor, ChipVariant } from "./components/chip";
 
 export { FilterChip, filterChipVariants } from "./components/filter-chip";
 export type { FilterChipProps, FilterChipOption, FilterChipVariant } from "./components/filter-chip";
+
+export { FavoriteButton } from "./components/favorite-button";
+export type { FavoriteButtonProps } from "./components/favorite-button";
 
 export { Tooltip } from "./components/tooltip";
 export { InlineNotification } from "./components/inline-notification";
@@ -164,7 +178,7 @@ export { TransferBox } from "./components/transfer-box";
 export type { TransferBoxOption, TransferBoxProps } from "./components/transfer-box";
 export { Autocomplete } from "./components/autocomplete";
 export type { AutocompleteOption, AutocompleteProps } from "./components/autocomplete";
-export { PhoneInput, PHONE_COUNTRIES } from "./components/phone-input";
+export { PhoneInput, PHONE_COUNTRIES, isPhoneNumberComplete } from "./components/phone-input";
 export type { PhoneInputProps } from "./components/phone-input";
 export { EmailInput } from "./components/email-input";
 export { Slider, SliderRange } from "./components/slider";

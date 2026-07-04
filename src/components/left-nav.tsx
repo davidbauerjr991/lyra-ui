@@ -39,7 +39,7 @@ interface LeftNavProps extends React.HTMLAttributes<HTMLElement> {
    * the expanded panel slides out as an absolutely-positioned overlay.
    */
   overlay?: boolean;
-  /** Content pinned to the bottom of the nav rail (e.g. a NewOutbound button) */
+  /** Content pinned to the bottom of the nav rail (e.g. a CreateNew button) */
   footer?: React.ReactNode;
   /**
    * Content pinned to the top of the nav rail, above the item list (e.g. a
@@ -96,7 +96,17 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
           onClick={onToggle}
           aria-expanded={open}
           aria-label={open ? "Collapse sidebar" : "Expand sidebar"}
-          className="absolute -right-3 top-[25px] z-10 flex h-5 w-5 items-center justify-center rounded-full border border-lyra-border-default bg-lyra-bg-surface-base text-lyra-fg-secondary shadow-sm hover:bg-lyra-bg-surface-shell transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+          className={cn(
+            "absolute -right-3 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-lyra-border-default bg-lyra-bg-surface-base text-lyra-fg-secondary shadow-sm hover:bg-lyra-bg-surface-shell transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
+            // When a `header` is provided (e.g. CreateNew), its wrapper has
+            // no top inset of its own (see below) so the header content sits
+            // flush with the rail's top edge — shift the toggle up to match
+            // the same relative offset it has against the icon-only nav's
+            // own `py-3` inset (top-[25px] there = 13px past that 12px
+            // inset), rather than leaving it pinned to the old baseline and
+            // drifting away from whatever now sits at the top.
+            header ? "top-[13px]" : "top-[25px]"
+          )}
         >
           {open ? (
             <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
@@ -157,7 +167,11 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
             }}
           >
             {header && (
-              <div className={cn("flex-shrink-0 flex flex-col items-center px-2 pt-3", hoverOpen ? "gap-2" : "gap-1")}>
+              // No top padding here (unlike the icon-only nav's own `py-3`
+              // below) — the header's first item (e.g. CreateNew) should sit
+              // flush with the rail's top edge, top-aligned with the
+              // container itself rather than inset to match the nav list.
+              <div className={cn("flex-shrink-0 flex flex-col items-center px-2 pt-0", hoverOpen ? "gap-2" : "gap-1")}>
                 {React.isValidElement(header)
                   ? React.cloneElement(header as React.ReactElement<{ expanded?: boolean }>, { expanded: hoverOpen })
                   : header}
@@ -197,7 +211,10 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
         {toggleButton}
 
         {header && (
-          <div className={cn("flex-shrink-0 flex flex-col items-center px-2 pt-3", open ? "gap-2" : "gap-1")}>
+          // Same reasoning as the overlay branch above: flush to the top,
+          // no pt-3 inset, so the header's first item (CreateNew) is
+          // top-aligned with the rail itself.
+          <div className={cn("flex-shrink-0 flex flex-col items-center px-2 pt-0", open ? "gap-2" : "gap-1")}>
             {header}
           </div>
         )}

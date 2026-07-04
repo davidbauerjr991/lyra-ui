@@ -96,7 +96,7 @@ export const WidthScale: Story = {
       <div className="flex flex-col gap-2">
         <div>
           <p className="lyra-body-sm-emphasis text-lyra-fg-default">lg — 320px</p>
-          <p className="lyra-body-xs text-lyra-fg-secondary">A title header + close button, or icon items (e.g. new-outbound.tsx)</p>
+          <p className="lyra-body-xs text-lyra-fg-secondary">A title header + close button, or icon items (e.g. create-new.tsx)</p>
         </div>
         <div className="w-[320px] overflow-hidden rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg">
           <div className="flex items-center justify-between border-b border-lyra-border-subtle px-4 py-3">

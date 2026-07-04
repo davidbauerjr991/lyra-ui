@@ -41,7 +41,16 @@ interface MenuItemDef {
   active?: boolean;
 }
 
-type MenuEntry = MenuItemDef | "separator";
+/** Non-interactive section header rendered inline within the list (e.g.
+ *  "Favorites", "All Codes (2)"). Keyed on `sectionLabel` rather than a
+ *  discriminant field so plain `{ sectionLabel: "..." }` literals work
+ *  without importing a type. Skipped entirely by the arrow-key/Home/End
+ *  keyboard navigation in Menu below since it has no `role="menuitem"`. */
+interface MenuSectionLabel {
+  sectionLabel: string;
+}
+
+type MenuEntry = MenuItemDef | "separator" | MenuSectionLabel;
 
 /* ── Menu ── */
 
@@ -110,6 +119,17 @@ const Menu = React.forwardRef<HTMLDivElement, MenuProps>(
                 role="separator"
                 className="border-b border-lyra-border-subtle my-1.5"
               />
+            );
+          }
+
+          if ("sectionLabel" in entry) {
+            return (
+              <div
+                key={`label-${i}`}
+                className="px-3 pt-2.5 pb-1 lyra-body-sm text-lyra-fg-secondary truncate"
+              >
+                {entry.sectionLabel}
+              </div>
             );
           }
 
@@ -345,4 +365,4 @@ const MenuItemRow: React.FC<MenuItemRowProps> = ({ item, itemRole = "menuitem" }
 };
 
 export { Menu };
-export type { MenuItemDef, MenuEntry, MenuProps };
+export type { MenuItemDef, MenuEntry, MenuProps, MenuSectionLabel };

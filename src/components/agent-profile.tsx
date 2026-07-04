@@ -5,6 +5,7 @@ import { Menu, type MenuEntry } from "./menu";
 import { ConnectedAppsPanel, type ConnectedApp } from "./connected-apps";
 import { Popover } from "./popover";
 import { Tooltip } from "./tooltip";
+import { FavoriteButton } from "./favorite-button";
 import { StatusBadge } from "./status-badge";
 import { Input } from "./input";
 
@@ -73,6 +74,7 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
   }, ref) => {
     const [open, setOpen] = React.useState(false);
     const [statusSearch, setStatusSearch] = React.useState("");
+    const [favoriteStatuses, setFavoriteStatuses] = React.useState<Set<AgentStatus>>(new Set());
     const [agentLegStatus, setAgentLegStatus] = React.useState<"disconnected" | "connecting" | "connected">("disconnected");
     const [reconnectedIds, setReconnectedIds] = React.useState<Set<string>>(new Set());
     const contentRef = React.useRef<HTMLDivElement>(null);
@@ -81,6 +83,15 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
     const handleReconnect = (appId: string) => {
       onReconnect?.(appId);
       setTimeout(() => setReconnectedIds((prev) => new Set([...prev, appId])), 2500);
+    };
+
+    const toggleFavoriteStatus = (s: AgentStatus) => {
+      setFavoriteStatuses((prev) => {
+        const next = new Set(prev);
+        if (next.has(s)) next.delete(s);
+        else next.add(s);
+        return next;
+      });
     };
 
     const handleAgentLegToggle = () => {
@@ -107,6 +118,31 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
       if (!open) setStatusSearch("");
     }, [open]);
 
+    // Shared between the "Favorites" shortcut section and the "All Codes"
+    // list below — every status row gets the same favorite star, including
+    // rows inside the Favorites section itself, so a status can be
+    // unfavorited from either place.
+    const favoriteRightElement = (s: AgentStatus) => (
+      <FavoriteButton
+        favorited={favoriteStatuses.has(s)}
+        onClick={() => toggleFavoriteStatus(s)}
+        label={statusConfig[s].label}
+        placement="left"
+        // Menu's own item root (this row) is already a real <button> —
+        // nesting another <button> inside it is invalid HTML with
+        // unreliable click bubbling, so this renders as a
+        // <span role="button"> instead. Its hover-reveal keys off Menu's
+        // `group/item`, not the default `group/row`. See favorite-button.tsx.
+        as="span"
+        hoverGroup="item"
+        className="h-6 w-6"
+        // This tooltip's trigger lives inside the z-[10001] status menu
+        // panel below, so the default z-[10000] tooltip level would render
+        // behind it. See CONTRIBUTING.md §5.
+        tooltipClassName="z-[10002]"
+      />
+    );
+
     /* Build Menu entries using the Menu component's interface */
     const allStatuses = ["available", "busy", "away", "offline"] as AgentStatus[];
     const filteredStatuses = statusSearch.trim()
@@ -114,20 +150,44 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
       : allStatuses;
 
     const noStatusMatch = filteredStatuses.length === 0;
+    const favoriteStatusList = filteredStatuses.filter((s) => favoriteStatuses.has(s));
 
     const menuItems: MenuEntry[] = [
-      ...(noStatusMatch ? [{
-        id: "_no-results",
-        label: "No matching statuses",
-        disabled: true,
-        icon: <span className="h-5 w-5" />,
-      }] : filteredStatuses.map((s) => ({
-        id: s,
-        label: statusConfig[s].label,
-        icon: <StatusDot status={s} />,
-        selected: status === s,
-        onClick: () => { onStatusChange?.(s); setOpen(false); },
-      }))),
+      // Favorites shortcut — only shown once something's been starred, and
+      // only lists whatever still matches the active search (so it hides
+      // itself naturally when a search excludes every favorite).
+      ...(favoriteStatusList.length > 0
+        ? [
+            { sectionLabel: "Favorites" },
+            ...favoriteStatusList.map((s) => ({
+              id: `favorite-${s}`,
+              label: statusConfig[s].label,
+              icon: <StatusDot status={s} />,
+              selected: status === s,
+              onClick: () => { onStatusChange?.(s); setOpen(false); },
+              rightElement: favoriteRightElement(s),
+            })),
+            "separator" as const,
+          ]
+        : []),
+      ...(noStatusMatch
+        ? [{
+            id: "_no-results",
+            label: "No matching statuses",
+            disabled: true,
+            icon: <span className="h-5 w-5" />,
+          }]
+        : [
+            { sectionLabel: `All Codes (${filteredStatuses.length})` },
+            ...filteredStatuses.map((s) => ({
+              id: s,
+              label: statusConfig[s].label,
+              icon: <StatusDot status={s} />,
+              selected: status === s,
+              onClick: () => { onStatusChange?.(s); setOpen(false); },
+              rightElement: favoriteRightElement(s),
+            })),
+          ]),
       "separator" as const,
       {
         id: "dark-mode",
@@ -148,7 +208,7 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
         submenuContent: <ConnectedAppsPanel apps={connectedApps} onReconnect={handleReconnect} />,
         rightElement: (
           issueCount > 0 ? (
-            <Tooltip content={`${issueCount} app${issueCount > 1 ? "s" : ""} not fully connected`} placement="left">
+            <Tooltip content={`${issueCount} app${issueCount > 1 ? "s" : ""} not fully connected`} placement="left" className="z-[10002]">
               <span>
                 <StatusBadge variant="warning" size="sm">{connectedApps.length}</StatusBadge>
               </span>
@@ -164,7 +224,7 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
         id: "agent-leg",
         label: agentLegStatus === "connected" ? "Agent Leg Connected" : agentLegStatus === "connecting" ? "Agent Leg Connecting…" : "Agent Leg Disconnected",
         icon: (
-          <Tooltip content={agentLegIconMap[agentLegStatus].tooltip} placement="left">
+          <Tooltip content={agentLegIconMap[agentLegStatus].tooltip} placement="left" className="z-[10002]">
             <span className={cn("flex items-center", agentLegIconMap[agentLegStatus].color)}>
               {agentLegIconMap[agentLegStatus].icon}
             </span>
@@ -221,9 +281,20 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
                 "z-[10001] w-64"
               )}
               content={
-                <>
+                // Radix's avoidCollisions (on by default) only repositions
+                // the popover — it flips/shifts to whichever side has more
+                // room, it never shrinks the content. With the trigger near
+                // a screen edge and a variable-length list (Favorites can
+                // make this tall), nothing capped the height, so it could
+                // run off the viewport with no way to scroll to the rest.
+                // --radix-popper-available-height is the space Radix
+                // actually computed as free, live-updated as it repositions
+                // — capping total height to it and making just the list
+                // scroll (search stays pinned) keeps this on-screen no
+                // matter how many favorites/statuses there are.
+                <div className="flex flex-col" style={{ maxHeight: "var(--radix-popper-available-height, 400px)" }}>
                   {/* Search statuses */}
-                  <div className="px-3 py-2.5 border-b border-lyra-border-subtle">
+                  <div className="px-3 py-2.5 border-b border-lyra-border-subtle flex-shrink-0">
                     <Input
                       type="text"
                       placeholder="Search statuses"
@@ -234,11 +305,13 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
                   </div>
 
                   {/* Menu — uses the existing Menu component for consistent styling */}
-                  <Menu
-                    items={menuItems}
-                    className="border-0 shadow-none rounded-none rounded-b-lyra-lg bg-transparent"
-                  />
-                </>
+                  <div className="min-h-0 flex-1 overflow-y-auto">
+                    <Menu
+                      items={menuItems}
+                      className="border-0 shadow-none rounded-none rounded-b-lyra-lg bg-transparent"
+                    />
+                  </div>
+                </div>
               }
             >
               <button

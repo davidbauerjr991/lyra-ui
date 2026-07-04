@@ -14,6 +14,12 @@ type PopoverContentProps = React.ComponentPropsWithoutRef<typeof PopoverPrimitiv
 export interface PopoverProps {
   children: React.ReactElement;
   content: React.ReactNode;
+  /** Fixed header rendered outside the scroll area, above `content` — e.g. a
+   *  custom title bar with a back/close button, or a group picker + search
+   *  field that should stay pinned while only the list below it scrolls.
+   *  For a plain string title without custom controls, use `title` instead;
+   *  this prop is for anything with its own markup/behavior. */
+  header?: React.ReactNode;
   /** Fixed footer rendered outside the scroll area */
   footer?: React.ReactNode;
   title?: string;
@@ -77,9 +83,31 @@ const PopoverArrow = () => (
 
 /* ── Component ── */
 
+// React re-dispatches synthetic events up the *React* fiber tree, not the
+// DOM tree — a Portal's content still bubbles to its logical React
+// ancestors even though it's mounted elsewhere in the DOM (React docs:
+// "an event fired from inside a portal will propagate to ancestors in the
+// containing React tree"). Popover.Content is rendered through exactly
+// such a Portal, so when a Popover is wrapped by a Tooltip from the
+// *outside* (the only way Tooltip+Popover can compose — see the
+// "Tooltip must wrap Popover from the outside" comments in create-new.tsx
+// and agent-profile.tsx), hovering or focusing anything inside the
+// popover panel bubbles a pointermove/focus event all the way up to that
+// outer Tooltip's trigger. Radix Tooltip's own Trigger opens on
+// onPointerMove/onPointerDown/onFocus and closes on onPointerLeave/onBlur
+// (see @radix-ui/react-tooltip's Trigger), so without this guard, hovering
+// e.g. a menu item inside the popover re-opens (or re-closes) a completely
+// unrelated tooltip sitting on the icon button that opened the popover.
+// Stopping these at the Content root contains them to this popover's own
+// subtree — Radix's own outside-click/focus-trap handling lives on native
+// document-level listeners, not React bubbling, so it's unaffected.
+// See CONTRIBUTING.md §17.
+const stopSyntheticBubble = (e: React.SyntheticEvent) => e.stopPropagation();
+
 const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Content>, PopoverProps>(({
   children,
   content,
+  header,
   footer,
   title,
   placement = "bottom",
@@ -108,10 +136,15 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
         onCloseAutoFocus={onCloseAutoFocus}
         onEscapeKeyDown={onEscapeKeyDown}
         onInteractOutside={onInteractOutside}
+        onPointerMove={stopSyntheticBubble}
+        onPointerDown={stopSyntheticBubble}
+        onPointerLeave={stopSyntheticBubble}
+        onFocus={stopSyntheticBubble}
+        onBlur={stopSyntheticBubble}
         style={{
           maxWidth,
           /* overflow:hidden + maxHeight constrains the flex algorithm so children can distribute space */
-          ...(footer && maxHeight
+          ...((header || footer) && maxHeight
             ? { maxHeight, display: "flex", flexDirection: "column", overflow: "hidden" }
             : {}),
         }}
@@ -128,16 +161,17 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
         )}
       >
         {title && <PanelHeader title={title} bordered={false} />}
-        {/* Content scrolls; footer is flex-shrink-0 so it stays visible.
-            overflow-auto is only applied when maxHeight actually constrains
-            the height — otherwise it's dead weight that can backfire: a
-            CSS-transform entrance animation on something inside (e.g. a
-            slide-in) can register as scrollable overflow and paint a
+        {header && <div style={{ flexShrink: 0 }}>{header}</div>}
+        {/* Content scrolls; header/footer are flex-shrink-0 so they stay
+            visible. overflow-auto is only applied when maxHeight actually
+            constrains the height — otherwise it's dead weight that can
+            backfire: a CSS-transform entrance animation on something inside
+            (e.g. a slide-in) can register as scrollable overflow and paint a
             horizontal scrollbar even though nothing is meant to scroll here. */}
         <div
           className={maxHeight ? "overflow-auto" : undefined}
           style={
-            footer && maxHeight
+            (header || footer) && maxHeight
               ? { flex: "1 1 auto", minHeight: 0, overflowY: "auto" }
               : maxHeight
               ? { maxHeight }

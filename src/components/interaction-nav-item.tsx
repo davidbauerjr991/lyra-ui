@@ -41,7 +41,7 @@ export interface InteractionNavItemProps {
   /**
    * Whether the parent LeftNav rail is expanded. False renders the compact
    * avatar tile (icon-rail mode); true renders the full detail card. Mirrors
-   * NewOutbound's `expanded` prop so it can be used the same way as a LeftNav
+   * CreateNew's `expanded` prop so it can be used the same way as a LeftNav
    * `header`/`footer` slot.
    */
   expanded?: boolean;
