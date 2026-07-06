@@ -1,12 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState, useRef, useEffect } from "react";
+import * as PopoverPrimitive from "@radix-ui/react-popover";
 import {
   Plus,
-  Monitor,
-  LayoutGrid,
+  Gauge,
   Settings,
-  PencilRuler,
-  FileText,
+  BarChart3,
   CircleHelp,
   Bell,
   PanelRight,
@@ -17,6 +16,8 @@ import { Button } from "../button";
 import { AiIcon } from "../icons/ai-icon";
 import { AppHeader } from "../app-header";
 import { AppName } from "../app-name";
+import { AppMenu, type AppMenuGroup } from "../app-menu";
+import { CXoneLogo } from "../cxone-logo";
 import { LeftNav, type NavItem } from "../left-nav";
 import { ContentArea } from "../content-area";
 import { Container } from "../container";
@@ -39,14 +40,56 @@ const PANEL_ITEMS: TreeMenuItem[] = [
   { label: "Settings" },
 ];
 
-/* ── Sample left icon rail (mirrors lyra-ux-templates' Sidebar) ── */
+/* ── Sample left icon rail — same "Outbound Engagement Left Nav" set as
+   LeftNav.stories.tsx (Monitor/Configure/Review, Monitor active), since
+   this demo chrome's AppHeader already says "Outbound Engagement" too. ── */
 const NAV_ITEMS: NavItem[] = [
-  { icon: <Monitor className="h-4 w-4" strokeWidth={1.5} />, label: "Monitor" },
-  { icon: <LayoutGrid className="h-4 w-4" strokeWidth={1.5} />, label: "Dashboard" },
-  { icon: <Settings className="h-4 w-4" strokeWidth={1.5} />, label: "Configure", expandable: true },
-  { icon: <PencilRuler className="h-4 w-4" strokeWidth={1.5} />, label: "Designer", active: true },
-  { icon: <FileText className="h-4 w-4" strokeWidth={1.5} />, label: "Examples" },
+  { icon: <Gauge className="h-4 w-4" strokeWidth={1.5} />, label: "Monitor", active: true },
+  { icon: <Settings className="h-4 w-4" strokeWidth={1.5} />, label: "Configure" },
+  { icon: <BarChart3 className="h-4 w-4" strokeWidth={1.5} />, label: "Review" },
 ];
+
+/* ── App menu — same page-switcher content as lyra-ux-templates'
+   Header.tsx (Agent Next Gen / Agent Workspace Premium / Outbound
+   Engagement), with "Outbound Engagement" active since that's what this
+   demo's AppHeader displays. Click-to-open wiring mirrors AppHeader.stories
+   .tsx's AppNameWithMenu helper — duplicated locally rather than imported
+   since story files don't import from one another. ── */
+const APP_MENU_GROUPS: AppMenuGroup[] = [
+  {
+    items: [
+      { label: "Agent Next Gen" },
+      { label: "Agent Workspace Premium" },
+      { label: "Outbound Engagement", active: true },
+    ],
+  },
+];
+
+function AppNameWithMenu({ name }: { name: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
+      <PopoverPrimitive.Trigger asChild>
+        <AppName
+          icon={<img src={appIcon} alt="" className="h-6 w-6" />}
+          name={name}
+          aria-expanded={open}
+        />
+      </PopoverPrimitive.Trigger>
+      <PopoverPrimitive.Portal>
+        <PopoverPrimitive.Content
+          side="bottom"
+          align="start"
+          sideOffset={6}
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          className="z-[9999] animate-in fade-in-0 slide-in-from-top-2 duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-100"
+        >
+          <AppMenu groups={APP_MENU_GROUPS} footer={<CXoneLogo />} />
+        </PopoverPrimitive.Content>
+      </PopoverPrimitive.Portal>
+    </PopoverPrimitive.Root>
+  );
+}
 
 const HEADER_ACTIONS = (
   <>
@@ -81,7 +124,7 @@ function AdminShellDemo({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       <AppHeader
-        appName={<AppName icon={<img src={appIcon} alt="" className="h-6 w-6" />} name="Outbound Engagement" />}
+        appName={<AppNameWithMenu name="Outbound Engagement" />}
         actions={HEADER_ACTIONS}
       />
       <div className="flex flex-1 overflow-hidden bg-lyra-bg-surface-shell">
@@ -201,7 +244,7 @@ function AdminShellWithAiDemo({ children }: { children: (onAskAi: () => void) =>
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       <AppHeader
-        appName={<AppName icon={<img src={appIcon} alt="" className="h-6 w-6" />} name="Outbound Engagement" />}
+        appName={<AppNameWithMenu name="Outbound Engagement" />}
         actions={HEADER_ACTIONS}
       />
       <div className="flex flex-1 overflow-hidden bg-lyra-bg-surface-shell">

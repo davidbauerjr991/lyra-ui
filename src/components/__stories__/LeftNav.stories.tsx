@@ -23,6 +23,8 @@ import {
   Users,
   BookUser,
   CalendarDays,
+  Gauge,
+  BarChart3,
 } from "lucide-react";
 
 // Computed once at module load (not inside the story's render function) so
@@ -225,6 +227,37 @@ export const AgentNextGen: Story = {
             />
           </>
         }
+      />
+    );
+  },
+};
+
+/* ── Outbound Engagement ── */
+
+export const OutboundEngagement: Story = {
+  name: "Outbound Engagement Left Nav",
+  render: () => {
+    const [open, setOpen] = useState(true);
+    const items: NavItem[] = [
+      {
+        icon: <Gauge className="h-4 w-4" strokeWidth={1.5} />,
+        label: "Monitor",
+        active: true,
+      },
+      {
+        icon: <Settings className="h-4 w-4" strokeWidth={1.5} />,
+        label: "Configure",
+      },
+      {
+        icon: <BarChart3 className="h-4 w-4" strokeWidth={1.5} />,
+        label: "Review",
+      },
+    ];
+    return (
+      <LeftNav
+        items={items}
+        open={open}
+        onToggle={() => setOpen((v) => !v)}
       />
     );
   },

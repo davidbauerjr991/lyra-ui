@@ -97,15 +97,11 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
           aria-expanded={open}
           aria-label={open ? "Collapse sidebar" : "Expand sidebar"}
           className={cn(
-            "absolute -right-3 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-lyra-border-default bg-lyra-bg-surface-base text-lyra-fg-secondary shadow-sm hover:bg-lyra-bg-surface-shell transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
-            // When a `header` is provided (e.g. CreateNew), its wrapper has
-            // no top inset of its own (see below) so the header content sits
-            // flush with the rail's top edge — shift the toggle up to match
-            // the same relative offset it has against the icon-only nav's
-            // own `py-3` inset (top-[25px] there = 13px past that 12px
-            // inset), rather than leaving it pinned to the old baseline and
-            // drifting away from whatever now sits at the top.
-            header ? "top-[13px]" : "top-[25px]"
+            "absolute -right-3 top-[25px] z-10 flex h-5 w-5 items-center justify-center rounded-full border border-lyra-border-default bg-lyra-bg-surface-base text-lyra-fg-secondary shadow-sm hover:bg-lyra-bg-surface-shell transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+            // Fixed regardless of `header` — this button must stay aligned
+            // with the page's PageHeader row (an external, constant-height
+            // sibling elsewhere in the layout), not shift based on whatever
+            // content happens to be first inside `header`.
           )}
         >
           {open ? (

@@ -36,42 +36,10 @@ const meta: Meta<typeof AppHeader> = {
 export default meta;
 type Story = StoryObj<typeof AppHeader>;
 
-/* ── Default ── */
-
-export const Default: Story = {
-  render: () => (
-    <AppHeader
-      appName={
-        <AppName
-          icon={<img src={appIcon} alt="Desk" className="h-6 w-6" />}
-          name="Agent Workspace Premium"
-        />
-      }
-      actions={
-        <>
-          <ActionIconButton size="xl" title="Help">
-            <CircleHelp className="h-5 w-5" strokeWidth={1.5} />
-          </ActionIconButton>
-          <ActionIconButton size="xl" title="Dashboards">
-            <DashboardIcon className="text-lyra-fg-default" />
-          </ActionIconButton>
-          <ActionIconButton size="xl" title="Notifications" badge={4}>
-            <Bell className="h-5 w-5" strokeWidth={1.5} />
-          </ActionIconButton>
-          <ProfileMenu
-            initials="JS"
-            avatarColor="#5d6a79"
-            groups={defaultProfileMenuGroups}
-            className="ml-1"
-          />
-        </>
-      }
-    />
-  ),
-};
-
-/* ── Agent Next Gen ── */
-
+/* ── Shared app menu data + trigger — same groups/footer used by the
+   "Agent Next Gen Header" story below, reused here so every story with a
+   real AppName actually opens the AppMenu on click instead of just
+   displaying a static, non-interactive label. ── */
 const APP_MENU_GROUPS: AppMenuGroup[] = [
   {
     items: [
@@ -96,6 +64,63 @@ const APP_MENU_GROUPS: AppMenuGroup[] = [
     ],
   },
 ];
+
+function AppNameWithMenu({ name, alt }: { name: string; alt: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
+      <PopoverPrimitive.Trigger asChild>
+        <AppName
+          icon={<img src={appIcon} alt={alt} className="h-6 w-6" />}
+          name={name}
+          aria-expanded={open}
+        />
+      </PopoverPrimitive.Trigger>
+      <PopoverPrimitive.Portal>
+        <PopoverPrimitive.Content
+          side="bottom"
+          align="start"
+          sideOffset={6}
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          className="z-[9999] animate-in fade-in-0 slide-in-from-top-2 duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-100"
+        >
+          <AppMenu groups={APP_MENU_GROUPS} footer={<CXoneLogo />} />
+        </PopoverPrimitive.Content>
+      </PopoverPrimitive.Portal>
+    </PopoverPrimitive.Root>
+  );
+}
+
+/* ── Default ── */
+
+export const Default: Story = {
+  render: () => (
+    <AppHeader
+      appName={<AppNameWithMenu name="Agent Workspace Premium" alt="Desk" />}
+      actions={
+        <>
+          <ActionIconButton size="xl" title="Help">
+            <CircleHelp className="h-5 w-5" strokeWidth={1.5} />
+          </ActionIconButton>
+          <ActionIconButton size="xl" title="Dashboards">
+            <DashboardIcon className="text-lyra-fg-default" />
+          </ActionIconButton>
+          <ActionIconButton size="xl" title="Notifications" badge={4}>
+            <Bell className="h-5 w-5" strokeWidth={1.5} />
+          </ActionIconButton>
+          <ProfileMenu
+            initials="JS"
+            avatarColor="#5d6a79"
+            groups={defaultProfileMenuGroups}
+            className="ml-1"
+          />
+        </>
+      }
+    />
+  ),
+};
+
+/* ── Agent Next Gen ── */
 
 const INITIAL_NOTIFICATIONS = [
   { id: "1", type: "new-case"    as const, title: "New Case",    subtitle: "Noah Patel",    timestamp: "13m ago", read: false },
@@ -247,14 +272,7 @@ export const AgentNextGen: Story = {
 export const AppNameOnly: Story = {
   name: "AppName Only",
   render: () => (
-    <AppHeader
-      appName={
-        <AppName
-          icon={<img src={appIcon} alt="Desk" className="h-6 w-6" />}
-          name="Agent Workspace Premium"
-        />
-      }
-    />
+    <AppHeader appName={<AppNameWithMenu name="Agent Workspace Premium" alt="Desk" />} />
   ),
 };
 
@@ -301,12 +319,7 @@ export const WithBackground: Story = {
   render: () => (
     <AppHeader
       className="bg-lyra-bg-surface-base border-b border-lyra-border-subtle"
-      appName={
-        <AppName
-          icon={<img src={appIcon} alt="Desk" className="h-6 w-6" />}
-          name="Agent Workspace Premium"
-        />
-      }
+      appName={<AppNameWithMenu name="Agent Workspace Premium" alt="Desk" />}
       actions={
         <>
           <ActionIconButton size="xl" title="Help">

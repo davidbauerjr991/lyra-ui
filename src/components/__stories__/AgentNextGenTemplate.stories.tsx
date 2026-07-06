@@ -11,7 +11,8 @@ import { NotificationsBell } from "../notifications-bell";
 import { AgentNotifications, type AgentNotification } from "../agent-notifications";
 import { AgentProfile, type AgentStatus } from "../agent-profile";
 import { LeftNav, type NavItem } from "../left-nav";
-import { CreateNew } from "../create-new";
+import { CreateNew, type CreateNewOutboundContact } from "../create-new";
+import { InteractionNavItem, type InteractionChannel, type ChannelType } from "../interaction-nav-item";
 import { OUTBOUND_CONFIG } from "./create-new-outbound-mock";
 import { ContentArea } from "../content-area";
 import { Container } from "../container";
@@ -67,14 +68,16 @@ const APP_MENU_GROUPS: AppMenuGroup[] = [
 ];
 
 /* ── Left nav data ──
-   The "Create New" footer uses the shared Outbound-flow config (see
-   create-new-outbound-mock.tsx) rather than the old flat channel list. */
+   The "Create New" header uses the shared Outbound-flow config (see
+   create-new-outbound-mock.tsx) rather than the old flat channel list. NAV_
+   ITEMS and the header's InteractionNavItem cards mirror LeftNav.stories.tsx's
+   "Agent Next Gen Left Nav" story exactly (no item marked `active` — the rail
+   itself doesn't track a "current page" here, same as that story). */
 
 const NAV_ITEMS: NavItem[] = [
   {
     icon: <Home className="h-4 w-4" strokeWidth={1.5} />,
     label: "Home",
-    active: true,
   },
   {
     icon: <Users className="h-4 w-4" strokeWidth={1.5} />,
@@ -93,6 +96,39 @@ const NAV_ITEMS: NavItem[] = [
     label: "Settings",
   },
 ];
+
+/** A channel open within one live interaction — tracks when it started
+ *  (in ticks of the shared clock below) rather than a fixed elapsed string,
+ *  so the rendered `InteractionChannel.elapsed` keeps counting up live. */
+interface TrackedChannel {
+  type: ChannelType;
+  startTick: number;
+  /** Routing skill label for this channel, shown as its body copy — looked
+   *  up from `OUTBOUND_CONFIG.skillOptions` at start-call time. */
+  preview?: string;
+}
+
+/** One live interaction in the left nav — an agent/customer/team/skill
+ *  contact (or, for a quick-dialed number with no contact record, the
+ *  number itself) plus every channel currently open with them. Keyed by
+ *  contact id (or `quickdial:<number>`) so starting a second channel with
+ *  the same contact adds to this interaction's `channels` instead of
+ *  creating a second card — per InteractionNavItem's own design (one card
+ *  per interaction, one row per channel). */
+interface ActiveInteraction {
+  id: string;
+  customerName?: string;
+  channels: TrackedChannel[];
+}
+
+/** Renders a tick count (seconds since the channel/interaction started) as
+ *  the "MM:SS" format InteractionNavItem's `elapsed` prop expects. */
+function formatElapsedTime(totalSeconds: number): string {
+  const clamped = Math.max(0, totalSeconds);
+  const mm = Math.floor(clamped / 60);
+  const ss = clamped % 60;
+  return `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+}
 
 /* ── Sample notifications ── */
 
@@ -119,6 +155,21 @@ function AgentNextGenTemplate({
   showInteriorPanel?: boolean;
 }) {
   const [navOpen, setNavOpen] = useState(false);
+  // No interactions exist until the agent launches one from the CreateNew
+  // menu (Start Interaction / quick dial) — see handleStartCall/handleQuick
+  // Dial below. Click any resulting InteractionNavItem card to make it the
+  // active one, same interactive pattern as LeftNav.stories.tsx's "Agent
+  // Next Gen Left Nav" story.
+  const [interactions, setInteractions] = useState<ActiveInteraction[]>([]);
+  const [activeInteractionId, setActiveInteractionId] = useState<string | null>(null);
+  // Shared clock powering every open channel's live "MM:SS since it
+  // started" elapsed display — independent of `elapsedSeconds` below, which
+  // is the agent's own status timer and resets on status change.
+  const [clockTick, setClockTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setClockTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
   const [windowWidth, setWindowWidth] = useState(() => window.innerWidth);
   const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
   const [agentStatus, setAgentStatus] = useState<AgentStatus>("available");
@@ -255,6 +306,55 @@ function AgentNextGenTemplate({
   const handleStatusChange = (status: AgentStatus) => {
     setAgentStatus(status);
     setElapsedSeconds(0);
+  };
+
+  /* ── Launching interactions from CreateNew ──
+     Overrides OUTBOUND_CONFIG's default onStartCall/onQuickDial (which just
+     console.log) so this template actually surfaces what gets launched as
+     InteractionNavItem cards in the left nav, instead of always showing the
+     same 3 fixed demo cards regardless of what the agent does. */
+  const handleStartCall = (selection: {
+    contact: CreateNewOutboundContact;
+    channel: ChannelType;
+    phone: string;
+    skillId: string;
+  }) => {
+    const skillLabel = OUTBOUND_CONFIG.skillOptions.find((o) => o.value === selection.skillId)?.label;
+    const newChannel: TrackedChannel = { type: selection.channel, startTick: clockTick, preview: skillLabel };
+
+    setInteractions((prev) => {
+      const idx = prev.findIndex((i) => i.id === selection.contact.id);
+      // No existing interaction with this contact — start a new card.
+      if (idx === -1) {
+        return [...prev, { id: selection.contact.id, customerName: selection.contact.name, channels: [newChannel] }];
+      }
+      // Same contact already has an interaction open — fold this channel
+      // into it (restarting the channel's timer if it was already open)
+      // instead of creating a second card for the same person.
+      return prev.map((interaction, i) => {
+        if (i !== idx) return interaction;
+        const chIdx = interaction.channels.findIndex((c) => c.type === selection.channel);
+        const channels = chIdx === -1
+          ? [...interaction.channels, newChannel]
+          : interaction.channels.map((c, j) => (j === chIdx ? newChannel : c));
+        return { ...interaction, channels };
+      });
+    });
+    setActiveInteractionId(selection.contact.id);
+  };
+
+  const handleQuickDial = (phoneNumber: string) => {
+    // No contact record for a quick-dialed number — key the card off the
+    // number itself so redialing the same number restarts its card rather
+    // than stacking up duplicates.
+    const id = `quickdial:${phoneNumber}`;
+    const newChannel: TrackedChannel = { type: "voice", startTick: clockTick };
+    setInteractions((prev) => {
+      const idx = prev.findIndex((i) => i.id === id);
+      if (idx === -1) return [...prev, { id, channels: [newChannel] }];
+      return prev.map((interaction, i) => (i === idx ? { ...interaction, channels: [newChannel] } : interaction));
+    });
+    setActiveInteractionId(id);
   };
 
   /* AI panel show/hide */
@@ -505,7 +605,42 @@ function AgentNextGenTemplate({
           open={navOpen}
           onToggle={() => setNavOpen((v) => !v)}
           overlay={isNavNarrow}
-          footer={<CreateNew title="New Outbound" outbound={OUTBOUND_CONFIG} expanded={navOpen} />}
+          header={
+            <>
+              <CreateNew
+                title="New Outbound"
+                outbound={{ ...OUTBOUND_CONFIG, onStartCall: handleStartCall, onQuickDial: handleQuickDial }}
+                expanded={navOpen}
+              />
+              {/* No cards until the agent actually starts one above — each
+                  card is one contact (or quick-dialed number), with every
+                  channel they're being reached on folded into that same
+                  card (see handleStartCall's merge-by-contact-id logic). */}
+              {interactions.map((interaction) => {
+                const mostRecentType = interaction.channels[interaction.channels.length - 1]?.type;
+                const channels: InteractionChannel[] = interaction.channels.map((c) => ({
+                  type: c.type,
+                  elapsed: formatElapsedTime(clockTick - c.startTick),
+                  preview: c.preview,
+                  current: c.type === mostRecentType,
+                  awaitingResponse: c.type !== "voice",
+                }));
+                const earliestStart = Math.min(...interaction.channels.map((c) => c.startTick));
+                return (
+                  <InteractionNavItem
+                    key={interaction.id}
+                    customerName={interaction.customerName}
+                    active={activeInteractionId === interaction.id}
+                    onClick={() => setActiveInteractionId(interaction.id)}
+                    awaitingResponse={channels.some((c) => c.awaitingResponse)}
+                    elapsed={formatElapsedTime(clockTick - earliestStart)}
+                    expanded={navOpen}
+                    channels={channels}
+                  />
+                );
+              })}
+            </>
+          }
         />
 
         {/* Content area — flex-1 shrinks to give space to docked panels.
