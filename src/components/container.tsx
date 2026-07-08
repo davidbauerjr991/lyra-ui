@@ -66,7 +66,12 @@ const containerVariants = cva("rounded-lyra-lg", {
 interface ContainerProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof containerVariants> {
-  /** Header title — renders a ContainerHeader when provided */
+  /**
+   * Header title — renders a `ContainerHeader` when this or any other
+   * `header*` prop below is present. Optional on its own (not just when
+   * every `header*` prop is absent): an icon-only or tag-only header with
+   * no title text is valid — see `ContainerHeader`'s `title` doc comment.
+   */
   headerTitle?: string;
   /** Icon shown to the left of the title */
   headerIcon?: React.ReactNode;
@@ -74,41 +79,58 @@ interface ContainerProps
   headerActions?: React.ReactNode;
   /** Badge/tag shown inline immediately after the title */
   headerTitleBadge?: React.ReactNode;
+  /** Rendered on its own line above the icon+title row — e.g. a status `Tag` ("Anomaly", "Alert"). See `ContainerHeader`'s `topSlot`. */
+  headerTopSlot?: React.ReactNode;
   /** Subtitle shown below the title in body-sm secondary */
   headerSubhead?: string;
   /** Show a dividing border below the header (default: false) */
   headerBordered?: boolean;
   /** Typography class for the header title (default: "lyra-heading-md", set on ContainerHeader) */
   headerTitleClassName?: string;
+  /** Additional className merged onto the header's own wrapper div — e.g. to zero its padding (`"px-0 py-0"`) when a consumer is rendering a chromeless/bare card. */
+  headerClassName?: string;
 }
 
 const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
   ({
     className, variant,
     headerTitle, headerIcon, headerActions,
-    headerTitleBadge, headerSubhead, headerBordered = false,
-    headerTitleClassName,
+    headerTitleBadge, headerTopSlot, headerSubhead, headerBordered = false,
+    headerTitleClassName, headerClassName,
     children, ...props
-  }, ref) => (
-    <div
-      ref={ref}
-      className={cn(containerVariants({ variant }), className)}
-      {...props}
-    >
-      {headerTitle && (
-        <ContainerHeader
-          title={headerTitle}
-          icon={headerIcon}
-          actions={headerActions}
-          titleBadge={headerTitleBadge}
-          subhead={headerSubhead}
-          bordered={headerBordered}
-          {...(headerTitleClassName ? { titleClassName: headerTitleClassName } : {})}
-        />
-      )}
-      {children}
-    </div>
-  )
+  }, ref) => {
+    // Render the header whenever *any* header-related prop is present, not
+    // just when there's title text — an icon-only or tag-only header (no
+    // title, e.g. DashboardCard's "show/hide header text" control) still
+    // needs the row to render so the icon/subhead/topSlot aren't silently
+    // dropped along with the title.
+    const hasHeader = Boolean(
+      headerTitle || headerIcon || headerActions || headerTitleBadge || headerTopSlot || headerSubhead
+    );
+
+    return (
+      <div
+        ref={ref}
+        className={cn(containerVariants({ variant }), className)}
+        {...props}
+      >
+        {hasHeader && (
+          <ContainerHeader
+            title={headerTitle}
+            icon={headerIcon}
+            actions={headerActions}
+            titleBadge={headerTitleBadge}
+            topSlot={headerTopSlot}
+            subhead={headerSubhead}
+            bordered={headerBordered}
+            className={headerClassName}
+            {...(headerTitleClassName ? { titleClassName: headerTitleClassName } : {})}
+          />
+        )}
+        {children}
+      </div>
+    );
+  }
 );
 Container.displayName = "Container";
 

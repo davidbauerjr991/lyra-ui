@@ -1,12 +1,17 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import ReactDOM from "react-dom";
-import { FilterChip } from "../filter-chip";
+import { FilterChip, filterChipVariants } from "../filter-chip";
 import { Button } from "../button";
 import { Input } from "../input";
 import { ToggleGroup } from "../toggle-group";
 import { Select } from "../select";
-import { Plus, Copy, Check } from "lucide-react";
+import { Popover } from "../popover";
+import { RadioGroup, RadioGroupItem } from "../radio";
+import { DateRangePicker } from "../date-picker";
+import type { DateRange } from "../calendar";
+import { Plus, Copy, Check, ChevronDown } from "lucide-react";
+import { cn } from "../../lib/utils";
 
 const addFilterOptions = Array.from({ length: 50 }, (_, i) => ({
   value: `filter-${i + 1}`,
@@ -775,6 +780,75 @@ function WithOperatorsDemo() {
 export const WithOperators: Story = {
   name: "With Operators",
   render: () => <WithOperatorsDemo />,
+};
+
+/* ── Custom content (Popover) ──
+   FilterChip's own dropdown is always `Select` under the hood (checkbox
+   list, optional search/operators) — its `options`/`selectedValues` API has
+   no way to swap in different content like a single-select RadioGroup or a
+   date-range calendar. When a filter-chip-styled trigger needs content
+   `Select`/`Menu` can't hold, the supported pattern is: reuse
+   `filterChipVariants` to style a plain trigger `<button>` so it still
+   looks like a FilterChip, then open literally anything under it via
+   `Popover` (which — unlike `Select`/`Menu` — takes arbitrary `content`).
+   This is exactly how `agent-next-gen-v1`'s home tab date-range filter
+   ("Date: Today", Performance/Productivity cards) is built: a RadioGroup
+   for Today/Yesterday/Last 7 days/Custom, with a `DateRangePicker` revealed
+   only when "Custom" is selected — content no `Menu`/`Select` items array
+   could represent. */
+
+type DateFilterValue = "today" | "yesterday" | "last7" | "custom";
+
+const DATE_FILTER_OPTIONS: { value: DateFilterValue; label: string }[] = [
+  { value: "today",     label: "Today" },
+  { value: "yesterday", label: "Yesterday" },
+  { value: "last7",     label: "Last 7 days" },
+  { value: "custom",    label: "Custom" },
+];
+
+function PopoverContentDemo() {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState<DateFilterValue>("today");
+  const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined);
+
+  const selectedLabel = DATE_FILTER_OPTIONS.find((o) => o.value === value)?.label ?? "";
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={setOpen}
+      placement="bottom"
+      content={
+        <div className="flex flex-col gap-3 p-3 w-[260px]">
+          <RadioGroup value={value} onValueChange={(v) => setValue(v as DateFilterValue)}>
+            {DATE_FILTER_OPTIONS.map((option) => (
+              <RadioGroupItem key={option.value} value={option.value} label={option.label} />
+            ))}
+          </RadioGroup>
+          {value === "custom" && (
+            <DateRangePicker
+              value={customRange}
+              onChange={setCustomRange}
+              placeholder="Select date range"
+            />
+          )}
+        </div>
+      }
+    >
+      <button type="button" className={cn(filterChipVariants({ variant: "default" }), "rounded-lyra-md")}>
+        <span className="inline-flex items-baseline gap-1">
+          <span className="lyra-body-md-emphasis whitespace-nowrap">Date:</span>
+          <span className="lyra-body-md truncate">{selectedLabel}</span>
+        </span>
+        <ChevronDown className={cn("h-3.5 w-3.5 flex-shrink-0 transition-transform", open && "rotate-180")} strokeWidth={1.5} aria-hidden="true" />
+      </button>
+    </Popover>
+  );
+}
+
+export const CustomContentPopover: Story = {
+  name: "Custom Content (Popover)",
+  render: () => <PopoverContentDemo />,
 };
 
 /* ── All Variants ── */

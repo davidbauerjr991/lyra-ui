@@ -176,6 +176,7 @@ export const LineHeight: Story = {
 /* ── Presets ── */
 
 const presets = [
+  { class: "lyra-heading-2xl", category: "Heading", name: "2XL", size: "28px", lineHeight: "32px", weight: "700", letterSpacing: "-0.02rem" },
   { class: "lyra-heading-xl", category: "Heading", name: "XL", size: "24px", lineHeight: "28px", weight: "500", letterSpacing: "-0.02rem" },
   { class: "lyra-heading-lg", category: "Heading", name: "LG", size: "20px", lineHeight: "24px", weight: "500", letterSpacing: "-0.01rem" },
   { class: "lyra-heading-md", category: "Heading", name: "MD", size: "16px", lineHeight: "24px", weight: "500", letterSpacing: "-0.01rem" },

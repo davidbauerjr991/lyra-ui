@@ -1,3 +1,11 @@
+// Single source of truth for every consumer's color token map — see
+// tailwind-tokens.cjs's own doc comment for why this is a plain `require`
+// of a shared file rather than each project (including this one) keeping
+// its own hand-copied object. Tailwind's own config loader already
+// tolerates `require` inside this ESM file (see the plugins line below,
+// which has always used it for `tailwindcss-animate`).
+const lyraColors = require("./tailwind-tokens.cjs");
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
@@ -20,115 +28,12 @@ export default {
         "lyra-9": "var(--lyra-spacing-9)",
       },
       /* ── Lyra Colors ── */
+      // Sourced from tailwind-tokens.cjs (see its own doc comment) — the
+      // single object every consumer's tailwind.config.js pulls from,
+      // rather than each one (including this file, previously) keeping its
+      // own hand-copied list that can silently drift out of sync.
       colors: {
-        /* Background */
-        "lyra-bg-surface-base":             "var(--lyra-color-bg-surface-base)",
-        "lyra-bg-surface-canvas":           "var(--lyra-color-bg-surface-canvas)",
-        "lyra-bg-surface-container":        "var(--lyra-color-bg-surface-container)",
-        "lyra-bg-surface-container-subtle": "var(--lyra-color-bg-surface-container-subtle)",
-        "lyra-bg-surface-shell":            "var(--lyra-color-bg-surface-shell)",
-        "lyra-bg-surface-backdrop":         "var(--lyra-color-bg-surface-backdrop)",
-        "lyra-bg-surface-overlay":          "var(--lyra-color-bg-surface-overlay)",
-        "lyra-bg-surface-inverse":          "var(--lyra-color-bg-surface-inverse)",
-        "lyra-bg-primary":                  "var(--lyra-color-bg-primary)",
-        "lyra-bg-secondary":                "var(--lyra-color-bg-secondary)",
-        "lyra-bg-destructive":              "var(--lyra-color-bg-destructive)",
-        "lyra-bg-control":                  "var(--lyra-color-bg-control)",
-        "lyra-bg-control-subtle":           "var(--lyra-color-bg-control-subtle)",
-        "lyra-bg-field":                    "var(--lyra-color-bg-field)",
-        "lyra-bg-disabled":                 "var(--lyra-color-bg-disabled)",
-        "lyra-bg-active-strong":            "var(--lyra-color-bg-active-strong)",
-        "lyra-bg-active-moderate":          "var(--lyra-color-bg-active-moderate)",
-        "lyra-bg-active-subtle":            "var(--lyra-color-bg-active-subtle)",
-        "lyra-bg-none":                     "var(--lyra-color-bg-none)",
-        "lyra-bg-field-ai":                 "var(--lyra-color-bg-field-ai)",
-        "lyra-bg-conversation-user":        "var(--lyra-color-bg-conversation-user)",
-        "lyra-bg-conversation-ai":          "var(--lyra-color-bg-conversation-ai)",
-        "lyra-bg-conversation-agent":       "var(--lyra-color-bg-conversation-agent)",
-        "lyra-bg-conversation-customer":    "var(--lyra-color-bg-conversation-customer)",
-
-        /* Foreground / Text */
-        "lyra-fg-default":          "var(--lyra-color-fg-default)",
-        "lyra-fg-secondary":        "var(--lyra-color-fg-secondary)",
-        "lyra-fg-action":           "var(--lyra-color-fg-action)",
-        "lyra-fg-disabled":         "var(--lyra-color-fg-disabled)",
-        "lyra-fg-link":             "var(--lyra-color-fg-link)",
-        "lyra-fg-inverse":          "var(--lyra-color-fg-inverse)",
-        "lyra-fg-inverse-disabled": "var(--lyra-color-fg-inverse-disabled)",
-        "lyra-fg-on-primary":       "var(--lyra-color-fg-on-primary)",
-        "lyra-fg-on-destructive":   "var(--lyra-color-fg-on-destructive)",
-        "lyra-fg-active-subtle":    "var(--lyra-color-fg-active-subtle)",
-        "lyra-fg-active-strong":    "var(--lyra-color-fg-active-strong)",
-
-        /* Border colors */
-        "lyra-border-subtle":       "var(--lyra-color-border-subtle)",
-        "lyra-border-default":      "var(--lyra-color-border-default)",
-        "lyra-border-medium":       "var(--lyra-color-border-medium)",
-        "lyra-border-strong":       "var(--lyra-color-border-strong)",
-        "lyra-border-disabled":     "var(--lyra-color-border-disabled)",
-        "lyra-border-active":       "var(--lyra-color-border-active)",
-        "lyra-border-inverse":      "var(--lyra-color-border-inverse)",
-        "lyra-border-none":         "var(--lyra-color-border-none)",
-        "lyra-border-field-ai":     "var(--lyra-color-border-field-ai)",
-        "lyra-border-focus":        "var(--lyra-color-border-focus-default)",
-        "lyra-border-focus-inv":    "var(--lyra-color-border-focus-inverse)",
-
-        /* Status */
-        "lyra-status-success-strong":  "var(--lyra-color-status-success-strong)",
-        "lyra-status-success-medium":  "var(--lyra-color-status-success-medium)",
-        "lyra-status-success-subtle":  "var(--lyra-color-status-success-subtle)",
-        "lyra-status-info-strong":     "var(--lyra-color-status-info-strong)",
-        "lyra-status-info-medium":     "var(--lyra-color-status-info-medium)",
-        "lyra-status-info-subtle":     "var(--lyra-color-status-info-subtle)",
-        "lyra-status-critical-strong": "var(--lyra-color-status-critical-strong)",
-        "lyra-status-critical-medium": "var(--lyra-color-status-critical-medium)",
-        "lyra-status-critical-subtle": "var(--lyra-color-status-critical-subtle)",
-        "lyra-status-warning-strong":  "var(--lyra-color-status-warning-strong)",
-        "lyra-status-warning-medium":  "var(--lyra-color-status-warning-medium)",
-        "lyra-status-warning-subtle":  "var(--lyra-color-status-warning-subtle)",
-
-        /* State border */
-        "lyra-state-border-hover-neutral": "var(--lyra-color-state-border-hover-neutral)",
-
-        /* State */
-        "lyra-state-hover":                   "var(--lyra-color-state-bg-hover-opacity)",
-        "lyra-state-pressed":                 "var(--lyra-color-state-bg-pressed-opacity)",
-        "lyra-state-hover-primary":           "var(--lyra-color-state-bg-hover-primary)",
-        "lyra-state-pressed-primary":         "var(--lyra-color-state-bg-pressed-primary)",
-        "lyra-state-hover-active-subtle":     "var(--lyra-color-state-bg-hover-active-subtle)",
-        "lyra-state-pressed-active-subtle":   "var(--lyra-color-state-bg-pressed-active-subtle)",
-        "lyra-state-hover-active-strong":     "var(--lyra-color-state-bg-hover-active-strong)",
-        "lyra-state-pressed-active-strong":   "var(--lyra-color-state-bg-pressed-active-strong)",
-        "lyra-state-hover-destructive":       "var(--lyra-color-state-bg-hover-destructive)",
-        "lyra-state-pressed-destructive":     "var(--lyra-color-state-bg-pressed-destructive)",
-        "lyra-state-hover-critical-subtle":   "var(--lyra-color-state-bg-hover-critical-subtle)",
-        "lyra-state-pressed-critical-subtle": "var(--lyra-color-state-bg-pressed-critical-subtle)",
-        "lyra-state-hover-secondary":         "var(--lyra-color-state-bg-hover-secondary)",
-        "lyra-state-pressed-secondary":       "var(--lyra-color-state-bg-pressed-secondary)",
-
-        /* Accent palette */
-        "lyra-accent-blue-strong":   "var(--lyra-color-accent-blue-strong)",
-        "lyra-accent-blue-soft":     "var(--lyra-color-accent-blue-soft)",
-        "lyra-accent-green-strong":  "var(--lyra-color-accent-green-strong)",
-        "lyra-accent-green-soft":    "var(--lyra-color-accent-green-soft)",
-        "lyra-accent-lime-strong":   "var(--lyra-color-accent-lime-strong)",
-        "lyra-accent-lime-soft":     "var(--lyra-color-accent-lime-soft)",
-        "lyra-accent-orange-strong": "var(--lyra-color-accent-orange-strong)",
-        "lyra-accent-orange-soft":   "var(--lyra-color-accent-orange-soft)",
-        "lyra-accent-pink-strong":   "var(--lyra-color-accent-pink-strong)",
-        "lyra-accent-pink-soft":     "var(--lyra-color-accent-pink-soft)",
-        "lyra-accent-purple-strong": "var(--lyra-color-accent-purple-strong)",
-        "lyra-accent-purple-soft":   "var(--lyra-color-accent-purple-soft)",
-        "lyra-accent-red-strong":    "var(--lyra-color-accent-red-strong)",
-        "lyra-accent-red-soft":      "var(--lyra-color-accent-red-soft)",
-        "lyra-avatar-default-bg":    "var(--lyra-color-avatar-default-bg)",
-        "lyra-accent-slate-strong":  "var(--lyra-color-accent-slate-strong)",
-        "lyra-accent-slate-soft":    "var(--lyra-color-accent-slate-soft)",
-        "lyra-accent-teal-strong":   "var(--lyra-color-accent-teal-strong)",
-        "lyra-accent-teal-soft":     "var(--lyra-color-accent-teal-soft)",
-        "lyra-accent-yellow-strong": "var(--lyra-color-accent-yellow-strong)",
-        "lyra-accent-yellow-soft":   "var(--lyra-color-accent-yellow-soft)",
-
+        ...lyraColors,
         "cxone-navy": "#2a2d32",
       },
       /* ── Lyra Border Radius ── */

@@ -48,7 +48,7 @@ export { AppHeader } from "./components/app-header";
 export type { AppHeaderProps } from "./components/app-header";
 export { AppMenu } from "./components/app-menu";
 export type { AppMenuItem, AppMenuGroup, AppMenuProps } from "./components/app-menu";
-export { CreateNew } from "./components/create-new";
+export { CreateNew, OutboundAddButton } from "./components/create-new";
 export type {
   CreateNewItem,
   CreateNewProps,
@@ -60,6 +60,7 @@ export type {
   CreateNewOutboundGroup,
   CreateNewChannelOption,
   CreateNewOutboundConfig,
+  OutboundAddButtonProps,
 } from "./components/create-new";
 export { InteractionNavItem } from "./components/interaction-nav-item";
 export type { InteractionNavItemProps, InteractionChannel, ChannelType } from "./components/interaction-nav-item";
@@ -129,6 +130,9 @@ export type { FilterChipProps, FilterChipOption, FilterChipVariant } from "./com
 export { FavoriteButton } from "./components/favorite-button";
 export type { FavoriteButtonProps } from "./components/favorite-button";
 
+export { KebabMenuButton } from "./components/kebab-menu-button";
+export type { KebabMenuButtonProps } from "./components/kebab-menu-button";
+
 export { Tooltip } from "./components/tooltip";
 export { InlineNotification } from "./components/inline-notification";
 export type { InlineNotificationProps } from "./components/inline-notification";
@@ -152,9 +156,29 @@ export type { LabelProps } from "./components/label";
 export { Divider } from "./components/divider";
 export type { DividerProps, DividerOrientation } from "./components/divider";
 
+/* ── Chart ── */
+export { Chart } from "./components/chart";
+export type { ChartProps, EChartsOption } from "./components/chart";
+export { DonutChart } from "./components/donut-chart";
+export type { DonutChartProps, DonutChartDatum } from "./components/donut-chart";
+export { Sparkline } from "./components/sparkline";
+export type { SparklineProps } from "./components/sparkline";
+
+/* ── Dashboard Card ── */
+export { DashboardCard, Metric } from "./components/dashboard-card";
+export type { DashboardCardProps, DashboardCardMetric, DashboardCardMetricVariant, MetricProps } from "./components/dashboard-card";
+
+/* ── Dashboard Queue ── */
+export { DashboardQueue } from "./components/dashboard-queue";
+export type { DashboardQueueProps, DashboardQueueItem, DashboardQueueVariant } from "./components/dashboard-queue";
+
 /* ── Login Card ── */
 export { LoginCard } from "./components/login-card";
 export type { LoginCardProps, LoginCardPhoneSetup } from "./components/login-card";
+
+/* ── Agent Welcome Message ── */
+export { AgentWelcomeMessage } from "./components/agent-welcome-message";
+export type { AgentWelcomeMessageProps } from "./components/agent-welcome-message";
 
 /* ── Icon ── */
 export { Icon, iconVariants, iconContainerVariants } from "./components/icon";

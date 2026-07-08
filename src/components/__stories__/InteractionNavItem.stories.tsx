@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { InteractionNavItem, type InteractionChannel } from "../interaction-nav-item";
+import { OutboundAddButton } from "../create-new";
+import { OUTBOUND_CONFIG } from "./create-new-outbound-mock";
 
 /** Body copy below each channel chip shows the routing skill, not a message
  *  preview — randomized per channel from this pool of sample skill names. */
@@ -280,6 +282,67 @@ export const ExpandedStack: Story = {
         elapsed="02:05"
         expanded
         channels={[{ type: "voice", elapsed: "02:05", current: true, preview: randomSkill() }]}
+      />
+    </div>
+  ),
+};
+
+/* ── Header (headerAction slot) ──
+   `headerAction` is a generic `React.ReactNode` slot in the card's header
+   row (see interaction-nav-item.tsx) — these stories demonstrate it filled
+   with the real `OutboundAddButton` from create-new.tsx, which is how every
+   production consumer (AgentNextGenPage.tsx, AgentNextGenTemplate.stories.tsx,
+   LeftNav.stories.tsx) actually wires it. Only rendered in expanded mode,
+   since compact (icon-rail) cards have no header row to put it in. This
+   story doesn't render a `CreateNew` popover alongside it — there's no
+   outbound flow to hand off to here — so `onSelect` just logs the chosen
+   channel, purely to demonstrate the header layout and the button's own
+   tooltip/flyout behavior in isolation. */
+
+export const NavItemHeader: Story = {
+  name: "Header — Add Outbound Button",
+  render: () => (
+    <div className="flex w-[320px] flex-col gap-2 rounded-lyra-lg bg-lyra-bg-surface-shell p-3">
+      <InteractionNavItem
+        customerName="Sofia Martinez"
+        active
+        awaitingResponse
+        elapsed="08:27"
+        expanded
+        channels={SOFIA_CHANNELS}
+        headerAction={
+          <OutboundAddButton
+            channelOptions={OUTBOUND_CONFIG.channelOptions}
+            // eslint-disable-next-line no-console
+            onSelect={(channel) => console.log("Add Outbound:", channel)}
+          />
+        }
+      />
+      <InteractionNavItem
+        customerName="Ray Torres"
+        awaitingResponse
+        elapsed="04:00"
+        expanded
+        channels={RAY_CHANNELS}
+        headerAction={
+          <OutboundAddButton
+            channelOptions={OUTBOUND_CONFIG.channelOptions}
+            // eslint-disable-next-line no-console
+            onSelect={(channel) => console.log("Add Outbound:", channel)}
+          />
+        }
+      />
+      <InteractionNavItem
+        elapsed="02:05"
+        expanded
+        channels={[{ type: "voice", elapsed: "02:05", current: true, preview: randomSkill() }]}
+        headerAction={
+          <OutboundAddButton
+            channelOptions={OUTBOUND_CONFIG.channelOptions}
+            // eslint-disable-next-line no-console
+            onSelect={(channel) => console.log("Add Outbound:", channel)}
+          />
+        }
       />
     </div>
   ),

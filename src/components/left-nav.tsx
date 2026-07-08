@@ -50,6 +50,31 @@ interface LeftNavProps extends React.HTMLAttributes<HTMLElement> {
   header?: React.ReactNode;
 }
 
+/**
+ * Clone `expanded` onto every top-level element inside `node` — used to
+ * auto-inject overlay mode's `hoverOpen` into `header`/`footer`. Consumers
+ * commonly pass more than one element (e.g. a `CreateNew` button plus a
+ * list of `InteractionNavItem` cards) wrapped in a `<>...</>` fragment.
+ * `React.isValidElement`/`cloneElement` treat a fragment as a single
+ * element and clone the fragment itself, which doesn't forward props to
+ * its children — so a bare `cloneElement(node, { expanded })` silently
+ * no-ops for fragment children. This unwraps one level of fragment first,
+ * then clones each real child, so both a single element and a
+ * multi-element fragment get `expanded` applied correctly.
+ */
+function injectExpanded(node: React.ReactNode, expanded: boolean): React.ReactNode {
+  const children =
+    React.isValidElement(node) && node.type === React.Fragment
+      ? (node.props as { children?: React.ReactNode }).children
+      : node;
+
+  return React.Children.map(children, (child) =>
+    React.isValidElement(child)
+      ? React.cloneElement(child as React.ReactElement<{ expanded?: boolean }>, { expanded })
+      : child
+  );
+}
+
 /** Convert NavItem[] → TreeMenuItem[] so TreeMenu can render them */
 function toTreeItems(items: NavItem[]): TreeMenuItem[] {
   return items.map((item) => ({
@@ -168,9 +193,7 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
               // flush with the rail's top edge, top-aligned with the
               // container itself rather than inset to match the nav list.
               <div className={cn("flex-shrink-0 flex flex-col items-center px-2 pt-0", hoverOpen ? "gap-2" : "gap-1")}>
-                {React.isValidElement(header)
-                  ? React.cloneElement(header as React.ReactElement<{ expanded?: boolean }>, { expanded: hoverOpen })
-                  : header}
+                {injectExpanded(header, hoverOpen)}
               </div>
             )}
             <div className="flex flex-1 flex-col overflow-hidden min-h-0">
@@ -182,9 +205,7 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
             </div>
             {footer && (
               <div className="flex-shrink-0 flex items-center justify-center px-2 pb-3">
-                {React.isValidElement(footer)
-                  ? React.cloneElement(footer as React.ReactElement<{ expanded?: boolean }>, { expanded: hoverOpen })
-                  : footer}
+                {injectExpanded(footer, hoverOpen)}
               </div>
             )}
           </div>

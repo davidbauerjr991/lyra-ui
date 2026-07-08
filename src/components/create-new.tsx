@@ -6,11 +6,12 @@ import { Menu } from "./menu";
 import { Input } from "./input";
 import { Popover, PopoverClose } from "./popover";
 import { Tooltip } from "./tooltip";
-import { Select } from "./select";
+import { Select, type SelectOption } from "./select";
 import { Button } from "./button";
 import { TableFooter } from "./table";
 import { FavoriteButton } from "./favorite-button";
 import { PhoneInput, PHONE_COUNTRIES, isPhoneNumberComplete, type PhoneValue } from "./phone-input";
+import { Tag, type TagVariant } from "./tag";
 import type { ChannelType } from "./channel-row";
 
 /* ── Types ── */
@@ -24,6 +25,30 @@ export interface CreateNewItem {
   onClick?: () => void;
 }
 
+/** An agent's current availability, shown as a status chip next to their
+ *  name in the Outbound picker's "Select Agent" list (see
+ *  `AgentPresenceChip`/`ContactRow` below). Distinct from `AgentProfile`'s
+ *  own `AgentStatus` (available/busy/away/offline) — that type is the
+ *  *current, logged-in* agent's own status control; this is read-only
+ *  presence for *other* agents being considered as an outbound recipient,
+ *  which also needs an "in a call" state `AgentProfile` has no use for
+ *  (an agent never sets their own status to "in a call" — that's an
+ *  automatic, observed state, not a status code they pick). */
+export type AgentPresenceStatus = "available" | "busy" | "away" | "offline" | "in-call";
+
+const AGENT_PRESENCE_CONFIG: Record<AgentPresenceStatus, { label: string; variant: TagVariant }> = {
+  available: { label: "Available", variant: "success" },
+  busy:      { label: "Busy",      variant: "critical" },
+  away:      { label: "Away",      variant: "warning" },
+  offline:   { label: "Offline",   variant: "neutral" },
+  "in-call": { label: "In a Call", variant: "info" },
+};
+
+function AgentPresenceChip({ status }: { status: AgentPresenceStatus }) {
+  const { label, variant } = AGENT_PRESENCE_CONFIG[status];
+  return <Tag label={label} variant={variant} shape="pill" className="flex-shrink-0" />;
+}
+
 export interface CreateNewContact {
   /** Unique id */
   id: string;
@@ -31,10 +56,30 @@ export interface CreateNewContact {
   name: string;
   /** Short avatar label — e.g. two initials */
   initials: string;
-  /** Secondary line below the name — e.g. a customer/agent ID */
+  /** Secondary line below the name — e.g. a customer/agent ID. Ignored when
+   *  `queueCount`/`waitTimeSeconds` are set (skill records), since those
+   *  render a queue/wait summary in this same spot instead. */
   subtitle?: string;
   /** Tailwind classes for the avatar circle's background + text color */
   avatarClassName?: string;
+  /** Renders a status chip below the name, to the left of `subtitle` (see
+   *  `AgentPresenceChip`) — set on agent and skill records; left unset for
+   *  customers/teams, which have no individual presence concept. */
+  status?: AgentPresenceStatus;
+  /** Skill records only: number of contacts currently waiting in this
+   *  skill's queue. Paired with `waitTimeSeconds` to render "Queue: {N}
+   *  Wait Time: {M}m {S}s" in place of `subtitle`. */
+  queueCount?: number;
+  /** Skill records only: current estimated wait time, in seconds — see
+   *  `queueCount`. */
+  waitTimeSeconds?: number;
+}
+
+/** "Queue: {N}   Wait Time: {M}m {S}s" — the skill-row secondary text. */
+function formatQueueText(queueCount: number, waitTimeSeconds: number): string {
+  const minutes = Math.floor(waitTimeSeconds / 60);
+  const seconds = waitTimeSeconds % 60;
+  return `Queue: ${queueCount}   Wait Time: ${minutes}m ${seconds}s`;
 }
 
 export interface CreateNewCategory {
@@ -75,6 +120,18 @@ export interface CreateNewOutboundContact extends CreateNewContact {
    *  per-row hover flyout and the detail screen's "Select Channel" options
    *  down to what's actually supported. */
   channels: ChannelType[];
+  /** The addresses/numbers/handles currently in use across every live
+   *  interaction this contact has open on each channel, if any (e.g. `{
+   *  sms: ["+14565559981", "+14565550147"] }` for two simultaneous SMS
+   *  threads on different numbers). The channel itself stays selectable in
+   *  "Select Channel" (the agent can still review/switch to one) — only the
+   *  matching option(s) in the detail screen's second field ("Select
+   *  Phone" / "Select Email Address" / "Select WhatsApp Handle") are
+   *  disabled, since starting another interaction on one of those exact
+   *  addresses would just duplicate the one already running. Other
+   *  addresses/numbers for the same channel (e.g. a third, unused outbound
+   *  phone line) stay selectable. */
+  openChannelAddresses?: Partial<Record<ChannelType, string[]>>;
 }
 
 export interface CreateNewOutboundGroup {
@@ -132,6 +189,23 @@ export interface CreateNewOutboundConfig {
   }) => void;
   /** Contacts per page in the paginated list (default: 10) */
   pageSize?: number;
+  /** Imperatively opens the popover directly to the call-setup ("detail")
+   *  screen for a specific contact+channel, bypassing this component's own
+   *  group/contact list — e.g. `InteractionNavItem`'s own "Add Outbound"
+   *  button (`OutboundAddButton` below) already knows which contact and
+   *  channel to start, since the contact already has a live interaction
+   *  card; re-picking the same contact from this popover's own list would
+   *  be redundant. The contact is looked up across every group's
+   *  `contacts` (same lookup "Favorites" uses), so the caller doesn't need
+   *  to know which group it lives in. Compared by reference each render —
+   *  set a new `{ contactId, channel }` object each time you want this to
+   *  fire, and clear it back to `null` (see `onLaunchRequestHandled` below)
+   *  once handled, so a later unrelated re-render doesn't replay it. */
+  launchRequest?: { contactId: string; channel: ChannelType } | null;
+  /** Fired immediately after `launchRequest` has been acted on. This
+   *  component can't clear its own prop, so the consumer should use this to
+   *  reset whatever state produced it back to `null`. */
+  onLaunchRequestHandled?: () => void;
 }
 
 export interface CreateNewProps
@@ -236,12 +310,38 @@ function ContactRow({
         highlighted && "bg-lyra-state-hover"
       )}
     >
-      <span className="min-w-0 flex-1">
-        <span className="block truncate lyra-body-md text-lyra-fg-default">{contact.name}</span>
-        {contact.subtitle && (
-          <span className="block truncate lyra-body-sm text-lyra-fg-secondary">{contact.subtitle}</span>
-        )}
-      </span>
+      {(() => {
+        const hasQueueText = contact.queueCount != null && contact.waitTimeSeconds != null;
+        const secondaryText = hasQueueText
+          ? formatQueueText(contact.queueCount!, contact.waitTimeSeconds!)
+          : contact.subtitle;
+        return (
+          <span className="min-w-0 flex-1">
+            <span className="block truncate lyra-body-md text-lyra-fg-default">{contact.name}</span>
+            {hasQueueText ? (
+              // Skill rows: the queue/wait summary runs long ("Queue: 4
+              // Wait Time: 3m 20s"), so it goes on its own line below the
+              // status chip rather than squeezed onto the chip's row where
+              // it'd truncate.
+              <span className="flex min-w-0 flex-col items-start gap-1">
+                {contact.status && <AgentPresenceChip status={contact.status} />}
+                {secondaryText && (
+                  <span className="block max-w-full truncate lyra-body-sm text-lyra-fg-secondary">{secondaryText}</span>
+                )}
+              </span>
+            ) : (
+              (contact.status || secondaryText) && (
+                <span className="flex min-w-0 items-center gap-1.5">
+                  {contact.status && <AgentPresenceChip status={contact.status} />}
+                  {secondaryText && (
+                    <span className="min-w-0 truncate lyra-body-sm text-lyra-fg-secondary">{secondaryText}</span>
+                  )}
+                </span>
+              )
+            )}
+          </span>
+        );
+      })()}
       {onToggleFavorite && (
         <FavoriteButton favorited={!!favorited} onClick={onToggleFavorite} label={contact.name} placement="left" />
       )}
@@ -347,6 +447,118 @@ function OutboundContactRow({
   );
 }
 
+/* ── Outbound "add" button (internal to the flyout, exported) ──
+   Small standalone "+" trigger + click-to-open flyout listing the given
+   channels — the same Menu-based flyout `OutboundContactRow` above uses for
+   its own per-row hover trigger, factored out so other surfaces can offer
+   the same channel choice without re-implementing it (composition over
+   reimplementation, CONTRIBUTING.md §3). Built for `InteractionNavItem`'s
+   own "Add Outbound" button (see its `headerAction` prop): an agent who
+   already has a live interaction with a contact can start another channel
+   with them directly from that card, without re-picking the same contact
+   from this component's own Outbound picker list — see
+   `CreateNewOutboundConfig.launchRequest`, which is how a channel picked
+   here actually reaches this component's own call-setup screen.
+   Unlike `OutboundContactRow`'s hover-triggered flyout (hover makes sense
+   for a big clickable row), this opens on click, matching a plain icon
+   button's normal interaction model. Not a `Popover` nested inside another
+   `Popover` — `InteractionNavItem` cards render in the nav rail, not inside
+   this component's own panel — so it uses the standard top-level overlay
+   z-index (`z-[9999]`), not the `z-[10003]` nested tier `OutboundContactRow`'s
+   flyout needs (see CONTRIBUTING.md §5). */
+export interface OutboundAddButtonProps {
+  /** Channel definitions (icon + label) to offer — already filtered down to
+   *  whichever channels the underlying contact/agent actually supports,
+   *  e.g. `outbound.channelOptions.filter((c) =>
+   *  contact.channels.includes(c.id))`. */
+  channelOptions: CreateNewChannelOption[];
+  /** Called with the chosen channel; the flyout closes itself first. */
+  onSelect: (channel: ChannelType) => void;
+  /** Tooltip text and button `aria-label` (default: "Add Outbound"). */
+  label?: string;
+  className?: string;
+}
+
+const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonProps>(
+  ({ channelOptions, onSelect, label = "Add Outbound", className }, ref) => {
+    const [open, setOpen] = useState(false);
+    return (
+      <Tooltip content={label} placement="top" disabled={open}>
+        {/* Wrap the whole Popover (not just its trigger) in a plain span —
+            same Tooltip+Popover composition as this component's own
+            collapsed trigger below and AgentProfile's own trigger: Tooltip's
+            Trigger clones hover/focus props onto its immediate child via
+            Radix Slot, which Popover doesn't forward through to its
+            internals. */}
+        <span className="inline-flex">
+          <Popover
+            open={open}
+            onOpenChange={setOpen}
+            placement="bottom"
+            align="end"
+            sideOffset={4}
+            showArrow={false}
+            onOpenAutoFocus={(e) => e.preventDefault()}
+            // Radix's FocusScope schedules a delayed (exit-animation +
+            // setTimeout(0)) refocus of whatever had focus before this
+            // popover opened — i.e. this trigger button — when its Content
+            // unmounts. That refocus fires as a real document `focusin`
+            // event *after* selecting a channel has already opened
+            // CreateNew's own Popover via `launchRequest`, and lands on an
+            // element outside CreateNew's Content. CreateNew's own
+            // DismissableLayer sees that as an outside-focus and immediately
+            // dismisses itself — the reported "flashes open then closes"
+            // bug. This button's flow always hands off to a different
+            // surface (CreateNew) on selection, so returning focus here
+            // serves no purpose; suppress it.
+            onCloseAutoFocus={(e) => e.preventDefault()}
+            className="z-[9999] w-48 p-1"
+            content={
+              channelOptions.length > 0 ? (
+                <Menu
+                  items={channelOptions.map((c) => ({
+                    id: c.id,
+                    label: c.label,
+                    icon: c.icon,
+                    onClick: () => {
+                      setOpen(false);
+                      onSelect(c.id);
+                    },
+                  }))}
+                  className="min-w-0 rounded-none border-0 bg-transparent p-0 shadow-none"
+                />
+              ) : (
+                <p className="px-3 py-2 lyra-body-sm text-lyra-fg-secondary">No channels available</p>
+              )
+            }
+          >
+            <button
+              ref={ref}
+              type="button"
+              aria-label={label}
+              // Card rows that host this button (e.g. InteractionNavItem)
+              // are themselves clickable — stop the click from also
+              // bubbling up and selecting the whole card, same pattern
+              // FavoriteButton/KebabMenuButton use for the same reason.
+              onClick={(e) => e.stopPropagation()}
+              className={cn(
+                "flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lyra-sm",
+                "text-lyra-fg-secondary transition-colors",
+                "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus",
+                className
+              )}
+            >
+              <Plus className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+            </button>
+          </Popover>
+        </span>
+      </Tooltip>
+    );
+  }
+);
+OutboundAddButton.displayName = "OutboundAddButton";
+
 /* ── CreateNew ── */
 
 const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
@@ -393,6 +605,21 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     const [detailPhone, setDetailPhone] = useState("");
     const [detailSkill, setDetailSkill] = useState("");
     const searchInputRef = React.useRef<HTMLInputElement>(null);
+    // Set right before the `launchRequest` effect below opens this popover
+    // programmatically, and read (then cleared) inside `onOpenAutoFocus` on
+    // the `Popover` call further down. A normal open (the agent clicking
+    // this component's own trigger button) intentionally cancels Radix's
+    // auto-focus so focus stays on that trigger; a `launchRequest`-driven
+    // open has no such trigger click to preserve — the click that caused it
+    // happened on a completely unrelated element elsewhere on the page
+    // (e.g. `InteractionNavItem`'s own "Add Outbound" button) — so letting
+    // Radix's default auto-focus land on the first focusable field inside
+    // this popover's content is exactly what's needed, and doing so is what
+    // fixes the "opens, then instantly closes again" flash a bug report
+    // described: without it, focus stayed on that unrelated trigger,
+    // Radix's dismissable layer saw focus sitting *outside* the newly
+    // mounted popover, and treated that as an outside interaction.
+    const openedViaLaunchRequestRef = React.useRef(false);
     // Favorited contact ids, toggled by FavoriteButton (add or remove — see
     // favorite-button.tsx). Persists across popover open/close, unlike the
     // transient search/page state reset in the effect below, since a
@@ -470,15 +697,27 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     // actual phone number for Call/SMS (from `outbound.phoneOptions`), or a
     // synthesized address/handle for Email/WhatsApp — there's no per-contact
     // email or handle in CreateNewOutboundContact, so these are derived from
-    // the contact's name for demo purposes rather than looked up.
+    // the contact's name for demo purposes rather than looked up. Never
+    // defaults to an address already open for this contact/channel (see
+    // CreateNewOutboundContact.openChannelAddresses) — those addresses are
+    // filtered out of the field entirely (not just disabled, see
+    // `detailFieldMeta` below), so defaulting to one would silently
+    // pre-select a value that isn't even in the list. Falls back to "" when
+    // every option for this channel is already in use (email/WhatsApp only
+    // ever have the one derived option, so that's the only way they can run
+    // out; phone falls back to "" only once every one of
+    // `outbound.phoneOptions` is open).
     const defaultDetailValueFor = (contact: CreateNewOutboundContact, channel: ChannelType): string => {
+      const openAddresses = contact.openChannelAddresses?.[channel] ?? [];
       if (channel === "email") {
-        return `${contact.name.toLowerCase().replace(/\s+/g, ".")}@example.com`;
+        const value = `${contact.name.toLowerCase().replace(/\s+/g, ".")}@example.com`;
+        return openAddresses.includes(value) ? "" : value;
       }
       if (channel === "whatsapp") {
-        return `@${contact.name}`;
+        const value = `@${contact.name}`;
+        return openAddresses.includes(value) ? "" : value;
       }
-      return outbound?.phoneOptions[0]?.value ?? "";
+      return (outbound?.phoneOptions ?? []).find((o) => !openAddresses.includes(o.value))?.value ?? "";
     };
 
     const goToDetail = (groupId: string, contact: CreateNewOutboundContact, channel: ChannelType) => {
@@ -541,6 +780,13 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     const availableChannelsForContact = (outbound?.channelOptions ?? []).filter((c) =>
       activeOutboundContact ? activeOutboundContact.channels.includes(c.id) : true
     );
+    // The address(es) already in use for the currently selected channel, if
+    // any — drives which option(s) get disabled in the detail screen's
+    // second field below (see CreateNewOutboundContact.openChannelAddresses'
+    // own doc comment for why only those specific options are disabled
+    // rather than the whole field or the channel itself).
+    const activeAddressesForChannel: string[] =
+      (detailChannel && activeOutboundContact?.openChannelAddresses?.[detailChannel]) || [];
 
     // goToDetail seeds the right default the moment screen 2 is entered, but
     // "Select Channel" stays editable once there (see its own comment) — if
@@ -552,19 +798,79 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [detailChannel]);
 
+    // External deep-link (see `CreateNewOutboundConfig.launchRequest`'s own
+    // doc comment) — e.g. `InteractionNavItem`'s "Add Outbound" button
+    // already knows which contact+channel to start, so this jumps straight
+    // to the call-setup screen for it instead of making the agent re-pick
+    // the same contact from this popover's own list. Resets the stack to
+    // exactly [group, detail] rather than pushing onto whatever was already
+    // there, so the back button returns to that contact's own group list
+    // regardless of what screen this popover happened to be showing (or was
+    // left showing) beforehand.
+    React.useEffect(() => {
+      const req = outbound?.launchRequest;
+      if (!req) return;
+      const contact = allOutboundContacts.find((c) => c.id === req.contactId);
+      if (!contact) {
+        outbound?.onLaunchRequestHandled?.();
+        return;
+      }
+      const group = (outbound?.groups ?? []).find((g) => (g.contacts ?? []).some((c) => c.id === req.contactId));
+      const groupId = group?.id ?? initialOutboundGroupId ?? "";
+      // Deferred one tick: this is very often triggered by *closing* a
+      // different, unrelated Radix Popover elsewhere on the page first (e.g.
+      // InteractionNavItem's own "Add Outbound" flyout, see
+      // OutboundAddButton) — its onSelect fires (setting launchRequest) in
+      // the very same click that closes it. Opening this popover
+      // synchronously in that same tick raced with the other one's own
+      // close/unmount and focus teardown: this popover's Radix dismissable
+      // layer would see focus land outside itself (since focus was still
+      // settling from the just-closed flyout, not this popover's own
+      // trigger) and immediately treat that as an outside interaction,
+      // closing it right back — a visible open-then-instantly-close flash.
+      // Letting the other popover's close finish first (one macrotask) before
+      // this one opens avoids the race entirely.
+      const t = setTimeout(() => {
+        setDetailChannel(req.channel);
+        setDetailPhone(defaultDetailValueFor(contact, req.channel));
+        setDetailSkill("");
+        setSearch("");
+        setStack([{ kind: "group", groupId }, { kind: "detail", groupId, contactId: contact.id, channel: req.channel }]);
+        openedViaLaunchRequestRef.current = true;
+        setOpen(true);
+        outbound?.onLaunchRequestHandled?.();
+      }, 0);
+      return () => clearTimeout(t);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [outbound?.launchRequest]);
+
     // Label + options for screen 2's second field, matching whichever
     // channel is currently selected — see defaultDetailValueFor above for
     // why email/whatsapp are single synthesized options rather than a list.
+    // Any option whose value appears in `activeAddressesForChannel` — an
+    // address already in use for an open interaction with this contact
+    // (there can be more than one, e.g. two open SMS threads on different
+    // numbers) — is dropped from the list entirely rather than shown
+    // disabled: an address that can't be picked shouldn't appear as a
+    // choice (or, worse, sit there pre-selected — see
+    // `defaultDetailValueFor` above) in the first place. When that leaves
+    // no options at all (e.g. email/WhatsApp's one derived address is
+    // already open), the field just renders empty — no value, no
+    // placeholder — rather than falling back to the unavailable address.
     const detailFieldMeta = (() => {
+      const withoutActive = (options: SelectOption[]): SelectOption[] =>
+        activeAddressesForChannel.length > 0
+          ? options.filter((o) => !activeAddressesForChannel.includes(o.value))
+          : options;
       if (detailChannel === "email") {
         const value = activeOutboundContact ? defaultDetailValueFor(activeOutboundContact, "email") : "";
-        return { label: "Select Email Address", options: value ? [{ value, label: value }] : [] };
+        return { label: "Select Email Address", options: withoutActive(value ? [{ value, label: value }] : []) };
       }
       if (detailChannel === "whatsapp") {
         const value = activeOutboundContact ? defaultDetailValueFor(activeOutboundContact, "whatsapp") : "";
-        return { label: "Select WhatsApp Handle", options: value ? [{ value, label: value }] : [] };
+        return { label: "Select WhatsApp Handle", options: withoutActive(value ? [{ value, label: value }] : []) };
       }
-      return { label: "Select Phone", options: outbound?.phoneOptions ?? [] };
+      return { label: "Select Phone", options: withoutActive(outbound?.phoneOptions ?? []) };
     })();
 
     const handleStartCall = () => {
@@ -745,6 +1051,34 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
             )}
           </div>
         )}
+
+        {/* Drill-down flow's category screen: same "search pinned outside
+            the scroll area" treatment as the outbound flow's group/contacts
+            search above, moved here (out of `content`) for the same reason —
+            see the maxHeight/overflow note on the Popover call below. */}
+        {isDrillDown && screen.kind === "category" && activeCategory && (
+          <div className="border-b border-lyra-border-subtle px-4 py-3">
+            <div className="relative">
+              <Input
+                ref={searchInputRef}
+                type="text"
+                placeholder={activeCategory.searchPlaceholder ?? `Search ${activeCategory.label.toLowerCase()}`}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                startIcon={<Search className="h-4 w-4 text-lyra-fg-disabled" strokeWidth={1.4} aria-hidden="true" />}
+                endIcon={search ? <X className="h-4 w-4 text-lyra-fg-disabled" strokeWidth={1.5} aria-hidden="true" /> : undefined}
+              />
+              {search && (
+                <button
+                  type="button"
+                  aria-label="Clear search"
+                  onClick={() => setSearch("")}
+                  className="absolute right-2.5 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
+                />
+              )}
+            </div>
+          </div>
+        )}
       </>
     );
 
@@ -756,7 +1090,19 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
         align="start"
         sideOffset={6}
         showArrow={false}
-        onOpenAutoFocus={(e) => e.preventDefault()}
+        onOpenAutoFocus={(e) => {
+          // See `openedViaLaunchRequestRef`'s own doc comment above — only
+          // cancel Radix's auto-focus for a normal user-click open (the
+          // default keeps focus on this component's own trigger button,
+          // which the agent just clicked); a launchRequest-driven open has
+          // no such trigger click to preserve focus on, and needs Radix's
+          // real auto-focus to land inside this content instead.
+          if (openedViaLaunchRequestRef.current) {
+            openedViaLaunchRequestRef.current = false;
+            return;
+          }
+          e.preventDefault();
+        }}
         onEscapeKeyDown={(e) => {
           // On any sub-screen with a back button (see showBackButton above),
           // Escape steps back one level instead of closing the whole
@@ -768,11 +1114,21 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
             popScreen();
           }
         }}
-        maxHeight={
-          screen.kind === "detail" || (screen.kind === "group" && (activeGroup?.kind ?? "contacts") === "contacts")
-            ? "var(--radix-popper-available-height, 480px)"
-            : undefined
-        }
+        // Always clamped to whatever room Radix Popper actually measured
+        // between the trigger and the viewport edge (falling back to 480px
+        // before that's known) — every screen, not just the ones with long
+        // lists. Previously this was only set for "detail"/contacts-group
+        // screens; every other screen (root, category, channels, dialpad,
+        // favorites/empty groups) had no height ceiling at all, so a long
+        // enough list could grow the popover taller than the viewport had
+        // room for — Radix would still try to keep it on-screen, but the
+        // content itself could briefly render past the edge (or force the
+        // page to scroll) before that settled, which read as a flash of
+        // stray overflow-x/overflow-y on open. Unconditionally capping the
+        // height means the popover can never exceed available space in the
+        // first place — its own internal list scrolls instead (see the
+        // scroll-wrapper `div` inside popover.tsx that this activates).
+        maxHeight="var(--radix-popper-available-height, 480px)"
         header={popoverHeader}
         footer={
           screen.kind === "detail" ? (
@@ -977,53 +1333,28 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                   </>
                 )}
 
+                {/* Search field lives in `popoverHeader` now (pinned above
+                    this scroll area), same pattern as the outbound flow's
+                    group/contacts search — see the maxHeight note on the
+                    Popover call below for why. */}
                 {screen.kind === "category" && activeCategory && (
-                  <>
-                    <div className="border-b border-lyra-border-subtle px-4 py-3">
-                      <div className="relative">
-                        <Input
-                          ref={searchInputRef}
-                          type="text"
-                          placeholder={activeCategory.searchPlaceholder ?? `Search ${activeCategory.label.toLowerCase()}`}
-                          value={search}
-                          onChange={(e) => setSearch(e.target.value)}
-                          startIcon={<Search className="h-4 w-4 text-lyra-fg-disabled" strokeWidth={1.4} aria-hidden="true" />}
-                          endIcon={search ? <X className="h-4 w-4 text-lyra-fg-disabled" strokeWidth={1.5} aria-hidden="true" /> : undefined}
+                  <div className="p-2">
+                    {filteredContacts.length > 0 ? (
+                      filteredContacts.map((contact) => (
+                        <ContactRow
+                          key={contact.id}
+                          contact={contact}
+                          onClick={() => pushScreen({ kind: "channels", categoryId: activeCategory.id, contactId: contact.id })}
                         />
-                        {/* Real, clickable clear button layered over the
-                            decorative endIcon above — Input's endIcon slot
-                            is pointer-events-none by design (purely
-                            decorative), so a functional clear action needs
-                            its own hit target rather than a change to the
-                            shared Input primitive. */}
-                        {search && (
-                          <button
-                            type="button"
-                            aria-label="Clear search"
-                            onClick={() => setSearch("")}
-                            className="absolute right-2.5 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
-                          />
-                        )}
-                      </div>
-                    </div>
-                    <div className="max-h-80 overflow-y-auto p-2">
-                      {filteredContacts.length > 0 ? (
-                        filteredContacts.map((contact) => (
-                          <ContactRow
-                            key={contact.id}
-                            contact={contact}
-                            onClick={() => pushScreen({ kind: "channels", categoryId: activeCategory.id, contactId: contact.id })}
-                          />
-                        ))
-                      ) : (
-                        <p className="px-3 py-6 text-center lyra-body-sm text-lyra-fg-secondary">
-                          {activeCategory.contacts.length === 0
-                            ? `No ${activeCategory.label.toLowerCase()} available`
-                            : `No matching ${activeCategory.label.toLowerCase()}`}
-                        </p>
-                      )}
-                    </div>
-                  </>
+                      ))
+                    ) : (
+                      <p className="px-3 py-6 text-center lyra-body-sm text-lyra-fg-secondary">
+                        {activeCategory.contacts.length === 0
+                          ? `No ${activeCategory.label.toLowerCase()} available`
+                          : `No matching ${activeCategory.label.toLowerCase()}`}
+                      </p>
+                    )}
+                  </div>
                 )}
 
                 {screen.kind === "channels" && activeCategory && activeContact && (
@@ -1115,4 +1446,4 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
 );
 CreateNew.displayName = "CreateNew";
 
-export { CreateNew };
+export { CreateNew, OutboundAddButton };

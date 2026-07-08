@@ -73,7 +73,16 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
     <div
       ref={ref}
       className={cn(
-        "flex items-center justify-between border-b border-lyra-border-subtle px-6 py-4",
+        // min-h-[68px] = py-4 (32px) + a default (`lg`) Button's own 36px
+        // height — the tallest thing this row's `actions` slot typically
+        // holds. Without a fixed floor, the row's real height shrinks to
+        // just the title text whenever `actions` is empty/removed, which
+        // shifts the title vertically relative to any external sibling
+        // that assumes a constant PageHeader height (e.g. LeftNav's own
+        // toggle button, positioned via a hardcoded `top` offset — see its
+        // doc comment). Kept as a min-height, not a fixed height, so a
+        // future taller `actions` element can still grow the row.
+        "flex min-h-[68px] items-center justify-between border-b border-lyra-border-subtle px-6 py-4",
         className
       )}
       {...props}

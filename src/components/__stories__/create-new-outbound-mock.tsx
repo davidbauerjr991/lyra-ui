@@ -37,6 +37,7 @@ const OUTBOUND_AGENTS: CreateNewOutboundContact[] = CREATE_NEW_AGENTS.map((a) =>
   subtitle: a.agentId,
   avatarClassName: a.avatarClassName,
   channels: a.channels,
+  status: a.status,
 }));
 
 const OUTBOUND_CUSTOMERS: CreateNewOutboundContact[] = CREATE_NEW_CUSTOMERS.map((c) => ({
@@ -54,8 +55,8 @@ const OUTBOUND_TEAMS: CreateNewOutboundContact[] = [
 ];
 
 const OUTBOUND_SKILLS: CreateNewOutboundContact[] = [
-  { id: "s1", name: "Spanish Language",  initials: "ES", subtitle: "SKL-12", avatarClassName: "bg-lyra-accent-green-soft text-lyra-accent-green-strong", channels: ["voice", "email"] },
-  { id: "s2", name: "Technical Support", initials: "TS", subtitle: "SKL-03", avatarClassName: "bg-lyra-accent-blue-soft text-lyra-accent-blue-strong",   channels: ["voice", "email"] },
+  { id: "s1", name: "Spanish Language",  initials: "ES", subtitle: "SKL-12", avatarClassName: "bg-lyra-accent-green-soft text-lyra-accent-green-strong", channels: ["voice", "email"], status: "available", queueCount: 4, waitTimeSeconds: 200 },
+  { id: "s2", name: "Technical Support", initials: "TS", subtitle: "SKL-03", avatarClassName: "bg-lyra-accent-blue-soft text-lyra-accent-blue-strong",   channels: ["voice", "email"], status: "busy",      queueCount: 7, waitTimeSeconds: 95 },
 ];
 
 const OUTBOUND_GROUPS: CreateNewOutboundGroup[] = [

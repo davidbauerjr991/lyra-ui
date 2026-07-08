@@ -101,6 +101,18 @@ interface FilterChipProps {
   disabled?: boolean;
   /** Show a remove (×) button — called when the chip is dismissed */
   onRemove?: () => void;
+  /**
+   * Which edge of the trigger the dropdown's own edge aligns to — "left"
+   * (default) anchors the dropdown's left edge to the trigger's left edge
+   * and grows rightward; "right" anchors the dropdown's right edge to the
+   * trigger's right edge and grows leftward instead. Neither this nor
+   * `Select` (which this wraps) does automatic viewport-collision
+   * flipping — a chip positioned near the right edge of its container
+   * needs `dropdownAlign="right"` explicitly, or its dropdown will
+   * overflow off the screen. `DashboardCard`'s header filter chip defaults
+   * to `"right"` for exactly this reason (see `dashboard-card.tsx`).
+   */
+  dropdownAlign?: "left" | "right";
   /** Additional className */
   className?: string;
 }
@@ -120,6 +132,7 @@ const FilterChip = React.forwardRef<HTMLButtonElement, FilterChipProps>(
       error = false,
       disabled = false,
       onRemove,
+      dropdownAlign = "left",
       className,
     },
     ref
@@ -263,7 +276,7 @@ const FilterChip = React.forwardRef<HTMLButtonElement, FilterChipProps>(
               onOpenChange={setOperatorOpen}
               disabled={disabled}
               trigger={operatorTrigger!}
-              dropdownAlign="left"
+              dropdownAlign={dropdownAlign}
               className="inline-flex relative"
             />
 
@@ -279,7 +292,7 @@ const FilterChip = React.forwardRef<HTMLButtonElement, FilterChipProps>(
               onOpenChange={setOpen}
               disabled={disabled}
               trigger={chipTrigger}
-              dropdownAlign="left"
+              dropdownAlign={dropdownAlign}
               className="inline-flex relative"
             />
           </div>
@@ -314,7 +327,7 @@ const FilterChip = React.forwardRef<HTMLButtonElement, FilterChipProps>(
           onOpenChange={setOpen}
           disabled={disabled}
           trigger={chipTrigger}
-          dropdownAlign="left"
+          dropdownAlign={dropdownAlign}
           className="inline-flex relative"
         />
 

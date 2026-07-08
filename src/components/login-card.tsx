@@ -39,7 +39,7 @@ export interface LoginCardProps {
 
 const LAUNCH_STEPS: { id: LaunchStepId; label: string }[] = [
   { id: "auth",  label: "Authenticating Agent" },
-  { id: "sync",  label: "Enabling APIs" },
+  { id: "sync",  label: "Checking Connection" },
   { id: "queue", label: "Loading Queue" },
 ];
 
@@ -183,7 +183,7 @@ const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
                 />
 
                 <PhoneInput
-                  label="Enter 10-Digit Phone Number"
+                  label="Enter Phone Number"
                   hideCountrySelector
                   disabled={launching}
                   value={phone}

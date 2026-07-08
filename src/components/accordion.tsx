@@ -16,6 +16,15 @@ export interface AccordionItem {
   icon?: React.ReactNode;
   /** Content rendered when the item is open */
   content: React.ReactNode;
+  /**
+   * Extra content rendered at the end of the trigger row, between the
+   * title/subhead and the chevron — e.g. a couple of `DashboardCard`'s
+   * `Metric`s ("Skills" "4", "Contacts" "8") inline with a queue row.
+   * Rendered inside the same `<button>` as the rest of the row, so
+   * anything passed here should stay non-interactive (display-only); an
+   * interactive control here would be a button-inside-a-button.
+   */
+  endSlot?: React.ReactNode;
   /** Prevent this item from being opened */
   disabled?: boolean;
 }
@@ -114,32 +123,45 @@ const Accordion = React.forwardRef<HTMLDivElement, AccordionProps>(
                     : "hover:bg-lyra-state-hover active:bg-lyra-state-pressed cursor-pointer"
                 )}
               >
-                {/* Icon */}
-                {item.icon && (
-                  <span
-                    className={cn(
-                      "flex-shrink-0",
-                      item.disabled ? "text-lyra-fg-disabled" : "text-lyra-fg-secondary"
-                    )}
-                  >
-                    {item.icon}
-                  </span>
-                )}
-
-                {/* Title + optional subhead */}
+                {/* Title (+ icon) row + optional subhead below. Icon sits in
+                    its own inner row with the title — not as a sibling of
+                    the whole title+subhead+endSlot block — so it centers
+                    against the title text specifically. Left as a direct
+                    sibling of the block (the old structure), the button's
+                    own `items-center` centers the icon against whichever
+                    sibling is tallest, which became the metric `endSlot`
+                    boxes once those shipped — visibly off from the title
+                    it's meant to sit next to. */}
                 <span className="flex-1 flex flex-col min-w-0">
-                  <span
-                    className={cn(
-                      "lyra-body-md",
-                      item.disabled ? "text-lyra-fg-disabled" : "text-lyra-fg-default"
+                  <span className="flex items-center gap-2 min-w-0">
+                    {item.icon && (
+                      <span
+                        className={cn(
+                          "flex-shrink-0",
+                          item.disabled ? "text-lyra-fg-disabled" : "text-lyra-fg-secondary"
+                        )}
+                      >
+                        {item.icon}
+                      </span>
                     )}
-                  >
-                    {item.title}
+                    <span
+                      className={cn(
+                        "lyra-body-md truncate",
+                        item.disabled ? "text-lyra-fg-disabled" : "text-lyra-fg-default"
+                      )}
+                    >
+                      {item.title}
+                    </span>
                   </span>
                   {item.subhead && (
                     <span
                       className={cn(
                         "lyra-body-sm",
+                        // Indent to align under the title text (not the
+                        // icon) — only when there is an icon to clear;
+                        // pl-7 (28px) = the icon's own width (h-5, 20px)
+                        // plus the gap-2 (8px) between it and the title.
+                        item.icon && "pl-7",
                         item.disabled ? "text-lyra-fg-disabled" : "text-lyra-fg-secondary"
                       )}
                     >
@@ -147,6 +169,11 @@ const Accordion = React.forwardRef<HTMLDivElement, AccordionProps>(
                     </span>
                   )}
                 </span>
+
+                {/* End slot — e.g. a couple of DashboardCard `Metric`s inline with the row */}
+                {item.endSlot && (
+                  <span className="flex flex-shrink-0 items-center gap-2">{item.endSlot}</span>
+                )}
 
                 {/* Chevron */}
                 <ChevronDown

@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { Box, Clock } from "lucide-react";
 import { Accordion } from "../accordion";
 import { Tag } from "../tag";
+import { Metric } from "../dashboard-card";
 import {
   Table,
   TableHeader,
@@ -229,6 +230,48 @@ export const WithRichHeaderAndTable: Story = {
               </Table>
             </div>
           ),
+        },
+      ]}
+    />
+  ),
+};
+
+/* ── endSlot — e.g. a couple of `Metric`s (`DashboardCard`'s own value+label
+   block, exported standalone) inline with a queue row, between the
+   title/subhead and the chevron. Rendered inside the same trigger button as
+   the rest of the row; see the doc comment on `endSlot` in accordion.tsx
+   for why it should stay display-only. `className="flex-none"` drops
+   `Metric`'s default `flex-1` — correct inside `DashboardCard`'s own equal-
+   width columns, not here where it should size to its own content. ── */
+
+export const WithEndSlot: Story = {
+  name: "With End Slot (Metrics)",
+  render: () => (
+    <Accordion
+      items={[
+        {
+          id: "1",
+          title: "Digital",
+          subhead: "12 contacts in queue",
+          endSlot: (
+            <>
+              <Metric className="flex-none" metric={{ value: 4, label: "Skills" }} />
+              <Metric className="flex-none" metric={{ value: 8, label: "Contacts" }} />
+            </>
+          ),
+          content: <p className="lyra-body-md text-lyra-fg-secondary">Content for section 1.</p>,
+        },
+        {
+          id: "2",
+          title: "Inbound Voice",
+          subhead: "5 contacts in queue",
+          endSlot: (
+            <>
+              <Metric className="flex-none" metric={{ value: 2, label: "Skills" }} />
+              <Metric className="flex-none" metric={{ value: 5, label: "Contacts" }} />
+            </>
+          ),
+          content: <p className="lyra-body-md text-lyra-fg-secondary">Content for section 2.</p>,
         },
       ]}
     />

@@ -276,11 +276,31 @@
    ════════════════════════════════════════════════════ */
 
 /* Headings */
+/* 2xl added for DashboardCard's metric numbers — every existing heading
+   tier (xl and below) was designed for section/card titles, not a large
+   standalone stat figure; xl (24px/500) read too small and too light next
+   to a "Metric Name" caption underneath it. One step up in both size and
+   weight, kept as its own preset (not a one-off className override) so any
+   future stat/metric display reuses the same value instead of guessing at
+   a bespoke size again. */
+.lyra-heading-2xl { font-size: 28px; line-height: 32px; font-weight: 700; letter-spacing: -0.02rem; }
 .lyra-heading-xl { font-size: 24px; line-height: 28px; font-weight: 500; letter-spacing: -0.02rem; }
 .lyra-heading-lg { font-size: 20px; line-height: 24px; font-weight: 500; letter-spacing: -0.01rem; }
 .lyra-heading-md { font-size: 16px; line-height: 24px; font-weight: 500; letter-spacing: -0.01rem; }
 .lyra-heading-sm { font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0; }
 .lyra-heading-xs { font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.01rem; }
+
+/* Label
+   Defined before the Body block below on purpose: Label is the default
+   typography `<Label>` applies to itself (see label.tsx), and some
+   consumers (e.g. Checkbox) override it with a `.lyra-body-*` className to
+   get regular-weight option text instead of emphasized field-label text.
+   Both classes end up on the same element in that case, and with equal
+   specificity the *later* rule in the cascade wins — so `.lyra-label` has
+   to come first, or a consumer's `.lyra-body-md` override silently loses
+   to it (as happened with Checkbox/CheckboxGroup option labels rendering
+   at weight 500 instead of the intended 400). */
+.lyra-label { font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0; }
 
 /* Body */
 .lyra-body-lg          { font-size: 16px; line-height: 24px; font-weight: 400; letter-spacing: -0.01rem; }
@@ -291,9 +311,6 @@
 .lyra-body-sm-emphasis { font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.01rem; }
 .lyra-body-xs          { font-size: 10px; line-height: 14px; font-weight: 400; letter-spacing: 0.01rem; }
 .lyra-body-xs-emphasis { font-size: 10px; line-height: 14px; font-weight: 500; letter-spacing: 0.01rem; }
-
-/* Label */
-.lyra-label { font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0; }
 
 /* ════════════════════════════════════════════════════
    Main container content grid (CSS container query)
@@ -313,17 +330,193 @@
    elements — usually parent + child, as in this example:
      <div class="lyra-container-grid-wrap">
        <div class="lyra-container-grid"> ...cards... </div>
-     </div> */
+     </div>
+
+   `.lyra-container-grid` collapses in two ordered stages as its own
+   available width gets tight, not a single row→column jump:
+     1. (≤991px) 2-up grid — `display: grid; grid-template-columns:
+        repeat(2, minmax(0, 1fr))`, wrapping a 3rd/4th card onto a second
+        row instead of squeezing all of them into a still-too-narrow row.
+     2. (≤767px) Full single column — back to `display: flex;
+        flex-direction: column`, since at this point the whole row
+        genuinely needs to *become* a column (what `flex-direction` models
+        directly), not just a track-count change.
+   The unconstrained (wide) state is plain Flexbox (`flex-direction: row`).
+   The name is kept as-is (it's the established, referenced-elsewhere
+   pattern name) despite the implementation switching between Grid and
+   Flexbox across the three stages. */
 .lyra-container-grid-wrap {
   container-type: inline-size;
 }
+/* `min-width: 0` on children keeps a long/unbreakable child (e.g. a wide
+   table) from pushing the row wider than its container — needed under both
+   Flexbox (overrides `min-width: auto`) and Grid (same default there too),
+   so it's left unscoped to either display mode. */
 .lyra-container-grid {
-  display: grid;
+  display: flex;
+  flex-direction: row;
   gap: 1rem;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
-@container (max-width: 761px) {
+.lyra-container-grid > * {
+  flex: 1 1 0%;
+  min-width: 0;
+}
+@container (max-width: 991px) {
   .lyra-container-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container (max-width: 767px) {
+  .lyra-container-grid {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   Metric row (CSS container query)
+   ════════════════════════════════════════════════════
+   Same rationale as `.lyra-container-grid-wrap` above, applied to
+   `DashboardCard`'s metric row (`dashboard-card.tsx`): a metric card can
+   end up narrow for reasons that have nothing to do with the browser
+   window (a sidebar widget, a dense grid layout, a docked panel), so it
+   needs to adapt its 1-4 metrics once its own actual available width gets
+   tight — not the viewport's. Three ordered stages as width shrinks
+   (explicitly requested in that order, not something to collapse into a
+   single breakpoint):
+
+     1. (≤760px) The sparkline moves from beside each metric's value/trend
+        text to below it (`.lyra-metric-content` row → column). The row of
+        metrics itself is untouched — still one flex row, however many
+        metrics there are — this stage only reclaims the width a
+        side-by-side sparkline was taking.
+     2. (≤560px) The row becomes a strict 2-column grid (`.lyra-metric-row`
+        flex → grid, `repeat(2, minmax(0,1fr))`), wrapping 3-4 metrics onto
+        a second row. A flat `Divider` sibling can't represent "between
+        column 1 and 2" *and* "between row 1 and 2" at once, so both
+        dividers hide here and a real `gap` takes over spacing instead —
+        the same convention "contained" metrics (bordered boxes, no
+        dividers) already used at every width.
+     3. (≤360px) The grid drops to 1 column — every metric fully stacked.
+        Unlike stage 2, there's no "which pair of neighbors" ambiguity in
+        a single column, so `.lyra-metric-row-divider--horizontal` comes
+        back ("divided" only; "contained" metrics are already separated by
+        their own border).
+
+   Reuses `.lyra-container-grid`'s 761px as this system's *widest*
+   threshold (rounded to 760px) for consistency — both are "collapse once
+   space gets tight" at heart — then adds two narrower thresholds of its
+   own for the extra stages a plain row-of-cards doesn't need.
+
+   Usage: `.lyra-metric-row-wrap` goes on the metric row's own container
+   boundary (`DashboardCard` puts it on the `Container` div itself when
+   `metrics` is set); `.lyra-metric-row` on the row/grid of metrics inside
+   it; `.lyra-metric-content` on each metric's own value/trend+sparkline
+   wrapper (`MetricContent` in `dashboard-card.tsx`) and `.lyra-metric-
+   sparkline` on the `Sparkline`'s own wrapper div, both queried against
+   the same ancestor container as the row itself. `.lyra-metric-row-item`
+   ("divided" only — "contained" boxes carry their own uniform `p-4`
+   already) owns the same left/right padding Tailwind's `first:pl-0
+   last:pr-0` used to provide in row mode, but as plain CSS instead of a
+   Tailwind pseudo-class utility, specifically so it can be reset once
+   metrics no longer sit in one strict row (stage 2 onward, where a real
+   `gap` replaces item-edge padding entirely). */
+.lyra-metric-row-wrap {
+  container-type: inline-size;
+}
+.lyra-metric-row {
+  display: flex;
+  flex-direction: row;
+}
+/* "divided" variant only — the vertical Divider between metrics relies on
+   zero flex gap in row mode (the Divider + each item's own px-4 provide
+   all the spacing); once stacked, there's no Divider doing that job in
+   the cross axis, so a real gap is needed instead. "contained" doesn't
+   use this class — its own `gap-3` Tailwind utility already looks right
+   at every stage, since a single-value `gap` isn't direction specific. */
+.lyra-metric-row--divided {
+  gap: 0;
+}
+.lyra-metric-row-item {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+.lyra-metric-row-item:first-child {
+  padding-left: 0;
+}
+.lyra-metric-row-item:last-child {
+  padding-right: 0;
+}
+.lyra-metric-row-divider--horizontal {
+  display: none;
+}
+.lyra-metric-row-divider--vertical {
+  display: block;
+}
+.lyra-metric-content {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+.lyra-metric-sparkline {
+  width: 5rem; /* matches Tailwind's w-20 */
+  height: 2.5rem; /* matches Tailwind's h-10 */
+  flex-shrink: 0;
+}
+
+/* Stage 1 — sparkline below the text; row arrangement unchanged. */
+@container (max-width: 760px) {
+  .lyra-metric-content {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .lyra-metric-sparkline {
+    width: 100%; /* was a fixed 5rem for the beside-text layout — full width once it's its own line */
+  }
+}
+
+/* Stage 2 — 2-up grid; dividers give way to a real gap. */
+@container (max-width: 560px) {
+  .lyra-metric-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem; /* matches Tailwind's gap-3 — same value "contained" already uses unconditionally */
+  }
+  .lyra-metric-row-item {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .lyra-metric-row-divider--horizontal,
+  .lyra-metric-row-divider--vertical {
+    display: none;
+  }
+}
+
+/* Stage 3 — 1-up grid; horizontal Divider comes back (unambiguous with
+   only one column). */
+@container (max-width: 360px) {
+  .lyra-metric-row {
     grid-template-columns: 1fr;
+  }
+  .lyra-metric-row-divider--horizontal {
+    display: block;
+  }
+}
+
+/* Compact override — a metric row of 2 or fewer items (e.g. DashboardQueue's
+   per-card Skills/Contacts pair) never needs Stage 3's single-column
+   collapse: two items already fit side by side at widths where a 4-metric
+   row genuinely needs to stack. `.lyra-metric-row--compact` (set by
+   `MetricRow` when `metrics.length <= 2`) keeps the row at Stage 2's 2-up
+   grid instead. Two classes on the row (vs. Stage 3's one) wins this
+   without `!important`; three classes for the divider override (vs. one)
+   does the same. */
+@container (max-width: 360px) {
+  .lyra-metric-row.lyra-metric-row--compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .lyra-metric-row.lyra-metric-row--compact .lyra-metric-row-divider--horizontal {
+    display: none;
   }
 }

@@ -6,6 +6,7 @@
  * (avoid inline code bloat for generated/large mock datasets).
  */
 import type { ChannelType } from "../channel-row";
+import type { AgentPresenceStatus } from "../create-new";
 
 export interface CreateNewAgentRecord {
   id: string;
@@ -15,6 +16,9 @@ export interface CreateNewAgentRecord {
    *  hover flyout in the Outbound picker (only supported channels show). */
   channels: ChannelType[];
   avatarClassName: string;
+  /** Current availability — rendered as a status chip next to the agent's
+   *  name in the Outbound picker's "Select Agent" list. */
+  status: AgentPresenceStatus;
 }
 
 const FIRST_NAMES = [
@@ -29,6 +33,13 @@ const AVATAR_COLORS = [
   "blue", "orange", "teal", "purple", "green", "red", "pink", "yellow", "lime", "slate",
 ];
 const ALL_CHANNELS: ChannelType[] = ["voice", "email", "sms", "whatsapp"];
+// Weighted so most agents are actually reachable (available/away) rather
+// than an unrealistic even 1-in-5 split — busy/in-call/offline are real but
+// less common states on a roster like this.
+const STATUS_CYCLE: AgentPresenceStatus[] = [
+  "available", "available", "busy", "available", "away",
+  "available", "in-call", "available", "offline", "available",
+];
 
 /** Deterministic (no Math.random) so the story renders identically every
  *  time — cycles through name/color pools and varies channel support per
@@ -48,6 +59,7 @@ function buildAgents(count: number): CreateNewAgentRecord[] {
       agentId: `AGT-${2000 + i}`,
       channels: ["voice", ...extra],
       avatarClassName: `bg-lyra-accent-${color}-soft text-lyra-accent-${color}-strong`,
+      status: STATUS_CYCLE[i % STATUS_CYCLE.length],
     });
   }
   return agents;

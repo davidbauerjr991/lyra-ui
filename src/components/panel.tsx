@@ -161,10 +161,10 @@ const Panel = React.forwardRef<HTMLDivElement, PanelProps>(
       return () => clearTimeout(closeTimerRef.current);
     }, [open]);
 
-    /* ── Interior: go full-width when parent container < 991px ── */
+    /* ── Interior: go absolute/overlay when parent container < 1050px ── */
     const outerRef = useRef<HTMLDivElement>(null);
     const [parentWidth, setParentWidth] = useState(9999);
-    const isNarrow = variant === "interior" && parentWidth < 991;
+    const isNarrow = variant === "interior" && parentWidth < 1050;
 
     const stableOuterRef = useCallback((el: HTMLDivElement | null) => {
       (outerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
