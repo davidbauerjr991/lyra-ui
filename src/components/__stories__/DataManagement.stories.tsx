@@ -522,7 +522,7 @@ function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, sho
 
       {/* Tabs */}
       {showTabs && (
-        <TabList className="px-6">
+        <TabList overflowMenu className="px-6">
           <Tab active={activeTab === "all"} onClick={() => setActiveTab("all")}>All Desktops</Tab>
           <Tab active={activeTab === "published"} onClick={() => setActiveTab("published")}>Published</Tab>
           <Tab active={activeTab === "drafts"} onClick={() => setActiveTab("drafts")}>Drafts</Tab>

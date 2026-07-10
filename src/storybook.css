@@ -298,6 +298,28 @@
   }
 }
 
+/* ── Tab overflow (CSS container query) — kept in sync with
+   lyra-tokens.css; see that file for the full explanation, including why
+   both rules are ancestor-scoped (`.lyra-tab-overflow-wrap .lyra-tab-
+   overflow-full`) rather than bare single classes — a bare class ties in
+   specificity with Tailwind's own `.flex` utility on the same element,
+   and silently lost that tie in agent-next-gen-v1's Vite build even
+   though it happened to win in this Storybook build. ── */
+.lyra-tab-overflow-wrap {
+  container-type: inline-size;
+}
+.lyra-tab-overflow-wrap .lyra-tab-overflow-collapsed {
+  display: none;
+}
+@container (max-width: 991px) {
+  .lyra-tab-overflow-wrap .lyra-tab-overflow-full {
+    display: none;
+  }
+  .lyra-tab-overflow-wrap .lyra-tab-overflow-collapsed {
+    display: flex;
+  }
+}
+
 /* ── Base resets for Storybook ── */
 * {
   box-sizing: border-box;

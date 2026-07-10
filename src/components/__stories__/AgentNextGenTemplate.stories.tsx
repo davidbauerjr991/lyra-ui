@@ -190,6 +190,29 @@ function formatElapsedTime(totalSeconds: number): string {
 
 /* ── Sample notifications ── */
 
+/** Seed data for the "Active Interaction" story below — the exact shape
+ *  `handleStartCall` produces for a real outbound voice call to "Jamie
+ *  Torres" (`CREATE_NEW_AGENTS[0]`, id "agent-1", `agentId` "AGT-2000") on
+ *  the "General Support" skill, using the same phone/skill option values
+ *  as `OUTBOUND_CONFIG` (`create-new-outbound-mock.tsx`) so this story
+ *  renders identically to what starting that call by hand would produce. */
+const ACTIVE_INTERACTION_DEMO: ActiveInteraction = {
+  id: "agent-1",
+  customerName: "Jamie Torres",
+  recordId: "AGT-2000",
+  channels: [
+    {
+      id: "voice:+14563833329",
+      type: "voice",
+      startTick: 0,
+      preview: "General Support",
+      value: "+14563833329",
+      addressLabel: "(456) 383-3329",
+    },
+  ],
+  currentChannelId: "voice:+14563833329",
+};
+
 const INITIAL_NOTIFICATIONS: AgentNotification[] = [
   { id: "1", type: "new-case",    title: "New Case",    subtitle: "Noah Patel",    timestamp: "13m ago", read: false },
   { id: "2", type: "new-chat",    title: "New Chat",    subtitle: "Sarah Miller",  timestamp: "18m ago", read: false },
@@ -207,19 +230,42 @@ function AgentNextGenTemplate({
   showPageHeader = false,
   showPanelToggle = false,
   showInteriorPanel = true,
+  initialInteraction,
+  sidePanelToggleLabel,
 }: {
   showPageHeader?: boolean;
   showPanelToggle?: boolean;
   showInteriorPanel?: boolean;
+  /**
+   * Seeds `interactions`/`activeInteractionId` with an already-active call,
+   * for stories that need to render the interaction detail view directly
+   * (e.g. "Active Interaction") instead of requiring a manual New Outbound
+   * click first. Shaped exactly like what `handleStartCall` itself would
+   * produce, so it's indistinguishable from a real session once rendered.
+   */
+  initialInteraction?: ActiveInteraction;
+  /**
+   * Overrides the record-header `PanelPinButton`'s tooltip — both the
+   * pinned and unpinned label, since a story-specific override like
+   * "Toggle Overview" describes the action generically rather than the
+   * pin/unpin state pair "Unpin/Pin Designer panel" defaults to. Leave
+   * unset to keep those defaults.
+   */
+  sidePanelToggleLabel?: string;
 }) {
-  const [navOpen, setNavOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(!!initialInteraction);
   // No interactions exist until the agent launches one from the CreateNew
   // menu (Start Interaction / quick dial) — see handleStartCall/handleQuick
   // Dial below. Click any resulting InteractionNavItem card to make it the
   // active one, same interactive pattern as LeftNav.stories.tsx's "Agent
-  // Next Gen Left Nav" story.
-  const [interactions, setInteractions] = useState<ActiveInteraction[]>([]);
-  const [activeInteractionId, setActiveInteractionId] = useState<string | null>(null);
+  // Next Gen Left Nav" story. `initialInteraction` (see above) seeds this
+  // instead, for stories that want to start already mid-call.
+  const [interactions, setInteractions] = useState<ActiveInteraction[]>(
+    () => (initialInteraction ? [initialInteraction] : [])
+  );
+  const [activeInteractionId, setActiveInteractionId] = useState<string | null>(
+    () => initialInteraction?.id ?? null
+  );
   // Drives the main content area — see agent-next-gen-v1's own copy of this
   // derived value and the PageHeader switch below.
   const activeInteraction = interactions.find((i) => i.id === activeInteractionId) ?? null;
@@ -287,12 +333,6 @@ function AgentNextGenTemplate({
   const [sidePanelResizing,  setSidePanelResizing]  = useState(false);
   const [sidePanelWidth,     setSidePanelWidth]     = useState(256);
   const [containerWidth,     setContainerWidth]     = useState(9999);
-  // Once the icon has explicitly pinned-then-closed the panel (see
-  // `handleSidePanelIconToggle`), hovering the icon again must NOT
-  // auto-reopen it. Starts `true` so the very first hover (before anything
-  // has ever been pinned) still works as a preview. See agent-next-gen-v1's
-  // copy of this state for the full rationale.
-  const [sidePanelHoverEnabled, setSidePanelHoverEnabled] = useState(true);
   const sidePanelTimer = useRef<ReturnType<typeof setTimeout>>();
 
   // Track container width to force unpinned below 768px
@@ -310,13 +350,12 @@ function AgentNextGenTemplate({
   const effectivePinned = isNarrowContainer ? false : sidePanelPinned;
 
   // Close (and fully unpin) the Designer panel the moment the container
-  // drops below 768px, and re-arm hover-preview. See agent-next-gen-v1's
-  // copy of this effect for the full rationale.
+  // drops below 768px. See agent-next-gen-v1's copy of this effect for the
+  // full rationale.
   useEffect(() => {
     if (isNarrowContainer) {
       setSidePanelOpen(false);
       setSidePanelPinned(false);
-      setSidePanelHoverEnabled(true);
     }
   }, [isNarrowContainer]);
 
@@ -328,7 +367,6 @@ function AgentNextGenTemplate({
     if (!activeInteractionId) {
       setSidePanelOpen(false);
       setSidePanelPinned(false);
-      setSidePanelHoverEnabled(true);
     }
   }, [activeInteractionId]);
 
@@ -361,8 +399,17 @@ function AgentNextGenTemplate({
     }
   }, [isNavNarrow]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // No hidden gating here — matches `Panel.stories.tsx`'s "Side Panel"
+  // story, where `pinned` and `open` are two plain, independent booleans
+  // and nothing about toggling one disables the other's normal control
+  // going forward. Hovering the icon always previews the panel while
+  // unpinned, exactly like that story's `Panel` does — including right
+  // after an icon-click unpin, which previously left a `sidePanelHoverEnabled`
+  // flag permanently `false` for the rest of the interaction (reset only on
+  // leaving the interaction or going narrow) — a stricter, one-off "click
+  // to reopen" behavior that doesn't match the plain Panel model and that
+  // this fixes.
   const onSidePanelHoverStart = () => {
-    if (!sidePanelHoverEnabled) return;
     clearTimeout(sidePanelTimer.current);
     setSidePanelOpen(true);
   };
@@ -384,7 +431,6 @@ function AgentNextGenTemplate({
     const nextPinned = !sidePanelPinned;
     setSidePanelPinned(nextPinned);
     setSidePanelOpen(nextPinned);
-    if (!nextPinned) setSidePanelHoverEnabled(false);
   };
 
   const MAX_PANEL_HEIGHT = 860;
@@ -978,8 +1024,8 @@ function AgentNextGenTemplate({
                             pinned={sidePanelPinned}
                             onToggle={handleSidePanelIconToggle}
                             icon={<User className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />}
-                            pinnedLabel="Unpin Designer panel"
-                            unpinnedLabel="Pin Designer panel"
+                            pinnedLabel={sidePanelToggleLabel ?? "Unpin Designer panel"}
+                            unpinnedLabel={sidePanelToggleLabel ?? "Pin Designer panel"}
                           />
                         </span>
                       }
@@ -1199,6 +1245,40 @@ export const WithPageHeader: Story = {
       showPageHeader
       showPanelToggle={args.showPanelToggle}
       showInteriorPanel={args.showInteriorPanel}
+    />
+  ),
+};
+
+/* ── Active Interaction ──
+   Same template, but seeded via `initialInteraction` (see
+   `ACTIVE_INTERACTION_DEMO` above) so it renders straight into the
+   interaction detail view — record header, single Voice `ChannelTab`, and
+   the matching `InteractionNavItem` card already expanded in the left nav
+   — instead of requiring a manual New Outbound click first. Useful as a
+   stable reference for what an in-progress call actually looks like. */
+export const ActiveInteractionStory: Story = {
+  name: "Agent Next Gen – Active Interaction",
+  args: {
+    showPanelToggle: true,
+    showInteriorPanel: false,
+  },
+  argTypes: {
+    showPanelToggle: {
+      control: "boolean",
+      description: "Show the left panel toggle button in the page header",
+    },
+    showInteriorPanel: {
+      control: "boolean",
+      description: "Show the right interior (Case Details) panel",
+    },
+  },
+  render: (args) => (
+    <AgentNextGenTemplate
+      showPageHeader
+      showPanelToggle={args.showPanelToggle}
+      showInteriorPanel={args.showInteriorPanel}
+      initialInteraction={ACTIVE_INTERACTION_DEMO}
+      sidePanelToggleLabel="Toggle Overview"
     />
   ),
 };

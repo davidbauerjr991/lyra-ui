@@ -20,7 +20,7 @@ export const Default: Story = {
     const [active, setActive] = useState("tab1");
     return (
       <div>
-        <TabList>
+        <TabList overflowMenu>
           <Tab active={active === "tab1"} onClick={() => setActive("tab1")}>
             Tab Section
           </Tab>
@@ -58,7 +58,7 @@ export const FullWidth: Story = {
   render: () => {
     const [active, setActive] = useState("tab1");
     return (
-      <TabList fullWidth>
+      <TabList fullWidth overflowMenu>
         <Tab active={active === "tab1"} onClick={() => setActive("tab1")}>
           Tab Section
         </Tab>
@@ -80,7 +80,7 @@ export const WithIcons: Story = {
   render: () => {
     const [active, setActive] = useState("tab1");
     return (
-      <TabList>
+      <TabList overflowMenu>
         <Tab
           active={active === "tab1"}
           onClick={() => setActive("tab1")}
@@ -114,7 +114,7 @@ export const WithIconsFullWidth: Story = {
   render: () => {
     const [active, setActive] = useState("tab1");
     return (
-      <TabList fullWidth>
+      <TabList fullWidth overflowMenu>
         <Tab
           active={active === "tab1"}
           onClick={() => setActive("tab1")}
@@ -151,7 +151,7 @@ export const States: Story = {
         <span className="lyra-body-sm text-lyra-fg-secondary mb-2 block">
           Default
         </span>
-        <TabList aria-label="Default state tabs">
+        <TabList overflowMenu aria-label="Default state tabs">
           <Tab>Tab Section</Tab>
         </TabList>
       </div>
@@ -159,7 +159,7 @@ export const States: Story = {
         <span className="lyra-body-sm text-lyra-fg-secondary mb-2 block">
           Hover (hover over to see)
         </span>
-        <TabList aria-label="Hover state tabs">
+        <TabList overflowMenu aria-label="Hover state tabs">
           <Tab>Tab Section</Tab>
         </TabList>
       </div>
@@ -167,7 +167,7 @@ export const States: Story = {
         <span className="lyra-body-sm text-lyra-fg-secondary mb-2 block">
           Active
         </span>
-        <TabList aria-label="Active state tabs">
+        <TabList overflowMenu aria-label="Active state tabs">
           <Tab active>Tab Section</Tab>
         </TabList>
       </div>
@@ -196,7 +196,7 @@ function RemovableDemo() {
   };
 
   return (
-    <TabList aria-label="Removable tabs">
+    <TabList overflowMenu aria-label="Removable tabs">
       {tabs.map((tab) => (
         <Tab
           key={tab.id}
@@ -230,7 +230,7 @@ export const WithRightIcon: Story = {
       { id: "3", label: "3. Outbound Digital" },
     ];
     return (
-      <TabList aria-label="Tabs with menu">
+      <TabList overflowMenu aria-label="Tabs with menu">
         {tabs.map((tab) => (
           <Tab
             key={tab.id}
@@ -258,7 +258,7 @@ export const WithMenuItems: Story = {
       { id: "3", label: "3. Outbound Digital" },
     ];
     return (
-      <TabList aria-label="Tabs with a real kebab menu">
+      <TabList overflowMenu aria-label="Tabs with a real kebab menu">
         {tabs.map((tab) => (
           <Tab
             key={tab.id}
@@ -278,4 +278,50 @@ export const WithMenuItems: Story = {
       </TabList>
     );
   },
+};
+
+/* ── Overflow Menu (native `overflowMenu` responsive collapse) ──
+   Reference: a record detail panel's Overview/Details/Tickets/Accounts/
+   Interactions/Directory/Tasks/Scheduled Callbacks/History tab bar,
+   requested to collapse — once its own container drops to 991px or
+   below — to exactly two full-width slots: the active tab, and a "{n}
+   More" dropdown holding every other tab in its original order. Wrapped
+   in a `resize-x` box (same demo pattern as `ChannelRow.stories.tsx`'s
+   `ChannelTabResponsive`) so the collapse can be seen live by dragging its
+   edge, rather than only inferred from the CSS. */
+const OVERFLOW_DEMO_TABS = [
+  "Overview",
+  "Details",
+  "Tickets",
+  "Accounts",
+  "Interactions",
+  "Directory",
+  "Tasks",
+  "Scheduled Callbacks",
+  "History",
+];
+
+function OverflowMenuDemo() {
+  const [active, setActive] = useState(OVERFLOW_DEMO_TABS[0]);
+  return (
+    <div className="resize-x overflow-auto rounded-lyra-md border border-dashed border-lyra-border-default p-4" style={{ width: 1200, maxWidth: "100%" }}>
+      <TabList overflowMenu aria-label="Agent record tabs">
+        {OVERFLOW_DEMO_TABS.map((label) => (
+          <Tab key={label} active={active === label} onClick={() => setActive(label)}>
+            {label}
+          </Tab>
+        ))}
+      </TabList>
+      <TabPanel active>
+        <div className="p-4 lyra-body-md text-lyra-fg-default">
+          Content for &ldquo;{active}&rdquo;
+        </div>
+      </TabPanel>
+    </div>
+  );
+}
+
+export const OverflowMenu: Story = {
+  name: "Overflow Menu (Responsive)",
+  render: () => <OverflowMenuDemo />,
 };

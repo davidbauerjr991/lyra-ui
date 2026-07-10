@@ -489,6 +489,12 @@ useLayoutEffect(() => {
 }, []);
 ```
 
+### CSS container-query pattern (lighter-weight alternative)
+
+For a component whose "react to my own width" need is just "show/hide or restructure some CSS past a fixed breakpoint" (not "measure the exact pixel width in JS"), a plain CSS container query is simpler than `ResizeObserver` and needs no state at all: put `container-type: inline-size` on the wrapper, then `@container (max-width: Npx) { ... }` rules on the children. See `.lyra-container-grid-wrap`, `.lyra-metric-row-wrap`, `.lyra-channel-tab-list-wrap`, and `.lyra-tab-overflow-wrap` in `lyra-tokens.css` for four examples of this. As with every CSS variable/class, add the rule to **both** `lyra-tokens.css` and `storybook.css` (kept in sync, per the Cross-repo sync rule above).
+
+**`TabList`'s `overflowMenu` prop is the standing default for any new tab bar.** When adding a new `<TabList>` anywhere in this repo or a consuming app (`agent-next-gen-v1`, `lyra-ux-templates`), pass `overflowMenu` unless that specific tab bar already has its own different, narrower collapse strategy — the only current exception is `ChannelTab`'s record-header conversation bar (`channel-row.tsx`), which sheds each tab's own text at 480px/320px via `.lyra-channel-tab-list-wrap` instead of moving tabs into a menu; turning `overflowMenu` on there too would fire at 991px and pre-empt that narrower, purpose-built behavior before it ever got a chance to run. Every other tab bar — settings pages, record detail panels, anything using plain `Tab`s — should get `overflowMenu` by default, the same way a new modal defaults to `Container variant="modal"` rather than a hand-rolled div.
+
 ---
 
 ## 12. Storybook stories

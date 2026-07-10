@@ -584,3 +584,55 @@
     display: none;
   }
 }
+
+/* ════════════════════════════════════════════════════
+   Tab overflow (CSS container query)
+   ════════════════════════════════════════════════════
+   `TabList`'s native `overflowMenu` prop (`tabs.tsx`): once its own actual
+   available width drops to 991px or below, collapse the tab row down to
+   exactly two full-width slots — the active tab, and a "{n} More" dropdown
+   holding every other tab in its original order (e.g. a record detail
+   panel's Overview/Details/Tickets/Accounts/... tab bar). Same "react to
+   this component's own width, not the viewport" rationale as
+   `.lyra-container-grid-wrap`/`.lyra-metric-row-wrap`/`.lyra-channel-tab-
+   list-wrap` above — a docked side panel, a narrow card, or any other
+   layout squeeze can make this width small for reasons that have nothing
+   to do with the browser window.
+
+   `.lyra-tab-overflow-wrap` (the outer wrapper `TabList` renders only when
+   `overflowMenu` is set) owns the container query boundary; the real
+   `role="tablist"` row gets `.lyra-tab-overflow-full` (hidden below
+   991px — it stays in the DOM so its buttons can still be `.click()`ed
+   programmatically when a dropdown entry is chosen, same as this file's
+   own arrow-key navigation does); the two-slot collapsed row gets
+   `.lyra-tab-overflow-collapsed` (the reverse — hidden above 991px, shown
+   as a flex row below it).
+
+   Both rules are scoped with the `.lyra-tab-overflow-wrap` ancestor
+   (`.lyra-tab-overflow-wrap .lyra-tab-overflow-full`, not just
+   `.lyra-tab-overflow-full` on its own) rather than left as bare single
+   classes. `TabList`'s own row already carries Tailwind's `flex` utility
+   (`display: flex`) alongside `.lyra-tab-overflow-full` on the same
+   element — a bare `.lyra-tab-overflow-full { display: none }` has the
+   exact same specificity as `.flex { display: flex }`, so whichever rule
+   happens to land later in the final bundle wins, and that ordering isn't
+   something this component controls (confirmed live: it worked in
+   Storybook's build but silently lost to `.flex` in `agent-next-gen-v1`'s
+   Vite build, which happened to emit Tailwind's utilities after this
+   file). The two-class ancestor selector has higher specificity than a
+   single-class utility regardless of source order, so it wins
+   unconditionally instead of by bundler-order coincidence. */
+.lyra-tab-overflow-wrap {
+  container-type: inline-size;
+}
+.lyra-tab-overflow-wrap .lyra-tab-overflow-collapsed {
+  display: none;
+}
+@container (max-width: 991px) {
+  .lyra-tab-overflow-wrap .lyra-tab-overflow-full {
+    display: none;
+  }
+  .lyra-tab-overflow-wrap .lyra-tab-overflow-collapsed {
+    display: flex;
+  }
+}
