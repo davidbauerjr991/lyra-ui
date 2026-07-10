@@ -18,6 +18,8 @@ import { OUTBOUND_CONFIG } from "./create-new-outbound-mock";
 import { ContentArea } from "../content-area";
 import { Container } from "../container";
 import { Panel } from "../panel";
+import { CustomerInformationPanel } from "../customer-information-panel";
+import { PanelPinButton } from "../panel-pin-button";
 import { PageHeader } from "../page-header";
 import { TabList } from "../tabs";
 import { Button } from "../button";
@@ -285,6 +287,12 @@ function AgentNextGenTemplate({
   const [sidePanelResizing,  setSidePanelResizing]  = useState(false);
   const [sidePanelWidth,     setSidePanelWidth]     = useState(256);
   const [containerWidth,     setContainerWidth]     = useState(9999);
+  // Once the icon has explicitly pinned-then-closed the panel (see
+  // `handleSidePanelIconToggle`), hovering the icon again must NOT
+  // auto-reopen it. Starts `true` so the very first hover (before anything
+  // has ever been pinned) still works as a preview. See agent-next-gen-v1's
+  // copy of this state for the full rationale.
+  const [sidePanelHoverEnabled, setSidePanelHoverEnabled] = useState(true);
   const sidePanelTimer = useRef<ReturnType<typeof setTimeout>>();
 
   // Track container width to force unpinned below 768px
@@ -300,6 +308,29 @@ function AgentNextGenTemplate({
   const isNarrowContainer = containerWidth < 768;
   // When narrow: force overlay mode and hide pin button
   const effectivePinned = isNarrowContainer ? false : sidePanelPinned;
+
+  // Close (and fully unpin) the Designer panel the moment the container
+  // drops below 768px, and re-arm hover-preview. See agent-next-gen-v1's
+  // copy of this effect for the full rationale.
+  useEffect(() => {
+    if (isNarrowContainer) {
+      setSidePanelOpen(false);
+      setSidePanelPinned(false);
+      setSidePanelHoverEnabled(true);
+    }
+  }, [isNarrowContainer]);
+
+  // The Designer panel belongs to the interaction it was opened from — its
+  // only trigger is the record icon on the interaction `PageHeader`, which
+  // doesn't exist outside an interaction. See agent-next-gen-v1's copy of
+  // this effect for the full rationale.
+  useEffect(() => {
+    if (!activeInteractionId) {
+      setSidePanelOpen(false);
+      setSidePanelPinned(false);
+      setSidePanelHoverEnabled(true);
+    }
+  }, [activeInteractionId]);
 
   // Track window width for nav overlay breakpoint
   useEffect(() => {
@@ -331,15 +362,29 @@ function AgentNextGenTemplate({
   }, [isNavNarrow]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onSidePanelHoverStart = () => {
+    if (!sidePanelHoverEnabled) return;
     clearTimeout(sidePanelTimer.current);
     setSidePanelOpen(true);
   };
+  // Guarded on `sidePanelPinned` — see agent-next-gen-v1's copy of this
+  // handler for the full rationale.
   const onSidePanelHoverEnd = () => {
+    if (sidePanelPinned) return;
     sidePanelTimer.current = setTimeout(() => setSidePanelOpen(false), 300);
   };
   const handleSidePanelPinToggle = () => {
     setSidePanelPinned((v) => !v);
     setSidePanelOpen(true); // keep open when toggling pin state
+  };
+  /* Click on the interaction record icon — a real on/off toggle, distinct
+     from `handleSidePanelPinToggle` above. See agent-next-gen-v1's copy of
+     this handler for the full rationale. */
+  const handleSidePanelIconToggle = () => {
+    clearTimeout(sidePanelTimer.current);
+    const nextPinned = !sidePanelPinned;
+    setSidePanelPinned(nextPinned);
+    setSidePanelOpen(nextPinned);
+    if (!nextPinned) setSidePanelHoverEnabled(false);
   };
 
   const MAX_PANEL_HEIGHT = 860;
@@ -878,17 +923,31 @@ function AgentNextGenTemplate({
               relative so unpinned Panel can overlay the full surface. */}
           <Container className="flex flex-1 overflow-hidden relative">
 
-            {/* Pinned Panel — flex sibling, pushes everything (incl. PageHeader) to the right */}
-            {showPanelToggle && effectivePinned && (
-              <Panel
-                variant="side"
+            {/* Customer Information Panel — one instance whose `pinned` prop
+                just flips Panel's own internal inline-vs-overlay branch,
+                matching the "Side Panel" story (a single element, props
+                toggle) so the width transition animates correctly. Gated on
+                `activeInteraction`, not just `showPanelToggle` — its only
+                trigger is the record icon on the interaction `PageHeader`
+                below, which doesn't exist on the "Home" page.
+                Was a bare `<Panel headerTitle="Designer" .../>` with no body
+                content — swapped for `CustomerInformationPanel`, which
+                fixes the header to "Customer Information" and adds a
+                "{name} · {id}" subhead for whoever this interaction is
+                with. See agent-next-gen-v1's copy of this block for the
+                full rationale. */}
+            {showPanelToggle && activeInteraction && (
+              <CustomerInformationPanel
                 side="left"
                 open={sidePanelOpen}
-                pinned
-                headerTitle="Designer"
-                onPinToggle={handleSidePanelPinToggle}
+                pinned={effectivePinned}
+                person={{ name: activeInteraction.customerName ?? "Customer", id: activeInteraction.recordId }}
+                onPinToggle={isNarrowContainer ? undefined : handleSidePanelPinToggle}
                 width={sidePanelWidth}
                 onWidthChange={setSidePanelWidth}
+                onResizeStateChange={setSidePanelResizing}
+                onMouseEnter={onSidePanelHoverStart}
+                onMouseLeave={sidePanelResizing ? undefined : onSidePanelHoverEnd}
               />
             )}
 
@@ -904,7 +963,27 @@ function AgentNextGenTemplate({
                 <>
                   {showPageHeader && (
                     <PageHeader
-                      icon={<User className="h-5 w-5" strokeWidth={1.5} />}
+                      // Hovering this record icon reveals the Designer side
+                      // panel; clicking it is a real on/off toggle via the
+                      // shared `PanelPinButton` atom — the same trigger
+                      // `Panel`'s own internal pin button uses, just with its
+                      // icon swapped to `User`. See agent-next-gen-v1's copy
+                      // of this block for the full rationale.
+                      icon={
+                        <span
+                          onMouseEnter={onSidePanelHoverStart}
+                          onMouseLeave={sidePanelResizing ? undefined : onSidePanelHoverEnd}
+                        >
+                          <PanelPinButton
+                            pinned={sidePanelPinned}
+                            onToggle={handleSidePanelIconToggle}
+                            icon={<User className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />}
+                            pinnedLabel="Unpin Designer panel"
+                            unpinnedLabel="Pin Designer panel"
+                          />
+                        </span>
+                      }
+                      iconAriaHidden={false}
                       title={activeInteraction.customerName ?? "Customer"}
                       subtitle={activeInteraction.recordId}
                     />
@@ -989,22 +1068,6 @@ function AgentNextGenTemplate({
               )}
             </div>
 
-            {/* Unpinned Panel — absolute overlay covering full Container incl. PageHeader */}
-            {showPanelToggle && !effectivePinned && (
-              <Panel
-                variant="side"
-                side="left"
-                open={sidePanelOpen}
-                pinned={false}
-                headerTitle="Designer"
-                onPinToggle={isNarrowContainer ? undefined : handleSidePanelPinToggle}
-                width={sidePanelWidth}
-                onWidthChange={setSidePanelWidth}
-                onResizeStateChange={setSidePanelResizing}
-                onMouseEnter={onSidePanelHoverStart}
-                onMouseLeave={sidePanelResizing ? undefined : onSidePanelHoverEnd}
-              />
-            )}
           </Container>
 
           {/* Notifications — float

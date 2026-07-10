@@ -113,6 +113,8 @@ export { PanelFooter } from "./components/panel-footer";
 export type { PanelFooterProps } from "./components/panel-footer";
 export { PanelPinButton } from "./components/panel-pin-button";
 export type { PanelPinButtonProps } from "./components/panel-pin-button";
+export { CustomerInformationPanel } from "./components/customer-information-panel";
+export type { CustomerInformationPanelProps, CustomerInformationPerson } from "./components/customer-information-panel";
 export { ContentArea } from "./components/content-area";
 export type { ContentAreaProps } from "./components/content-area";
 export { Select } from "./components/select";

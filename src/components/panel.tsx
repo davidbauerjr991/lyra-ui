@@ -50,6 +50,8 @@ export interface PanelProps extends React.HTMLAttributes<HTMLDivElement> {
 
   /* ── Header ── */
   headerTitle?: string;
+  /** Optional line below `headerTitle`, e.g. a record's name + id. */
+  headerSubhead?: string;
   headerIcon?: React.ReactNode;
   headerActions?: React.ReactNode;
 
@@ -127,6 +129,7 @@ const Panel = React.forwardRef<HTMLDivElement, PanelProps>(
       onWidthChange,
       width,
       headerTitle,
+      headerSubhead,
       headerIcon,
       headerActions,
       footer,
@@ -219,6 +222,7 @@ const Panel = React.forwardRef<HTMLDivElement, PanelProps>(
           {headerTitle && (
             <PanelHeader
               title={headerTitle}
+              subhead={headerSubhead}
               icon={headerIcon}
               actions={<>{headerActions}{pinButton}</>}
               onClose={variant === "interior" ? onClose : undefined}
