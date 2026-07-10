@@ -157,6 +157,16 @@
 .lyra-body-xs          { font-size: 10px; line-height: 14px; font-weight: 400; letter-spacing: 0.01rem; }
 .lyra-body-xs-emphasis { font-size: 10px; line-height: 14px; font-weight: 500; letter-spacing: 0.01rem; }
 
+/* ── Hides the scrollbar while keeping the element scrollable — kept in
+   sync with lyra-tokens.css; see that file for the full explanation. ── */
+.lyra-scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.lyra-scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* ── Main container content grid (CSS container query) — kept in sync with
    lyra-tokens.css; see that file for the full explanation. ── */
 .lyra-container-grid-wrap {
@@ -268,6 +278,22 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .lyra-metric-row.lyra-metric-row--compact .lyra-metric-row-divider--horizontal {
+    display: none;
+  }
+}
+
+/* ── Channel tab bar (CSS container query) — kept in sync with
+   lyra-tokens.css; see that file for the full explanation. ── */
+.lyra-channel-tab-list-wrap {
+  container-type: inline-size;
+}
+@container (max-width: 480px) {
+  .lyra-channel-tab-address {
+    display: none;
+  }
+}
+@container (max-width: 320px) {
+  .lyra-channel-tab-label {
     display: none;
   }
 }

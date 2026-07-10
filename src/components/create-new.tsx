@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Plus, X, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Menu } from "./menu";
@@ -461,11 +461,17 @@ function OutboundContactRow({
    here actually reaches this component's own call-setup screen.
    Unlike `OutboundContactRow`'s hover-triggered flyout (hover makes sense
    for a big clickable row), this opens on click, matching a plain icon
-   button's normal interaction model. Not a `Popover` nested inside another
-   `Popover` — `InteractionNavItem` cards render in the nav rail, not inside
-   this component's own panel — so it uses the standard top-level overlay
-   z-index (`z-[9999]`), not the `z-[10003]` nested tier `OutboundContactRow`'s
-   flyout needs (see CONTRIBUTING.md §5). */
+   button's normal interaction model. Uses the `z-[10003]` "popover nested
+   inside another popover" tier (CONTRIBUTING.md §5), same as
+   `OutboundContactRow`'s own flyout — not because this button's usual home
+   (an `InteractionNavItem` card sitting directly in the nav rail) is nested
+   in anything, but because `InteractionNavItem`'s compact-mode hover
+   popover (see its own `headerAction` doc comment) also renders this exact
+   button, and does so *nested inside* that popover. A fixed z-index can't
+   tell which context it's in, and there's nothing else in this codebase
+   that needs to sit between this tier and the nested tier above it, so
+   using the higher, nesting-safe tier unconditionally is correct (if
+   slightly conservative) in both places. */
 export interface OutboundAddButtonProps {
   /** Channel definitions (icon + label) to offer — already filtered down to
    *  whichever channels the underlying contact/agent actually supports,
@@ -512,7 +518,9 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
             // surface (CreateNew) on selection, so returning focus here
             // serves no purpose; suppress it.
             onCloseAutoFocus={(e) => e.preventDefault()}
-            className="z-[9999] w-48 p-1"
+            // z-[10003], not the top-level z-[9999] — see this component's
+            // own doc comment above for why.
+            className="z-[10003] w-48 p-1"
             content={
               channelOptions.length > 0 ? (
                 <Menu
@@ -558,6 +566,70 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
   }
 );
 OutboundAddButton.displayName = "OutboundAddButton";
+
+/* ── useOutboundAddButton ──
+   Every "Agent Next Gen" consumer (agent-next-gen-v1/AgentNextGenPage.tsx,
+   AgentNextGenTemplate.stories.tsx, LeftNav.stories.tsx's "Agent Next Gen
+   Left Nav" story) renders a live list of `InteractionNavItem` cards and
+   wants the exact same "+" behavior on each one: look up that interaction's
+   underlying outbound contact, build an `OutboundAddButton` scoped to
+   whatever channels that contact actually supports (falling back to the
+   full unfiltered list when there's no matching contact — e.g. a
+   quick-dialed number or a fixed demo card), and route a picked channel
+   into `CreateNew`'s `launchRequest` deep link. Before this hook existed,
+   each of those three files had its own hand-copied version of this exact
+   logic — three independent copies of the same ~15 lines meant to stay
+   identical forever, which is exactly the kind of thing that quietly drifts
+   (one file's copy fell out of date describing behavior the others no
+   longer had). Extracting it here means there's only one implementation to
+   get right, and every consumer calling it is structurally guaranteed to
+   match the others — nothing to keep "in sync" by hand anymore. */
+export interface UseOutboundAddButtonResult {
+  /** Pass straight through to `CreateNewOutboundConfig.launchRequest`. */
+  launchRequest: { contactId: string; channel: ChannelType } | null;
+  /** Pass straight through to `CreateNewOutboundConfig.onLaunchRequestHandled`. */
+  onLaunchRequestHandled: () => void;
+  /** Build the `headerAction` for one `InteractionNavItem` card, keyed by
+   *  that interaction's id. Looks up the id in `outboundConfig.groups`;
+   *  when found, scopes the flyout to that contact's own `channels`, and
+   *  when not (quick-dialed numbers, fixed demo cards with no backing
+   *  contact record), offers the full unfiltered `channelOptions` instead
+   *  of omitting the button — every card gets a "+", per design. */
+  getHeaderAction: (interactionId: string) => React.ReactNode;
+}
+
+export function useOutboundAddButton(
+  outboundConfig: Pick<CreateNewOutboundConfig, "groups" | "channelOptions">
+): UseOutboundAddButtonResult {
+  const [launchRequest, setLaunchRequest] = useState<{ contactId: string; channel: ChannelType } | null>(null);
+
+  const contactsById = useMemo(
+    () => new Map(outboundConfig.groups.flatMap((g) => g.contacts ?? []).map((c) => [c.id, c])),
+    [outboundConfig]
+  );
+
+  const getHeaderAction = useCallback(
+    (interactionId: string) => {
+      const contact = contactsById.get(interactionId);
+      const channelOptions = contact
+        ? outboundConfig.channelOptions.filter((c) => contact.channels.includes(c.id))
+        : outboundConfig.channelOptions;
+      return (
+        <OutboundAddButton
+          channelOptions={channelOptions}
+          onSelect={(channel) => setLaunchRequest({ contactId: interactionId, channel })}
+        />
+      );
+    },
+    [contactsById, outboundConfig.channelOptions]
+  );
+
+  return {
+    launchRequest,
+    onLaunchRequestHandled: useCallback(() => setLaunchRequest(null), []),
+    getHeaderAction,
+  };
+}
 
 /* ── CreateNew ── */
 

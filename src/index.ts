@@ -48,7 +48,7 @@ export { AppHeader } from "./components/app-header";
 export type { AppHeaderProps } from "./components/app-header";
 export { AppMenu } from "./components/app-menu";
 export type { AppMenuItem, AppMenuGroup, AppMenuProps } from "./components/app-menu";
-export { CreateNew, OutboundAddButton } from "./components/create-new";
+export { CreateNew, OutboundAddButton, useOutboundAddButton } from "./components/create-new";
 export type {
   CreateNewItem,
   CreateNewProps,
@@ -61,6 +61,7 @@ export type {
   CreateNewChannelOption,
   CreateNewOutboundConfig,
   OutboundAddButtonProps,
+  UseOutboundAddButtonResult,
 } from "./components/create-new";
 export { InteractionNavItem } from "./components/interaction-nav-item";
 export type { InteractionNavItemProps, InteractionChannel, ChannelType } from "./components/interaction-nav-item";
@@ -71,8 +72,10 @@ export {
   SmsChannelRow,
   WhatsAppChannelRow,
   VoiceChannelRow,
+  CHANNEL_TYPE_META,
+  ChannelTab,
 } from "./components/channel-row";
-export type { ChannelRowInstanceProps } from "./components/channel-row";
+export type { ChannelRowInstanceProps, ChannelTabProps } from "./components/channel-row";
 export { ActionIconButton, ActionAvatarButton, actionIconButtonVariants } from "./components/actions";
 export type { ActionIconButtonProps, ActionAvatarButtonProps } from "./components/actions";
 export { ShellIconButton, ShellAvatarButton } from "./components/shell-button";
@@ -108,6 +111,8 @@ export { PanelHeader } from "./components/panel-header";
 export type { PanelHeaderProps } from "./components/panel-header";
 export { PanelFooter } from "./components/panel-footer";
 export type { PanelFooterProps } from "./components/panel-footer";
+export { PanelPinButton } from "./components/panel-pin-button";
+export type { PanelPinButtonProps } from "./components/panel-pin-button";
 export { ContentArea } from "./components/content-area";
 export type { ContentAreaProps } from "./components/content-area";
 export { Select } from "./components/select";
@@ -171,6 +176,21 @@ export type { DashboardCardProps, DashboardCardMetric, DashboardCardMetricVarian
 /* ── Dashboard Queue ── */
 export { DashboardQueue } from "./components/dashboard-queue";
 export type { DashboardQueueProps, DashboardQueueItem, DashboardQueueVariant } from "./components/dashboard-queue";
+
+/* ── Agent Dashboard (the Agent Next Gen "Home" tab template) ── */
+export {
+  AgentDashboard,
+  AgentDashboardQueueDrilldown,
+  AGENT_DASHBOARD_QUEUE_ITEMS,
+  AGENT_DASHBOARD_QUEUE_SUB_ITEMS,
+} from "./components/agent-dashboard";
+export type {
+  AgentDashboardProps,
+  AgentDashboardDateRange,
+  AgentDashboardContactHistoryEntry,
+  AgentDashboardQueueSubItem,
+  ContactHistoryCardProps,
+} from "./components/agent-dashboard";
 
 /* ── Login Card ── */
 export { LoginCard } from "./components/login-card";

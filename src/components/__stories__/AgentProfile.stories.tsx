@@ -56,6 +56,7 @@ export const Interactive: Story = {
           connectedApps={APPS}
           onReconnect={(id) => alert(`Reconnecting ${id}…`)}
           onDarkModeToggle={() => alert("Dark mode toggled")}
+          onHelpClick={() => alert("Help")}
           onLogOut={() => alert("Log out")}
         />
       </div>

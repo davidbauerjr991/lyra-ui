@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { TabList, Tab, TabPanel } from "../tabs";
-import { LayoutGrid, Settings, FileText, Lock, MoreVertical } from "lucide-react";
+import { LayoutGrid, Settings, FileText, Lock, MoreVertical, Pencil, Copy, Trash2 } from "lucide-react";
 
 const meta: Meta<typeof TabList> = {
   title: "Atoms/Tabs",
@@ -237,6 +237,40 @@ export const WithRightIcon: Story = {
             active={active === tab.id}
             onClick={() => setActive(tab.id)}
             rightIcon={<MoreVertical className="h-3.5 w-3.5" strokeWidth={1.5} />}
+          >
+            {tab.label}
+          </Tab>
+        ))}
+      </TabList>
+    );
+  },
+};
+
+/* ── With Kebab Menu (real dropdown, not just a decorative icon) ── */
+
+export const WithMenuItems: Story = {
+  name: "With Kebab Menu (functional dropdown)",
+  render: () => {
+    const [active, setActive] = useState("1");
+    const tabs = [
+      { id: "1", label: "1. Inbound Voice" },
+      { id: "2", label: "2. Blended Voice" },
+      { id: "3", label: "3. Outbound Digital" },
+    ];
+    return (
+      <TabList aria-label="Tabs with a real kebab menu">
+        {tabs.map((tab) => (
+          <Tab
+            key={tab.id}
+            active={active === tab.id}
+            onClick={() => setActive(tab.id)}
+            menuAriaLabel={`More options for ${tab.label}`}
+            menuItems={[
+              { id: "rename", label: "Rename", icon: <Pencil className="h-4 w-4" strokeWidth={1.5} /> },
+              { id: "duplicate", label: "Duplicate", icon: <Copy className="h-4 w-4" strokeWidth={1.5} /> },
+              "separator",
+              { id: "delete", label: "Delete", icon: <Trash2 className="h-4 w-4" strokeWidth={1.5} /> },
+            ]}
           >
             {tab.label}
           </Tab>

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ChevronDown, Moon, Sun, Activity, LogOut, Link2Off, Link2, Loader2, Search } from "lucide-react";
+import { ChevronDown, Moon, Sun, Activity, LogOut, Link2Off, Link2, Loader2, Search, CircleHelp } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Menu, type MenuEntry } from "./menu";
 import { ConnectedAppsPanel, type ConnectedApp } from "./connected-apps";
@@ -27,6 +27,8 @@ export interface AgentProfileProps {
   onDarkModeToggle?: () => void;
   /** Whether dark mode is currently active — controls the label/icon shown in the menu */
   isDarkMode?: boolean;
+  /** Shows a "Help" row (below "Agent Leg Disconnected") when provided */
+  onHelpClick?: () => void;
   onLogOut?: () => void;
   className?: string;
 }
@@ -69,7 +71,7 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
     timer,
     connectedApps = [],
     onReconnect,
-    onDarkModeToggle, isDarkMode = false, onLogOut,
+    onDarkModeToggle, isDarkMode = false, onHelpClick, onLogOut,
     className,
   }, ref) => {
     const [open, setOpen] = React.useState(false);
@@ -232,6 +234,21 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
         ),
         onClick: handleAgentLegToggle,
       },
+      // Only shown when `onHelpClick` is actually passed — see that prop's
+      // own doc comment ("shows a 'Help' row ... when provided"). Was
+      // previously added unconditionally regardless of whether a handler
+      // existed, which put a dead "Help" row in every consumer's status
+      // menu (e.g. agent-next-gen-v1, which never passed `onHelpClick` and
+      // now has its own standalone Help icon in the AppHeader instead —
+      // no reason for this menu to duplicate it, dead or not).
+      ...(onHelpClick
+        ? [{
+            id: "help",
+            label: "Help",
+            icon: <CircleHelp className="h-4 w-4" strokeWidth={1.5} />,
+            onClick: onHelpClick,
+          }]
+        : []),
       "separator" as const,
       {
         id: "logout",

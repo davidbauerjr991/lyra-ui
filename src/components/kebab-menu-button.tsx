@@ -24,13 +24,26 @@ export interface KebabMenuButtonProps {
   items: MenuEntry[];
   ariaLabel: string;
   className?: string;
+  /**
+   * Render the trigger as a real `<button>` (default) or as a
+   * `role="button"` `<span>`. Use `"span"` when composing this inside
+   * another real `<button>` — e.g. `Tab`'s `menuItems` slot — since HTML
+   * forbids nesting interactive controls inside a `<button>` (the browser
+   * will otherwise silently mis-parse the DOM). Same reasoning as
+   * `InteractionNavItem`'s own `role="button"` outer `<div>` and `Tab`'s
+   * own `onRemove` span. Behavior (portal, positioning, keyboard, outside
+   * click) is identical either way — `"span"` just adds `tabIndex={0}` and
+   * an Enter/Space key handler to stand in for the button semantics browsers
+   * give `<button>` for free.
+   */
+  as?: "button" | "span";
 }
 
 const KebabMenuButton = React.forwardRef<HTMLButtonElement, KebabMenuButtonProps>(
-  ({ items, ariaLabel, className }, ref) => {
+  ({ items, ariaLabel, className, as = "button" }, ref) => {
     const [open, setOpen] = React.useState(false);
     const [position, setPosition] = React.useState<{ top: number; left: number } | null>(null);
-    const internalButtonRef = React.useRef<HTMLButtonElement>(null);
+    const internalButtonRef = React.useRef<HTMLElement>(null);
     const menuRef = React.useRef<HTMLDivElement>(null);
 
     React.useImperativeHandle(ref, () => internalButtonRef.current as HTMLButtonElement);
@@ -64,26 +77,51 @@ const KebabMenuButton = React.forwardRef<HTMLButtonElement, KebabMenuButtonProps
         : { ...entry, onClick: () => { entry.onClick?.(); setOpen(false); } }
     );
 
+    const handleTriggerClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (open) setOpen(false);
+      else openMenu();
+    };
+    const triggerClassName = cn(
+      "flex h-6 w-6 shrink-0 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary transition-colors hover:bg-lyra-state-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus",
+      className
+    );
+    const icon = <MoreVertical className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />;
+
     return (
       <>
-        <button
-          ref={internalButtonRef}
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (open) setOpen(false);
-            else openMenu();
-          }}
-          aria-label={ariaLabel}
-          aria-haspopup="menu"
-          aria-expanded={open}
-          className={cn(
-            "flex h-6 w-6 shrink-0 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary transition-colors hover:bg-lyra-state-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus",
-            className
-          )}
-        >
-          <MoreVertical className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
-        </button>
+        {as === "span" ? (
+          <span
+            ref={internalButtonRef as unknown as React.RefObject<HTMLSpanElement>}
+            role="button"
+            tabIndex={0}
+            onClick={handleTriggerClick}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleTriggerClick(e as unknown as React.MouseEvent);
+              }
+            }}
+            aria-label={ariaLabel}
+            aria-haspopup="menu"
+            aria-expanded={open}
+            className={triggerClassName}
+          >
+            {icon}
+          </span>
+        ) : (
+          <button
+            ref={internalButtonRef as unknown as React.RefObject<HTMLButtonElement>}
+            type="button"
+            onClick={handleTriggerClick}
+            aria-label={ariaLabel}
+            aria-haspopup="menu"
+            aria-expanded={open}
+            className={triggerClassName}
+          >
+            {icon}
+          </button>
+        )}
         {open && position && createPortal(
           <div
             ref={menuRef}

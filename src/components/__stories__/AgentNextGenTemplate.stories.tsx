@@ -11,13 +11,15 @@ import { NotificationsBell } from "../notifications-bell";
 import { AgentNotifications, type AgentNotification } from "../agent-notifications";
 import { AgentProfile, type AgentStatus } from "../agent-profile";
 import { LeftNav, type NavItem } from "../left-nav";
-import { CreateNew, OutboundAddButton, type CreateNewOutboundContact, type CreateNewOutboundConfig } from "../create-new";
+import { CreateNew, useOutboundAddButton, type CreateNewOutboundContact, type CreateNewOutboundConfig } from "../create-new";
 import { InteractionNavItem, type InteractionChannel, type ChannelType } from "../interaction-nav-item";
+import { ChannelTab } from "../channel-row";
 import { OUTBOUND_CONFIG } from "./create-new-outbound-mock";
 import { ContentArea } from "../content-area";
 import { Container } from "../container";
 import { Panel } from "../panel";
 import { PageHeader } from "../page-header";
+import { TabList } from "../tabs";
 import { Button } from "../button";
 import appIcon from "../../assets/app-icon.svg";
 import { Input } from "../input";
@@ -28,6 +30,7 @@ import {
   CalendarDays,
   Settings,
   Plus,
+  User,
 } from "lucide-react";
 
 /* ── Sparkle icon ── */
@@ -120,6 +123,10 @@ interface TrackedChannel {
    *  exact address, not the whole field. See agent-next-gen-v1's own copy
    *  of this doc comment. */
   value?: string;
+  /** Human-readable version of `value` for display on this channel's
+   *  `ChannelTab` (e.g. "(456) 383-3329" vs. `value`'s raw "+14563833329").
+   *  See agent-next-gen-v1's own copy of this field for the full rationale. */
+  addressLabel?: string;
   /** Whether the customer has sent a message on this channel that the agent
    *  hasn't replied to yet — drives the row's red/critical chip+clock
    *  styling (green/success otherwise). Always omitted (falsy) at
@@ -128,6 +135,11 @@ interface TrackedChannel {
    *  never render red immediately just because its `type` isn't voice. See
    *  agent-next-gen-v1's own copy of this doc comment. */
   awaitingResponse?: boolean;
+  /** Synthesized message count/conversation id shown on this channel's
+   *  `ChannelTab` tooltip — see agent-next-gen-v1's own copy of these two
+   *  fields for the full rationale. */
+  messageCount?: number;
+  interactionId?: string;
 }
 
 /** One live interaction in the left nav — an agent/customer/team/skill
@@ -140,7 +152,29 @@ interface TrackedChannel {
 interface ActiveInteraction {
   id: string;
   customerName?: string;
+  /** Customer/agent/team/skill record id shown under the name on this
+   *  interaction's detail page header — the contact's real id
+   *  (`CreateNewOutboundContact.subtitle`) when known, or a freshly
+   *  generated case number (`generateCaseId`) for quick-dialed numbers with
+   *  no matching record. See agent-next-gen-v1's own copy of this field. */
+  recordId: string;
   channels: TrackedChannel[];
+  /** Which open channel is "current" — shared between this interaction's
+   *  InteractionNavItem card and its ChannelTab bar. See agent-next-gen-v1's
+   *  own copy of this field for the full rationale. */
+  currentChannelId?: string;
+}
+
+/** Fallback case id for interactions with no real record behind them
+ *  (quick-dialed numbers) — see agent-next-gen-v1's own copy. */
+function generateCaseId(): string {
+  return `CS-${Math.floor(1000000 + Math.random() * 9000000)}`;
+}
+
+/** Synthesized per-channel conversation/session id — see agent-next-gen-v1's
+ *  own copy of this helper for the full rationale. */
+function generateInteractionId(): string {
+  return String(Math.floor(100000000000 + Math.random() * 900000000000));
 }
 
 /** Renders a tick count (seconds since the channel/interaction started) as
@@ -184,12 +218,9 @@ function AgentNextGenTemplate({
   // Next Gen Left Nav" story.
   const [interactions, setInteractions] = useState<ActiveInteraction[]>([]);
   const [activeInteractionId, setActiveInteractionId] = useState<string | null>(null);
-  // Set by an InteractionNavItem card's own "Add Outbound" button (see
-  // OutboundAddButton usage below) to deep-link CreateNew straight to the
-  // call-setup screen for that contact+channel — see
-  // CreateNewOutboundConfig.launchRequest's own doc comment in create-new.tsx.
-  // Cleared back to null once CreateNew reports it's been handled.
-  const [outboundLaunchRequest, setOutboundLaunchRequest] = useState<{ contactId: string; channel: ChannelType } | null>(null);
+  // Drives the main content area — see agent-next-gen-v1's own copy of this
+  // derived value and the PageHeader switch below.
+  const activeInteraction = interactions.find((i) => i.id === activeInteractionId) ?? null;
   // Shared clock powering every open channel's live "MM:SS since it
   // started" elapsed display — independent of `elapsedSeconds` below, which
   // is the agent's own status timer and resets on status change.
@@ -352,19 +383,40 @@ function AgentNextGenTemplate({
     skillId: string;
   }) => {
     const skillLabel = OUTBOUND_CONFIG.skillOptions.find((o) => o.value === selection.skillId)?.label;
+    // `phoneOptions` only has a value→label mapping for phone numbers (raw
+    // digits → formatted display string) — email/WhatsApp addresses are
+    // already human-readable as-is (see `create-new.tsx`'s
+    // `defaultDetailValueFor`, where their `value` and `label` are the same
+    // string), so falling back to `selection.phone` itself is correct there,
+    // not a placeholder.
+    const addressLabel = OUTBOUND_CONFIG.phoneOptions.find((o) => o.value === selection.phone)?.label ?? selection.phone;
+    // A freshly started outbound conversation hasn't exchanged any messages
+    // yet — `0` (not omitted) so the tooltip actually reads "0 Messages"
+    // instead of showing nothing. Voice has no message concept at all, so
+    // it's left `undefined` there — see agent-next-gen-v1's own copy of
+    // this logic for the full rationale.
     const newChannel: TrackedChannel = {
       id: `${selection.channel}:${selection.phone}`,
       type: selection.channel,
       startTick: clockTick,
       preview: skillLabel,
       value: selection.phone,
+      addressLabel,
+      messageCount: selection.channel === "voice" ? undefined : 0,
+      interactionId: generateInteractionId(),
     };
 
     setInteractions((prev) => {
       const idx = prev.findIndex((i) => i.id === selection.contact.id);
       // No existing interaction with this contact — start a new card.
       if (idx === -1) {
-        return [...prev, { id: selection.contact.id, customerName: selection.contact.name, channels: [newChannel] }];
+        return [...prev, {
+          id: selection.contact.id,
+          customerName: selection.contact.name,
+          recordId: selection.contact.subtitle ?? generateCaseId(),
+          channels: [newChannel],
+          currentChannelId: newChannel.id,
+        }];
       }
       // Same contact already has an interaction open — restart the matching
       // channel's timer if this is the *same* type+address (e.g. redialing
@@ -379,7 +431,7 @@ function AgentNextGenTemplate({
         const channels = chIdx === -1
           ? [...interaction.channels, newChannel]
           : interaction.channels.map((c, j) => (j === chIdx ? newChannel : c));
-        return { ...interaction, channels };
+        return { ...interaction, channels, currentChannelId: newChannel.id };
       });
     });
     setActiveInteractionId(selection.contact.id);
@@ -391,11 +443,20 @@ function AgentNextGenTemplate({
     // number itself so redialing the same number restarts its card rather
     // than stacking up duplicates.
     const id = `quickdial:${phoneNumber}`;
-    const newChannel: TrackedChannel = { id: "voice", type: "voice", startTick: clockTick };
+    // Voice has no message concept at all, so `messageCount` is left
+    // undefined here (not `0`) — see the `handleStartCall` comment above.
+    const newChannel: TrackedChannel = {
+      id: "voice",
+      type: "voice",
+      startTick: clockTick,
+      value: phoneNumber,
+      addressLabel: phoneNumber,
+      interactionId: generateInteractionId(),
+    };
     setInteractions((prev) => {
       const idx = prev.findIndex((i) => i.id === id);
-      if (idx === -1) return [...prev, { id, channels: [newChannel] }];
-      return prev.map((interaction, i) => (i === idx ? { ...interaction, channels: [newChannel] } : interaction));
+      if (idx === -1) return [...prev, { id, recordId: generateCaseId(), channels: [newChannel], currentChannelId: newChannel.id }];
+      return prev.map((interaction, i) => (i === idx ? { ...interaction, channels: [newChannel], currentChannelId: newChannel.id } : interaction));
     });
     setActiveInteractionId(id);
     setNavOpen(true);
@@ -413,7 +474,7 @@ function AgentNextGenTemplate({
     setActiveInteractionId((current) => (current === id ? null : current));
   };
 
-  const handleDismissChannel = (id: string, channel: InteractionChannel) => {
+  const handleDismissChannel = (id: string, channel: Pick<InteractionChannel, "id" | "type">) => {
     // Match on `id` (falling back to `type`, same as InteractionNavItem's
     // own `channelKey` convention) rather than `type` alone — two open
     // channels can share a `type` (e.g. two SMS threads on different
@@ -421,10 +482,23 @@ function AgentNextGenTemplate({
     // the one the agent actually dismissed.
     const dismissedKey = channel.id ?? channel.type;
     setInteractions((prev) =>
+      prev.map((interaction) => {
+        if (interaction.id !== id) return interaction;
+        const channels = interaction.channels.filter((c) => (c.id ?? c.type) !== dismissedKey);
+        const currentChannelId = interaction.currentChannelId === dismissedKey
+          ? channels[channels.length - 1]?.id
+          : interaction.currentChannelId;
+        return { ...interaction, channels, currentChannelId };
+      })
+    );
+  };
+
+  /** Fired by a card row's `onCurrentChannelChange` or a `ChannelTab`'s
+   *  `onClick` — see `ActiveInteraction.currentChannelId`'s own doc comment. */
+  const handleChannelSelect = (interactionId: string, channelKey: string) => {
+    setInteractions((prev) =>
       prev.map((interaction) =>
-        interaction.id === id
-          ? { ...interaction, channels: interaction.channels.filter((c) => (c.id ?? c.type) !== dismissedKey) }
-          : interaction
+        interaction.id === interactionId ? { ...interaction, currentChannelId: channelKey } : interaction
       )
     );
   };
@@ -476,17 +550,17 @@ function AgentNextGenTemplate({
     };
   }, [interactions]);
 
-  // Every outbound contact (agent/team/skill/customer), keyed by id — used
-  // to look up which channels a *live interaction*'s underlying contact
-  // actually supports, for that card's own "Add Outbound" button (see
-  // OutboundAddButton usage below). `ActiveInteraction.id` is always a
-  // contact's id for interactions started via CreateNew (see
-  // handleStartCall) — the `quickdial:` prefixed ids have no matching
-  // contact record, which the lookup's `undefined` return already handles.
-  const outboundContactsById = useMemo(
-    () => new Map(outboundConfig.groups.flatMap((g) => g.contacts ?? []).map((c) => [c.id, c])),
-    [outboundConfig]
-  );
+  // Every "Agent Next Gen" consumer (this story, agent-next-gen-v1's
+  // AgentNextGenPage.tsx, LeftNav.stories.tsx's "Agent Next Gen Left Nav"
+  // story) wants the exact same "+" behavior on each InteractionNavItem
+  // card — look up that interaction's underlying outbound contact, scope
+  // the flyout to whatever channels it actually supports (falling back to
+  // the full unfiltered list for quick-dialed numbers with no matching
+  // contact record), and deep-link a picked channel into CreateNew's
+  // `launchRequest`. That's `useOutboundAddButton` (create-new.tsx) — a
+  // single shared implementation instead of three hand-copied ones that
+  // could (and did) quietly drift out of sync.
+  const { launchRequest: outboundLaunchRequest, onLaunchRequestHandled, getHeaderAction } = useOutboundAddButton(outboundConfig);
 
   /* AI panel show/hide */
   useEffect(() => {
@@ -736,19 +810,21 @@ function AgentNextGenTemplate({
           open={navOpen}
           onToggle={() => setNavOpen((v) => !v)}
           overlay={isNavNarrow}
+          pinnedHeader={
+            <CreateNew
+              title="New Outbound"
+              outbound={{
+                ...outboundConfig,
+                onStartCall: handleStartCall,
+                onQuickDial: handleQuickDial,
+                launchRequest: outboundLaunchRequest,
+                onLaunchRequestHandled,
+              }}
+              expanded={navOpen}
+            />
+          }
           header={
             <>
-              <CreateNew
-                title="New Outbound"
-                outbound={{
-                  ...outboundConfig,
-                  onStartCall: handleStartCall,
-                  onQuickDial: handleQuickDial,
-                  launchRequest: outboundLaunchRequest,
-                  onLaunchRequestHandled: () => setOutboundLaunchRequest(null),
-                }}
-                expanded={navOpen}
-              />
               {/* No cards until the agent actually starts one above — each
                   card is one contact (or quick-dialed number), with every
                   channel they're being reached on folded into that same
@@ -757,12 +833,13 @@ function AgentNextGenTemplate({
                   handleStartCall's merge-by-type+address logic). */}
               {interactions.map((interaction) => {
                 const mostRecentId = interaction.channels[interaction.channels.length - 1]?.id;
+                const currentId = interaction.currentChannelId ?? mostRecentId;
                 const channels: InteractionChannel[] = interaction.channels.map((c) => ({
                   id: c.id,
                   type: c.type,
                   elapsed: formatElapsedTime(clockTick - c.startTick),
                   preview: c.preview,
-                  current: c.id === mostRecentId,
+                  current: c.id === currentId,
                   // Read straight off the tracked channel (see
                   // TrackedChannel.awaitingResponse's own doc comment) —
                   // not derived from `type` — so a freshly-started outbound
@@ -771,15 +848,6 @@ function AgentNextGenTemplate({
                   awaitingResponse: c.awaitingResponse ?? false,
                 }));
                 const earliestStart = Math.min(...interaction.channels.map((c) => c.startTick));
-                // Quick-dialed interactions (id prefixed "quickdial:") have
-                // no backing Agent/Customer/Team/Skill contact record to look
-                // up real per-contact channel support from — offer the full
-                // unfiltered channel list for those so the "+" still appears
-                // on every card's header (see `headerAction` below).
-                const contactRecord = outboundContactsById.get(interaction.id);
-                const addOutboundChannelOptions = contactRecord
-                  ? OUTBOUND_CONFIG.channelOptions.filter((c) => contactRecord.channels.includes(c.id))
-                  : OUTBOUND_CONFIG.channelOptions;
                 return (
                   <InteractionNavItem
                     key={interaction.id}
@@ -792,12 +860,9 @@ function AgentNextGenTemplate({
                     channels={channels}
                     onDismiss={() => handleDismissInteraction(interaction.id)}
                     onDismissChannel={(channel) => handleDismissChannel(interaction.id, channel)}
-                    headerAction={
-                      <OutboundAddButton
-                        channelOptions={addOutboundChannelOptions}
-                        onSelect={(channel) => setOutboundLaunchRequest({ contactId: interaction.id, channel })}
-                      />
-                    }
+                    headerAction={getHeaderAction(interaction.id)}
+                    currentChannelKey={currentId}
+                    onCurrentChannelChange={(key) => handleChannelSelect(interaction.id, key)}
                   />
                 );
               })}
@@ -829,51 +894,99 @@ function AgentNextGenTemplate({
 
             {/* Content column: PageHeader + page body */}
             <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
-              {showPageHeader && (
-                <PageHeader
-                  title="Home"
-                  panelToggle={
-                    showPanelToggle && showInteriorPanel ? "both"
-                    : showPanelToggle ? "left"
-                    : showInteriorPanel ? "right"
-                    : undefined
-                  }
-                  panelPinned={effectivePinned}
-                  onPanelToggle={effectivePinned ? () => setSidePanelOpen((v) => !v) : undefined}
-                  onPanelHoverStart={!effectivePinned ? onSidePanelHoverStart : undefined}
-                  onPanelHoverEnd={!effectivePinned ? onSidePanelHoverEnd : undefined}
-                  onInnerPanelToggle={showInteriorPanel ? () => setInteriorPanelOpen((v) => !v) : undefined}
-                  actions={
-                    <>
-                      <Button variant="outline">Export</Button>
-                      <Button>
-                        <Plus className="h-4 w-4" strokeWidth={1.5} />
-                        New Case
-                      </Button>
-                    </>
-                  }
-                />
+              {activeInteraction ? (
+                // ── Active interaction's detail page — replaces the "Home"
+                // page the moment a new assignment is started/quick-dialed
+                // (see `activeInteraction` above). Just the record header for
+                // now; the blank body below is where a real case/contact
+                // detail view will go. Reverts back automatically once the
+                // interaction is dismissed (`activeInteractionId` clears).
+                <>
+                  {showPageHeader && (
+                    <PageHeader
+                      icon={<User className="h-5 w-5" strokeWidth={1.5} />}
+                      title={activeInteraction.customerName ?? "Customer"}
+                      subtitle={activeInteraction.recordId}
+                    />
+                  )}
+                  {/* One tab per open channel — kept in sync with the same
+                      interaction's InteractionNavItem card via
+                      currentChannelId/handleChannelSelect. Shown even with
+                      just one channel open. See agent-next-gen-v1's own
+                      copy of this block. */}
+                  {showPageHeader && activeInteraction.channels.length > 0 && (
+                    <TabList className="px-6 bg-lyra-bg-surface-base shrink-0 lyra-channel-tab-list-wrap">
+                      {activeInteraction.channels.map((c) => {
+                        const key = c.id ?? c.type;
+                        return (
+                          <ChannelTab
+                            key={key}
+                            type={c.type}
+                            address={c.addressLabel}
+                            messageCount={c.messageCount}
+                            interactionId={c.interactionId}
+                            active={(activeInteraction.currentChannelId ?? activeInteraction.channels[activeInteraction.channels.length - 1]?.id) === key}
+                            onClick={() => handleChannelSelect(activeInteraction.id, key)}
+                            onDismiss={() => {
+                              if (activeInteraction.channels.length > 1) handleDismissChannel(activeInteraction.id, c);
+                              else handleDismissInteraction(activeInteraction.id);
+                            }}
+                          />
+                        );
+                      })}
+                    </TabList>
+                  )}
+                  <div className="flex-1 overflow-y-auto" />
+                </>
+              ) : (
+                <>
+                  {showPageHeader && (
+                    <PageHeader
+                      title="Home"
+                      panelToggle={
+                        showPanelToggle && showInteriorPanel ? "both"
+                        : showPanelToggle ? "left"
+                        : showInteriorPanel ? "right"
+                        : undefined
+                      }
+                      panelPinned={effectivePinned}
+                      onPanelToggle={effectivePinned ? () => setSidePanelOpen((v) => !v) : undefined}
+                      onPanelHoverStart={!effectivePinned ? onSidePanelHoverStart : undefined}
+                      onPanelHoverEnd={!effectivePinned ? onSidePanelHoverEnd : undefined}
+                      onInnerPanelToggle={showInteriorPanel ? () => setInteriorPanelOpen((v) => !v) : undefined}
+                      actions={
+                        <>
+                          <Button variant="outline">Export</Button>
+                          <Button>
+                            <Plus className="h-4 w-4" strokeWidth={1.5} />
+                            New Case
+                          </Button>
+                        </>
+                      }
+                    />
+                  )}
+                  {/* Body row: main content + interior panel */}
+                  <div className="relative flex flex-1 overflow-hidden">
+                    <div className="flex-1" />
+                    {showInteriorPanel && (
+                      <Panel
+                        variant="interior"
+                        side="right"
+                        open={interiorPanelOpen}
+                        headerTitle="Case Details"
+                        onClose={() => setInteriorPanelOpen(false)}
+                      >
+                        <div className="flex flex-col gap-4 px-4 py-4">
+                          <Input label="Subject" placeholder="Enter subject" />
+                          <Input label="Priority" placeholder="Select priority" />
+                          <Input label="Assignee" placeholder="Search agents" />
+                          <Input label="Tags" placeholder="Add tags" />
+                        </div>
+                      </Panel>
+                    )}
+                  </div>
+                </>
               )}
-              {/* Body row: main content + interior panel */}
-              <div className="relative flex flex-1 overflow-hidden">
-                <div className="flex-1" />
-                {showInteriorPanel && (
-                  <Panel
-                    variant="interior"
-                    side="right"
-                    open={interiorPanelOpen}
-                    headerTitle="Case Details"
-                    onClose={() => setInteriorPanelOpen(false)}
-                  >
-                    <div className="flex flex-col gap-4 px-4 py-4">
-                      <Input label="Subject" placeholder="Enter subject" />
-                      <Input label="Priority" placeholder="Select priority" />
-                      <Input label="Assignee" placeholder="Search agents" />
-                      <Input label="Tags" placeholder="Add tags" />
-                    </div>
-                  </Panel>
-                )}
-              </div>
             </div>
 
             {/* Unpinned Panel — absolute overlay covering full Container incl. PageHeader */}

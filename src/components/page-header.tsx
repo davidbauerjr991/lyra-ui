@@ -15,6 +15,25 @@ interface PageHeaderBreadcrumb {
 interface PageHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Page title text */
   title: string;
+  /**
+   * Leading icon rendered before the title, with a vertical divider between
+   * them — switches the header into a "record header" layout (icon | title
+   * stacked above `subtitle`), for pages about a specific customer, agent,
+   * case, etc. rather than a static section title. Mutually exclusive with
+   * `breadcrumb` — when both are passed, `icon` takes precedence.
+   */
+  icon?: React.ReactNode;
+  /**
+   * Whether the `icon` slot's wrapper span is `aria-hidden` (default: true).
+   * The wrapper is hidden from assistive tech by default because `icon` is
+   * normally purely decorative — set this to `false` when `icon` itself is
+   * or contains a real interactive control (e.g. a `PanelPinButton`), since
+   * `aria-hidden` on an ancestor removes the whole subtree from the
+   * accessibility tree regardless of the control's own `aria-label`.
+   */
+  iconAriaHidden?: boolean;
+  /** Secondary line rendered under the title — only used together with `icon` */
+  subtitle?: React.ReactNode;
   /** Actions rendered on the right side (buttons, icons, etc.) */
   actions?: React.ReactNode;
   /**
@@ -53,6 +72,9 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
     {
       className,
       title,
+      icon,
+      iconAriaHidden = true,
+      subtitle,
       actions,
       panelToggle,
       onPanelToggle,
@@ -107,7 +129,24 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
             <div className="h-5 w-px bg-lyra-border-subtle" />
           </>
         )}
-        {breadcrumb ? (
+        {icon ? (
+          <>
+            <span
+              className="flex items-center justify-center text-lyra-fg-default shrink-0"
+              aria-hidden={iconAriaHidden ? "true" : undefined}
+            >
+              {icon}
+            </span>
+            <div className="h-8 w-px bg-lyra-border-subtle shrink-0" />
+            <div className="flex flex-col justify-center min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="lyra-heading-lg text-lyra-fg-default leading-tight truncate">{title}</h1>
+                {chip && <Chip color={chipColor} variant={chipVariant}>{chip}</Chip>}
+              </div>
+              {subtitle && <span className="lyra-body-sm text-lyra-fg-secondary truncate">{subtitle}</span>}
+            </div>
+          </>
+        ) : breadcrumb ? (
           <nav aria-label="Breadcrumb">
             <ol className="flex items-center gap-2 list-none m-0 p-0">
               <li>

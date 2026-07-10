@@ -17,10 +17,15 @@ import { cn } from "../lib/utils";
 import { tagVariants } from "./tag";
 import { type MenuEntry } from "./menu";
 import { KebabMenuButton } from "./kebab-menu-button";
+import { Tab } from "./tabs";
+import { Tooltip } from "./tooltip";
 
-/* ── WhatsApp icon (not in Lucide) ── */
-const WhatsAppIcon = () => (
-  <svg viewBox="0 0 24 24" className="h-3 w-3" fill="currentColor" aria-hidden="true">
+/* ── WhatsApp icon (not in Lucide) ──
+ * Accepts `className` (default `h-3 w-3`, the chip-sized icon `ChannelRow`
+ * itself uses) so a larger context — e.g. `ChannelTab`'s tab-sized icon slot
+ * below — can size it up without a second hand-copied `<svg>`. */
+const WhatsAppIcon = ({ className = "h-3 w-3" }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
   </svg>
 );
@@ -89,7 +94,7 @@ export interface InteractionChannel {
  * list, same as before — the override is the consumer's responsibility to
  * wire up, `onDismiss` only ever applies to the *default* menu. */
 
-function buildDigitalMenuItems(onDismiss?: () => void): MenuEntry[] {
+export function buildDigitalMenuItems(onDismiss?: () => void): MenuEntry[] {
   return [
     { id: "unassign-dismiss", label: "Unassign & Dismiss", icon: <TriangleAlert className="h-4 w-4" strokeWidth={1.5} />, onClick: onDismiss },
     { id: "consult-transfer", label: "Consult / Transfer", icon: <ConsultTransferIcon /> },
@@ -100,7 +105,7 @@ function buildDigitalMenuItems(onDismiss?: () => void): MenuEntry[] {
   ];
 }
 
-function buildVoiceMenuItems(onDismiss?: () => void): MenuEntry[] {
+export function buildVoiceMenuItems(onDismiss?: () => void): MenuEntry[] {
   return [
     { id: "unassign-dismiss", label: "Unassign & Dismiss", icon: <TriangleAlert className="h-4 w-4" strokeWidth={1.5} />, onClick: onDismiss },
     { id: "consult-transfer", label: "Consult / Transfer", icon: <ConsultTransferIcon /> },
@@ -256,6 +261,142 @@ const CHANNEL_ROW_COMPONENTS: Record<ChannelType, React.FC<ChannelRowInstancePro
   voice: VoiceChannelRow,
 };
 
+/** Per-type icon + label — the same choices each `*ChannelRow` wrapper above
+ *  already bakes in, exposed here so `ChannelTab` (and any other component
+ *  that needs to represent a channel by its type) doesn't have to re-decide
+ *  them. Sized `h-4 w-4` (a `Tab`'s icon slot) rather than the `h-3 w-3` chip
+ *  size the rows above use. */
+const CHANNEL_TYPE_META: Record<ChannelType, { icon: React.ReactNode; label: string }> = {
+  chat:     { icon: <MessageSquare className="h-4 w-4" strokeWidth={1.5} />, label: "Chat" },
+  email:    { icon: <Mail className="h-4 w-4" strokeWidth={1.5} />, label: "Email" },
+  sms:      { icon: <MessageSquare className="h-4 w-4" strokeWidth={1.5} />, label: "SMS" },
+  whatsapp: { icon: <WhatsAppIcon className="h-4 w-4" />, label: "WhatsApp" },
+  voice:    { icon: <Phone className="h-4 w-4" strokeWidth={1.5} />, label: "Voice" },
+};
+
+/* ── ChannelTab ──
+ * One open channel rendered as a `Tab` — e.g. the "active conversation area"
+ * tab bar under a record-header `PageHeader` (see `AgentNextGenTemplate
+ * .stories.tsx`'s `activeInteraction` block), one tab per
+ * `TrackedChannel`/`InteractionChannel`, kept in sync with which row is
+ * "current" on the matching `InteractionNavItem` card via that component's
+ * `currentChannelKey`/`onCurrentChannelChange` props — both should be driven
+ * by the same piece of parent state (e.g. `ActiveInteraction.currentChannelId`)
+ * so clicking a tab here and clicking a row on the card either update the
+ * same thing. Not a full "tab list" wrapper — the consumer still renders its
+ * own `<TabList>` around one `ChannelTab` per channel, same as it would for
+ * any other set of `Tab`s — but that `<TabList>` should carry the
+ * `lyra-channel-tab-list-wrap` class (see `lyra-tokens.css`'s "Channel tab
+ * bar" section) so each tab can shed its own address/label text once the
+ * bar's own available width gets tight, rather than wrapping/scrolling. A
+ * `Tooltip` on every tab (icon-only or not) surfaces the full "Label
+ * address" text (no divider between the two — see `address`'s own doc
+ * comment) regardless of which stage the bar has collapsed to, plus a
+ * second, smaller line with this channel's message count and conversation
+ * id (`messageCount`/`interactionId`) when either is on hand — info that
+ * never appears on the tab face itself, only in the tooltip. */
+export interface ChannelTabProps {
+  /** Determines this tab's icon, label, and default kebab menu items — same
+   *  per-type choices as the matching `*ChannelRow`. */
+  type: ChannelType;
+  /** The phone number/email address/WhatsApp handle this channel is on, if
+   *  any (e.g. `TrackedChannel.addressLabel`) — rendered directly after the
+   *  type label with no divider between them (e.g. "WhatsApp
+   *  @Jamie Torres") so two tabs of the same `type` stay distinguishable,
+   *  and repeated the same way in this tab's `Tooltip` so that stays true
+   *  even once the bar has collapsed down to hiding it (see the
+   *  container-query note above). Omit when this channel has no address on
+   *  hand (e.g. a redialed voice call with no stored number) — the tab just
+   *  shows icon + type label, and its tooltip just the type label. */
+  address?: string;
+  /** Total message count for this channel's conversation, if on hand — shown
+   *  on a second, smaller (`lyra-body-sm`) `Tooltip` line below the label
+   *  (+ address) line (e.g. "16 Messages | #707535188548"), never on the
+   *  tab face itself (there's no room once the bar starts collapsing, see
+   *  the container-query note above — the tooltip is the one place this is
+   *  always reachable regardless of stage). Omit for channel types with no
+   *  real message concept (voice) and for a channel that hasn't exchanged
+   *  any messages yet — `0` renders "0 Messages", which is exactly right
+   *  for a just-started outbound conversation; `undefined` renders no
+   *  message segment on this line at all. */
+  messageCount?: number;
+  /** This channel's own conversation/session id, if on hand — distinct from
+   *  the customer-record id (`ActiveInteraction.recordId`, e.g. "AGT-2000")
+   *  shown in the page header above: one customer record can have several
+   *  channels open, each its own conversation with its own id. Rendered as
+   *  "#{interactionId}" on the same second `Tooltip` line as `messageCount`.
+   *  Omit when unknown. */
+  interactionId?: string;
+  active?: boolean;
+  onClick?: () => void;
+  /** Wired to the default kebab menu's "Unassign & Dismiss" entry — the
+   *  consumer decides (same as `InteractionNavItem`'s own `onDismiss` vs.
+   *  `onDismissChannel` split) whether that should end just this channel or
+   *  the whole interaction, based on how many channels are open. */
+  onDismiss?: () => void;
+  /** Override this tab's default (per-`type`) kebab menu items. */
+  menuItems?: MenuEntry[];
+  /** Hide the trailing kebab entirely. Default: true (kebab shown). */
+  showMenu?: boolean;
+  className?: string;
+}
+
+const ChannelTab: React.FC<ChannelTabProps> = ({
+  type,
+  address,
+  messageCount,
+  interactionId,
+  active,
+  onClick,
+  onDismiss,
+  menuItems,
+  showMenu = true,
+  className,
+}) => {
+  const meta = CHANNEL_TYPE_META[type];
+  const defaultMenuItems = type === "voice" ? buildVoiceMenuItems(onDismiss) : buildDigitalMenuItems(onDismiss);
+  // Second tooltip line — "16 Messages | #707535188548" — omitted entirely
+  // when neither value is on hand rather than rendering an empty/half-blank
+  // line under the "Label | address" one.
+  // Second tooltip line, e.g. "16 Messages | #707535188548" — the "|"
+  // between these two is kept (they're two distinct facts, not a label and
+  // its own value like the line above), just rendered smaller
+  // (`lyra-body-sm`, one step below the tooltip's own default `lyra-body-md`)
+  // since it's secondary/reference info, not the tab's primary identity.
+  const metaLine = [
+    messageCount !== undefined ? `${messageCount} Message${messageCount === 1 ? "" : "s"}` : undefined,
+    interactionId ? `#${interactionId}` : undefined,
+  ]
+    .filter(Boolean)
+    .join(" | ");
+  const tooltipContent = (
+    <div className="flex flex-col gap-0.5">
+      <span>{address ? `${meta.label} ${address}` : meta.label}</span>
+      {metaLine && <span className="lyra-body-sm text-lyra-fg-secondary">{metaLine}</span>}
+    </div>
+  );
+  return (
+    <Tooltip content={tooltipContent} placement="bottom">
+      <Tab
+        active={active}
+        onClick={onClick}
+        icon={meta.icon}
+        menuItems={showMenu ? (menuItems ?? defaultMenuItems) : undefined}
+        menuAriaLabel={`More options for ${meta.label}`}
+        className={className}
+      >
+        {/* Hidden first (icon-only) at the bar's narrowest container-query
+            stage — see the "Channel tab bar" section in `lyra-tokens.css`.
+            The `Tooltip` above still surfaces this text regardless. */}
+        <span className="lyra-channel-tab-label">{meta.label}</span>
+        {address && (
+          <span className="ml-1 font-normal text-lyra-fg-disabled lyra-channel-tab-address">{address}</span>
+        )}
+      </Tab>
+    </Tooltip>
+  );
+};
+
 export {
   ChannelRow,
   ChatChannelRow,
@@ -264,4 +405,6 @@ export {
   WhatsAppChannelRow,
   VoiceChannelRow,
   CHANNEL_ROW_COMPONENTS,
+  CHANNEL_TYPE_META,
+  ChannelTab,
 };

@@ -42,10 +42,22 @@ interface LeftNavProps extends React.HTMLAttributes<HTMLElement> {
   /** Content pinned to the bottom of the nav rail (e.g. a CreateNew button) */
   footer?: React.ReactNode;
   /**
-   * Content pinned to the top of the nav rail, above the item list (e.g. a
-   * list of InteractionNavItem active-interaction cards). Like `footer`,
+   * Content pinned to the very top of the nav rail, above everything else
+   * — exempt from scrolling, unlike `header` below (e.g. a CreateNew
+   * trigger button, which should always stay put while a long list of
+   * interaction cards or nav items scrolls underneath it). Like `footer`,
    * consumers should pass their own `expanded` prop tied to `open` in
    * inline mode; overlay mode auto-injects it based on hover state.
+   */
+  pinnedHeader?: React.ReactNode;
+  /**
+   * Content rendered at the top of the scrollable item list (e.g. a list
+   * of InteractionNavItem active-interaction cards) — scrolls together
+   * with the nav items below it in one continuous region, rather than
+   * being fixed itself. Use `pinnedHeader` instead for content that must
+   * stay fixed (e.g. the CreateNew trigger). Consumers should pass their
+   * own `expanded` prop tied to `open` in inline mode; overlay mode
+   * auto-injects it based on hover state.
    */
   header?: React.ReactNode;
 }
@@ -97,6 +109,7 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
       collapsible = true,
       overlay = false,
       footer,
+      pinnedHeader,
       header,
       ...props
     },
@@ -138,8 +151,15 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
       </Tooltip>
     ) : null;
 
+    // No `overflow`/`flex-1` of its own — this list shares one scroll
+    // region with `header` (see the scroll wrapper in both render branches
+    // below), rather than owning its own separate scrollbar. `flex-shrink-0`
+    // on both the `<nav>` and each item guards against the rail's items
+    // compressing their spacing to fit when content overflows instead of
+    // scrolling — the bug this replaced (see left-nav.tsx's git history/
+    // PROJECT_SUMMARY.md for the reference screenshot).
     const iconOnlyNav = (
-      <nav aria-label="Main navigation" className="flex flex-1 flex-col gap-0.5 items-center overflow-y-auto overflow-x-hidden px-2 py-3">
+      <nav aria-label="Main navigation" className="flex flex-shrink-0 flex-col gap-0.5 items-center">
         {items.map((item, i) => {
           const isActive =
             item.active ||
@@ -151,7 +171,7 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
                 aria-label={item.label}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-lyra-sm transition-colors",
+                  "flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lyra-sm transition-colors",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
                   isActive
                     ? "bg-lyra-bg-active-moderate text-lyra-fg-active-strong"
@@ -187,21 +207,38 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
               boxShadow: hoverOpen ? "4px 0 12px rgba(0,0,0,0.1)" : "none",
             }}
           >
-            {header && (
-              // No top padding here (unlike the icon-only nav's own `py-3`
-              // below) — the header's first item (e.g. CreateNew) should sit
-              // flush with the rail's top edge, top-aligned with the
-              // container itself rather than inset to match the nav list.
+            {pinnedHeader && (
+              // No top padding here — the pinned header's first item (e.g.
+              // CreateNew) should sit flush with the rail's top edge,
+              // top-aligned with the container itself rather than inset to
+              // match the nav list. Exempt from scrolling, unlike `header`
+              // below (see the scroll wrapper's own comment).
               <div className={cn("flex-shrink-0 flex flex-col items-center px-2 pt-0", hoverOpen ? "gap-2" : "gap-1")}>
-                {injectExpanded(header, hoverOpen)}
+                {injectExpanded(pinnedHeader, hoverOpen)}
               </div>
             )}
+            {/* Scroll wrapper — `header` (e.g. InteractionNavItem cards)
+                and the nav item list live in one continuous scrollable
+                region, so a long list of either scrolls together instead
+                of only one of the two scrolling while the other stays
+                fixed (or compresses its own spacing to fit). Only
+                `pinnedHeader`/`footer` are exempt from this region. */}
             <div className="flex flex-1 flex-col overflow-hidden min-h-0">
-              {hoverOpen ? (
-                <TreeMenu items={treeItems} className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-3" />
-              ) : (
-                iconOnlyNav
-              )}
+              {/* No `gap` here — `header` (InteractionNavItem cards) supplies its own
+                  bottom margin per item (see InteractionNavItem), so spacing only
+                  appears when there's a real card to space out. A flex `gap` on this
+                  wrapper would still reserve space against the header slot below even
+                  when it renders zero visible cards (e.g. `header={<>{[].map(...)}</>}`
+                  is a truthy Fragment with no children — an empty-but-truthy React
+                  node, not `null` — so the `header &&` guard can't skip the wrapper). */}
+              <div className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden lyra-scrollbar-hide px-2 py-3">
+                {header && (
+                  <div className={cn("flex flex-shrink-0 flex-col", hoverOpen ? "items-stretch" : "items-center")}>
+                    {injectExpanded(header, hoverOpen)}
+                  </div>
+                )}
+                {hoverOpen ? <TreeMenu items={treeItems} /> : iconOnlyNav}
+              </div>
             </div>
             {footer && (
               <div className="flex-shrink-0 flex items-center justify-center px-2 pb-3">
@@ -227,24 +264,38 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
       >
         {toggleButton}
 
-        {header && (
+        {pinnedHeader && (
           // Same reasoning as the overlay branch above: flush to the top,
-          // no pt-3 inset, so the header's first item (CreateNew) is
-          // top-aligned with the rail itself.
+          // no pt-3 inset, so the pinned header's first item (CreateNew) is
+          // top-aligned with the rail itself. Exempt from scrolling — see
+          // the scroll wrapper's own comment below.
           <div className={cn("flex-shrink-0 flex flex-col items-center px-2 pt-0", open ? "gap-2" : "gap-1")}>
-            {header}
+            {pinnedHeader}
           </div>
         )}
 
-        {/* Scroll wrapper — overflow-hidden + min-h-0 constrains height so overflow-y-auto
-            on the inner content triggers. The aside keeps overflow-visible for the toggle
-            button that pokes out; this wrapper sits as a sibling to that button. */}
+        {/* Scroll wrapper — overflow-hidden + min-h-0 on the outer div constrains height so
+            overflow-y-auto on the inner div triggers. The aside keeps overflow-visible for the
+            toggle button that pokes out; this wrapper sits as a sibling to that button.
+            `header` (e.g. InteractionNavItem cards) and the nav item list share this one
+            scrollable region — deliberately, so a long list of either scrolls together instead
+            of only one of the two scrolling while the other stays fixed (or compresses its own
+            spacing to fit, which is what the icon-only rail used to do). Only `pinnedHeader`/
+            `footer` are exempt from this region. */}
         <div className="flex flex-1 flex-col overflow-hidden min-h-0">
-          {open ? (
-            <TreeMenu items={treeItems} className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-3" />
-          ) : (
-            iconOnlyNav
-          )}
+          {/* No `gap` here — see the matching comment in the overlay branch above.
+              `header`'s items (InteractionNavItem cards) carry their own bottom
+              margin, so an empty-but-truthy `header` (e.g. a Fragment wrapping a
+              zero-length `.map()`) contributes zero visible space instead of a
+              phantom gap before the nav list below. */}
+          <div className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden lyra-scrollbar-hide px-2 py-3">
+            {header && (
+              <div className={cn("flex flex-shrink-0 flex-col", open ? "items-stretch" : "items-center")}>
+                {header}
+              </div>
+            )}
+            {open ? <TreeMenu items={treeItems} /> : iconOnlyNav}
+          </div>
         </div>
         {footer && (
           <div className="flex-shrink-0 flex items-center justify-center px-2 pb-3">

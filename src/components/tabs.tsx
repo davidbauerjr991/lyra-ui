@@ -1,6 +1,8 @@
 import * as React from "react";
 import { useRef, useCallback } from "react";
 import { cn } from "../lib/utils";
+import { KebabMenuButton } from "./kebab-menu-button";
+import { type MenuEntry } from "./menu";
 
 /* ── Tab List (container with bottom border) ── */
 
@@ -81,12 +83,41 @@ interface TabProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   onRemove?: (e: React.MouseEvent) => void;
   /** Accessible label for the remove button (default: "Remove tab") */
   removeLabel?: string;
+  /**
+   * Renders a trailing kebab (⋮) menu on this tab — e.g. a channel tab's
+   * "Unassign & Dismiss"/"Consult / Transfer"/etc. actions (see
+   * `ChannelTab` in `channel-row.tsx`, the first consumer of this). Uses
+   * `KebabMenuButton`'s `as="span"` mode rather than nesting a real
+   * `<button>` inside this `<button>`, which HTML forbids — same reasoning
+   * as `onRemove`'s own `role="button"` span below. Mutually exclusive with
+   * `onRemove`/`rightIcon` (this takes priority if more than one is passed —
+   * a tab needs at most one trailing action).
+   */
+  menuItems?: MenuEntry[];
+  /** Accessible label for the kebab menu trigger (default: "More options") */
+  menuAriaLabel?: string;
   /** ID of the associated TabPanel */
   panelId?: string;
 }
 
 const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
-  ({ className, active, icon, rightIcon, onRemove, removeLabel = "Remove tab", panelId, children, id, ...props }, ref) => (
+  (
+    {
+      className,
+      active,
+      icon,
+      rightIcon,
+      onRemove,
+      removeLabel = "Remove tab",
+      menuItems,
+      menuAriaLabel = "More options",
+      panelId,
+      children,
+      id,
+      ...props
+    },
+    ref
+  ) => (
     <button
       ref={ref}
       id={id}
@@ -113,7 +144,18 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
         </span>
       )}
       {children}
-      {onRemove && (
+      {menuItems && (
+        <KebabMenuButton
+          as="span"
+          items={menuItems}
+          ariaLabel={menuAriaLabel}
+          className={cn(
+            "h-5 w-5 flex-shrink-0",
+            active ? "text-lyra-fg-action" : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary"
+          )}
+        />
+      )}
+      {onRemove && !menuItems && (
         <span
           role="button"
           tabIndex={0}
@@ -132,7 +174,7 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
           </svg>
         </span>
       )}
-      {rightIcon && !onRemove && (
+      {rightIcon && !onRemove && !menuItems && (
         <span
           aria-hidden="true"
           className={cn("flex-shrink-0 transition-colors", active ? "text-lyra-fg-action" : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary")}

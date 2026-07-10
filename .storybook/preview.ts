@@ -53,7 +53,17 @@ const preview: Preview = {
     options: {
       storySort: {
         method: "alphabetical",
-        order: ["Foundations", ["Colors", "Typography", "Spacing", "Border Radius", "Shadows"], "Atoms", "UI"],
+        // "Templates" subgroups are listed explicitly because plain
+        // alphabetical order would put "Dashboards" *before* "Data
+        // Management" ("Das" < "Dat") — the opposite of where it belongs
+        // (right below Data Management). Any Templates entry not listed
+        // here still falls back to alphabetical, same as before.
+        order: [
+          "Foundations", ["Colors", "Typography", "Spacing", "Border Radius", "Shadows"],
+          "Atoms",
+          "UI",
+          "Templates", ["Admin UIs", "Agent Next Gen", "Data Management", "Dashboards"],
+        ],
       },
     },
     controls: {

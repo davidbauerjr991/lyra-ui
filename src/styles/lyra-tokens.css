@@ -345,6 +345,21 @@
    The name is kept as-is (it's the established, referenced-elsewhere
    pattern name) despite the implementation switching between Grid and
    Flexbox across the three stages. */
+/* Keeps an element scrollable (overflow-y: auto/scroll still works, wheel/
+   trackpad/keyboard scrolling all still work) while hiding the browser's
+   own scrollbar chrome — e.g. LeftNav's rail, where a visible scrollbar
+   track/thumb clutters a narrow 256px surface. `scrollbar-width`/
+   `-ms-overflow-style` cover Firefox/legacy Edge; the `::-webkit-scrollbar`
+   rule covers Chrome/Safari/modern Edge — both are needed, there's no
+   single cross-browser property for this. */
+.lyra-scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.lyra-scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 .lyra-container-grid-wrap {
   container-type: inline-size;
 }
@@ -517,6 +532,55 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .lyra-metric-row.lyra-metric-row--compact .lyra-metric-row-divider--horizontal {
+    display: none;
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   Channel tab bar (CSS container query)
+   ════════════════════════════════════════════════════
+   Same rationale as `.lyra-container-grid-wrap`/`.lyra-metric-row-wrap`
+   above, applied to the `ChannelTab` bar (`channel-row.tsx`,
+   `AgentNextGenTemplate.stories.tsx`'s `activeInteraction` block): the tab
+   bar can end up narrow for reasons that have nothing to do with the
+   browser window (the side panel opening, the LeftNav expanding), so each
+   tab needs to shed its own text before the bar starts wrapping/scrolling
+   — not react to the viewport. Two ordered stages as width shrinks:
+
+     1. (≤480px) Each tab's "| address" (`.lyra-channel-tab-address`,
+        the phone number/email address/WhatsApp handle after the type
+        label) hides. The type label and icon stay — a tab still reads as
+        "SMS", just without the number that made two same-type tabs
+        distinguishable. That distinguishing info moves to the tab's
+        `Tooltip` instead (see `ChannelTab`), which is unaffected by any of
+        this — it's rendered in a Radix `Portal`, outside this container's
+        DOM subtree entirely.
+     2. (≤320px) The type label itself (`.lyra-channel-tab-label`) also
+        hides, leaving icon + kebab only — the narrowest a tab can get
+        while still being clickable/distinguishable by icon+Tooltip alone.
+        `max-width: 320px` is narrower than stage 1's `480px`, so both
+        rules are simultaneously true here — no need to re-hide the
+        address, it's already gone.
+
+   Usage: `.lyra-channel-tab-list-wrap` goes on the `TabList` that wraps
+   the `ChannelTab`s (passed via its own `className` prop — `TabList`
+   doesn't need to know this class exists); `.lyra-channel-tab-label`/
+   `.lyra-channel-tab-address` go on the two text spans inside `ChannelTab`
+   itself, queried against that same `TabList` ancestor. */
+.lyra-channel-tab-list-wrap {
+  container-type: inline-size;
+}
+
+/* Stage 1 — address hides; icon + type label remain. */
+@container (max-width: 480px) {
+  .lyra-channel-tab-address {
+    display: none;
+  }
+}
+
+/* Stage 2 — type label also hides; icon (+ kebab) only. */
+@container (max-width: 320px) {
+  .lyra-channel-tab-label {
     display: none;
   }
 }

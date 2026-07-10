@@ -1,16 +1,9 @@
 import { useState, useMemo } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { LeftNav, type NavItem } from "../left-nav";
-import { CreateNew, OutboundAddButton, type CreateNewOutboundContact, type CreateNewOutboundConfig } from "../create-new";
+import { CreateNew, useOutboundAddButton, type CreateNewOutboundContact, type CreateNewOutboundConfig } from "../create-new";
 import { InteractionNavItem, type InteractionChannel, type ChannelType } from "../interaction-nav-item";
 import { OUTBOUND_CONFIG } from "./create-new-outbound-mock";
-
-/** Body copy below each channel chip shows the routing skill, not a message
- *  preview — randomized per channel from this pool of sample skill names. */
-const SKILL_NAMES = ["Chat_General", "CXi SME Email", "CXoneSMS_1-833-457-2672"];
-function randomSkill(): string {
-  return SKILL_NAMES[Math.floor(Math.random() * SKILL_NAMES.length)];
-}
 import { Container } from "../container";
 import { ContentArea } from "../content-area";
 import {
@@ -20,42 +13,12 @@ import {
   PencilRuler,
   FileText,
   Home,
-  Users,
-  BookUser,
-  CalendarDays,
+  Search,
+  NotebookPen,
+  HelpCircle,
   Gauge,
   BarChart3,
 } from "lucide-react";
-
-// Computed once at module load (not inside the story's render function) so
-// the randomized skill name stays fixed across re-renders — e.g. toggling
-// which InteractionNavItem card is active shouldn't reshuffle these.
-const AGENT_NEXT_GEN_SOFIA_CHANNELS: InteractionChannel[] = [
-  {
-    type: "chat",
-    elapsed: "08:27",
-    current: true,
-    awaitingResponse: true,
-    preview: randomSkill(),
-  },
-];
-const AGENT_NEXT_GEN_RAY_CHANNELS: InteractionChannel[] = [
-  {
-    type: "chat",
-    elapsed: "06:12",
-    current: true,
-    awaitingResponse: true,
-    preview: randomSkill(),
-  },
-];
-const AGENT_NEXT_GEN_CALL_CHANNELS: InteractionChannel[] = [
-  {
-    type: "voice",
-    elapsed: "02:05",
-    current: true,
-    preview: randomSkill(),
-  },
-];
 
 /** One InteractionNavItem card in the "Agent Next Gen Left Nav" story below.
  *  Kept as a flat elapsed string (not the live-ticking clock-tick tracking
@@ -83,12 +46,6 @@ interface AgentNextGenDemoInteraction {
    *  rather than `InteractionChannel` directly). */
   channelAddresses?: Partial<Record<ChannelType, string[]>>;
 }
-
-const INITIAL_AGENT_NEXT_GEN_INTERACTIONS: AgentNextGenDemoInteraction[] = [
-  { id: "sofia", customerName: "Sofia Martinez", awaitingResponse: true, elapsed: "08:27", channels: AGENT_NEXT_GEN_SOFIA_CHANNELS },
-  { id: "ray",   customerName: "Ray Torres",     awaitingResponse: true, elapsed: "06:12", channels: AGENT_NEXT_GEN_RAY_CHANNELS },
-  { id: "call",  elapsed: "02:05", channels: AGENT_NEXT_GEN_CALL_CHANNELS },
-];
 
 const sampleItems: NavItem[] = [
   {
@@ -202,24 +159,21 @@ export const AgentNextGen: Story = {
     // Click any InteractionNavItem card below to make it the active one —
     // lets you test the active/inactive + awaiting-response border and
     // highlight states interactively instead of only via fixed args.
-    const [activeId, setActiveId] = useState("sofia");
+    const [activeId, setActiveId] = useState("");
 
-    // Seeded with the 3 fixed demo cards below; grows as the agent launches
-    // new outbound calls from CreateNew's "New Outbound" flow (see
-    // handleStartCall/handleQuickDial) — same merge-by-id pattern the live
-    // app (`agent-next-gen-v1`) and `AgentNextGenTemplate.stories.tsx` use,
-    // so redialing an existing contact restarts their card instead of
-    // stacking a duplicate.
-    const [interactions, setInteractions] = useState<AgentNextGenDemoInteraction[]>(
-      INITIAL_AGENT_NEXT_GEN_INTERACTIONS
-    );
-    // Set by an InteractionNavItem card's own "Add Outbound" button (see
-    // OutboundAddButton usage below) to deep-link CreateNew straight to the
-    // call-setup screen for that contact+channel — see
-    // CreateNewOutboundConfig.launchRequest's own doc comment in create-new.tsx.
-    // Cleared back to null once CreateNew reports it's been handled.
-    const [outboundLaunchRequest, setOutboundLaunchRequest] = useState<{ contactId: string; channel: ChannelType } | null>(null);
-
+    // Empty until the agent actually starts an interaction from CreateNew's
+    // "New Outbound" flow (see handleStartCall/handleQuickDial) — same
+    // "no cards until launched" behavior as `agent-next-gen-v1` and
+    // `AgentNextGenTemplate.stories.tsx` (which never seeded fixed demo
+    // cards to begin with). This story used to seed 3 fixed placeholder
+    // cards ("Sofia Martinez"/"Ray Torres"/"Customer") with ids that had no
+    // matching contact in `OUTBOUND_CONFIG` — clicking their "+" could never
+    // actually open CreateNew's call-setup screen, which looked like a bug
+    // in the "+" button itself rather than what it actually was (cards with
+    // no real contact behind them). Starting empty and only populating via
+    // a real "Start Interaction" click means every card that appears here
+    // is backed by a real contact, so its own "+" button always works.
+    const [interactions, setInteractions] = useState<AgentNextGenDemoInteraction[]>([]);
     // Starting a new outbound call/quick dial adds (or restarts) a card —
     // and, since a collapsed nav would otherwise hide that new card from
     // view entirely, also expands the nav so the agent immediately sees
@@ -379,33 +333,46 @@ export const AgentNextGen: Story = {
       };
     }, [interactions]);
 
-    // Every outbound contact (agent/team/skill/customer), keyed by id — used
-    // to look up which channels a *live interaction*'s underlying contact
-    // actually supports, for that card's own "Add Outbound" button (see
-    // OutboundAddButton usage below). Fixed demo cards ("sofia"/"ray"/"call")
-    // have no matching contact record, same as `quickdial:`-prefixed ids —
-    // both fall back to no button at all (see the render below).
-    const outboundContactsById = useMemo(
-      () => new Map(outboundConfig.groups.flatMap((g) => g.contacts ?? []).map((c) => [c.id, c])),
-      [outboundConfig]
-    );
+    // Every "Agent Next Gen" consumer (this story, AgentNextGenTemplate.
+    // stories.tsx, agent-next-gen-v1's AgentNextGenPage.tsx) wants the exact
+    // same "+" behavior on each InteractionNavItem card — look up that
+    // interaction's underlying outbound contact, scope the flyout to
+    // whatever channels it actually supports (falling back to the full
+    // unfiltered list for quick-dialed numbers/fixed demo cards with no
+    // matching contact record), and deep-link a picked channel into
+    // CreateNew's `launchRequest`. That's `useOutboundAddButton` (create-
+    // new.tsx) — a single shared implementation instead of three hand-
+    // copied ones that could (and did) quietly drift out of sync.
+    const { launchRequest, onLaunchRequestHandled, getHeaderAction } = useOutboundAddButton(outboundConfig);
 
+    // "Desk" is this page itself (see AgentDashboard/`Templates/Dashboards`'
+    // PageHeader title) — active by default, and the only item here with no
+    // fixed `active` flag: it's derived so that starting/selecting a real
+    // interaction (activeId set) takes the active state away from Desk,
+    // since focus has moved to that assignment instead. `onClick` clears
+    // `activeId` back to "" so Desk stays a real way back to this page
+    // instead of just a static "you're on the dashboard" indicator. Every
+    // item below it is a plain static rail entry (per the reference
+    // screenshot: Search, Directory, WEM, Help, Settings — Contacts/
+    // Schedule dropped, Queue/Reporting intentionally not added here).
     const items: NavItem[] = [
       {
         icon: <Home className="h-4 w-4" strokeWidth={1.5} />,
-        label: "Home",
+        label: "Desk",
+        active: activeId === "",
+        onClick: () => setActiveId(""),
       },
       {
-        icon: <Users className="h-4 w-4" strokeWidth={1.5} />,
-        label: "Contacts",
+        icon: <Search className="h-4 w-4" strokeWidth={1.5} />,
+        label: "Search",
       },
       {
-        icon: <BookUser className="h-4 w-4" strokeWidth={1.5} />,
-        label: "Directory",
+        icon: <NotebookPen className="h-4 w-4" strokeWidth={1.5} />,
+        label: "WEM",
       },
       {
-        icon: <CalendarDays className="h-4 w-4" strokeWidth={1.5} />,
-        label: "Schedule",
+        icon: <HelpCircle className="h-4 w-4" strokeWidth={1.5} />,
+        label: "Help",
       },
       {
         icon: <Settings className="h-4 w-4" strokeWidth={1.5} />,
@@ -417,50 +384,36 @@ export const AgentNextGen: Story = {
         items={items}
         open={open}
         onToggle={() => setOpen((v) => !v)}
+        pinnedHeader={
+          <CreateNew
+            title="New Outbound"
+            outbound={{
+              ...outboundConfig,
+              onStartCall: handleStartCall,
+              onQuickDial: handleQuickDial,
+              launchRequest,
+              onLaunchRequestHandled,
+            }}
+            expanded={open}
+          />
+        }
         header={
           <>
-            <CreateNew
-              title="New Outbound"
-              outbound={{
-                ...outboundConfig,
-                onStartCall: handleStartCall,
-                onQuickDial: handleQuickDial,
-                launchRequest: outboundLaunchRequest,
-                onLaunchRequestHandled: () => setOutboundLaunchRequest(null),
-              }}
-              expanded={open}
-            />
-            {interactions.map((interaction) => {
-              // Fixed demo cards and quick-dialed numbers have no backing
-              // Agent/Customer/Team/Skill contact record to look up real
-              // per-contact channel support from — offer the full unfiltered
-              // channel list for those so the "+" still appears on every
-              // card's header, per design request.
-              const contactRecord = outboundContactsById.get(interaction.id);
-              const addOutboundChannelOptions = contactRecord
-                ? OUTBOUND_CONFIG.channelOptions.filter((c) => contactRecord.channels.includes(c.id))
-                : OUTBOUND_CONFIG.channelOptions;
-              return (
-                <InteractionNavItem
-                  key={interaction.id}
-                  customerName={interaction.customerName}
-                  active={activeId === interaction.id}
-                  onClick={() => setActiveId(interaction.id)}
-                  awaitingResponse={interaction.awaitingResponse}
-                  elapsed={interaction.elapsed}
-                  expanded={open}
-                  channels={interaction.channels}
-                  onDismiss={() => handleDismissInteraction(interaction.id)}
-                  onDismissChannel={(channel) => handleDismissChannel(interaction.id, channel)}
-                  headerAction={
-                    <OutboundAddButton
-                      channelOptions={addOutboundChannelOptions}
-                      onSelect={(channel) => setOutboundLaunchRequest({ contactId: interaction.id, channel })}
-                    />
-                  }
-                />
-              );
-            })}
+            {interactions.map((interaction) => (
+              <InteractionNavItem
+                key={interaction.id}
+                customerName={interaction.customerName}
+                active={activeId === interaction.id}
+                onClick={() => setActiveId(interaction.id)}
+                awaitingResponse={interaction.awaitingResponse}
+                elapsed={interaction.elapsed}
+                expanded={open}
+                channels={interaction.channels}
+                onDismiss={() => handleDismissInteraction(interaction.id)}
+                onDismissChannel={(channel) => handleDismissChannel(interaction.id, channel)}
+                headerAction={getHeaderAction(interaction.id)}
+              />
+            ))}
           </>
         }
       />

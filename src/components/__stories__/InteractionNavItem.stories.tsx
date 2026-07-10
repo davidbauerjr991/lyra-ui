@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { InteractionNavItem, type InteractionChannel } from "../interaction-nav-item";
-import { OutboundAddButton } from "../create-new";
+import { CreateNew, useOutboundAddButton, type CreateNewOutboundConfig } from "../create-new";
 import { OUTBOUND_CONFIG } from "./create-new-outbound-mock";
 
 /** Body copy below each channel chip shows the routing skill, not a message
@@ -289,61 +289,148 @@ export const ExpandedStack: Story = {
 
 /* ── Header (headerAction slot) ──
    `headerAction` is a generic `React.ReactNode` slot in the card's header
-   row (see interaction-nav-item.tsx) — these stories demonstrate it filled
-   with the real `OutboundAddButton` from create-new.tsx, which is how every
-   production consumer (AgentNextGenPage.tsx, AgentNextGenTemplate.stories.tsx,
-   LeftNav.stories.tsx) actually wires it. Only rendered in expanded mode,
-   since compact (icon-rail) cards have no header row to put it in. This
-   story doesn't render a `CreateNew` popover alongside it — there's no
-   outbound flow to hand off to here — so `onSelect` just logs the chosen
-   channel, purely to demonstrate the header layout and the button's own
-   tooltip/flyout behavior in isolation. */
+   row (see interaction-nav-item.tsx), and the "Add Outbound" flow it's
+   demonstrating here is a two-step handoff: clicking the "+" opens
+   `OutboundAddButton`'s own small channel-picker flyout, and picking a
+   channel there is supposed to hand off into `CreateNew`'s own "Select
+   Channel / Select Phone / Outbound Skill → Start Interaction" screen —
+   the same screen a real click from `CreateNew`'s own "New Outbound"
+   button lands on. An earlier version of this story only wired the first
+   step (`onSelect` just logged to the console) on the theory that there
+   was "no outbound flow to hand off to" in a standalone story — which
+   made the second screen look broken/missing when it was actually just
+   never wired up. Fixed by giving this story its own small, self-contained
+   `CreateNewOutboundConfig` (below) and using the real `useOutboundAddButton`
+   hook (create-new.tsx) — the exact same hook every production consumer
+   (AgentNextGenPage.tsx, AgentNextGenTemplate.stories.tsx, LeftNav.stories.tsx)
+   uses — so selecting a channel here now opens the real second screen, not
+   a stand-in. `CreateNew` itself is rendered (its "New Outbound" trigger
+   button included, same as every real consumer) purely so there's
+   somewhere for that popover to mount; `getHeaderAction` doesn't need the
+   trigger to be clicked to open it. See "Compact — Hover Popover" further
+   below for the same `headerAction` rendered in compact mode instead —
+   there's no header row on the compact tile itself, but hovering it opens
+   a popover previewing the full expanded card, header row included. */
+
+const NAV_ITEM_HEADER_OUTBOUND_CONFIG: CreateNewOutboundConfig = {
+  outboundTitle: "New Outbound",
+  groups: [
+    {
+      id: "contacts",
+      label: "Contacts",
+      contacts: [
+        { id: "sofia-martinez", name: "Sofia Martinez", initials: "SM", channels: ["voice", "email", "sms", "whatsapp"] },
+        { id: "ray-torres", name: "Ray Torres", initials: "RT", channels: ["voice", "sms", "whatsapp"] },
+      ],
+    },
+  ],
+  channelOptions: OUTBOUND_CONFIG.channelOptions,
+  phoneOptions: OUTBOUND_CONFIG.phoneOptions,
+  skillOptions: OUTBOUND_CONFIG.skillOptions,
+  onStartCall: (selection) => {
+    // eslint-disable-next-line no-console
+    console.log("Start call:", selection.channel, "→", selection.contact.name);
+  },
+};
 
 export const NavItemHeader: Story = {
   name: "Header — Add Outbound Button",
-  render: () => (
-    <div className="flex w-[320px] flex-col gap-2 rounded-lyra-lg bg-lyra-bg-surface-shell p-3">
-      <InteractionNavItem
-        customerName="Sofia Martinez"
-        active
-        awaitingResponse
-        elapsed="08:27"
-        expanded
-        channels={SOFIA_CHANNELS}
-        headerAction={
-          <OutboundAddButton
-            channelOptions={OUTBOUND_CONFIG.channelOptions}
-            // eslint-disable-next-line no-console
-            onSelect={(channel) => console.log("Add Outbound:", channel)}
-          />
-        }
-      />
-      <InteractionNavItem
-        customerName="Ray Torres"
-        awaitingResponse
-        elapsed="04:00"
-        expanded
-        channels={RAY_CHANNELS}
-        headerAction={
-          <OutboundAddButton
-            channelOptions={OUTBOUND_CONFIG.channelOptions}
-            // eslint-disable-next-line no-console
-            onSelect={(channel) => console.log("Add Outbound:", channel)}
-          />
-        }
-      />
-      <InteractionNavItem
-        elapsed="02:05"
-        expanded
-        channels={[{ type: "voice", elapsed: "02:05", current: true, preview: randomSkill() }]}
-        headerAction={
-          <OutboundAddButton
-            channelOptions={OUTBOUND_CONFIG.channelOptions}
-            // eslint-disable-next-line no-console
-            onSelect={(channel) => console.log("Add Outbound:", channel)}
-          />
-        }
-      />
-    </div>
-  ),
+  render: () => {
+    const { launchRequest, onLaunchRequestHandled, getHeaderAction } = useOutboundAddButton(
+      NAV_ITEM_HEADER_OUTBOUND_CONFIG
+    );
+    return (
+      <div className="flex w-[320px] flex-col gap-2 rounded-lyra-lg bg-lyra-bg-surface-shell p-3">
+        <CreateNew
+          title="New Outbound"
+          outbound={{ ...NAV_ITEM_HEADER_OUTBOUND_CONFIG, launchRequest, onLaunchRequestHandled }}
+          // Every card below renders in expanded mode (full header row,
+          // name + headerAction) — CreateNew's own trigger needs the same
+          // `expanded` flag or it falls back to its default collapsed,
+          // icon-only square button (see create-new.tsx's own `expanded`
+          // doc comment), which looks disconnected from the fully-expanded
+          // rail this story is otherwise depicting.
+          expanded
+        />
+        <InteractionNavItem
+          customerName="Sofia Martinez"
+          active
+          awaitingResponse
+          elapsed="08:27"
+          expanded
+          channels={SOFIA_CHANNELS}
+          headerAction={getHeaderAction("sofia-martinez")}
+        />
+        <InteractionNavItem
+          customerName="Ray Torres"
+          awaitingResponse
+          elapsed="04:00"
+          expanded
+          channels={RAY_CHANNELS}
+          headerAction={getHeaderAction("ray-torres")}
+        />
+        {/* No matching contact for this one (same as a quick-dialed number
+            in the real app) — demonstrates getHeaderAction's fallback to
+            the full unfiltered channel list instead of hiding the button. */}
+        <InteractionNavItem
+          elapsed="02:05"
+          expanded
+          channels={[{ type: "voice", elapsed: "02:05", current: true, preview: randomSkill() }]}
+          headerAction={getHeaderAction("anonymous-voice")}
+        />
+      </div>
+    );
+  },
+};
+
+/* ── Compact hover popover ──
+   Hover any compact tile below — it opens a popover previewing the full
+   expanded card (name, `headerAction`, every channel row), fully
+   interactive rather than a read-only tooltip: clicking a channel row
+   makes it "current," the kebab menu's "Unassign & Dismiss" works, and
+   `headerAction`'s own "+" opens its channel flyout and can hand off into
+   `CreateNew`'s call-setup screen exactly like it does in expanded mode
+   (see the "Header — Add Outbound Button" story above; this reuses the
+   exact same `NAV_ITEM_HEADER_OUTBOUND_CONFIG`/`useOutboundAddButton`
+   wiring, just with `expanded={false}` cards). Moving the pointer from the
+   tile into the popover (to actually click something) doesn't close it —
+   see interaction-nav-item.tsx's `openHoverCard`/`scheduleCloseHoverCard`
+   for the hover-intent/delayed-close mechanics, mirrored from
+   `OutboundContactRow`'s own hover flyout in create-new.tsx. */
+
+export const CompactHoverCard: Story = {
+  name: "Compact — Hover Popover",
+  render: () => {
+    const { launchRequest, onLaunchRequestHandled, getHeaderAction } = useOutboundAddButton(
+      NAV_ITEM_HEADER_OUTBOUND_CONFIG
+    );
+    return (
+      <div className="flex flex-col items-center gap-1 rounded-lyra-lg bg-lyra-bg-surface-shell p-2">
+        <CreateNew
+          title="New Outbound"
+          outbound={{ ...NAV_ITEM_HEADER_OUTBOUND_CONFIG, launchRequest, onLaunchRequestHandled }}
+        />
+        <InteractionNavItem
+          customerName="Sofia Martinez"
+          active
+          awaitingResponse
+          elapsed="08:27"
+          channels={SOFIA_CHANNELS}
+          headerAction={getHeaderAction("sofia-martinez")}
+        />
+        <InteractionNavItem
+          customerName="Ray Torres"
+          awaitingResponse
+          elapsed="04:00"
+          channels={RAY_CHANNELS}
+          headerAction={getHeaderAction("ray-torres")}
+        />
+        <InteractionNavItem
+          elapsed="02:05"
+          channels={[{ type: "voice", elapsed: "02:05", current: true, preview: randomSkill() }]}
+          headerAction={getHeaderAction("anonymous-voice")}
+        />
+      </div>
+    );
+  },
 };

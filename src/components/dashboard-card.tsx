@@ -235,6 +235,18 @@ const DashboardCard = React.forwardRef<HTMLDivElement, DashboardCardProps>(
           // tight — not the browser viewport's. Only relevant when
           // `metrics` is actually being rendered.
           metrics && "lyra-metric-row-wrap",
+          // Hover lift — one step up the same shadow scale the card
+          // already sits on (`default`'s own `shadow-sm`, see
+          // `container.tsx`'s `containerVariants`), same "elevate on
+          // hover" idiom `InteractionNavItem`'s expanded card already uses
+          // (`hover:shadow-md` there too). Applies regardless of whether
+          // this particular card happens to be clickable — plenty of
+          // dashboard widgets (Productivity, Contact History) are read-only
+          // and still benefit from the same "this is a distinct card"
+          // affordance on hover. Skipped when `showContainer` is false —
+          // a card with no surface/shadow of its own shouldn't grow one
+          // only on hover.
+          showContainer && "transition-shadow hover:shadow-md",
           className
         )}
         headerClassName={cn(

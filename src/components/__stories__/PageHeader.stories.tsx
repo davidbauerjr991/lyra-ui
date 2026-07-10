@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
+import { User } from "lucide-react";
 import { PageHeader } from "../page-header";
 import { SidePanel } from "../side-panel";
 import { InteriorPanel } from "../interior-panel";
@@ -71,6 +72,21 @@ export const WithPanelToggle: Story = {
     title: "Desktop Designs",
     panelToggle: "left",
     actions: defaultActions,
+  },
+};
+
+export const RecordHeader: Story = {
+  name: "Record Header (Icon + Subtitle)",
+  args: {
+    icon: <User className="h-5 w-5" strokeWidth={1.5} />,
+    title: "Jamie Torres",
+    subtitle: "CS-1239930",
+    actions: (
+      <Button variant="outline">
+        <AiIcon className="h-4 w-4" />
+        Ask AI
+      </Button>
+    ),
   },
 };
 

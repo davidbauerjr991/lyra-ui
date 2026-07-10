@@ -1,6 +1,7 @@
 import * as React from "react";
 import { cn } from "../lib/utils";
 import { CHANNEL_ROW_COMPONENTS, type InteractionChannel, type ChannelType } from "./channel-row";
+import { Popover } from "./popover";
 
 /* ── Helpers ── */
 
@@ -75,9 +76,37 @@ export interface InteractionNavItemProps {
    *  same contact without leaving the card. Kept as a generic slot (not a
    *  dedicated `onAddOutbound` prop) so this component has no direct
    *  dependency on `create-new.tsx`'s outbound-picker types — the consumer
-   *  composes whatever trigger it needs. Not rendered in compact (icon-rail)
-   *  mode, which has no header row to put it in. */
+   *  composes whatever trigger it needs. Compact (icon-rail) mode has no
+   *  header row of its own to put this in, but it isn't dropped there —
+   *  hovering the compact tile opens a popover previewing the full expanded
+   *  card (see the compact-mode branch below), and that preview's header
+   *  row renders this exact same `headerAction`. If whatever's passed here
+   *  opens its own popover (like `OutboundAddButton` does), make sure its
+   *  z-index accounts for sometimes being nested inside that hover
+   *  popover — see `OutboundAddButton`'s own doc comment in create-new.tsx. */
   headerAction?: React.ReactNode;
+  /**
+   * Controls which open channel is "current" (the blue-highlighted row on
+   * an `active` card) from outside this component — e.g. a `ChannelTab` bar
+   * rendered elsewhere (under a record-header `PageHeader`) that needs to
+   * stay in lockstep with this same card. When provided, this always wins
+   * over whatever the card would otherwise compute on its own (a row click,
+   * or a newly-opened channel taking over as current); when omitted, the
+   * card manages its own current-channel state exactly as before — every
+   * existing consumer that doesn't pass this keeps working unchanged. Pass
+   * the same key `onCurrentChannelChange` reports back (see below) — a
+   * `channelKey`: `channel.id` when set, else `channel.type`.
+   */
+  currentChannelKey?: string;
+  /**
+   * Fired whenever the effective current channel changes — from a row
+   * click, from a newly-opened channel auto-taking over, or (if this
+   * component is uncontrolled) just to notify a listener without it having
+   * to own `currentChannelKey` itself. A consumer building a synced
+   * `ChannelTab` bar should store this in the same piece of state it passes
+   * back in as `currentChannelKey`, so a click on either side updates both.
+   */
+  onCurrentChannelChange?: (key: string) => void;
   className?: string;
 }
 
@@ -103,6 +132,8 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       onDismiss,
       onDismissChannel,
       headerAction,
+      currentChannelKey,
+      onCurrentChannelChange,
       className,
     },
     ref
@@ -150,12 +181,58 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     if (channelKeysChanged) {
       setPrevChannelKeys(currentChannelKeys);
       const justOpenedKey = currentChannelKeys.find((k) => !prevChannelKeys.includes(k));
-      if (justOpenedKey !== undefined) setManualCurrentKey(justOpenedKey);
+      if (justOpenedKey !== undefined) {
+        setManualCurrentKey(justOpenedKey);
+        // Also notify a controlling parent — when this component is
+        // controlled (`currentChannelKey` prop passed), the internal
+        // `setManualCurrentKey` above is inert for *display* purposes (see
+        // `effectiveCurrentKey` below), so the parent's own state needs
+        // this notification to actually pick up the newly-opened channel.
+        onCurrentChannelChange?.(justOpenedKey);
+      }
     }
 
     const fallbackCurrentChannel = [...channels].reverse().find((c) => c.current) ?? channels[channels.length - 1];
     const fallbackCurrentKey = fallbackCurrentChannel ? channelKey(fallbackCurrentChannel) : undefined;
-    const currentKey = channels.some((c) => channelKey(c) === manualCurrentKey) ? manualCurrentKey : fallbackCurrentKey;
+    // Controlled (a `currentChannelKey` prop was passed) always wins over
+    // whatever this card would otherwise compute on its own — see the
+    // prop's own doc comment. Uncontrolled: unchanged from before, the
+    // manual pick (if it still matches an open channel) or the fallback.
+    const effectiveCurrentKey =
+      currentChannelKey !== undefined
+        ? currentChannelKey
+        : channels.some((c) => channelKey(c) === manualCurrentKey) ? manualCurrentKey : fallbackCurrentKey;
+
+    // Compact mode only: hovering the icon-rail avatar tile opens a popover
+    // previewing the full expanded card (name, headerAction, every channel
+    // row) so the agent can read — and act on — the card's detail without
+    // switching the whole rail to expanded mode. Same hover-intent pattern
+    // as `OutboundContactRow`'s flyout in create-new.tsx: open immediately
+    // on enter, but close on a short delay (rather than instantly on
+    // mouseleave) so there's time to move the pointer from the tile into
+    // the popover's own content — both the tile and the content re-arm the
+    // open state on their own mouseenter, so hovering over either keeps it
+    // open. Declared unconditionally (not inside the `!expanded` branch
+    // below) because hooks can't be called conditionally, even though
+    // they're only ever read there.
+    const [hoverCardOpen, setHoverCardOpen] = React.useState(false);
+    const closeHoverCardTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+    const openHoverCard = () => {
+      if (closeHoverCardTimeoutRef.current) {
+        clearTimeout(closeHoverCardTimeoutRef.current);
+        closeHoverCardTimeoutRef.current = null;
+      }
+      setHoverCardOpen(true);
+    };
+    const scheduleCloseHoverCard = () => {
+      if (closeHoverCardTimeoutRef.current) clearTimeout(closeHoverCardTimeoutRef.current);
+      closeHoverCardTimeoutRef.current = setTimeout(() => setHoverCardOpen(false), 150);
+    };
+    React.useEffect(() => {
+      return () => {
+        if (closeHoverCardTimeoutRef.current) clearTimeout(closeHoverCardTimeoutRef.current);
+      };
+    }, []);
 
     const tone = awaitingResponse
       ? { bg: "bg-lyra-status-critical-subtle", text: "text-lyra-status-critical-strong", border: active ? "border-lyra-status-critical-strong" : "border-lyra-status-critical-medium/30" }
@@ -170,84 +247,12 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
 
     const ariaLabel = `${displayName}${awaitingResponse ? ", awaiting response" : ""}${channelCount > 1 ? `, ${channelCount} open channels` : ""}, ${elapsed}`;
 
-    /* ── Compact: icon-rail avatar tile ── */
-    if (!expanded) {
-      return (
-        <div
-          ref={ref}
-          role="button"
-          tabIndex={0}
-          onClick={onClick}
-          onKeyDown={handleKeyDown}
-          aria-label={ariaLabel}
-          aria-current={active ? "true" : undefined}
-          className={cn(
-            "flex cursor-pointer flex-col items-center gap-1 rounded-lyra-sm p-1.5 transition-colors",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
-            active ? "bg-lyra-bg-surface-base shadow-sm" : "hover:bg-lyra-state-hover",
-            className
-          )}
-        >
-          <span className="relative inline-flex">
-            <span
-              className={cn(
-                "flex h-8 w-8 items-center justify-center rounded-lyra-sm border lyra-body-sm-emphasis",
-                tone.bg,
-                tone.text,
-                tone.border
-              )}
-              aria-hidden="true"
-            >
-              {initials}
-            </span>
-            {channelCount > 1 && (
-              <span
-                className="absolute -left-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-lyra-bg-destructive px-1 text-[10px] font-bold text-lyra-fg-on-primary"
-                aria-label={`${channelCount} open channels`}
-              >
-                <span aria-hidden="true">{channelCount}</span>
-              </span>
-            )}
-            {awaitingResponse && (
-              <span
-                className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-lyra-status-critical-strong ring-2 ring-lyra-bg-surface-shell"
-                aria-hidden="true"
-              />
-            )}
-          </span>
-          <span className="lyra-body-xs text-lyra-fg-secondary" aria-hidden="true">{elapsed}</span>
-        </div>
-      );
-    }
-
-    /* ── Expanded: full detail card ── */
-    return (
-      <div
-        ref={ref}
-        role="button"
-        tabIndex={0}
-        onClick={onClick}
-        onKeyDown={handleKeyDown}
-        aria-label={ariaLabel}
-        aria-current={active ? "true" : undefined}
-        className={cn(
-          "flex w-full cursor-pointer flex-col overflow-hidden rounded-lyra-sm border-y border-r bg-lyra-bg-surface-base text-left transition-colors",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
-          active ? "border-l-4" : "border-l",
-          active && "shadow-md",
-          // Border color reflects active state first — an inactive card never
-          // gets the red "needs attention" border, even when awaiting a
-          // response (that's conveyed via the channel chip / avatar badge
-          // instead). Only an active card that's also awaiting response
-          // shows red; every other active card shows the blue active border.
-          active
-            ? awaitingResponse
-              ? "border-lyra-status-critical-strong"
-              : "border-lyra-border-active"
-            : "border-lyra-border-subtle",
-          className
-        )}
-      >
+    // Header row + channel list — the expanded card's actual content,
+    // factored out so it can be rendered both by the real expanded return
+    // below and inside the compact tile's hover popover (see `!expanded`
+    // branch), without keeping two copies of this markup in sync by hand.
+    const cardBody = (
+      <>
         <div className="flex items-center gap-2 px-4 pt-2 pb-1">
           <span className="min-w-0 flex-1 truncate lyra-heading-sm text-lyra-fg-default">{displayName}</span>
           {headerAction}
@@ -258,7 +263,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
             {channels.map((ch, i) => {
               // Only ever highlighted on the active card — an inactive card's
               // "current" channel still renders plain, same as every other row.
-              const highlighted = active && channelKey(ch) === currentKey;
+              const highlighted = active && channelKey(ch) === effectiveCurrentKey;
               const RowComponent = CHANNEL_ROW_COMPONENTS[ch.type];
               return (
                 <RowComponent
@@ -280,12 +285,193 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                     if (channels.length > 1) onDismissChannel?.(ch);
                     else onDismiss?.();
                   }}
-                  onSelect={() => setManualCurrentKey(channelKey(ch))}
+                  onSelect={() => {
+                    // Unconditional even when controlled — harmless (ignored
+                    // by `effectiveCurrentKey` while `currentChannelKey` is
+                    // defined) and keeps the uncontrolled path unchanged.
+                    setManualCurrentKey(channelKey(ch));
+                    onCurrentChannelChange?.(channelKey(ch));
+                  }}
                 />
               );
             })}
           </div>
         )}
+      </>
+    );
+
+    // The expanded card's own outer chrome (border/shadow/background),
+    // shared between the real expanded return and the hover popover's
+    // preview of it — same reasoning as `cardBody` above.
+    const expandedCardClassName = cn(
+      "flex w-full cursor-pointer flex-col overflow-hidden rounded-lyra-sm border-y border-r bg-lyra-bg-surface-base text-left transition-colors",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
+      active ? "border-l-4" : "border-l",
+      // Active cards get a permanent `shadow-md` (the "elevated" token per
+      // Shadows.stories.tsx); inactive cards stay flat, hover or not — the
+      // real expanded (rail-expanded) card intentionally has no hover
+      // shadow. Only the compact tile below (and its hover-popover preview,
+      // which reuses this same class) gets a hover shadow — see that
+      // branch's own comment for why the drop shadow is scoped to the
+      // collapsed rail specifically, per an explicit follow-up request.
+      active && "shadow-md",
+      // Border color reflects active state first — an inactive card never
+      // gets the red "needs attention" border, even when awaiting a
+      // response (that's conveyed via the channel chip / avatar badge
+      // instead). Only an active card that's also awaiting response
+      // shows red; every other active card shows the blue active border.
+      active
+        ? awaitingResponse
+          ? "border-lyra-status-critical-strong"
+          : "border-lyra-border-active"
+        : "border-lyra-border-subtle"
+    );
+
+    /* ── Compact: icon-rail avatar tile ── */
+    if (!expanded) {
+      return (
+        <Popover
+          open={hoverCardOpen}
+          onOpenChange={setHoverCardOpen}
+          placement="right"
+          align="start"
+          sideOffset={8}
+          showArrow={false}
+          // Hover-opened, not click-opened — stealing focus into the
+          // popover the instant the pointer happens to land on the tile
+          // would be disruptive (and isn't what a hover preview is for).
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          // The preview card below already supplies its own complete
+          // chrome (border/background/shadow, via `expandedCardClassName`)
+          // matching the real expanded card exactly, so this popover's own
+          // default panel styling is stripped down to a bare, invisible
+          // frame around it — same "let the real content supply its own
+          // chrome" convention `OutboundAddButton`'s Menu-in-Popover uses
+          // in create-new.tsx.
+          className="z-[9999] w-64 rounded-lyra-sm border-0 bg-transparent p-0 shadow-none"
+          content={
+            <div
+              // Re-arms the open state on its own hover so moving the
+              // pointer from the tile into this preview (to actually read
+              // it or click something in it) doesn't let the close timer
+              // started by leaving the tile go on to close it.
+              onMouseEnter={openHoverCard}
+              onMouseLeave={scheduleCloseHoverCard}
+              role="button"
+              tabIndex={0}
+              onClick={onClick}
+              onKeyDown={handleKeyDown}
+              aria-label={ariaLabel}
+              // `shadow-md` added here only (not baked into
+              // `expandedCardClassName` itself, which the real expanded
+              // card also uses and should stay flat) — always on while this
+              // preview is shown, not just conditional on hover, per an
+              // explicit follow-up ("this should always be there"). Skipped
+              // when `active`, which already carries its own permanent
+              // shadow via `expandedCardClassName`.
+              className={cn(expandedCardClassName, !active && "shadow-md")}
+            >
+              {cardBody}
+            </div>
+          }
+        >
+          <div
+            ref={ref}
+            role="button"
+            tabIndex={0}
+            onClick={onClick}
+            onKeyDown={handleKeyDown}
+            onMouseEnter={openHoverCard}
+            onMouseLeave={scheduleCloseHoverCard}
+            aria-label={ariaLabel}
+            aria-current={active ? "true" : undefined}
+            className={cn(
+              // `mb-2` lives here (on the item itself) rather than as a `gap` on
+              // LeftNav's wrapping container, so spacing between cards — and
+              // between the last card and the nav list below it — only appears
+              // when there's an actual rendered tile to carry it. A parent `gap`
+              // would still reserve that space even with zero interactions open,
+              // since LeftNav's `header` slot is an always-truthy React node
+              // (a Fragment around a `.map()`) even when it renders nothing.
+              "flex cursor-pointer flex-col items-center gap-1 rounded-lyra-sm p-1.5 mb-2 transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
+              // No shadow on the tile itself, hover or not — per an explicit
+              // follow-up, the drop shadow belongs only on the hover-popover
+              // preview card above (the thing that actually appears on
+              // hover), not this small icon-rail square.
+              //
+              // Background driven by `hoverCardOpen` state, not CSS `:hover`
+              // — the pointer leaves this tile's own DOM node the moment it
+              // moves into the preview popover next to it, which would
+              // otherwise drop the `:hover` pseudo-class (and the
+              // background with it) even though the preview it triggered is
+              // still open and the tile should still read as "the one being
+              // shown." `hoverCardOpen` stays true across that move (the
+              // preview's own onMouseEnter re-arms it), so the background
+              // does too.
+              active ? "bg-lyra-bg-surface-base shadow-sm" : hoverCardOpen && "bg-lyra-state-hover",
+              className
+            )}
+          >
+            <span className="relative inline-flex">
+              <span
+                className={cn(
+                  "flex h-8 w-8 items-center justify-center rounded-lyra-sm border lyra-body-sm-emphasis",
+                  tone.bg,
+                  tone.text,
+                  tone.border
+                )}
+                aria-hidden="true"
+              >
+                {initials}
+              </span>
+              {channelCount > 1 && (
+                <span
+                  className={cn(
+                    "absolute -left-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-lyra-fg-on-primary",
+                    // Blue by default — only switches to the same critical
+                    // red the avatar/border already use once the
+                    // interaction is actually awaiting a response. This
+                    // badge is just a count, not itself a "needs attention"
+                    // signal, so it shouldn't default to red the way a
+                    // notification badge would.
+                    awaitingResponse ? "bg-lyra-bg-destructive" : "bg-lyra-bg-primary"
+                  )}
+                  aria-label={`${channelCount} open channels`}
+                >
+                  <span aria-hidden="true">{channelCount}</span>
+                </span>
+              )}
+              {awaitingResponse && (
+                <span
+                  className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-lyra-status-critical-strong ring-2 ring-lyra-bg-surface-shell"
+                  aria-hidden="true"
+                />
+              )}
+            </span>
+            <span className="lyra-body-xs text-lyra-fg-secondary" aria-hidden="true">{elapsed}</span>
+          </div>
+        </Popover>
+      );
+    }
+
+    /* ── Expanded: full detail card ── */
+    return (
+      <div
+        ref={ref}
+        role="button"
+        tabIndex={0}
+        onClick={onClick}
+        onKeyDown={handleKeyDown}
+        aria-label={ariaLabel}
+        aria-current={active ? "true" : undefined}
+        // `mb-2` (not baked into `expandedCardClassName`, which the compact
+        // mode's hover-popover preview above also uses — that preview floats
+        // in a Popover and shouldn't pick up a bottom margin) — same
+        // per-item-not-parent-gap spacing as the compact tile above.
+        className={cn(expandedCardClassName, "mb-2", className)}
+      >
+        {cardBody}
       </div>
     );
   }

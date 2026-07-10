@@ -1,10 +1,9 @@
 import * as React from "react";
 import { useState, useRef, useCallback, useLayoutEffect, useEffect } from "react";
-import { Pin } from "lucide-react";
 import { PanelHeader } from "./panel-header";
 import { PanelContent } from "./panel-content";
 import { PanelFooter } from "./panel-footer";
-import { Tooltip } from "./tooltip";
+import { PanelPinButton } from "./panel-pin-button";
 import { cn } from "../lib/utils";
 
 /* ── Types ── */
@@ -185,15 +184,7 @@ const Panel = React.forwardRef<HTMLDivElement, PanelProps>(
 
     /* ── Pin button (side variant) ── */
     const pinButton = variant === "side" && onPinToggle ? (
-      <Tooltip content={pinned ? "Unpin panel" : "Pin panel"} placement="bottom" asLabel>
-        <button
-          onClick={onPinToggle}
-          aria-label={pinned ? "Unpin panel" : "Pin panel"}
-          className="flex h-7 w-7 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary transition-colors hover:bg-lyra-state-hover active:bg-lyra-state-pressed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
-        >
-          <Pin className={cn("h-4 w-4", pinned && "rotate-45")} strokeWidth={1.5} aria-hidden="true" />
-        </button>
-      </Tooltip>
+      <PanelPinButton pinned={pinned} onToggle={onPinToggle} />
     ) : null;
 
     /* ── Drag handle ── */
