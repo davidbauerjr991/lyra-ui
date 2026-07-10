@@ -238,9 +238,14 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
       // own doc comment ("shows a 'Help' row ... when provided"). Was
       // previously added unconditionally regardless of whether a handler
       // existed, which put a dead "Help" row in every consumer's status
-      // menu (e.g. agent-next-gen-v1, which never passed `onHelpClick` and
-      // now has its own standalone Help icon in the AppHeader instead —
-      // no reason for this menu to duplicate it, dead or not).
+      // menu. `agent-next-gen-v1` had briefly added its own standalone "?"
+      // AppHeader icon instead of using this prop, then moved back to this
+      // row per user request (screenshot of the status dropdown, asked for
+      // "Help" below "Agent Leg Disconnected" — exactly this row's position).
+      // `AgentNextGenTemplate.stories.tsx` and `lyra-ux-templates` don't
+      // currently pass `onHelpClick` at all (no Help entry point in either
+      // right now) — flagging, not fixing, since this request was scoped to
+      // `agent-next-gen-v1` only.
       ...(onHelpClick
         ? [{
             id: "help",

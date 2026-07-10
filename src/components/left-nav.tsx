@@ -217,27 +217,35 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
                 {injectExpanded(pinnedHeader, hoverOpen)}
               </div>
             )}
-            {/* Scroll wrapper — `header` (e.g. InteractionNavItem cards)
-                and the nav item list live in one continuous scrollable
-                region, so a long list of either scrolls together instead
-                of only one of the two scrolling while the other stays
-                fixed (or compresses its own spacing to fit). Only
-                `pinnedHeader`/`footer` are exempt from this region. */}
+            {/* `header` (e.g. InteractionNavItem cards) and the nav item
+                list share one scrollable region — the nav list stays in
+                its normal flow position right after `header`'s content
+                (no artificial gap when there are only one or two cards),
+                but is `position: sticky; bottom: 0`, so once a long list
+                of cards would otherwise push it below the visible rail, it
+                sticks to the bottom of the scroll viewport instead and the
+                cards keep scrolling underneath/behind it (see the
+                reference screenshot in PROJECT_SUMMARY.md — the nav items
+                scrolled out of view entirely before this; an earlier fix
+                pinned them to the bottom *unconditionally*, which the user
+                caught as wrong too — it left a large empty gap above them
+                whenever there were only a few cards, since "sticky", not
+                "always pinned regardless of content", is what was asked
+                for). Needs an opaque background so scrolled-under cards
+                don't show through the nav items' icons/labels. */}
             <div className="flex flex-1 flex-col overflow-hidden min-h-0">
-              {/* No `gap` here — `header` (InteractionNavItem cards) supplies its own
-                  bottom margin per item (see InteractionNavItem), so spacing only
-                  appears when there's a real card to space out. A flex `gap` on this
-                  wrapper would still reserve space against the header slot below even
-                  when it renders zero visible cards (e.g. `header={<>{[].map(...)}</>}`
-                  is a truthy Fragment with no children — an empty-but-truthy React
-                  node, not `null` — so the `header &&` guard can't skip the wrapper). */}
-              <div className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden lyra-scrollbar-hide px-2 py-3">
+              <div className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden lyra-scrollbar-hide min-h-0">
+                {/* No `gap` here — `header` (InteractionNavItem cards) supplies its own
+                    bottom margin per item (see InteractionNavItem), so spacing only
+                    appears when there's a real card to space out. */}
                 {header && (
-                  <div className={cn("flex flex-shrink-0 flex-col", hoverOpen ? "items-stretch" : "items-center")}>
+                  <div className={cn("flex flex-shrink-0 flex-col px-2 pt-3", hoverOpen ? "items-stretch" : "items-center")}>
                     {injectExpanded(header, hoverOpen)}
                   </div>
                 )}
-                {hoverOpen ? <TreeMenu items={treeItems} /> : iconOnlyNav}
+                <div className={cn("sticky bottom-0 flex flex-shrink-0 flex-col bg-lyra-bg-surface-shell px-2 pb-3", !header && "pt-3")}>
+                  {hoverOpen ? <TreeMenu items={treeItems} /> : iconOnlyNav}
+                </div>
               </div>
             </div>
             {footer && (
@@ -275,26 +283,34 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
         )}
 
         {/* Scroll wrapper — overflow-hidden + min-h-0 on the outer div constrains height so
-            overflow-y-auto on the inner div triggers. The aside keeps overflow-visible for the
-            toggle button that pokes out; this wrapper sits as a sibling to that button.
-            `header` (e.g. InteractionNavItem cards) and the nav item list share this one
-            scrollable region — deliberately, so a long list of either scrolls together instead
-            of only one of the two scrolling while the other stays fixed (or compresses its own
-            spacing to fit, which is what the icon-only rail used to do). Only `pinnedHeader`/
-            `footer` are exempt from this region. */}
+            overflow-y-auto on the inner div triggers. The aside keeps overflow-visible for
+            the toggle button that pokes out; this wrapper sits as a sibling to that button.
+            `header` (e.g. InteractionNavItem cards) and the nav item list share one
+            scrollable region — the nav list stays in its normal flow position right after
+            `header`'s content (no artificial gap when there are only one or two cards), but
+            is `position: sticky; bottom: 0`, so once a long list of cards would otherwise
+            push it below the visible rail, it sticks to the bottom of the scroll viewport
+            instead and the cards keep scrolling underneath/behind it (see the reference
+            screenshot in PROJECT_SUMMARY.md — the nav items scrolled out of view entirely
+            before this; an earlier fix pinned them to the bottom *unconditionally*, which the
+            user caught as wrong too — it left a large empty gap above them whenever there
+            were only a few cards, since "sticky", not "always pinned regardless of content",
+            is what was asked for). Needs an opaque background so scrolled-under cards don't
+            show through the nav items' icons/labels. */}
         <div className="flex flex-1 flex-col overflow-hidden min-h-0">
-          {/* No `gap` here — see the matching comment in the overlay branch above.
-              `header`'s items (InteractionNavItem cards) carry their own bottom
-              margin, so an empty-but-truthy `header` (e.g. a Fragment wrapping a
-              zero-length `.map()`) contributes zero visible space instead of a
-              phantom gap before the nav list below. */}
-          <div className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden lyra-scrollbar-hide px-2 py-3">
+          <div className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden lyra-scrollbar-hide min-h-0">
+            {/* No `gap` here — `header`'s items (InteractionNavItem cards) carry their own
+                bottom margin, so an empty-but-truthy `header` (e.g. a Fragment wrapping a
+                zero-length `.map()`) contributes zero visible space instead of a phantom gap
+                before the nav list below. */}
             {header && (
-              <div className={cn("flex flex-shrink-0 flex-col", open ? "items-stretch" : "items-center")}>
+              <div className={cn("flex flex-shrink-0 flex-col px-2 pt-3", open ? "items-stretch" : "items-center")}>
                 {header}
               </div>
             )}
-            {open ? <TreeMenu items={treeItems} /> : iconOnlyNav}
+            <div className={cn("sticky bottom-0 flex flex-shrink-0 flex-col bg-lyra-bg-surface-shell px-2 pb-3", !header && "pt-3")}>
+              {open ? <TreeMenu items={treeItems} /> : iconOnlyNav}
+            </div>
           </div>
         </div>
         {footer && (

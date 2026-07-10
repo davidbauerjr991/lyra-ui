@@ -64,7 +64,70 @@ import { Tooltip } from "./tooltip";
  *    • Requires variant prop to be synced into internal state via useEffect so the
  *      parent can force a variant change externally.
  *
+ * ── Viewport Containment ──────────────────────────────────────────────────
+ *
+ *  The panel's box must always stay fully inside the browser viewport — no
+ *  edge may be dragged or resized past `window.innerWidth`/`innerHeight` (or
+ *  before 0). This is enforced entirely inside this component, using the
+ *  panel's own `getBoundingClientRect()` at the moment a drag/resize starts
+ *  as the reference frame — it does NOT depend on how a consumer positions
+ *  the float wrapper (fixed/absolute, floatLeft/floatTop refs, etc.), so no
+ *  changes are needed in any consuming app.
+ *
+ *  • Float drag — `onDragMouseDown` captures the panel's un-offset base
+ *    position (`rect.left/top - current offset`) at drag start, then clamps
+ *    every subsequent offset so `base + offset` stays within
+ *    `[0, viewport - panelSize]` on both axes.
+ *  • Float corner resize — `onCornerResizeDown` captures the panel's fixed
+ *    top/left at resize start, then caps the new width/height so the
+ *    (fixed) top-left corner plus the (growing) size never exceeds the
+ *    viewport's right/bottom edge.
+ *  • Docked left-edge resize — the right edge is already pinned by the
+ *    consumer's flex layout, so only the left edge can leave the viewport;
+ *    `onLeftEdgeResizeDown` caps the new width so the left edge never goes
+ *    past `x = 0`.
+ *  • Browser window resize (no active drag/resize) — none of the above
+ *    handlers fire just because the window shrinks; a `window` `resize`
+ *    listener covers that case too:
+ *      – Docked: sibling elements (nav rail, content column) get squeezed
+ *        by the browser's own flex layout *before* this listener runs, so
+ *        `rootRef.current.getBoundingClientRect()` at that point already
+ *        reflects their final squeezed size. If the panel's measured right
+ *        edge now exceeds `window.innerWidth`, shrink `width` by exactly
+ *        that overflow (floored at `minWidth`) and call `onWidthChange` —
+ *        the same callback the consumer already uses to mirror width into
+ *        its own flex-sibling wrapper for manual resize, so the wrapper
+ *        shrinks too with no consumer-side changes needed.
+ *      – Float: re-clamp `offset` the same way `onDragMouseDown` does, and
+ *        shrink `width`/`height` if the panel itself is now bigger than the
+ *        shrunk viewport.
+ *  • Responsive max-width — below a 1440px viewport width, the effective
+ *    width cap tightens to 800px (or the `maxWidth` prop, whichever is
+ *    smaller — `getResponsiveMaxWidth` below). Applied everywhere `maxWidth`
+ *    is consulted: float corner-resize, docked left-edge resize, and the
+ *    window-resize listener, which also proactively shrinks an
+ *    already-wider panel down to the tightened cap even without a
+ *    resize-driven overflow (the same "shrink on window resize" mechanism
+ *    used for plain viewport overflow above). Like the rest of viewport
+ *    containment, this only ever shrinks — sizing the window back up past
+ *    1440px does not grow the panel back to its pre-shrink width.
+ *
  * ─────────────────────────────────────────────────────────────────────── */
+
+/** Breakpoint and cap for the responsive max-width rule above. */
+const RESPONSIVE_MAX_WIDTH_BREAKPOINT = 1440;
+const RESPONSIVE_MAX_WIDTH_CAP = 800;
+
+/** Tightens `maxWidth` to `RESPONSIVE_MAX_WIDTH_CAP` once the viewport drops
+ *  below `RESPONSIVE_MAX_WIDTH_BREAKPOINT` — otherwise returns `maxWidth`
+ *  unchanged. Reads `window.innerWidth` live (not memoized) since every call
+ *  site already runs inside an event handler, after a resize/mousemove. */
+function getResponsiveMaxWidth(maxWidth: number): number {
+  if (typeof window === "undefined") return maxWidth;
+  return window.innerWidth < RESPONSIVE_MAX_WIDTH_BREAKPOINT
+    ? Math.min(maxWidth, RESPONSIVE_MAX_WIDTH_CAP)
+    : maxWidth;
+}
 
 /* ── Types ── */
 
@@ -98,6 +161,7 @@ export interface DraggableProps {
   defaultWidth?: number;
   defaultHeight?: number;
   minWidth?: number;
+  /** Caps both float resize and docked width-resize (default: 1024 — override per-instance if a panel genuinely needs to go wider/narrower). */
   maxWidth?: number;
   minHeight?: number;
   /** Called when variant changes via the dock toggle button */
@@ -136,7 +200,7 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
     defaultWidth          = 320,
     defaultHeight         = 480,
     minWidth              = 280,
-    maxWidth              = Infinity,
+    maxWidth              = 1024,
     minHeight             = 200,
     onVariantChange,
     renderHeaderControls,
@@ -158,8 +222,60 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
     // Sync when defaultHeight changes (e.g. viewport resize)
     React.useEffect(() => { setHeight(defaultHeight); }, [defaultHeight]);
 
-    const dragStart   = React.useRef<{ mx: number; my: number; ox: number; oy: number } | null>(null);
-    const resizeStart = React.useRef<{ mx: number; my: number; w: number; h: number } | null>(null);
+    const dragStart   = React.useRef<{ mx: number; my: number; ox: number; oy: number; baseLeft: number; baseTop: number } | null>(null);
+    const resizeStart = React.useRef<{ mx: number; my: number; w: number; h: number; left: number; top: number } | null>(null);
+
+    // Local ref for measuring the panel's own on-screen position (viewport
+    // containment needs this regardless of how a consumer positions the
+    // float wrapper) — merged with any ref the consumer passed in.
+    const rootRef = React.useRef<HTMLDivElement | null>(null);
+    const setRootRef = (node: HTMLDivElement | null) => {
+      rootRef.current = node;
+      if (typeof ref === "function") ref(node);
+      else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    };
+
+    // Always-current snapshot for the window-resize listener below — written
+    // on every render (not inside an effect) so the listener, which mounts
+    // once, never reads stale values without needing to re-subscribe on
+    // every offset/width change during a drag.
+    const latestRef = React.useRef({ variant, offset, width, height, minWidth, maxWidth, minHeight, onWidthChange });
+    latestRef.current = { variant, offset, width, height, minWidth, maxWidth, minHeight, onWidthChange };
+
+    // Window resize (no active drag) — see "Viewport Containment" above.
+    React.useEffect(() => {
+      const handleResize = () => {
+        const rect = rootRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const { variant, offset, width, height, minWidth, maxWidth, minHeight, onWidthChange } = latestRef.current;
+        const effectiveMaxWidth = getResponsiveMaxWidth(maxWidth);
+        if (variant === "docked") {
+          // Combines two independent reasons width might need to shrink:
+          // the panel's right edge overflowing the (now narrower) viewport,
+          // and the responsive cap having tightened below the panel's
+          // current width even with no overflow at all.
+          const overflow = Math.max(0, rect.right - window.innerWidth);
+          const newW = Math.max(minWidth, Math.min(effectiveMaxWidth, width - overflow));
+          if (newW !== width) { setWidth(newW); onWidthChange?.(newW); }
+        } else {
+          const baseLeft = rect.left - offset.x;
+          const baseTop  = rect.top  - offset.y;
+          const minX = -baseLeft;
+          const minY = -baseTop;
+          const maxX = window.innerWidth  - width  - baseLeft;
+          const maxY = window.innerHeight - height - baseTop;
+          const x = Math.max(minX, Math.min(maxX, offset.x));
+          const y = Math.max(minY, Math.min(maxY, offset.y));
+          if (x !== offset.x || y !== offset.y) setOffset({ x, y });
+          const newW = Math.min(width, window.innerWidth, effectiveMaxWidth);
+          const newH = Math.min(height, window.innerHeight);
+          if (newW !== width)  { setWidth(newW);  onWidthChange?.(newW); }
+          if (newH !== height) setHeight(newH);
+        }
+      };
+      window.addEventListener("resize", handleResize);
+      return () => window.removeEventListener("resize", handleResize);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const toggleVariant = () => {
       if (lockVariant) return;
@@ -174,13 +290,29 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
       if (variant !== "float") return;
       if ((e.target as HTMLElement).closest("button")) return;
       e.preventDefault();
-      dragStart.current = { mx: e.clientX, my: e.clientY, ox: offset.x, oy: offset.y };
+      // Base position = current on-screen position with the *current*
+      // offset subtracted back out, i.e. where the panel would sit at
+      // offset (0,0). Every subsequent offset during this drag gets
+      // clamped against this fixed reference so base + offset never
+      // leaves the viewport (see "Viewport Containment" above).
+      const rect = rootRef.current?.getBoundingClientRect();
+      const baseLeft = rect ? rect.left - offset.x : 0;
+      const baseTop  = rect ? rect.top  - offset.y : 0;
+      dragStart.current = { mx: e.clientX, my: e.clientY, ox: offset.x, oy: offset.y, baseLeft, baseTop };
       document.body.style.cursor     = "grabbing";
       document.body.style.userSelect = "none";
       const onMove = (ev: MouseEvent) => {
         if (!dragStart.current) return;
-        setOffset({ x: dragStart.current.ox + ev.clientX - dragStart.current.mx,
-                    y: dragStart.current.oy + ev.clientY - dragStart.current.my });
+        const { baseLeft, baseTop, ox, oy, mx, my } = dragStart.current;
+        const minX = -baseLeft;
+        const minY = -baseTop;
+        const maxX = window.innerWidth  - width  - baseLeft;
+        const maxY = window.innerHeight - height - baseTop;
+        // If the panel is wider/taller than the viewport, prioritize
+        // keeping the top-left corner on screen over the bottom-right.
+        const x = Math.max(minX, Math.min(maxX, ox + ev.clientX - mx));
+        const y = Math.max(minY, Math.min(maxY, oy + ev.clientY - my));
+        setOffset({ x, y });
       };
       const onUp = () => {
         dragStart.current = null;
@@ -196,15 +328,23 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
     /* ── Float: corner resize ── */
     const onCornerResizeDown = (e: React.MouseEvent) => {
       e.preventDefault(); e.stopPropagation();
-      resizeStart.current = { mx: e.clientX, my: e.clientY, w: width, h: height };
+      // Top-left corner is fixed during a corner resize, so the viewport
+      // cap on width/height is just "don't grow past the viewport's own
+      // right/bottom edge from here" (see "Viewport Containment" above).
+      const rect = rootRef.current?.getBoundingClientRect();
+      resizeStart.current = { mx: e.clientX, my: e.clientY, w: width, h: height, left: rect?.left ?? 0, top: rect?.top ?? 0 };
       document.body.style.cursor     = "se-resize";
       document.body.style.userSelect = "none";
       onResizeStateChange?.(true);
       const onMove = (ev: MouseEvent) => {
         if (!resizeStart.current) return;
-        const newW = Math.min(maxWidth, Math.max(minWidth, resizeStart.current.w + ev.clientX - resizeStart.current.mx));
+        const { left, top } = resizeStart.current;
+        const maxWViewport = window.innerWidth  - left;
+        const maxHViewport = window.innerHeight - top;
+        const newW = Math.min(getResponsiveMaxWidth(maxWidth), maxWViewport, Math.max(minWidth, resizeStart.current.w + ev.clientX - resizeStart.current.mx));
         setWidth(newW); onWidthChange?.(newW);
-        setHeight(Math.max(minHeight, resizeStart.current.h + ev.clientY - resizeStart.current.my));
+        const newH = Math.min(maxHViewport, Math.max(minHeight, resizeStart.current.h + ev.clientY - resizeStart.current.my));
+        setHeight(newH);
       };
       const onUp = () => {
         resizeStart.current = null;
@@ -221,13 +361,19 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
     /* ── Docked: left edge resize ── */
     const onLeftEdgeResizeDown = (e: React.MouseEvent) => {
       e.preventDefault(); e.stopPropagation();
-      resizeStart.current = { mx: e.clientX, my: e.clientY, w: width, h: height };
+      // Right edge is pinned by the consumer's flex layout, so the only way
+      // this can leave the viewport is the left edge crossing x = 0 as width
+      // grows — cap width at the panel's current right edge (see "Viewport
+      // Containment" above).
+      const rect = rootRef.current?.getBoundingClientRect();
+      const rightEdge = rect ? rect.left + rect.width : Infinity;
+      resizeStart.current = { mx: e.clientX, my: e.clientY, w: width, h: height, left: rect?.left ?? 0, top: rect?.top ?? 0 };
       document.body.style.cursor     = "ew-resize";
       document.body.style.userSelect = "none";
       onResizeStateChange?.(true);
       const onMove = (ev: MouseEvent) => {
         if (!resizeStart.current) return;
-        const newW = Math.min(maxWidth, Math.max(minWidth, resizeStart.current.w + resizeStart.current.mx - ev.clientX));
+        const newW = Math.min(getResponsiveMaxWidth(maxWidth), rightEdge, Math.max(minWidth, resizeStart.current.w + resizeStart.current.mx - ev.clientX));
         setWidth(newW); onWidthChange?.(newW);
       };
       const onUp = () => {
@@ -298,7 +444,7 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
     if (variant === "docked") {
       return (
         <div
-          ref={ref}
+          ref={setRootRef}
           style={{ width, minWidth }}
           className={cn("relative flex flex-col h-full overflow-hidden", className)}
           onMouseDown={() => onInteract?.()}
@@ -324,7 +470,7 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
     /* ── Float ── */
     return (
       <div
-        ref={ref}
+        ref={setRootRef}
         style={{ transform: `translate(${offset.x}px, ${offset.y}px)`, width, height, pointerEvents: "auto" }}
         className={cn("relative flex flex-col overflow-hidden", className)}
         onMouseDown={() => onInteract?.()}

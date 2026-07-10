@@ -208,6 +208,7 @@ export type { IconProps, IconSize, IconColor } from "./components/icon";
 
 /* ── Icons ── */
 export { AiIcon } from "./components/icons/ai-icon";
+export { AiSparkleIcon } from "./components/icons/ai-sparkle-icon";
 export { DashboardIcon } from "./components/icons/dashboard-icon";
 export { WarningIcon } from "./components/icons/warning-icon";
 export { ErrorIcon } from "./components/icons/error-icon";
@@ -238,6 +239,8 @@ export type { AIProcessStep, AIProcessStepStatus } from "./components/ai-process
 export { ConversationMessage, ConversationDateStamp } from "./components/conversation-message";
 export { Draggable } from "./components/draggable";
 export type { DraggableProps, DraggableVariant } from "./components/draggable";
+export { DraggablePanel } from "./components/draggable-panel";
+export type { DraggablePanelProps } from "./components/draggable-panel";
 export { ListItem } from "./components/list-item";
 export type { ListItemProps } from "./components/list-item";
 export { AgentNotifications } from "./components/agent-notifications";
