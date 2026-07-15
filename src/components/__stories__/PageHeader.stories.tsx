@@ -106,7 +106,7 @@ export const WithTogglePinned: Story = {
 
     return (
       <div className="flex h-[600px] rounded-lyra-lg border border-lyra-border-subtle overflow-hidden">
-        <SidePanel open={panelOpen} pinned headerTitle="Designer" />
+        <SidePanel side="left" open={panelOpen} pinned headerTitle="Designer" />
         <div className="flex flex-1 flex-col overflow-hidden">
           <PageHeader
             title="Page Title"
@@ -140,6 +140,7 @@ export const WithToggleOverlay: Story = {
     return (
       <div className="relative flex h-[600px] rounded-lyra-lg border border-lyra-border-subtle overflow-hidden">
         <SidePanel
+          side="left"
           open={panelOpen}
           pinned={false}
           headerTitle="Designer"

@@ -15,18 +15,22 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/* Reference-screenshot data — same four queues, same Skills/Contacts/wait
-   values as the actual reference screenshots for each story below. */
+/* Reference-screenshot data — same four queues, same Contacts/Agents/wait
+   values (HH:MM:SS, per that screenshot) as the actual reference screenshot
+   for "QueueCards" below. `skillsCount` (unused by "cards" since the
+   Contacts/Agents redesign, still shown by "accordion") kept at its own
+   prior reference-screenshot values since no accordion-specific screenshot
+   changed. */
 const QUEUE_ITEMS: DashboardQueueItem[] = [
-  { id: "1", name: "Digital",       icon: MessageSquare, wait: "1m", skillsCount: 3, contactsCount: 9 },
-  { id: "2", name: "Inbound Voice", icon: PhoneIncoming, wait: "3m", skillsCount: 1, contactsCount: 25 },
-  { id: "3", name: "Voicemail",     icon: Voicemail,     wait: "2m", skillsCount: 3, contactsCount: 29 },
-  { id: "4", name: "Work Item",     icon: ClipboardList, wait: "3m", skillsCount: 5, contactsCount: 31 },
+  { id: "1", name: "Digital",       icon: MessageSquare, wait: "00:02:34", skillsCount: 3, contactsCount: 8, agentsCount: 3 },
+  { id: "2", name: "Inbound Voice", icon: PhoneIncoming, wait: "00:00:00", skillsCount: 1, contactsCount: 0, agentsCount: 2 },
+  { id: "3", name: "Voicemail",     icon: Voicemail,     wait: "00:02:00", skillsCount: 3, contactsCount: 3, agentsCount: 3 },
+  { id: "4", name: "Work Item",     icon: ClipboardList, wait: "00:00:24", skillsCount: 5, contactsCount: 5, agentsCount: 11 },
 ];
 
 /* ── QueueCards ──
    Row of queue widgets, each its own DashboardCard with "contained"
-   Skills/Contacts metrics — the "cards" variant. */
+   Contacts/Agents metrics — the "cards" variant. */
 
 export const QueueCards: Story = {
   name: "QueueCards",

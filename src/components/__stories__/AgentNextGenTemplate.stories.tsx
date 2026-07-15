@@ -18,7 +18,7 @@ import { ChannelTab } from "../channel-row";
 import { OUTBOUND_CONFIG } from "./create-new-outbound-mock";
 import { ContentArea } from "../content-area";
 import { Container } from "../container";
-import { Panel } from "../panel";
+import { InteriorPanel } from "../interior-panel";
 import { CustomerInformationPanel } from "../customer-information-panel";
 import { PanelPinButton } from "../panel-pin-button";
 import { PageHeader } from "../page-header";
@@ -959,14 +959,14 @@ function AgentNextGenTemplate({
           <Container className="flex flex-1 overflow-hidden relative">
 
             {/* Customer Information Panel — one instance whose `pinned` prop
-                just flips Panel's own internal inline-vs-overlay branch,
+                just flips SidePanel's own internal inline-vs-overlay branch,
                 matching the "Side Panel" story (a single element, props
                 toggle) so the width transition animates correctly. Gated on
                 `activeInteraction`, not just `showPanelToggle` — its only
                 trigger is the record icon on the interaction `PageHeader`
                 below, which doesn't exist on the "Home" page.
-                Was a bare `<Panel headerTitle="Designer" .../>` with no body
-                content — swapped for `CustomerInformationPanel`, which
+                Was a bare `<SidePanel headerTitle="Designer" .../>` with no
+                body content — swapped for `CustomerInformationPanel`, which
                 fixes the header to "Customer Information" and adds a
                 "{name} · {id}" subhead for whoever this interaction is
                 with. See agent-next-gen-v1's copy of this block for the
@@ -1083,8 +1083,7 @@ function AgentNextGenTemplate({
                   <div className="relative flex flex-1 overflow-hidden">
                     <div className="flex-1" />
                     {showInteriorPanel && (
-                      <Panel
-                        variant="interior"
+                      <InteriorPanel
                         side="right"
                         open={interiorPanelOpen}
                         headerTitle="Case Details"
@@ -1096,7 +1095,7 @@ function AgentNextGenTemplate({
                           <Input label="Assignee" placeholder="Search agents" />
                           <Input label="Tags" placeholder="Add tags" />
                         </div>
-                      </Panel>
+                      </InteriorPanel>
                     )}
                   </div>
                 </>

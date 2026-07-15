@@ -39,7 +39,8 @@
     "start": "npx concurrently \"tsup --watch\" \"storybook dev -p 6006\"",
     "lint": "tsc --noEmit",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "deploy": "storybook build && gh-pages -d storybook-static"
   },
   "peerDependencies": {
     "react": ">=18.0.0",
@@ -79,6 +80,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "concurrently": "^9.2.1",
+    "gh-pages": "^6.3.0",
     "postcss": "^8.4.49",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

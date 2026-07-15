@@ -20,7 +20,7 @@ import {
 import type { ColumnToggleItem, SortDirection, ToolbarActionDef } from "../table";
 import { PageHeader } from "../page-header";
 import { SidePanel } from "../side-panel";
-import { Panel } from "../panel";
+import { InteriorPanel } from "../interior-panel";
 import { TabList, Tab } from "../tabs";
 import { Button } from "../button";
 import { Checkbox } from "../checkbox";
@@ -468,6 +468,7 @@ function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, sho
       {/* Left side panel — wraps PageHeader too */}
       {(headerPanelToggle === "left" || headerPanelToggle === "both") && (
         <SidePanel
+          side="left"
           open={leftPanelOpen}
           pinned={leftPanelPinned}
           headerTitle="Designer"
@@ -534,8 +535,7 @@ function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, sho
 
       {/* Left interior panel (Toolbar toggle) */}
       {(toolbarPanelToggle === "left" || toolbarPanelToggle === "both") && (
-        <Panel
-          variant="interior"
+        <InteriorPanel
           side="left"
           open={toolbarLeftOpen}
           headerTitle="Details"
@@ -544,7 +544,7 @@ function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, sho
           <div className="p-4">
             <p className="lyra-body-md text-lyra-fg-secondary">Left panel content.</p>
           </div>
-        </Panel>
+        </InteriorPanel>
       )}
 
       {/* Main content column (toolbar + table + footer) */}
@@ -620,8 +620,7 @@ function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, sho
 
       {/* Right interior panel (Toolbar toggle) */}
       {(toolbarPanelToggle === "right" || toolbarPanelToggle === "both") && (
-        <Panel
-          variant="interior"
+        <InteriorPanel
           side="right"
           open={toolbarRightOpen}
           headerTitle="Details"
@@ -630,7 +629,7 @@ function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, sho
           <div className="p-4">
             <p className="lyra-body-md text-lyra-fg-secondary">Right panel content.</p>
           </div>
-        </Panel>
+        </InteriorPanel>
       )}
 
       </div>{/* end interior panels row */}
@@ -641,8 +640,7 @@ function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, sho
 
       {/* Right side panel — sibling of main content column, pushes PageHeader too */}
       {(headerPanelToggle === "right" || headerPanelToggle === "both") && (
-        <Panel
-          variant="side"
+        <SidePanel
           side="right"
           open={rightPanelOpen}
           pinned={rightPanelPinned}
@@ -654,7 +652,7 @@ function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, sho
           <div className="p-4">
             <p className="lyra-body-md text-lyra-fg-secondary">Side panel content.</p>
           </div>
-        </Panel>
+        </SidePanel>
       )}
 
     </div>

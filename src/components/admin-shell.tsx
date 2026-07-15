@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Panel } from "./panel";
+import { SidePanel } from "./side-panel";
+import { InteriorPanel } from "./interior-panel";
 import { PageHeader } from "./page-header";
 import { TreeMenu, type TreeMenuItem } from "./tree-menu";
 import { cn } from "../lib/utils";
@@ -154,8 +155,7 @@ export function AdminShell({
           (see left-nav.tsx): high enough that this panel still stacks above
           the interior detail panel when both are overlays at once, but low
           enough that it never covers the icon rail's own toggle affordance. */}
-      <Panel
-        variant="side"
+      <SidePanel
         side="left"
         open={leftPanelOpen}
         pinned={effectiveLeftPinned}
@@ -166,7 +166,7 @@ export function AdminShell({
         className="z-[8]"
       >
         <TreeMenu className="px-2" items={navItems} />
-      </Panel>
+      </SidePanel>
 
       {/* ════ Main content column ════ */}
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -188,13 +188,14 @@ export function AdminShell({
         )}
 
         {/* ════ Interior panels row ════
-            `relative` here (not just on the outer `<main>`) matters: the interior
-            Panel switches to `position: absolute; top: 0; height: 100%` below
-            991px, and without a positioned ancestor of its own it anchors to
-            `<main>` instead — which starts at the same top edge as the
-            PageHeader, so the panel renders over the header instead of below
-            it. Scoping the positioned ancestor to this row keeps it confined
-            to the area below the PageHeader. */}
+            `relative` here (not just on the outer `<main>`) matters:
+            `InteriorPanel` switches to `position: absolute; top: 0; height:
+            100%` below 1050px of this row's width, and without a positioned
+            ancestor of its own it anchors to `<main>` instead — which
+            starts at the same top edge as the PageHeader, so the panel
+            renders over the header instead of below it. Scoping the
+            positioned ancestor to this row keeps it confined to the area
+            below the PageHeader. */}
         <div className="relative flex flex-1 min-h-0 overflow-hidden">
 
           {/* ════ Main content column ════ */}
@@ -204,15 +205,14 @@ export function AdminShell({
 
           {/* Interior right panel */}
           {interiorPanelContent !== undefined && (
-            <Panel
-              variant="interior"
+            <InteriorPanel
               side="right"
               open={interiorPanelOpen}
               headerTitle={interiorPanelTitle}
               onClose={onInteriorPanelClose}
             >
               {interiorPanelContent}
-            </Panel>
+            </InteriorPanel>
           )}
 
         </div>
@@ -220,8 +220,7 @@ export function AdminShell({
 
       {/* ════ Right side panel ════ */}
       {rightPanelContent !== undefined && (
-        <Panel
-          variant="side"
+        <SidePanel
           side="right"
           open={rightSidePanelOpen}
           pinned={effectiveRightPinned}
@@ -231,7 +230,7 @@ export function AdminShell({
           onMouseLeave={!effectiveRightPinned ? handleRightHoverEnd : undefined}
         >
           {rightPanelContent}
-        </Panel>
+        </SidePanel>
       )}
 
     </main>

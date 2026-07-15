@@ -76,9 +76,35 @@ If a higher-level component needs a dropdown, trigger, input, panel, or any othe
 | A dropdown attached to a trigger | `Menu` or `Popover` + `PopoverContent` | A custom `<ul>` dropdown |
 | A text field | `Input` | A raw `<input>` with manual styling |
 | A select / combobox | `Select` + `Menu` (or Radix `Select`) | A new dropdown+input hybrid from scratch |
-| A panel with header/footer | `Panel` + `PanelHeader` + `PanelFooter` | A custom modal-like div with its own header |
+| A panel over the page header (hover/pin, left or right) | `SidePanel` + `PanelHeader`/`PanelFooter` | A custom modal-like div with its own header |
+| An inline panel below the page header (click-triggered, left or right) | `InteriorPanel` + `PanelHeader`/`PanelFooter` | A custom modal-like div with its own header |
 | A chip / badge | `Chip` | An inline-styled `<span>` |
 | An icon button | `ActionIconButton` or `Button` with icon size | A bare `<button>` with a Lucide icon |
+
+### Panels
+
+There are exactly two panel types in the design system, and they are two
+separate components — not one component switching on a `variant` prop (an
+earlier unified `Panel` with `variant="side" | "interior"` caused enough
+confusion between the two behaviors that it was split back apart; don't
+reintroduce it):
+
+| | `SidePanel` | `InteriorPanel` |
+|---|---|---|
+| Position | Over the page header | Below the page header, inline in the main container |
+| Opens via | Hover (consumer wires `onMouseEnter`/`onMouseLeave` + external `open` state) | Click / trigger elsewhere in the main container |
+| Pin/unpin | Yes — `pinned` + `onPinToggle`. **Defaults to unpinned (`pinned={false}`).** Only start one pinned when a specific prototype calls for it. | No pin concept — always inline |
+| Side | `side="left"` / `side="right"` (required to be explicit at each call site — don't rely on the default when the surrounding layout implies a specific side) | `side="left"` / `side="right"` (same) |
+| Narrow-container behavior | N/A | Becomes an absolute overlay below ~1050px of its parent container's width, instead of squeezing the main content column further |
+
+Both share the same sub-parts (`PanelHeader`, `PanelContent`, `PanelFooter`,
+`PanelPinButton` for `SidePanel`) and the same internal drag-resize hook
+(`use-panel-drag-resize.ts`) — reuse those instead of hand-rolling
+resize/pin logic again.
+
+`Draggable`/`DraggablePanel` (float/dockable shells like the AI panel or
+notifications dropdown) are a **different, unrelated concept** — don't
+confuse either of them with `SidePanel`/`InteriorPanel`.
 
 ### Using Menu in non-menu contexts (combobox, listbox, autocomplete)
 

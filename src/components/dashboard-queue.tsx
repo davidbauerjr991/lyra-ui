@@ -9,13 +9,14 @@ import { cn } from "../lib/utils";
 /* ── DashboardQueue ──
    A row of queue-type summary widgets — e.g. "Digital" / "Inbound Voice" /
    "Voicemail" / "Work Item" on a contact center home screen, each showing
-   how many Skills and Contacts are queued. Two interchangeable layouts,
-   same `items` data, picked with `variant`:
+   how many Contacts and Agents (cards) or Skills and Contacts (accordion —
+   see below) are queued. Two interchangeable layouts, same `items` data,
+   picked with `variant`:
 
    1. "cards" (default) — each queue renders as its own standalone
       `DashboardCard` (a "hero" `Icon` for the queue's own type — Digital,
       Inbound Voice, Voicemail, Work Item, etc. — + name + "Wait Time:
-      {wait}" header, Skills/Contacts as "contained" metrics) — no shared
+      {wait}" header, Contacts/Agents as "contained" metrics) — no shared
       enclosing backdrop; each card carries its own `neutral-subtle`
       surface. Laid
       out via `.lyra-container-grid-wrap`/`.lyra-container-grid` (see
@@ -53,12 +54,14 @@ export interface DashboardQueueItem {
   name: string;
   /** The queue's own type icon (e.g. `MessageSquare` for Digital, `PhoneIncoming` for Inbound Voice) — rendered as a "hero" `Icon` (`background="active"`, matching the home tab's Activity widget) in the "cards" header, and as the plain row icon in "accordion". */
   icon: LucideIcon;
-  /** Wait time string, e.g. "1m". Shown as "Wait Time: {wait}" (cards) or "Wait: {wait}" (accordion). */
+  /** Wait time string, e.g. "1m" or "00:02:34" — pass whatever format the consumer wants displayed; `DashboardQueue` renders it as-is. Shown as "Wait Time: {wait}" (cards) or "Wait: {wait}" (accordion). */
   wait: string;
-  /** "Skills" metric value. */
+  /** "Skills" metric value — "accordion" variant only (see "cards" below). */
   skillsCount: number;
-  /** "Contacts" metric value — also drives "accordion"'s "{n} contacts in queue" subhead line. */
+  /** "Contacts" metric value — the "cards" variant's first metric, and also drives "accordion"'s "{n} contacts in queue" subhead line. */
   contactsCount: number;
+  /** "Agents" metric value — "cards" variant's second metric (replaces "accordion"'s "Skills" metric, which stays keyed off `skillsCount`). */
+  agentsCount: number;
   /** "accordion" variant only — rendered when the row is expanded. Omit for a row with nothing to expand into. */
   content?: React.ReactNode;
 }
@@ -171,8 +174,8 @@ const DashboardQueue = React.forwardRef<HTMLDivElement, DashboardQueueProps>(
               headerTitle={item.name}
               headerSubhead={`Wait Time: ${item.wait}`}
               metrics={[
-                { value: item.skillsCount, label: "Skills" },
                 { value: item.contactsCount, label: "Contacts" },
+                { value: item.agentsCount, label: "Agents" },
               ]}
               metricVariant="contained"
               role="button"

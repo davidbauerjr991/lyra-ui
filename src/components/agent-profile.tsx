@@ -1,17 +1,23 @@
 import * as React from "react";
-import { ChevronDown, Moon, Sun, Activity, LogOut, Link2Off, Link2, Loader2, Search, CircleHelp } from "lucide-react";
+import { ChevronDown, Moon, Sun, Activity, LogOut, Link2Off, Link2, Loader2, Search, CircleHelp, Check, Minus } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Menu, type MenuEntry } from "./menu";
 import { ConnectedAppsPanel, type ConnectedApp } from "./connected-apps";
 import { Popover } from "./popover";
 import { Tooltip } from "./tooltip";
 import { FavoriteButton } from "./favorite-button";
-import { StatusBadge } from "./status-badge";
+import { StatusBadge, type StatusBadgeProps } from "./status-badge";
 import { Input } from "./input";
 
-/* ── Types ── */
+/* ── Types ──
+   Was "available" | "busy" | "away" | "offline" — "away" was dropped
+   (three real states plus Offline was one too many to tell apart at a
+   glance, color-only) and "busy" renamed to "unavailable" to match the
+   same terminology `AgentDashboard`'s "Unavailable Agents" badge already
+   uses (see agent-dashboard.tsx) — same word, same red/critical color,
+   now also the same icon. */
 
-export type AgentStatus = "available" | "busy" | "away" | "offline";
+export type AgentStatus = "available" | "unavailable" | "offline";
 
 export interface AgentProfileProps {
   name: string;
@@ -33,17 +39,40 @@ export interface AgentProfileProps {
   className?: string;
 }
 
-/* ── Status config ── */
+/* ── Status config ──
+   `badgeVariant`/`icon` are only set for statuses that get a real icon
+   badge in the status menu (ADA — color alone isn't an accessible signal).
+   "offline" has neither and falls back to `StatusBadge`'s own `dot` mode
+   in `StatusIcon` below — a solid gray circle doesn't read as "which
+   status" the way a check/minus glyph does, so there's no icon metaphor
+   worth forcing there. */
 
-const statusConfig: Record<AgentStatus, { label: string; color: string; textColor: string }> = {
-  available: { label: "Available", color: "bg-lyra-status-success-strong", textColor: "text-lyra-status-success-strong" },
-  busy:      { label: "Busy",      color: "bg-lyra-status-critical-strong", textColor: "text-lyra-status-critical-strong" },
-  away:      { label: "Away",      color: "bg-lyra-status-warning-strong",  textColor: "text-lyra-status-warning-strong" },
-  offline:   { label: "Offline",   color: "bg-lyra-accent-slate-strong",    textColor: "text-lyra-accent-slate-strong" },
+type StatusBadgeVariant = NonNullable<StatusBadgeProps["variant"]>;
+
+const statusConfig: Record<AgentStatus, { label: string; color: string; textColor: string; icon?: typeof Check; badgeVariant?: StatusBadgeVariant }> = {
+  available:   { label: "Available",   color: "bg-lyra-status-success-strong",  textColor: "text-lyra-status-success-strong",  icon: Check, badgeVariant: "success" },
+  unavailable: { label: "Unavailable", color: "bg-lyra-status-critical-strong", textColor: "text-lyra-status-critical-strong", icon: Minus, badgeVariant: "critical" },
+  offline:     { label: "Offline",     color: "bg-lyra-accent-slate-strong",    textColor: "text-lyra-accent-slate-strong" },
 };
 
-function StatusDot({ status }: { status: AgentStatus }) {
-  return <span className={cn("h-3 w-3 rounded-full shrink-0 inline-block", statusConfig[status].color)} />;
+/** Status menu row icon — `StatusBadge` with the status glyph as its
+ *  content (same badge used for the Connected Apps count, just an icon
+ *  instead of a number) for statuses that have one, `StatusBadge`'s own
+ *  `dot` mode for "offline". */
+function StatusIcon({ status, className }: { status: AgentStatus; className?: string }) {
+  const { icon: StatusGlyph, badgeVariant } = statusConfig[status];
+  if (StatusGlyph && badgeVariant) {
+    return (
+      <StatusBadge variant={badgeVariant} size="sm" className={className}>
+        <StatusGlyph className="h-2 w-2" strokeWidth={3} aria-hidden="true" />
+      </StatusBadge>
+    );
+  }
+  return (
+    <StatusBadge variant="neutral" size="sm" className={className} aria-label={statusConfig[status].label}>
+      <span className="block h-2 w-2 rounded-full bg-white" aria-hidden="true" />
+    </StatusBadge>
+  );
 }
 
 function Avatar({ initials, src, status }: { initials?: string; src?: string; status: AgentStatus }) {
@@ -54,10 +83,7 @@ function Avatar({ initials, src, status }: { initials?: string; src?: string; st
           ? <img src={src} alt={initials} className="h-full w-full object-cover" />
           : <span className="lyra-label text-white">{initials}</span>}
       </div>
-      <span className={cn(
-        "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-lyra-bg-surface-base",
-        statusConfig[status].color
-      )} />
+      <StatusIcon status={status} className="absolute bottom-[-2px] right-[-2px] px-0 border border-lyra-bg-surface-base" />
     </div>
   );
 }
@@ -146,7 +172,7 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
     );
 
     /* Build Menu entries using the Menu component's interface */
-    const allStatuses = ["available", "busy", "away", "offline"] as AgentStatus[];
+    const allStatuses = ["available", "unavailable", "offline"] as AgentStatus[];
     const filteredStatuses = statusSearch.trim()
       ? allStatuses.filter((s) => statusConfig[s].label.toLowerCase().includes(statusSearch.toLowerCase()))
       : allStatuses;
@@ -164,7 +190,7 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
             ...favoriteStatusList.map((s) => ({
               id: `favorite-${s}`,
               label: statusConfig[s].label,
-              icon: <StatusDot status={s} />,
+              icon: <StatusIcon status={s} />,
               selected: status === s,
               onClick: () => { onStatusChange?.(s); setOpen(false); },
               rightElement: favoriteRightElement(s),
@@ -184,7 +210,7 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
             ...filteredStatuses.map((s) => ({
               id: s,
               label: statusConfig[s].label,
-              icon: <StatusDot status={s} />,
+              icon: <StatusIcon status={s} />,
               selected: status === s,
               onClick: () => { onStatusChange?.(s); setOpen(false); },
               rightElement: favoriteRightElement(s),

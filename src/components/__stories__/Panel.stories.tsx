@@ -1,126 +1,46 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { useState } from "react";
-import { Panel } from "../panel";
-import { Button } from "../button";
-import { Input } from "../input";
 
-const meta: Meta<typeof Panel> = {
-  title: "Atoms/Panel",
-  component: Panel,
-  parameters: {
-    layout: "padded",
-    backgrounds: { default: "lyra-shell" },
-  },
+/**
+ * DEPRECATED — this file could not actually be deleted (Cowork's mount on
+ * this folder doesn't permit file deletion) — please delete
+ * `src/components/__stories__/Panel.stories.tsx` by hand next time you're
+ * in a normal terminal.
+ *
+ * The old unified `Panel` component/story (`variant="side" | "interior"`)
+ * was split into two separate components, each with its own story file:
+ *
+ *   - `SidePanel.stories.tsx`     → "Atoms/SidePanel"     ("Side Panel — Left" / "— Right")
+ *   - `InteriorPanel.stories.tsx` → "Atoms/InteriorPanel" ("Interior Panel — Left" / "— Right")
+ *
+ * Storybook's CSF indexer requires every `*.stories.tsx` file to have a
+ * default export (a file with none fails the whole build, not just this
+ * story), so this can't just be emptied out — it renders a small
+ * redirect notice instead of a real component.
+ */
+
+function MovedNotice() {
+  return (
+    <div style={{ padding: 24, fontFamily: "sans-serif", maxWidth: 480 }}>
+      <p style={{ fontWeight: 600, marginBottom: 8 }}>
+        This story has moved.
+      </p>
+      <p>
+        The old unified <code>Panel</code> was split into <code>SidePanel</code> and{" "}
+        <code>InteriorPanel</code> — see <strong>Atoms/SidePanel</strong> and{" "}
+        <strong>Atoms/InteriorPanel</strong> in the sidebar.
+      </p>
+    </div>
+  );
+}
+
+const meta: Meta<typeof MovedNotice> = {
+  title: "Atoms/Panel (Moved)",
+  component: MovedNotice,
 };
 
 export default meta;
-type Story = StoryObj<typeof Panel>;
+type Story = StoryObj<typeof MovedNotice>;
 
-export const Interior: Story = {
-  name: "Interior Panel",
-  render: () => (
-    <div className="h-[500px] flex overflow-hidden rounded-lyra-lg border border-lyra-border-subtle">
-      <div className="flex-1 bg-lyra-bg-surface-base" />
-      <Panel
-        variant="interior"
-        side="right"
-        open
-        headerTitle="Dialog Title"
-        onClose={() => {}}
-        footer={<><Button variant="outline">Cancel</Button><Button>Save</Button></>}
-      >
-        <div className="flex flex-col gap-4 px-4 py-4">
-          <Input label="Name" placeholder="Enter name" />
-          <Input label="Description" placeholder="Enter description" />
-          <Input label="Value" placeholder="Enter value" />
-        </div>
-      </Panel>
-    </div>
-  ),
-};
-
-export const Side: Story = {
-  name: "Side Panel",
-  render: () => {
-    const [open, setOpen] = useState(true);
-    const [pinned, setPinned] = useState(true);
-    return (
-      <div className="relative h-[500px] flex overflow-hidden rounded-lyra-lg border border-lyra-border-subtle">
-        <Panel
-          variant="side"
-          side="left"
-          open={open}
-          pinned={pinned}
-          headerTitle="Designer"
-          onPinToggle={() => setPinned((v) => !v)}
-        >
-          <div className="px-4 py-4">
-            <p className="lyra-body-md text-lyra-fg-secondary">Side panel content.</p>
-          </div>
-        </Panel>
-        <div className="flex flex-1 flex-col bg-lyra-bg-surface-base p-4 gap-2">
-          <Button onClick={() => setOpen((v) => !v)} variant="outline">
-            {open ? "Close Panel" : "Open Panel"}
-          </Button>
-          <p className="lyra-body-sm text-lyra-fg-secondary">
-            {pinned ? "Pinned — pushes content" : "Unpinned — hovers as overlay"}
-          </p>
-        </div>
-      </div>
-    );
-  },
-};
-
-export const InteriorLeft: Story = {
-  name: "Interior Panel — Left",
-  render: () => (
-    <div className="h-[500px] flex overflow-hidden rounded-lyra-lg border border-lyra-border-subtle">
-      <Panel
-        variant="interior"
-        side="left"
-        open
-        headerTitle="Filters"
-        onClose={() => {}}
-        footer={<><Button variant="outline">Reset</Button><Button>Apply</Button></>}
-      >
-        <div className="flex flex-col gap-4 px-4 py-4">
-          <Input label="Search" placeholder="Filter by name..." />
-          <Input label="Category" placeholder="Select category..." />
-        </div>
-      </Panel>
-      <div className="flex-1 bg-lyra-bg-surface-base" />
-    </div>
-  ),
-};
-
-export const SideRight: Story = {
-  name: "Side Panel — Right",
-  render: () => {
-    const [open, setOpen] = useState(true);
-    const [pinned, setPinned] = useState(false);
-    return (
-      <div className="relative h-[500px] flex overflow-hidden rounded-lyra-lg border border-lyra-border-subtle">
-        <div className="flex flex-1 flex-col bg-lyra-bg-surface-base p-4 gap-2">
-          <Button onClick={() => setOpen((v) => !v)} variant="outline">
-            {open ? "Close Panel" : "Open Panel"}
-          </Button>
-          <p className="lyra-body-sm text-lyra-fg-secondary">
-            {pinned ? "Pinned" : "Overlay"}
-          </p>
-        </div>
-        <Panel
-          variant="side"
-          side="right"
-          open={open}
-          pinned={pinned}
-          headerTitle="Details"
-          onPinToggle={() => setPinned((v) => !v)}
-        >
-          <div className="px-4 py-4">
-            <p className="lyra-body-md text-lyra-fg-secondary">Right side panel content.</p>
-          </div>
-        </Panel>
-      </div>
-    );
-  },
+export const Moved: Story = {
+  name: "See SidePanel / InteriorPanel",
 };

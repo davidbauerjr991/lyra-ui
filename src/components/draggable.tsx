@@ -3,6 +3,20 @@ import { GripVertical, PanelRight, Move } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Tooltip } from "./tooltip";
 
+/* ── Not a panel ─────────────────────────────────────────────────────────
+   `Draggable` is a generic float/dock-and-resize shell (used to build
+   things like `DraggablePanel`, the AI panel, the notifications dropdown)
+   — it is NOT one of the two design-system panel types and shouldn't be
+   confused with either of them:
+
+     - `SidePanel`     — over the page header, hover/pin, left or right.
+     - `InteriorPanel` — below the page header, inline, click-triggered,
+                          left or right.
+
+   The comments below use the word "panel" a lot in the generic/lowercase
+   sense (the floating window this component drags/resizes), not as a
+   reference to `SidePanel`/`InteriorPanel`. ── */
+
 /* ── Panel Resize Direction Rules ─────────────────────────────────────────
  *
  *  FLOAT mode — bottom-right corner handle

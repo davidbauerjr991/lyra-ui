@@ -115,12 +115,17 @@ function sumInQueue(id: string): number {
  *  Voicemail / Work Item) as the reference Home tab, with `contactsCount`/
  *  `skillsCount` derived from `AGENT_DASHBOARD_QUEUE_SUB_ITEMS` so the two
  *  can never drift apart (the bug this pattern was originally fixed for in
- *  agent-next-gen-v1 — see that file's own comment on `sumInQueue`). */
+ *  agent-next-gen-v1 — see that file's own comment on `sumInQueue`).
+ *  `wait` (HH:MM:SS) and `agentsCount` are static, matching the latest
+ *  reference screenshot's Contacts/Agents card redesign — unlike
+ *  `contactsCount`, this promoted template doesn't run agent-next-gen-v1's
+ *  own live-ticking/simulated-update behavior (that's specific to that
+ *  app's Home tab; nothing here needed it). */
 export const AGENT_DASHBOARD_QUEUE_ITEMS: DashboardQueueItem[] = [
-  { id: "1", name: "Digital",       icon: MessageSquare, wait: "1m", skillsCount: AGENT_DASHBOARD_QUEUE_SUB_ITEMS["1"].length, contactsCount: sumInQueue("1") },
-  { id: "2", name: "Inbound Voice", icon: PhoneIncoming, wait: "3m", skillsCount: AGENT_DASHBOARD_QUEUE_SUB_ITEMS["2"].length, contactsCount: sumInQueue("2") },
-  { id: "3", name: "Voicemail",     icon: Voicemail,     wait: "2m", skillsCount: AGENT_DASHBOARD_QUEUE_SUB_ITEMS["3"].length, contactsCount: sumInQueue("3") },
-  { id: "4", name: "Work Item",     icon: ClipboardList, wait: "3m", skillsCount: AGENT_DASHBOARD_QUEUE_SUB_ITEMS["4"].length, contactsCount: sumInQueue("4") },
+  { id: "1", name: "Digital",       icon: MessageSquare, wait: "00:02:34", skillsCount: AGENT_DASHBOARD_QUEUE_SUB_ITEMS["1"].length, contactsCount: sumInQueue("1"), agentsCount: 3 },
+  { id: "2", name: "Inbound Voice", icon: PhoneIncoming, wait: "00:00:00", skillsCount: AGENT_DASHBOARD_QUEUE_SUB_ITEMS["2"].length, contactsCount: sumInQueue("2"), agentsCount: 2 },
+  { id: "3", name: "Voicemail",     icon: Voicemail,     wait: "00:02:00", skillsCount: AGENT_DASHBOARD_QUEUE_SUB_ITEMS["3"].length, contactsCount: sumInQueue("3"), agentsCount: 3 },
+  { id: "4", name: "Work Item",     icon: ClipboardList, wait: "00:00:24", skillsCount: AGENT_DASHBOARD_QUEUE_SUB_ITEMS["4"].length, contactsCount: sumInQueue("4"), agentsCount: 11 },
 ];
 
 /** Renders one queue's skill/channel breakdown — the content a consumer's
@@ -148,21 +153,29 @@ export function AgentDashboardQueueDrilldown({ queueId }: { queueId: string }) {
           </div>
           <span className="inline-flex items-center gap-1 lyra-body-sm text-lyra-fg-secondary">
             <Clock className="h-3 w-3" strokeWidth={1.5} />
-            Wait: {item.wait}
+            Longest Wait Time: {item.wait}
           </span>
+          {/* Each badge gets a hover tooltip spelling out what the count
+              means, since the color/icon alone doesn't say "agents". */}
           <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1.5">
-              <Icon icon={CheckCircle2} size="sm" background="success" shape="circle" decorative />
-              <span className="lyra-body-sm-emphasis text-lyra-fg-default">{item.available}</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Icon icon={CircleDot} size="sm" background="warning" shape="circle" decorative />
-              <span className="lyra-body-sm-emphasis text-lyra-fg-default">{item.working}</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Icon icon={MinusCircle} size="sm" background="critical" shape="circle" decorative />
-              <span className="lyra-body-sm-emphasis text-lyra-fg-default">{item.unavailable}</span>
-            </span>
+            <Tooltip content="Available Agents" placement="top">
+              <span className="inline-flex items-center gap-1.5">
+                <Icon icon={CheckCircle2} size="sm" background="success" shape="circle" decorative />
+                <span className="lyra-body-sm-emphasis text-lyra-fg-default">{item.available}</span>
+              </span>
+            </Tooltip>
+            <Tooltip content="Working Agents" placement="top">
+              <span className="inline-flex items-center gap-1.5">
+                <Icon icon={CircleDot} size="sm" background="warning" shape="circle" decorative />
+                <span className="lyra-body-sm-emphasis text-lyra-fg-default">{item.working}</span>
+              </span>
+            </Tooltip>
+            <Tooltip content="Unavailable Agents" placement="top">
+              <span className="inline-flex items-center gap-1.5">
+                <Icon icon={MinusCircle} size="sm" background="critical" shape="circle" decorative />
+                <span className="lyra-body-sm-emphasis text-lyra-fg-default">{item.unavailable}</span>
+              </span>
+            </Tooltip>
           </div>
         </div>
       ))}

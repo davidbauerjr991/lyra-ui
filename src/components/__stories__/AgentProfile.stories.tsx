@@ -68,7 +68,7 @@ export const AllStatuses: Story = {
   name: "All statuses",
   render: () => (
     <div className="flex flex-col gap-4 p-8">
-      {(["available","busy","away","offline"] as AgentStatus[]).map((s) => (
+      {(["available","unavailable","offline"] as AgentStatus[]).map((s) => (
         <AgentProfile
           key={s}
           name="Sarah Johnson"
