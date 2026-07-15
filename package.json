@@ -40,7 +40,7 @@
     "lint": "tsc --noEmit",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "deploy": "storybook build && gh-pages -d storybook-static"
+    "deploy": "storybook build && touch storybook-static/.nojekyll && gh-pages --dotfiles -d storybook-static"
   },
   "peerDependencies": {
     "react": ">=18.0.0",
