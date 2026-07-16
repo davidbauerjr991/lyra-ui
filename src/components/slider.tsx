@@ -57,10 +57,18 @@ function Ticks({ min, max, step, disabled }: { min: number; max: number; step: n
   );
 }
 
-/* ── Shared thumb style ── */
+/* ── Shared thumb style ──
+   The 2px `border-lyra-bg-surface-overlay` is a same-color-as-fill halo
+   (enlarges the thumb/click target without adding a visible ring on its
+   own) — since that's already occupying the `border` property, the
+   visible 1px gray outline (matching the "20 × 20" resize-handle
+   reference) is added as a separate `ring-1` box-shadow layer instead of
+   trying to force two colors onto one border. `focus-visible:ring-2`
+   still fully overrides it (both width and color) when focused, same as
+   before. */
 const thumbClass = cn(
   "block h-5 w-5 rounded-full border-2 border-lyra-bg-surface-overlay bg-lyra-bg-surface-overlay shadow-md",
-  "ring-lyra-bg-primary ring-offset-0",
+  "ring-1 ring-lyra-border-strong ring-offset-0",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
   "disabled:pointer-events-none disabled:opacity-40",
   "hover:scale-110 transition-transform"

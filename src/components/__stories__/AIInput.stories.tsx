@@ -6,7 +6,7 @@ import { Mic, ImagePlus } from "lucide-react";
 import { Tooltip } from "../tooltip";
 
 const meta: Meta<typeof AIInput> = {
-  title: "Atoms/AIInput",
+  title: "UI/AIInput",
   component: AIInput,
   tags: ["autodocs"],
   parameters: {

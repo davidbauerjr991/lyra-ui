@@ -320,6 +320,27 @@
   }
 }
 
+/* ── PageHeader breadcrumb collapse (CSS container query) — kept in sync
+   with lyra-tokens.css; see that file for the full explanation. Below
+   480px of the breadcrumb slot's own width, the full parent-crumb trail
+   swaps for a single ellipsis trigger (all parent crumbs collapsed into
+   its popover) + the truncating current-page title, instead of wrapping
+   onto a second line. ── */
+.lyra-page-header-breadcrumb-wrap {
+  container-type: inline-size;
+}
+.lyra-page-header-breadcrumb-wrap .lyra-page-header-breadcrumb-collapsed {
+  display: none;
+}
+@container (max-width: 480px) {
+  .lyra-page-header-breadcrumb-wrap .lyra-page-header-breadcrumb-full {
+    display: none;
+  }
+  .lyra-page-header-breadcrumb-wrap .lyra-page-header-breadcrumb-collapsed {
+    display: flex;
+  }
+}
+
 /* ── Base resets for Storybook ── */
 * {
   box-sizing: border-box;

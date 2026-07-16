@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { ConversationMessage, ConversationDateStamp } from "../conversation-message";
 
 const meta: Meta<typeof ConversationMessage> = {
-  title: "Atoms/ConversationMessage",
+  title: "UI/ConversationMessage",
   component: ConversationMessage,
   parameters: {
     layout: "padded",

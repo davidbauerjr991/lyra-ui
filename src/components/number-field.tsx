@@ -6,7 +6,7 @@ import { ErrorIcon } from "./icons/error-icon";
 
 /* ── Types ── */
 
-export interface NumberInputProps {
+export interface NumberFieldProps {
   /** Controlled value */
   value?: number;
   /** Default value (uncontrolled) */
@@ -44,7 +44,7 @@ export interface NumberInputProps {
 
 /* ── Component ── */
 
-const NumberInput = React.forwardRef<HTMLDivElement, NumberInputProps>(
+const NumberField = React.forwardRef<HTMLDivElement, NumberFieldProps>(
   (
     {
       value,
@@ -229,6 +229,6 @@ const NumberInput = React.forwardRef<HTMLDivElement, NumberInputProps>(
   }
 );
 
-NumberInput.displayName = "NumberInput";
+NumberField.displayName = "NumberField";
 
-export { NumberInput };
+export { NumberField };

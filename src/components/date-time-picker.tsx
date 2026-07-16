@@ -4,7 +4,7 @@ import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Label } from "./label";
 import { Calendar, type DateRange } from "./calendar";
-import { NumberInput } from "./number-input";
+import { NumberField } from "./number-field";
 
 /* ── Formatting helpers ── */
 
@@ -57,7 +57,7 @@ interface TimeSelectorProps {
 function TimeSelector({ hour, minute, ampm, onHourChange, onMinuteChange, onAmpmChange }: TimeSelectorProps) {
   return (
     <div className="w-full flex items-center gap-1.5 pt-3 border-t border-lyra-border-subtle mt-2">
-      <NumberInput
+      <NumberField
         value={hour}
         min={1} max={12} wrap
         padWidth={2}
@@ -66,7 +66,7 @@ function TimeSelector({ hour, minute, ampm, onHourChange, onMinuteChange, onAmpm
         aria-label="Hour"
       />
       <span className="lyra-body-md text-lyra-fg-secondary flex-shrink-0">:</span>
-      <NumberInput
+      <NumberField
         value={minute}
         min={0} max={59} wrap
         padWidth={2}

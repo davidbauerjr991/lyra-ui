@@ -32,12 +32,10 @@ interface MenuItemDef {
   rightElement?: React.ReactNode;
   /** Optional secondary/description text below the label */
   description?: string;
-  /** Highlight as the currently selected/active item */
-  selected?: boolean;
-  /** Keep the item in its hover background state. Items with a submenu/
-   *  submenuContent already get this automatically while their flyout is
-   *  open — use this for other cases where an external state should force
-   *  the hover look (e.g. a related panel opened elsewhere). */
+  /** Highlight as the current/active item (e.g. the current page in a nav
+   *  menu, or the selected status in a status menu) — persistent blue
+   *  background + left accent bar, with dedicated one-shade-darker hover
+   *  and pressed states (`active`, `active-hover`, `active-pressed`). */
   active?: boolean;
 }
 
@@ -63,10 +61,19 @@ interface MenuProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Override the ARIA role on each item. Defaults to "menuitem".
    *  Use "option" when menuRole is "listbox". */
   itemRole?: React.AriaRole;
+  /** Render without Menu's own surface — no border, shadow, background, or
+   *  rounded corners, and no 200px min-width floor (stretches to 100% of
+   *  the parent instead). Use whenever Menu is embedded inside something
+   *  that already supplies its own surface (e.g. `Popover`'s content
+   *  wrapper) — without this, the two surfaces stack into a visible
+   *  "double contained" look (nested border/shadow/background). Item
+   *  padding (`p-1`) is preserved either way so rows still have breathing
+   *  room from the parent's own edge. */
+  bare?: boolean;
 }
 
 const Menu = React.forwardRef<HTMLDivElement, MenuProps>(
-  ({ className, items, menuRole = "menu", itemRole = "menuitem", ...props }, ref) => {
+  ({ className, items, menuRole = "menu", itemRole = "menuitem", bare = false, ...props }, ref) => {
     const menuRef = React.useRef<HTMLDivElement>(null);
 
     const handleKeyDown = React.useCallback((e: React.KeyboardEvent) => {
@@ -106,7 +113,10 @@ const Menu = React.forwardRef<HTMLDivElement, MenuProps>(
         role={menuRole}
         onKeyDown={handleKeyDown}
         className={cn(
-          "min-w-[200px] rounded-lyra-lg bg-lyra-bg-surface-overlay border border-lyra-border-subtle shadow-lg p-1 overflow-hidden",
+          "p-1 overflow-hidden",
+          bare
+            ? "w-full"
+            : "min-w-[200px] rounded-lyra-lg bg-lyra-bg-surface-overlay border border-lyra-border-subtle shadow-lg",
           className
         )}
         {...props}
@@ -275,25 +285,30 @@ const MenuItemRow: React.FC<MenuItemRowProps> = ({ item, itemRole = "menuitem" }
         onKeyDown={handleKeyDown}
         aria-haspopup={hasSubmenu ? "menu" : undefined}
         aria-expanded={hasSubmenu ? submenuOpen : undefined}
+        aria-selected={itemRole === "option" ? !!item.active : undefined}
         className={cn(
           "group/item flex w-full items-center gap-2.5 px-3 py-2.5 lyra-body-md transition-colors text-left relative rounded-lyra-sm",
           "focus:outline-none focus-visible:bg-lyra-state-hover",
           isDestructive
             ? "text-lyra-status-critical-strong hover:bg-lyra-status-critical-subtle active:bg-lyra-status-critical-medium"
             : "text-lyra-fg-default hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
-          item.selected && !isDestructive && "bg-lyra-bg-active-subtle text-lyra-fg-active-strong",
-          (item.active || (hasSubmenu && submenuOpen)) && !isDestructive && !item.selected && "bg-lyra-state-hover",
+          item.active && !isDestructive && "bg-lyra-bg-active-subtle text-lyra-fg-active-strong hover:bg-lyra-state-hover-active-subtle active:bg-lyra-state-pressed-active-subtle",
+          !item.active && hasSubmenu && submenuOpen && !isDestructive && "bg-lyra-state-hover",
           item.disabled && "opacity-40 cursor-not-allowed hover:bg-transparent active:bg-transparent"
         )}
       >
-        {/* Left accent bar — visible on hover/active of this button only */}
+        {/* Left accent bar — persistently blue for the active/current item;
+            otherwise visible only on hover/press of this button (or while
+            its submenu flyout is open). */}
         <span
           aria-hidden="true"
           className={cn(
             "absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full opacity-0 transition-opacity",
             isDestructive
               ? "bg-lyra-status-critical-strong group-hover/item:opacity-100 group-active/item:opacity-100"
-              : cn("bg-lyra-fg-default group-hover/item:opacity-100 group-active/item:opacity-100", (item.active || (hasSubmenu && submenuOpen)) && "opacity-100"),
+              : item.active
+                ? "bg-lyra-fg-active-strong opacity-100"
+                : cn("bg-lyra-fg-default group-hover/item:opacity-100 group-active/item:opacity-100", hasSubmenu && submenuOpen && "opacity-100"),
             item.disabled && "group-hover/item:opacity-0 group-active/item:opacity-0"
           )}
         />

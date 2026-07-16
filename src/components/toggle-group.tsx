@@ -122,7 +122,7 @@ const ToggleGroup = React.forwardRef<HTMLDivElement, ToggleGroupProps>(
                 disabled={isDisabled}
                 onClick={() => !isDisabled && handleClick(item.value)}
                 className={cn(
-                  "relative px-3 py-1.5 lyra-body-md rounded-lyra-sm transition-colors select-none",
+                  "relative px-4 py-1.5 lyra-body-md rounded-lyra-sm transition-colors select-none",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-1",
                   /* Off — border always present but transparent, so hover/press don't shift layout */
                   !selected && !isDisabled && [

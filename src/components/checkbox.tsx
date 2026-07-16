@@ -39,11 +39,11 @@ const Checkbox = React.forwardRef<
       onCheckedChange={readonly ? undefined : onCheckedChange}
       aria-readonly={readonly || undefined}
       className={cn(
-        "peer h-4 w-4 shrink-0 rounded-lyra-xs border-[1.5px] transition-colors",
+        "peer h-4 w-4 shrink-0 rounded-lyra-xs border transition-colors",
 
         /* Readonly — muted, no hover/active effects, cursor default */
         readonly && [
-          "border-lyra-border-default bg-lyra-bg-surface-canvas cursor-default",
+          "border-lyra-border-default bg-lyra-bg-disabled cursor-default",
           "data-[state=checked]:bg-lyra-border-default data-[state=checked]:border-lyra-border-default data-[state=checked]:text-lyra-fg-inverse",
           "data-[state=indeterminate]:bg-lyra-border-default data-[state=indeterminate]:border-lyra-border-default data-[state=indeterminate]:text-lyra-fg-inverse",
           "hover:border-lyra-border-default active:border-lyra-border-default active:bg-transparent",
@@ -54,12 +54,12 @@ const Checkbox = React.forwardRef<
         !readonly && [
           /* Unchecked default */
           error
-            ? "border-lyra-status-critical-strong bg-lyra-bg-control"
-            : "border-lyra-border-default bg-lyra-bg-control",
+            ? "border-lyra-status-critical-strong bg-lyra-bg-control disabled:bg-lyra-bg-disabled"
+            : "border-lyra-border-strong bg-lyra-bg-control disabled:bg-lyra-bg-disabled",
           /* Unchecked hover/pressed */
           error
             ? "hover:border-lyra-status-critical-strong active:border-lyra-status-critical-strong active:bg-lyra-state-pressed"
-            : "hover:border-lyra-border-strong active:border-lyra-border-strong active:bg-lyra-state-pressed",
+            : "hover:border-lyra-state-border-hover-neutral hover:bg-lyra-state-hover active:border-lyra-state-border-hover-neutral active:bg-lyra-state-pressed",
           /* Focus */
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
           /* Checked */
@@ -117,7 +117,12 @@ const Checkbox = React.forwardRef<
         required={required}
         disabled={disabled}
         readonly={readonly}
-        className="lyra-body-md leading-5"
+        // `readonly` still suppresses the required asterisk (Label's own
+        // behavior) — only overriding the color here, since Label's
+        // default readonly treatment mutes it to `text-lyra-fg-secondary`
+        // and a readonly checkbox's label should read the same as a
+        // normal one.
+        className={cn("lyra-body-md leading-5", readonly && "text-lyra-fg-default")}
       />
     </div>
   );

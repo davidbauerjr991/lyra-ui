@@ -37,10 +37,27 @@ export interface KebabMenuButtonProps {
    * give `<button>` for free.
    */
   as?: "button" | "span";
+  /** Trigger icon — defaults to the vertical kebab (⋮). Pass a different
+   *  icon (e.g. `MoreHorizontal`) for callers that need the same
+   *  button+portal+Menu behavior with a different glyph, like
+   *  `BreadcrumbEllipsis` (see breadcrumb.tsx). */
+  icon?: React.ReactNode;
+  /**
+   * Which edge of the trigger the dropdown's own edge aligns to (default:
+   * `"right"`). `"right"` — the dropdown's right edge aligns with the
+   * trigger's right edge, opening to the left — is correct for a trigger
+   * that sits at the *end* of a row (a card header, a table row) where
+   * opening rightward would run off the viewport. `"left"` — the
+   * dropdown's left edge aligns with the trigger's left edge, opening to
+   * the right — is for triggers nearer the left edge of the screen, e.g.
+   * `BreadcrumbEllipsis` mid-trail; `"right"` there runs the dropdown off
+   * the left of the viewport instead.
+   */
+  align?: "left" | "right";
 }
 
 const KebabMenuButton = React.forwardRef<HTMLButtonElement, KebabMenuButtonProps>(
-  ({ items, ariaLabel, className, as = "button" }, ref) => {
+  ({ items, ariaLabel, className, as = "button", icon: iconProp, align = "right" }, ref) => {
     const [open, setOpen] = React.useState(false);
     const [position, setPosition] = React.useState<{ top: number; left: number } | null>(null);
     const internalButtonRef = React.useRef<HTMLElement>(null);
@@ -50,7 +67,7 @@ const KebabMenuButton = React.forwardRef<HTMLButtonElement, KebabMenuButtonProps
 
     const openMenu = () => {
       const rect = internalButtonRef.current?.getBoundingClientRect();
-      if (rect) setPosition({ top: rect.bottom + 4, left: rect.right });
+      if (rect) setPosition({ top: rect.bottom + 4, left: align === "left" ? rect.left : rect.right });
       setOpen(true);
     };
 
@@ -86,7 +103,7 @@ const KebabMenuButton = React.forwardRef<HTMLButtonElement, KebabMenuButtonProps
       "flex h-6 w-6 shrink-0 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary transition-colors hover:bg-lyra-state-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus",
       className
     );
-    const icon = <MoreVertical className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />;
+    const icon = iconProp ?? <MoreVertical className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />;
 
     return (
       <>
@@ -130,7 +147,7 @@ const KebabMenuButton = React.forwardRef<HTMLButtonElement, KebabMenuButtonProps
               position: "fixed",
               top: position.top,
               left: position.left,
-              transform: "translateX(-100%)",
+              transform: align === "left" ? undefined : "translateX(-100%)",
               zIndex: 9999,
             }}
           >

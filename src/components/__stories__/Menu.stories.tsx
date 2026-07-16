@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { within, userEvent } from "@storybook/test";
 import { Menu, type MenuEntry } from "../menu";
+import { Popover } from "../popover";
 import { Input } from "../input";
 import { Box, FileText, Copy, Scissors, Clipboard, Share2, Download, Trash2, FolderOpen, Users, Link, Mail, Search, X } from "lucide-react";
 
@@ -74,23 +75,37 @@ export const WidthScale: Story = {
           <p className="lyra-body-sm-emphasis text-lyra-fg-default">md — 256px (w-64)</p>
           <p className="lyra-body-xs text-lyra-fg-secondary">A search/filter row above the list (e.g. agent-profile.tsx)</p>
         </div>
-        <div className="w-64 overflow-hidden rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg">
-          <div className="px-3 py-2.5 border-b border-lyra-border-subtle">
-            <Input
-              type="text"
-              placeholder="Search statuses"
-              startIcon={<Search className="h-4 w-4 text-lyra-fg-disabled" strokeWidth={1.4} aria-hidden="true" />}
+        {/* Real Popover as the container (not a hand-rolled bordered div) —
+            Menu renders `bare` so it stretches to fill Popover's own surface
+            instead of drawing a second nested border/shadow/background. */}
+        <Popover
+          open
+          placement="bottom"
+          align="start"
+          showArrow={false}
+          header={
+            <div className="px-3 py-2.5 border-b border-lyra-border-subtle">
+              <Input
+                type="text"
+                placeholder="Search statuses"
+                startIcon={<Search className="h-4 w-4 text-lyra-fg-disabled" strokeWidth={1.4} aria-hidden="true" />}
+              />
+            </div>
+          }
+          content={
+            <Menu
+              bare
+              items={[
+                { id: "1", label: "Available" },
+                { id: "2", label: "Away" },
+                { id: "3", label: "Do not disturb" },
+              ]}
+              className="w-64"
             />
-          </div>
-          <Menu
-            items={[
-              { id: "1", label: "Available" },
-              { id: "2", label: "Away" },
-              { id: "3", label: "Do not disturb" },
-            ]}
-            className="rounded-none border-0 bg-transparent p-1 shadow-none"
-          />
-        </div>
+          }
+        >
+          <span className="inline-block w-64 h-0" aria-hidden="true" />
+        </Popover>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -98,20 +113,32 @@ export const WidthScale: Story = {
           <p className="lyra-body-sm-emphasis text-lyra-fg-default">lg — 320px</p>
           <p className="lyra-body-xs text-lyra-fg-secondary">A title header + close button, or icon items (e.g. create-new.tsx)</p>
         </div>
-        <div className="w-[320px] overflow-hidden rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg">
-          <div className="flex items-center justify-between border-b border-lyra-border-subtle px-4 py-3">
-            <span className="lyra-body-lg-emphasis text-lyra-fg-default">New Outbound</span>
-            <X className="h-4 w-4 text-lyra-fg-secondary" strokeWidth={1.5} aria-hidden="true" />
-          </div>
-          <Menu
-            items={[
-              { id: "1", label: "Call", icon: <FileText className="h-4 w-4" strokeWidth={1.5} /> },
-              { id: "2", label: "Email", icon: <Mail className="h-4 w-4" strokeWidth={1.5} /> },
-              { id: "3", label: "SMS", icon: <Share2 className="h-4 w-4" strokeWidth={1.5} /> },
-            ]}
-            className="rounded-none border-0 bg-transparent p-2 shadow-none"
-          />
-        </div>
+        <Popover
+          open
+          placement="bottom"
+          align="start"
+          showArrow={false}
+          maxWidth="320px"
+          header={
+            <div className="flex items-center justify-between border-b border-lyra-border-subtle px-4 py-3">
+              <span className="lyra-body-lg-emphasis text-lyra-fg-default">New Outbound</span>
+              <X className="h-4 w-4 text-lyra-fg-secondary" strokeWidth={1.5} aria-hidden="true" />
+            </div>
+          }
+          content={
+            <Menu
+              bare
+              items={[
+                { id: "1", label: "Call", icon: <FileText className="h-4 w-4" strokeWidth={1.5} /> },
+                { id: "2", label: "Email", icon: <Mail className="h-4 w-4" strokeWidth={1.5} /> },
+                { id: "3", label: "SMS", icon: <Share2 className="h-4 w-4" strokeWidth={1.5} /> },
+              ]}
+              className="w-[320px] p-2"
+            />
+          }
+        >
+          <span className="inline-block w-[320px] h-0" aria-hidden="true" />
+        </Popover>
       </div>
     </div>
   ),
@@ -265,6 +292,26 @@ export const WithDisabled: Story = {
   ),
 };
 
+/* ── With Active Item ──
+   `active` marks the persistently-highlighted current item (e.g. the
+   current page in a nav menu, or the selected status in a status menu) —
+   blue background + left accent bar, one shade darker each on hover and
+   press. This prop previously existed but had no story. */
+
+export const WithActive: Story = {
+  name: "With Active Item",
+  render: () => (
+    <Menu
+      items={[
+        { id: "1", label: "Overview", icon: <FileText className="h-4 w-4" strokeWidth={1.5} /> },
+        { id: "2", label: "Analytics", icon: <Share2 className="h-4 w-4" strokeWidth={1.5} />, active: true },
+        { id: "3", label: "Settings", icon: <Download className="h-4 w-4" strokeWidth={1.5} /> },
+      ]}
+      className="w-64"
+    />
+  ),
+};
+
 /* ── With Descriptions ── */
 
 export const WithDescriptions: Story = {
@@ -358,6 +405,19 @@ export const AllVariants: Story = {
         />
       </div>
 
+      {/* Active (current) item */}
+      <div className="flex flex-col gap-2">
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary">Active (current) item</p>
+        <Menu
+          items={[
+            { id: "1", label: "Overview" },
+            { id: "2", label: "Analytics", active: true },
+            { id: "3", label: "Settings" },
+          ]}
+          className="w-[200px]"
+        />
+      </div>
+
       {/* With descriptions */}
       <div className="flex flex-col gap-2">
         <p className="lyra-body-sm-emphasis text-lyra-fg-secondary">With descriptions</p>
@@ -380,7 +440,7 @@ export const AllStates: Story = {
   render: () => (
     <div className="flex flex-col gap-1 w-[320px]">
       <p className="lyra-body-sm text-lyra-fg-secondary mb-2">
-        Hover and click items to see all interactive states — accent bar, hover bg, pressed bg, destructive variants.
+        Hover and click items to see all interactive states — accent bar, hover bg, pressed bg, destructive variants. "Active Item" below is a static (non-hover) state: it marks the current item with a persistent blue background and left accent bar, one shade darker each on hover and press.
       </p>
       <Menu
         items={[
@@ -394,7 +454,9 @@ export const AllStates: Story = {
           { id: "3", label: "Menu Item", icon: <Box className="h-4 w-4" strokeWidth={1.5} />, shortcut: "⌘⌥S" },
           { id: "4", label: "Disabled Item", icon: <Box className="h-4 w-4" strokeWidth={1.5} />, shortcut: "⌘⌥S", disabled: true },
           "separator",
-          { id: "5", label: "Destructive Item", icon: <Box className="h-4 w-4" strokeWidth={1.5} />, destructive: true, shortcut: "⌘⌥S" },
+          { id: "5", label: "Active Item", icon: <Box className="h-4 w-4" strokeWidth={1.5} />, shortcut: "⌘⌥S", active: true },
+          "separator",
+          { id: "7", label: "Destructive Item", icon: <Box className="h-4 w-4" strokeWidth={1.5} />, destructive: true, shortcut: "⌘⌥S" },
         ]}
         className="w-[320px]"
       />

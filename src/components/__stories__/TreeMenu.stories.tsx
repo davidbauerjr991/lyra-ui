@@ -114,6 +114,19 @@ export const AllCollapsed: Story = {
   },
 };
 
+/* ── Chevron Left ──
+   Swaps both ends of the row: expand/collapse chevron leading, icon
+   trailing — same `defaultItems` as Default, just with `chevronPosition`
+   set. */
+
+export const ChevronLeft: Story = {
+  name: "Chevron Left",
+  args: {
+    items: defaultItems,
+    chevronPosition: "left",
+  },
+};
+
 /* ── No Icons ── */
 
 const noIconItems: TreeMenuItem[] = [

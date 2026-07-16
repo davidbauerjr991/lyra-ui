@@ -79,6 +79,7 @@ If a higher-level component needs a dropdown, trigger, input, panel, or any othe
 | A panel over the page header (hover/pin, left or right) | `SidePanel` + `PanelHeader`/`PanelFooter` | A custom modal-like div with its own header |
 | An inline panel below the page header (click-triggered, left or right) | `InteriorPanel` + `PanelHeader`/`PanelFooter` | A custom modal-like div with its own header |
 | A chip / badge | `Chip` | An inline-styled `<span>` |
+| A breadcrumb trail | `Breadcrumb` + `BreadcrumbList`/`Item`/`Link`/`Page`/`Separator`/`Ellipsis` | A hand-rolled `<nav><ol>` |
 | An icon button | `ActionIconButton` or `Button` with icon size | A bare `<button>` with a Lucide icon |
 
 ### Panels
@@ -106,17 +107,27 @@ resize/pin logic again.
 notifications dropdown) are a **different, unrelated concept** — don't
 confuse either of them with `SidePanel`/`InteriorPanel`.
 
+### Every menu/dropdown must be built on `Menu` — no exceptions
+
+**Requirement:** any dropdown, select, combobox, autocomplete, context menu, or action menu — in this library or in a repo consuming it (`agent-next-gen-v1`, `lyra-ux-templates`, `Agent Nav Testing`, etc.) — must render its option/item rows through the shared `Menu` component. Never hand-roll `<button role="menuitem">` / `<div role="option">` rows with their own one-off hover/pressed/active classNames. `Select`, `Autocomplete`, `PhoneInput`'s country picker, and `Table`'s column-header context menu all compose `Menu` internally for exactly this reason — copy one of those as a reference before reaching for raw `<button>`s.
+
+The payoff isn't just less code: it means every menu in every app automatically stays in sync with `Menu`'s item states — hover, pressed, disabled, destructive, and (critically) the **active/current-item** treatment, which is the thing that's easiest to drift out of sync when hand-rolled: persistent blue background + left accent bar, escalating to a darker shade on hover and press (`bg-lyra-bg-active-subtle` → `hover:bg-lyra-state-hover-active-subtle` → `active:bg-lyra-state-pressed-active-subtle`). A hand-rolled dropdown that only applies the base subtle blue (no darker hover/press tiers, no accent bar) is the most common way this drifts — if you're tempted to write that className by hand, use `Menu` instead.
+
 ### Using Menu in non-menu contexts (combobox, listbox, autocomplete)
 
-`Menu` defaults to `role="menu"` / `role="menuitem"`, which is correct for action menus. When you need a dropdown that is semantically a selection list (combobox, autocomplete, multi-select), use the override props instead of reimplementing the item rows:
+`Menu` defaults to `role="menu"` / `role="menuitem"`, which is correct for action menus. When you need a dropdown that is semantically a selection list (combobox, autocomplete, multi-select, single-select), use the override props instead of reimplementing the item rows:
 
 ```tsx
 <Menu
   menuRole="listbox"
   itemRole="option"
-  items={options.map(o => ({ id: o.value, label: o.label, selected: o.value === current, onClick: () => select(o) }))}
+  items={options.map(o => ({ id: o.value, label: o.label, active: o.value === current, onClick: () => select(o) }))}
 />
 ```
+
+Use `active` (not a hand-rolled `selected` boolean) to mark the current/chosen item — it's the single prop that drives the whole current-item treatment described above. If the list also needs a leading checkmark or checkbox for the selected state, pass it as `icon` (see `select.tsx`'s single- and multi-select branches for both patterns).
+
+**Known, intentional exception:** `AppMenu` (the app-launcher tile grid) does *not* compose `Menu` — its items are large icon tiles with their own sizing and no submenu/shortcut/description affordances, a genuinely different visual pattern rather than a plain option list. If you're building anything that's fundamentally a vertical list of rows, it isn't this exception; it should use `Menu`.
 
 **Shadow clipping rule:** never place `overflow-y-auto` / `overflow-hidden` on a *parent* of `Menu` — it will clip `Menu`'s `shadow-lg`. Apply `overflow-y-auto max-h-[Npx]` directly to `Menu` via its `className` prop so the element controls its own overflow without cutting its own shadow:
 
@@ -517,7 +528,7 @@ useLayoutEffect(() => {
 
 ### CSS container-query pattern (lighter-weight alternative)
 
-For a component whose "react to my own width" need is just "show/hide or restructure some CSS past a fixed breakpoint" (not "measure the exact pixel width in JS"), a plain CSS container query is simpler than `ResizeObserver` and needs no state at all: put `container-type: inline-size` on the wrapper, then `@container (max-width: Npx) { ... }` rules on the children. See `.lyra-container-grid-wrap`, `.lyra-metric-row-wrap`, `.lyra-channel-tab-list-wrap`, and `.lyra-tab-overflow-wrap` in `lyra-tokens.css` for four examples of this. As with every CSS variable/class, add the rule to **both** `lyra-tokens.css` and `storybook.css` (kept in sync, per the Cross-repo sync rule above).
+For a component whose "react to my own width" need is just "show/hide or restructure some CSS past a fixed breakpoint" (not "measure the exact pixel width in JS"), a plain CSS container query is simpler than `ResizeObserver` and needs no state at all: put `container-type: inline-size` on the wrapper, then `@container (max-width: Npx) { ... }` rules on the children. See `.lyra-container-grid-wrap`, `.lyra-metric-row-wrap`, `.lyra-channel-tab-list-wrap`, `.lyra-tab-overflow-wrap`, and `.lyra-page-header-breadcrumb-wrap` in `lyra-tokens.css` for five examples of this. As with every CSS variable/class, add the rule to **both** `lyra-tokens.css` and `storybook.css` (kept in sync, per the Cross-repo sync rule above).
 
 **`TabList`'s `overflowMenu` prop is the standing default for any new tab bar.** When adding a new `<TabList>` anywhere in this repo or a consuming app (`agent-next-gen-v1`, `lyra-ux-templates`), pass `overflowMenu` unless that specific tab bar already has its own different, narrower collapse strategy — the only current exception is `ChannelTab`'s record-header conversation bar (`channel-row.tsx`), which sheds each tab's own text at 480px/320px via `.lyra-channel-tab-list-wrap` instead of moving tabs into a menu; turning `overflowMenu` on there too would fire at 991px and pre-empt that narrower, purpose-built behavior before it ever got a chance to run. Every other tab bar — settings pages, record detail panels, anything using plain `Tab`s — should get `overflowMenu` by default, the same way a new modal defaults to `Container variant="modal"` rather than a hand-rolled div.
 

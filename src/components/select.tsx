@@ -1,9 +1,10 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import { ChevronDown, Search, X, Check } from "lucide-react";
+import { ChevronDown, Search, X } from "lucide-react";
 import { ErrorIcon } from "./icons/error-icon";
 import { Checkbox } from "./checkbox";
 import { Label } from "./label";
+import { Menu } from "./menu";
 import { cn } from "../lib/utils";
 
 /* ── Types ── */
@@ -442,107 +443,79 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               </div>
             )}
 
-            {/* Options list — scrollable, no right padding so scrollbar sits at border edge */}
-            <div
-              ref={listRef}
-              role="listbox"
-              aria-labelledby={label ? `${autoId}-label` : undefined}
-              aria-multiselectable={multiple || undefined}
-              tabIndex={-1}
-              onKeyDown={(e) => {
-                const opts = Array.from(
-                  listRef.current?.querySelectorAll<HTMLElement>('[role="option"]:not([disabled])') ?? []
-                );
-                const current = document.activeElement as HTMLElement;
-                const idx = opts.indexOf(current);
+            {/* Options list — scrollable, no right padding so scrollbar sits at border edge.
+                Rendered through the shared Menu component (`bare`, since this dropdown
+                already supplies its own border/shadow/surface) rather than hand-rolled
+                option buttons, so Select automatically stays in sync with Menu's item
+                states (hover/pressed/disabled/destructive, and — critically — the
+                active/current-item treatment: blue bg + left accent bar, escalating to
+                darker shades on hover/press). See CONTRIBUTING.md "Menus must use the
+                Menu component". */}
+            {filtered.length === 0 ? (
+              <div className="px-3 py-2 lyra-body-sm text-lyra-fg-secondary">
+                No results found
+              </div>
+            ) : (
+              <Menu
+                ref={listRef}
+                menuRole="listbox"
+                itemRole="option"
+                bare
+                aria-labelledby={label ? `${autoId}-label` : undefined}
+                aria-multiselectable={multiple || undefined}
+                tabIndex={-1}
+                onKeyDown={(e) => {
+                  const opts = Array.from(
+                    listRef.current?.querySelectorAll<HTMLElement>('[role="option"]:not([disabled])') ?? []
+                  );
+                  const current = document.activeElement as HTMLElement;
+                  const idx = opts.indexOf(current);
 
-                if (e.key === "ArrowDown") {
-                  e.preventDefault();
-                  const next = idx < opts.length - 1 ? opts[idx + 1] : opts[0];
-                  next?.focus();
-                } else if (e.key === "ArrowUp") {
-                  e.preventDefault();
-                  const prev = idx > 0 ? opts[idx - 1] : opts[opts.length - 1];
-                  prev?.focus();
-                } else if (e.key === "Home") {
-                  e.preventDefault();
-                  opts[0]?.focus();
-                } else if (e.key === "End") {
-                  e.preventDefault();
-                  opts[opts.length - 1]?.focus();
-                }
-              }}
-              className="overflow-y-auto p-1"
-            >
-              {filtered.length === 0 && (
-                <div className="px-3 py-2 lyra-body-sm text-lyra-fg-secondary">
-                  No results found
-                </div>
-              )}
-
-              {multiple
-                ? filtered.map((option) => {
-                    const isSelected = currentValues.includes(option.value);
-                    const isDisabledByLimit = !isSelected && !!limitReached;
-                    const isDisabled = option.disabled || isDisabledByLimit;
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        role="option"
-                        aria-selected={isSelected}
-                        disabled={isDisabled}
-                        onClick={() => !isDisabled && toggleMultiValue(option.value)}
-                        className={cn(
-                          "flex w-full items-center gap-2.5 px-3 py-2 lyra-body-md text-left transition-colors rounded-lyra-sm",
-                          "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
-                          "focus:outline-none focus-visible:bg-lyra-state-hover",
-                          isDisabled && "opacity-40 cursor-not-allowed hover:bg-transparent"
-                        )}
-                      >
-                        <Checkbox
-                          checked={isSelected}
-                          disabled={isDisabledByLimit}
-                          tabIndex={-1}
-                          className="pointer-events-none"
-                        />
-                        <span className={cn(
-                          isDisabledByLimit ? "text-lyra-fg-disabled" : "text-lyra-fg-default"
-                        )}>{option.label}</span>
-                      </button>
-                    );
-                  })
-                : filtered.map((option) => {
-                    const isSelected = currentValue === option.value;
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        role="option"
-                        aria-selected={isSelected}
-                        disabled={option.disabled}
-                        onClick={() => selectSingle(option.value)}
-                        className={cn(
-                          "flex w-full items-center gap-2.5 px-3 py-2 lyra-body-md text-left transition-colors rounded-lyra-sm",
-                          "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
-                          "focus:outline-none focus-visible:bg-lyra-state-hover",
-                          isSelected && "bg-lyra-bg-active-subtle",
-                          option.disabled && "opacity-40 cursor-not-allowed hover:bg-transparent"
-                        )}
-                      >
-                        {isSelected && (
-                          <span
-                            aria-hidden="true"
-                            className="flex h-4 w-4 items-center justify-center flex-shrink-0 text-lyra-bg-primary"
-                          >
-                            <Check className="h-4 w-4" strokeWidth={2} />
-                          </span>
-                        )}
-                        <span className="text-lyra-fg-default">{option.label}</span>
-                      </button>
-                    );
-                  })}
-            </div>
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    const next = idx < opts.length - 1 ? opts[idx + 1] : opts[0];
+                    next?.focus();
+                  } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    const prev = idx > 0 ? opts[idx - 1] : opts[opts.length - 1];
+                    prev?.focus();
+                  } else if (e.key === "Home") {
+                    e.preventDefault();
+                    opts[0]?.focus();
+                  } else if (e.key === "End") {
+                    e.preventDefault();
+                    opts[opts.length - 1]?.focus();
+                  }
+                }}
+                className="overflow-y-auto p-1"
+                items={multiple
+                  ? filtered.map((option) => {
+                      const isSelected = currentValues.includes(option.value);
+                      const isDisabledByLimit = !isSelected && !!limitReached;
+                      return {
+                        id: option.value,
+                        label: option.label,
+                        disabled: option.disabled || isDisabledByLimit,
+                        icon: (
+                          <Checkbox
+                            checked={isSelected}
+                            disabled={isDisabledByLimit}
+                            tabIndex={-1}
+                            className="pointer-events-none"
+                          />
+                        ),
+                        onClick: () => toggleMultiValue(option.value),
+                      };
+                    })
+                  : filtered.map((option) => ({
+                      id: option.value,
+                      label: option.label,
+                      disabled: option.disabled,
+                      active: currentValue === option.value,
+                      onClick: () => selectSingle(option.value),
+                    }))}
+              />
+            )}
           </div>
           );
           return portalDropdown ? ReactDOM.createPortal(dropdownContent, document.body) : dropdownContent;

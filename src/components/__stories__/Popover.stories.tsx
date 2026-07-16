@@ -63,7 +63,7 @@ export const MenuPopover: Story = {
       <Popover
         placement="bottom"
         showArrow={false}
-        content={<Menu items={items} className="border-0 shadow-none bg-transparent min-w-[200px]" />}
+        content={<Menu items={items} bare className="w-[200px]" />}
       >
         <Button variant="ghost" size="sm">
           <MoreVertical className="h-4 w-4" strokeWidth={1.5} />

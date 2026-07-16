@@ -8,6 +8,7 @@ import { Tooltip } from "./tooltip";
 import { Popover } from "./popover";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Button } from "./button";
+import { Menu } from "./menu";
 import { Input } from "./input";
 import { SlidersHorizontal } from "lucide-react";
 import { ColumnsIcon } from "./icons/columns-icon";
@@ -1198,31 +1199,25 @@ function ColumnHeaderContextMenu({ columnKey, columnLabel, currentGroupBy, onGro
   const isGrouped = currentGroupBy === columnKey;
 
   return (
-    <div
+    <Menu
       ref={menuRef}
-      role="menu"
-      className="absolute left-0 top-full mt-1 z-50 min-w-[180px] rounded-lyra-md border border-lyra-border-subtle bg-lyra-bg-surface-overlay py-1 shadow-lg"
-    >
-      {isGrouped ? (
-        <button
-          role="menuitem"
-          onClick={() => { onGroupBy(null); onClose(); }}
-          className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left lyra-body-md text-lyra-fg-default transition-colors hover:bg-lyra-state-hover active:bg-lyra-state-pressed focus:outline-none"
-        >
-          <Group className="h-4 w-4 text-lyra-fg-secondary" strokeWidth={1.5} aria-hidden="true" />
-          <span>Ungroup rows</span>
-        </button>
-      ) : (
-        <button
-          role="menuitem"
-          onClick={() => { onGroupBy(columnKey); onClose(); }}
-          className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left lyra-body-md text-lyra-fg-default transition-colors hover:bg-lyra-state-hover active:bg-lyra-state-pressed focus:outline-none"
-        >
-          <Group className="h-4 w-4 text-lyra-fg-secondary" strokeWidth={1.5} aria-hidden="true" />
-          <span>Group by "{columnLabel}"</span>
-        </button>
-      )}
-    </div>
+      className="absolute left-0 top-full mt-1 z-50"
+      items={[
+        isGrouped
+          ? {
+              id: "ungroup",
+              label: "Ungroup rows",
+              icon: <Group className="h-4 w-4" strokeWidth={1.5} />,
+              onClick: () => { onGroupBy(null); onClose(); },
+            }
+          : {
+              id: "group",
+              label: `Group by "${columnLabel}"`,
+              icon: <Group className="h-4 w-4" strokeWidth={1.5} />,
+              onClick: () => { onGroupBy(columnKey); onClose(); },
+            },
+      ]}
+    />
   );
 }
 

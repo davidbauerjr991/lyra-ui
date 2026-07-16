@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { AIProcess } from "../ai-process";
 
 const meta: Meta<typeof AIProcess> = {
-  title: "Atoms/AIProcess",
+  title: "UI/AIProcess",
   component: AIProcess,
   tags: ["autodocs"],
   parameters: {

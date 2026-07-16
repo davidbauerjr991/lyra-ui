@@ -1,3 +1,4 @@
+import * as React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { Button } from "../button";
 import { Sparkles, MoreVertical, ChevronDown, RefreshCw, Trash2 } from "lucide-react";
@@ -23,20 +24,54 @@ const meta: Meta<typeof Button> = {
 export default meta;
 type Story = StoryObj<typeof Button>;
 
-/* ── Individual variant stories ── */
+/* ── Individual variant stories ──
+   `startIcon`/`endIcon` below are story-only controls (not real `Button`
+   props — `Button` just takes `children`, see button.tsx) that toggle a
+   leading `Sparkles`/trailing `ChevronDown` icon on and off around the
+   label, so the icon-inclusion states can be checked without hand-editing
+   args each time. Declared per-story (not on `meta.argTypes`) since only
+   these three variants need them. */
+
+const iconControlArgTypes = {
+  startIcon: { control: "boolean", name: "Include start icon" },
+  endIcon: { control: "boolean", name: "Include end icon" },
+} as const;
+
+function ButtonWithOptionalIcons({
+  startIcon,
+  endIcon,
+  children,
+  ...props
+}: { startIcon?: boolean; endIcon?: boolean } & React.ComponentProps<typeof Button>) {
+  return (
+    <Button {...props}>
+      {startIcon && <Sparkles className="h-4 w-4" strokeWidth={1.5} />}
+      {children}
+      {endIcon && <ChevronDown className="h-4 w-4" strokeWidth={1.5} />}
+    </Button>
+  );
+}
 
 export const Primary: Story = {
   args: {
     children: "Button",
     variant: "default",
+    startIcon: false,
+    endIcon: false,
   },
+  argTypes: iconControlArgTypes,
+  render: (args) => <ButtonWithOptionalIcons {...args} />,
 };
 
 export const Destructive: Story = {
   args: {
     children: "Button",
     variant: "destructive",
+    startIcon: false,
+    endIcon: false,
   },
+  argTypes: iconControlArgTypes,
+  render: (args) => <ButtonWithOptionalIcons {...args} />,
 };
 
 export const Outline: Story = {
@@ -50,7 +85,11 @@ export const Ghost: Story = {
   args: {
     children: "Button",
     variant: "ghost",
+    startIcon: false,
+    endIcon: false,
   },
+  argTypes: iconControlArgTypes,
+  render: (args) => <ButtonWithOptionalIcons {...args} />,
 };
 
 export const IconButton: Story = {
@@ -209,12 +248,12 @@ export const AllVariants: Story = {
           <Button variant="outline">
             <Sparkles className="h-4 w-4" strokeWidth={1.5} />
             Button
-            <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.5} />
+            <ChevronDown className="h-4 w-4" strokeWidth={1.5} />
           </Button>
           <Button variant="default">
             <Sparkles className="h-4 w-4" strokeWidth={1.5} />
             Button
-            <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.5} />
+            <ChevronDown className="h-4 w-4" strokeWidth={1.5} />
           </Button>
           <Button variant="destructive">
             <Trash2 className="h-4 w-4" strokeWidth={1.5} />

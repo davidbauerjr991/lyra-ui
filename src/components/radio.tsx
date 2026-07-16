@@ -81,7 +81,7 @@ const RadioGroupItem = React.forwardRef<HTMLButtonElement, RadioGroupItemProps>(
       <label
         htmlFor={inputId}
         className={cn(
-          "group/radio flex items-center gap-2.5",
+          "group/radio flex items-center gap-1.5",
           itemDisabled ? "cursor-not-allowed" : "cursor-pointer",
           className
         )}
@@ -92,11 +92,11 @@ const RadioGroupItem = React.forwardRef<HTMLButtonElement, RadioGroupItemProps>(
           value={value}
           disabled={itemDisabled}
           className={cn(
-            "peer group relative flex-shrink-0 flex h-[18px] w-[18px] items-center justify-center rounded-full border-[1.5px] transition-colors outline-none",
-            /* Unchecked */
-            "data-[state=unchecked]:border-lyra-border-default data-[state=unchecked]:bg-lyra-bg-control",
-            "data-[state=unchecked]:hover:border-lyra-border-strong",
-            "data-[state=unchecked]:active:border-lyra-border-strong data-[state=unchecked]:active:bg-lyra-state-pressed",
+            "peer group relative flex-shrink-0 flex h-4 w-4 items-center justify-center rounded-full border transition-colors outline-none",
+            /* Unchecked — border color/width matches Checkbox's enabled/hover states (checkbox.tsx) */
+            "data-[state=unchecked]:border-lyra-border-strong data-[state=unchecked]:bg-lyra-bg-control",
+            "data-[state=unchecked]:hover:border-lyra-state-border-hover-neutral",
+            "data-[state=unchecked]:active:border-lyra-state-border-hover-neutral data-[state=unchecked]:active:bg-lyra-state-pressed",
             /* Checked */
             "data-[state=checked]:border-lyra-bg-primary data-[state=checked]:bg-lyra-bg-primary",
             "data-[state=checked]:hover:border-lyra-state-hover-primary data-[state=checked]:hover:bg-lyra-state-hover-primary",
@@ -112,7 +112,7 @@ const RadioGroupItem = React.forwardRef<HTMLButtonElement, RadioGroupItemProps>(
         >
           <RadioGroupPrimitive.Indicator className="flex items-center justify-center">
             {/* group-disabled targets the parent button's :disabled state */}
-            <span className="h-2 w-2 rounded-full bg-lyra-fg-on-primary group-disabled:bg-lyra-fg-disabled" />
+            <span className="h-1.5 w-1.5 rounded-full bg-lyra-fg-on-primary group-disabled:bg-lyra-fg-disabled" />
           </RadioGroupPrimitive.Indicator>
         </RadioGroupPrimitive.Item>
         {label && (

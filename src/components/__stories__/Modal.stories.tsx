@@ -14,7 +14,7 @@ import { X, Maximize2, Minimize2 } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 const meta: Meta<typeof Container> = {
-  title: "Atoms/Modal",
+  title: "UI/Modal",
   component: Container,
   parameters: {
     layout: "centered",

@@ -113,10 +113,18 @@ function CollapsiblePanel({
 interface TreeMenuProps extends React.HTMLAttributes<HTMLElement> {
   /** Menu items to render */
   items: TreeMenuItem[];
+  /**
+   * Where the expand/collapse chevron sits on each top-level row, relative
+   * to the label — default `"right"` (chevron trailing, icon leading, the
+   * original layout). `"left"` swaps both ends: chevron leading, icon
+   * trailing. Applies to top-level rows only — child rows have no icon or
+   * chevron of their own.
+   */
+  chevronPosition?: "left" | "right";
 }
 
 const TreeMenu = React.forwardRef<HTMLElement, TreeMenuProps>(
-  ({ className, items, ...props }, ref) => (
+  ({ className, items, chevronPosition = "right", ...props }, ref) => (
     <nav
       ref={ref}
       aria-label="Navigation menu"
@@ -126,7 +134,7 @@ const TreeMenu = React.forwardRef<HTMLElement, TreeMenuProps>(
       <ul role="tree" className="flex flex-col gap-0.5 list-none m-0 p-0">
         {items.map((item, i) => (
           <li key={i} role="treeitem" aria-expanded={item.children && item.children.length > 0 ? undefined : undefined}>
-            <TreeMenuRow item={item} />
+            <TreeMenuRow item={item} chevronPosition={chevronPosition} />
           </li>
         ))}
       </ul>
@@ -137,7 +145,7 @@ TreeMenu.displayName = "TreeMenu";
 
 /* ── TreeMenuRow (internal) ── */
 
-function TreeMenuRow({ item }: { item: TreeMenuItem }) {
+function TreeMenuRow({ item, chevronPosition = "right" }: { item: TreeMenuItem; chevronPosition?: "left" | "right" }) {
   const [open, setOpen] = useState(item.defaultOpen ?? false);
   const hasChildren = item.children && item.children.length > 0;
   const isParentActive =
@@ -170,46 +178,67 @@ function TreeMenuRow({ item }: { item: TreeMenuItem }) {
             className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-lyra-border-active"
           />
         )}
-        {item.icon && (
-          <span aria-hidden="true" className={cn("flex-shrink-0", isParentActive || isLeafActive ? "text-lyra-fg-active-strong" : "text-lyra-fg-default")}>{item.icon}</span>
-        )}
-        <span className="flex-1 text-left truncate">{item.label}</span>
-        {hasChildren && (
-          <span
-            aria-hidden="true"
-            className="text-lyra-fg-disabled transition-transform duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
-            style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
-          >
-            <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.5} />
-          </span>
-        )}
+        {(() => {
+          const icon = item.icon && (
+            <span aria-hidden="true" className={cn("flex-shrink-0", isParentActive || isLeafActive ? "text-lyra-fg-active-strong" : "text-lyra-fg-default")}>{item.icon}</span>
+          );
+          const label = <span className="flex-1 text-left truncate">{item.label}</span>;
+          const chevron = hasChildren && (
+            <span
+              aria-hidden="true"
+              className="text-lyra-fg-disabled transition-transform duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
+              style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
+            >
+              <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.5} />
+            </span>
+          );
+          return chevronPosition === "left" ? (
+            <>
+              {chevron}
+              {label}
+              {icon}
+            </>
+          ) : (
+            <>
+              {icon}
+              {label}
+              {chevron}
+            </>
+          );
+        })()}
       </button>
 
-      {/* Children — animated expand/collapse */}
+      {/* Children — animated expand/collapse.
+          No left accent bar on child rows — the light-blue pill background
+          is the only "selected" indicator here (unlike top-level leaf
+          items, which have no such pill and need the bar instead). The
+          guide-line segment is placed *after* the button in the markup so
+          it always paints on top and stays visible straight through every
+          row, active or not, rather than being covered by the active
+          row's own background. Each row's own left padding creates the
+          indent instead of a margin on the list, so the active highlight
+          can span the row's *full* width (edge to edge of the container)
+          rather than being confined to a narrower, already-indented list
+          box. */}
       {hasChildren && (
         <CollapsiblePanel open={open}>
-          <ul role="group" className="ml-[18px] mt-0.5 flex flex-col gap-0.5 pl-3 list-none border-l border-lyra-border-subtle">
+          <ul role="group" className="mt-0.5 flex flex-col gap-0.5 list-none m-0 p-0">
             {item.children!.map((child, j) => (
-              <li key={j} role="treeitem">
+              <li key={j} role="treeitem" className="relative">
                 <button
                   onClick={child.onClick}
                   aria-current={child.active ? "page" : undefined}
                   className={cn(
-                    "relative w-full rounded-lyra-sm px-2.5 h-9 text-left lyra-body-md transition-colors",
+                    "relative w-full rounded-lyra-sm pl-10 pr-2.5 h-9 text-left lyra-body-md transition-colors",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
                     child.active
                       ? "bg-lyra-bg-active-moderate text-lyra-fg-active-strong lyra-body-md-emphasis hover:bg-lyra-bg-active-moderate active:bg-lyra-bg-active-subtle"
                       : "text-lyra-fg-secondary hover:bg-lyra-state-hover hover:text-lyra-fg-default active:bg-lyra-state-pressed"
                   )}
                 >
-                  {child.active && (
-                    <span
-                      aria-hidden="true"
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 rounded-full bg-lyra-border-active"
-                    />
-                  )}
                   {child.label}
                 </button>
+                <span aria-hidden="true" className="absolute left-[18px] top-0 bottom-0 w-px bg-lyra-border-subtle" />
               </li>
             ))}
           </ul>

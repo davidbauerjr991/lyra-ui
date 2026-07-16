@@ -3,6 +3,7 @@ import { PanelLeft, PanelRight } from "lucide-react";
 import { Tooltip } from "./tooltip";
 import { Chip } from "./chip";
 import type { ChipColor, ChipVariant } from "./chip";
+import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator, BreadcrumbEllipsis } from "./breadcrumb";
 import { cn } from "../lib/utils";
 
 interface PageHeaderBreadcrumb {
@@ -57,8 +58,13 @@ interface PageHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   onInnerPanelHoverStart?: () => void;
   /** Called when hover leaves the right panel toggle (unpinned mode) */
   onInnerPanelHoverEnd?: () => void;
-  /** Parent breadcrumb — renders "ParentName / Title" */
-  breadcrumb?: PageHeaderBreadcrumb;
+  /**
+   * Parent breadcrumb(s) — renders "ParentName / Title" for a single crumb,
+   * or "ParentA / ParentB / … / Title" when passed an array for a deeper
+   * trail. Composed from the shared `Breadcrumb` parts (see breadcrumb.tsx)
+   * rather than a one-off `<nav>`.
+   */
+  breadcrumb?: PageHeaderBreadcrumb | PageHeaderBreadcrumb[];
   /** Optional chip displayed inline after the title */
   chip?: string;
   /** Chip color — defaults to "green" */
@@ -109,7 +115,7 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
       )}
       {...props}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex flex-1 min-w-0 items-center gap-3">
         {(panelToggle === "left" || panelToggle === "both") && (
           <>
             <div
@@ -138,37 +144,64 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
               {icon}
             </span>
             <div className="h-8 w-px bg-lyra-border-subtle shrink-0" />
-            <div className="flex flex-col justify-center min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className="lyra-heading-lg text-lyra-fg-default leading-tight truncate">{title}</h1>
+            <div className="flex flex-col justify-center min-w-0 flex-1">
+              <div className="flex items-center gap-2 min-w-0">
+                <h1 className="lyra-heading-lg text-lyra-fg-default leading-tight truncate min-w-0">{title}</h1>
                 {chip && <Chip color={chipColor} variant={chipVariant}>{chip}</Chip>}
               </div>
               {subtitle && <span className="lyra-body-sm text-lyra-fg-secondary truncate">{subtitle}</span>}
             </div>
           </>
         ) : breadcrumb ? (
-          <nav aria-label="Breadcrumb">
-            <ol className="flex items-center gap-2 list-none m-0 p-0">
-              <li>
-                <button
-                  onClick={breadcrumb.onClick}
-                  className="lyra-heading-md text-lyra-fg-secondary transition-colors hover:text-lyra-fg-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2 rounded-lyra-xs"
-                >
-                  {breadcrumb.label}
-                </button>
-              </li>
-              <li aria-hidden="true">
-                <span className="lyra-heading-md text-lyra-fg-secondary">/</span>
-              </li>
-              <li aria-current="page" className="flex items-center gap-2">
-                <h1 className="lyra-heading-lg text-lyra-fg-default">{title}</h1>
-                {chip && <Chip color={chipColor} variant={chipVariant}>{chip}</Chip>}
-              </li>
-            </ol>
-          </nav>
+          // Two `Breadcrumb` instances, both always rendered — CSS (see
+          // `.lyra-page-header-breadcrumb-wrap` in lyra-tokens.css/
+          // storybook.css) toggles between them once this slot's own width
+          // drops to 480px or below, collapsing every parent crumb into a
+          // single ellipsis trigger (its popover lists them all, per
+          // BreadcrumbEllipsis's `items` prop) so the current-page title
+          // truncates on one line instead of the trail wrapping onto a
+          // second one. Same DOM-swap technique TabList's `overflowMenu`
+          // uses for `.lyra-tab-overflow-full`/`-collapsed`.
+          <div className="lyra-page-header-breadcrumb-wrap flex-1 min-w-0">
+            <Breadcrumb className="lyra-page-header-breadcrumb-full min-w-0">
+              <BreadcrumbList className="flex-nowrap min-w-0">
+                {(Array.isArray(breadcrumb) ? breadcrumb : [breadcrumb]).map((crumb, i) => (
+                  <React.Fragment key={i}>
+                    <BreadcrumbItem className="shrink-0">
+                      <BreadcrumbLink onClick={crumb.onClick}>{crumb.label}</BreadcrumbLink>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator className="shrink-0" />
+                  </React.Fragment>
+                ))}
+                <BreadcrumbItem aria-current="page" className="gap-2 min-w-0 flex-1">
+                  <h1 className="lyra-heading-lg text-lyra-fg-default truncate min-w-0">{title}</h1>
+                  {chip && <Chip color={chipColor} variant={chipVariant}>{chip}</Chip>}
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+            <Breadcrumb className="lyra-page-header-breadcrumb-collapsed min-w-0">
+              <BreadcrumbList className="flex-nowrap min-w-0">
+                <BreadcrumbItem className="shrink-0">
+                  <BreadcrumbEllipsis
+                    ariaLabel="Show parent pages"
+                    items={(Array.isArray(breadcrumb) ? breadcrumb : [breadcrumb]).map((crumb, i) => ({
+                      id: `crumb-${i}`,
+                      label: crumb.label,
+                      onClick: crumb.onClick,
+                    }))}
+                  />
+                </BreadcrumbItem>
+                <BreadcrumbSeparator className="shrink-0" />
+                <BreadcrumbItem aria-current="page" className="gap-2 min-w-0 flex-1">
+                  <h1 className="lyra-heading-lg text-lyra-fg-default truncate min-w-0">{title}</h1>
+                  {chip && <Chip color={chipColor} variant={chipVariant}>{chip}</Chip>}
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+          </div>
         ) : (
-          <div className="flex items-center gap-2">
-            <h1 className="lyra-heading-lg text-lyra-fg-default">{title}</h1>
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <h1 className="lyra-heading-lg text-lyra-fg-default truncate min-w-0">{title}</h1>
             {chip && <Chip color={chipColor} variant={chipVariant}>{chip}</Chip>}
           </div>
         )}

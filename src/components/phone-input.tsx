@@ -4,6 +4,7 @@ import { ChevronDown, X } from "lucide-react";
 import { ErrorIcon } from "./icons/error-icon";
 import { cn } from "../lib/utils";
 import { Label } from "./label";
+import { Menu } from "./menu";
 
 /* ── Flag helper ── */
 function flag(code: string): string {
@@ -333,32 +334,33 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
                   </div>
                 </div>
 
-                {/* List */}
-                <div role="listbox" aria-label="Countries" className="overflow-y-auto p-2">
-                  {filtered.length === 0 ? (
-                    <div className="px-3 py-2.5 lyra-body-md text-lyra-fg-disabled">No countries found</div>
-                  ) : (
-                    filtered.map((c, i) => (
-                      <div
-                        key={`${c.code}-${c.dial}`}
-                        role="option" aria-selected={c.code === countryCode}
-                        onMouseDown={(e) => { e.preventDefault(); selectCountry(c); }}
-                        onMouseEnter={() => setActiveIndex(i)}
-                        className={cn(
-                          "flex items-center gap-2.5 px-3 py-2.5 rounded-lyra-sm lyra-body-md cursor-pointer transition-colors select-none",
-                          c.code === countryCode
-                            ? "bg-lyra-bg-active-subtle text-lyra-fg-active-strong"
-                            : "text-lyra-fg-default",
-                          i === activeIndex && c.code !== countryCode && "bg-lyra-state-hover"
-                        )}
-                      >
-                        <span className="text-base leading-none shrink-0">{flag(c.code)}</span>
-                        <span className="flex-1 truncate">{c.name}</span>
-                        <span className="lyra-body-sm text-lyra-fg-secondary tabular-nums shrink-0">{c.dial}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
+                {/* List — rendered through the shared Menu component (`bare`, this
+                    popover already supplies its own border/shadow/surface) so the
+                    country picker stays in sync with Menu's item states, rather than
+                    a hand-rolled "selected" bg with its own flat blue. The
+                    keyboard-navigated row (`activeIndex`, tracked on the search input
+                    above since focus never leaves it) shares the same `active`
+                    treatment as the actually-selected country — same trade-off
+                    Autocomplete already makes when composing on Menu. */}
+                {filtered.length === 0 ? (
+                  <div className="px-3 py-2.5 lyra-body-md text-lyra-fg-disabled">No countries found</div>
+                ) : (
+                  <Menu
+                    menuRole="listbox"
+                    itemRole="option"
+                    bare
+                    aria-label="Countries"
+                    className="overflow-y-auto p-2"
+                    items={filtered.map((c, i) => ({
+                      id: `${c.code}-${c.dial}`,
+                      label: c.name,
+                      icon: <span className="text-base leading-none">{flag(c.code)}</span>,
+                      rightElement: <span className="lyra-body-sm text-lyra-fg-secondary tabular-nums">{c.dial}</span>,
+                      active: c.code === countryCode || i === activeIndex,
+                      onClick: () => selectCountry(c),
+                    }))}
+                  />
+                )}
               </PopoverPrimitive.Content>
             </PopoverPrimitive.Portal>
           </PopoverPrimitive.Root>

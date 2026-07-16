@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
+import { User } from "lucide-react";
 import { SidePanel } from "../side-panel";
 import { Button } from "../button";
+import { PanelPinButton } from "../panel-pin-button";
 
 /* ── SidePanel stories ──
    Split out of the old unified `Panel.stories.tsx` — see side-panel.tsx and
@@ -81,6 +83,53 @@ export const Right: Story = {
             <p className="lyra-body-md text-lyra-fg-secondary">Right side panel content.</p>
           </div>
         </SidePanel>
+      </div>
+    );
+  },
+};
+
+/* ── PanelPinButton ──
+   Moved in from its own top-level story — `PanelPinButton` was extracted
+   out of `SidePanel`'s own header (see `side-panel.tsx`) into its own atom,
+   same Tooltip/button/focus-ring and the pin-icon-rotates-45°-when-pinned
+   animation, reusable anywhere a consumer needs to drive a panel's
+   `pinned`/`open` state from outside the panel itself — kept alongside
+   `SidePanel` here since that's its one real usage in this repo. */
+export const PinButton: Story = {
+  name: "PanelPinButton",
+  render: () => {
+    const [pinned, setPinned] = useState(false);
+    return (
+      <div className="flex items-center gap-3 rounded-lyra-md border border-lyra-border-subtle p-3">
+        <PanelPinButton pinned={pinned} onToggle={() => setPinned((v) => !v)} />
+        <span className="lyra-body-sm text-lyra-fg-secondary">{pinned ? "Pinned" : "Unpinned"}</span>
+      </div>
+    );
+  },
+};
+
+/* ── PanelPinButton — Custom icon ──
+   agent-next-gen-v1's Designer-panel trigger sits on the interaction
+   record header, next to the customer name — the `User` icon that's
+   already there, not a separate `Pin` glyph. Passing `icon` swaps the
+   glyph and switches the "pinned" indicator from the default's rotate-45°
+   animation (a pin-specific metaphor that looks wrong on an arbitrary
+   glyph) to a selected/pressed background instead — same Tooltip/aria
+   behavior either way. */
+export const PinButtonCustomIcon: Story = {
+  name: "PanelPinButton — Custom Icon (Designer panel trigger)",
+  render: () => {
+    const [pinned, setPinned] = useState(false);
+    return (
+      <div className="flex items-center gap-3 rounded-lyra-md border border-lyra-border-subtle p-3">
+        <PanelPinButton
+          pinned={pinned}
+          onToggle={() => setPinned((v) => !v)}
+          icon={<User className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />}
+          pinnedLabel="Unpin Designer panel"
+          unpinnedLabel="Pin Designer panel"
+        />
+        <span className="lyra-body-sm text-lyra-fg-secondary">{pinned ? "Pinned" : "Unpinned"}</span>
       </div>
     );
   },

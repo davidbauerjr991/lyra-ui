@@ -125,7 +125,7 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
         onKeyDown={handleKeyDown}
         className={cn(
           "flex border-b border-lyra-border-subtle",
-          fullWidth ? "[&>*]:flex-1" : "gap-1",
+          fullWidth ? "[&>*]:flex-1" : "gap-6 [&>[role='tab']]:px-0",
           // Stays in the DOM (just CSS-hidden below 991px, see
           // `.lyra-tab-overflow-full` in lyra-tokens.css) so its buttons
           // can still be `.click()`ed programmatically from the collapsed
@@ -207,7 +207,7 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
                 aria-haspopup="menu"
                 aria-expanded={overflowOpen}
                 aria-label={`${otherChildren.length} more tabs`}
-                className="group relative inline-flex items-center justify-center gap-2 px-3 py-2.5 lyra-body-md-emphasis text-lyra-fg-secondary transition-colors hover:text-lyra-fg-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+                className="group relative inline-flex min-h-[48px] items-center justify-center gap-2 px-3 py-2.5 lyra-body-md-emphasis text-lyra-fg-secondary transition-colors hover:text-lyra-fg-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
               >
                 {overflowMoreLabel(otherChildren.length)}
                 <ChevronDown
@@ -215,7 +215,7 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
                   strokeWidth={1.5}
                   aria-hidden="true"
                 />
-                <span aria-hidden="true" className="absolute bottom-0 left-0 right-0 h-[3px] bg-transparent group-hover:bg-lyra-border-medium transition-colors" />
+                <span aria-hidden="true" className="absolute bottom-0 left-0 right-0 h-[4px] bg-transparent group-hover:bg-lyra-border-medium transition-colors" />
               </button>
             )}
           </div>
@@ -296,10 +296,10 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
       aria-controls={panelId}
       tabIndex={active ? 0 : -1}
       className={cn(
-        "group relative inline-flex items-center justify-center gap-2 px-3 py-2.5 lyra-body-md-emphasis transition-colors",
+        "group relative inline-flex min-h-[48px] items-center justify-center gap-2 px-3 py-2.5 lyra-body-md-emphasis transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
         active
-          ? "text-lyra-fg-action"
+          ? "text-lyra-fg-active-strong"
           : "text-lyra-fg-secondary hover:text-lyra-fg-default",
         className
       )}
@@ -308,7 +308,7 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
       {icon && (
         <span
           aria-hidden="true"
-          className={cn("flex-shrink-0 transition-colors", active ? "text-lyra-fg-action" : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary")}
+          className={cn("flex-shrink-0 transition-colors", active ? "text-lyra-fg-active-strong" : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary")}
         >
           {icon}
         </span>
@@ -321,7 +321,7 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
           ariaLabel={menuAriaLabel}
           className={cn(
             "h-5 w-5 flex-shrink-0",
-            active ? "text-lyra-fg-action" : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary"
+            active ? "text-lyra-fg-active-strong" : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary"
           )}
         />
       )}
@@ -335,7 +335,7 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
           className={cn(
             "flex h-4 w-4 items-center justify-center rounded-lyra-xs flex-shrink-0 transition-colors",
             "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
-            active ? "text-lyra-fg-action" : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary"
+            active ? "text-lyra-fg-active-strong" : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary"
           )}
         >
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
@@ -347,18 +347,18 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
       {rightIcon && !onRemove && !menuItems && (
         <span
           aria-hidden="true"
-          className={cn("flex-shrink-0 transition-colors", active ? "text-lyra-fg-action" : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary")}
+          className={cn("flex-shrink-0 transition-colors", active ? "text-lyra-fg-active-strong" : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary")}
         >
           {rightIcon}
         </span>
       )}
       {/* Active indicator — blue bar */}
       {active && (
-        <span aria-hidden="true" className="absolute bottom-0 left-0 right-0 h-[3px] bg-lyra-bg-primary" />
+        <span aria-hidden="true" className="absolute bottom-0 left-0 right-0 h-[4px] bg-lyra-fg-active-strong" />
       )}
       {/* Hover indicator — gray bar (only when not active) */}
       {!active && (
-        <span aria-hidden="true" className="absolute bottom-0 left-0 right-0 h-[3px] bg-transparent group-hover:bg-lyra-border-medium transition-colors" />
+        <span aria-hidden="true" className="absolute bottom-0 left-0 right-0 h-[4px] bg-transparent group-hover:bg-lyra-border-medium transition-colors" />
       )}
     </button>
   )

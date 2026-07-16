@@ -4,7 +4,7 @@ import { CustomerInformationPanel } from "../customer-information-panel";
 import { Button } from "../button";
 
 const meta: Meta<typeof CustomerInformationPanel> = {
-  title: "Atoms/CustomerInformationPanel",
+  title: "UI/CustomerInformationPanel",
   component: CustomerInformationPanel,
   tags: ["autodocs"],
   parameters: {

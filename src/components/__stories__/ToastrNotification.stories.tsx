@@ -1,18 +1,11 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
-import { Container } from "../container";
 import { Button } from "../button";
-import { Checkbox } from "../checkbox";
-import { InlineNotification } from "../inline-notification";
 import { Toast, ToastContainer, useToast } from "../toast";
 import type { ToastVariant } from "../toast";
-import { WarningIcon } from "../icons/warning-icon";
-import { ErrorIcon } from "../icons/error-icon";
-import { InfoIcon } from "../icons/info-icon";
-import { SuccessIcon } from "../icons/success-icon";
 
 const meta: Meta = {
-  title: "Atoms/Alerts",
+  title: "Atoms/Toastr Notification",
   tags: ["autodocs"],
   parameters: {
     layout: "padded",
@@ -21,91 +14,6 @@ const meta: Meta = {
 
 export default meta;
 type Story = StoryObj;
-
-/* ══════════════════════════════════════════
-   Modal Alerts
-   ══════════════════════════════════════════ */
-
-// Modal stories moved to Atoms/Modal
-
-/* ══════════════════════════════════════════
-   Inline Notifications
-   ══════════════════════════════════════════ */
-
-export const Default: Story = {
-  name: "Default",
-  render: () => (
-    <div className="w-full">
-      <InlineNotification variant="info" onDismiss={() => {}}>
-        Important background information, upcoming changes, or neutral system status updates.
-      </InlineNotification>
-    </div>
-  ),
-};
-
-export const InlineAll: Story = {
-  name: "Inline — All Variants",
-  render: () => (
-    <div className="flex flex-col gap-4 w-full">
-      <InlineNotification variant="warning" onDismiss={() => {}}>
-        Advise users of conditions that need attention or could cause future problems if ignored.
-      </InlineNotification>
-      <InlineNotification variant="error" onDismiss={() => {}}>
-        Highlight critical issues or failed requirements that prevent the user from completing a workflow.
-      </InlineNotification>
-      <InlineNotification variant="info" onDismiss={() => {}}>
-        Important background information, upcoming changes, or neutral system status updates.
-      </InlineNotification>
-      <InlineNotification variant="success" onDismiss={() => {}}>
-        Confirm completion of a major page-level process
-      </InlineNotification>
-    </div>
-  ),
-};
-
-export const InlineWarning: Story = {
-  name: "Inline — Warning",
-  render: () => (
-    <div className="w-full">
-      <InlineNotification variant="warning" onDismiss={() => {}}>
-        Advise users of conditions that need attention or could cause future problems if ignored.
-      </InlineNotification>
-    </div>
-  ),
-};
-
-export const InlineError: Story = {
-  name: "Inline — Error",
-  render: () => (
-    <div className="w-full">
-      <InlineNotification variant="error" onDismiss={() => {}}>
-        Highlight critical issues or failed requirements that prevent the user from completing a workflow.
-      </InlineNotification>
-    </div>
-  ),
-};
-
-export const InlineInfo: Story = {
-  name: "Inline — Info",
-  render: () => (
-    <div className="w-full">
-      <InlineNotification variant="info" onDismiss={() => {}}>
-        Important background information, upcoming changes, or neutral system status updates.
-      </InlineNotification>
-    </div>
-  ),
-};
-
-export const InlineSuccess: Story = {
-  name: "Inline — Success",
-  render: () => (
-    <div className="w-full">
-      <InlineNotification variant="success" onDismiss={() => {}}>
-        Confirm completion of a major page-level process
-      </InlineNotification>
-    </div>
-  ),
-};
 
 /* ══════════════════════════════════════════
    Toasts

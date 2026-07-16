@@ -35,7 +35,7 @@ const indicatorVariants = cva(
   }
 );
 
-export interface ProgressProps
+export interface ProgressBarProps
   extends React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root>,
     VariantProps<typeof trackVariants>,
     VariantProps<typeof indicatorVariants> {
@@ -47,9 +47,9 @@ export interface ProgressProps
   label?: string;
 }
 
-const Progress = React.forwardRef<
+const ProgressBar = React.forwardRef<
   React.ElementRef<typeof ProgressPrimitive.Root>,
-  ProgressProps
+  ProgressBarProps
 >(({ className, value = 0, size, variant, showLabel, label, ...props }, ref) => (
   <div className="flex flex-col gap-1 w-full">
     <ProgressPrimitive.Root
@@ -72,6 +72,6 @@ const Progress = React.forwardRef<
     )}
   </div>
 ));
-Progress.displayName = "Progress";
+ProgressBar.displayName = "ProgressBar";
 
-export { Progress };
+export { ProgressBar };

@@ -8,8 +8,8 @@ export { Calendar } from "./components/calendar";
 export type { CalendarProps, CalendarMode, CalendarSingleProps, CalendarRangeProps, CalendarWeekProps, DateRange } from "./components/calendar";
 export { DatePicker, DateRangePicker } from "./components/date-picker";
 export { DateTimePicker, DateRangeTimePicker } from "./components/date-time-picker";
-export { NumberInput } from "./components/number-input";
-export type { NumberInputProps } from "./components/number-input";
+export { NumberField } from "./components/number-field";
+export type { NumberFieldProps } from "./components/number-field";
 export type { DateTimePickerProps, DateRangeTimePickerProps, DateRangeTimeValue } from "./components/date-time-picker";
 export type { DatePickerProps, DateRangePickerProps } from "./components/date-picker";
 export { Accordion } from "./components/accordion";
@@ -95,6 +95,24 @@ export { CXoneLogo } from "./components/cxone-logo";
 export type { CXoneLogoProps } from "./components/cxone-logo";
 export { PageHeader } from "./components/page-header";
 export type { PageHeaderBreadcrumb, PageHeaderProps } from "./components/page-header";
+export {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+  BreadcrumbEllipsis,
+} from "./components/breadcrumb";
+export type {
+  BreadcrumbProps,
+  BreadcrumbListProps,
+  BreadcrumbItemProps,
+  BreadcrumbLinkProps,
+  BreadcrumbPageProps,
+  BreadcrumbSeparatorProps,
+  BreadcrumbEllipsisProps,
+} from "./components/breadcrumb";
 export { SidePanel } from "./components/side-panel";
 export type { SidePanelProps } from "./components/side-panel";
 export { Container } from "./components/container";
@@ -214,7 +232,8 @@ export { InfoIcon } from "./components/icons/info-icon";
 export { SuccessIcon } from "./components/icons/success-icon";
 export { ColumnsIcon } from "./components/icons/columns-icon";
 
-export { Progress } from "./components/progress";
+export { ProgressBar } from "./components/progress-bar";
+export type { ProgressBarProps } from "./components/progress-bar";
 export { Overlay, OverlayBackdrop } from "./components/overlay";
 export { StatusBadge } from "./components/status-badge";
 export { TimePicker, TimeRangePicker } from "./components/time-picker";

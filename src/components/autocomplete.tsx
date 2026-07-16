@@ -244,7 +244,7 @@ const Autocomplete = React.forwardRef<HTMLDivElement, AutocompleteProps>(
                     label: option.label,
                     icon: option.icon,
                     disabled: option.disabled,
-                    selected: option.value === value,
+                    active: option.value === value,
                     onClick: () => handleSelect(option),
                   }))}
                 />

@@ -99,6 +99,44 @@ export const WithBreadcrumb: Story = {
   },
 };
 
+export const WithBreadcrumbs: Story = {
+  name: "With Breadcrumbs",
+  args: {
+    title: "Dashboard Name",
+    // `breadcrumb` also accepts an array for a deeper trail — each entry
+    // renders as its own parent crumb before the title, composed from the
+    // shared Breadcrumb parts (see breadcrumb.tsx / Atoms/Breadcrumb).
+    breadcrumb: [
+      { label: "Dashboards" },
+      { label: "Sales" },
+    ],
+    actions: defaultActions,
+  },
+};
+
+export const WithBreadcrumbsNarrow: Story = {
+  name: "With Breadcrumbs (Narrow / Collapsed)",
+  parameters: { layout: "padded" },
+  render: () => (
+    // Forces the collapse — `.lyra-page-header-breadcrumb-wrap` is a CSS
+    // container-query boundary (see lyra-tokens.css/storybook.css), so it
+    // reacts to this wrapper's actual rendered width, not the viewport.
+    // Below 480px of the breadcrumb slot's own width, every parent crumb
+    // collapses behind a single ellipsis trigger (far left) and the title
+    // truncates with an ellipsis instead of wrapping onto a second line.
+    <div style={{ width: 420, border: "1px solid var(--lyra-color-border-subtle)", borderRadius: 8, overflow: "hidden" }}>
+      <PageHeader
+        title="This is a very long parent name that needs to truncate"
+        breadcrumb={[
+          { label: "Dashboards" },
+          { label: "Sales" },
+          { label: "Q3 Reports" },
+        ]}
+      />
+    </div>
+  ),
+};
+
 export const WithTogglePinned: Story = {
   name: "Panel Toggle (Pinned)",
   render: () => {

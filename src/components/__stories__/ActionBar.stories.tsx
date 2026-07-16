@@ -5,7 +5,7 @@ import { Button } from "../button";
 import { StopCircle } from "lucide-react";
 
 const meta: Meta<typeof ActionBar> = {
-  title: "Atoms/ActionBar",
+  title: "UI/ActionBar",
   component: ActionBar,
   tags: ["autodocs"],
   parameters: {

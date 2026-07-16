@@ -8,7 +8,7 @@ import { InfoIcon } from "../icons/info-icon";
 import { Tooltip } from "../tooltip";
 
 const meta: Meta<typeof ContainerHeader> = {
-  title: "Atoms/ContainerHeader",
+  title: "UI/ContainerHeader",
   component: ContainerHeader,
   tags: ["autodocs"],
   parameters: {

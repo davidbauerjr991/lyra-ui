@@ -33,8 +33,20 @@ interface SwitchProps
 const switchTrackVariants = cva("", {
   variants: {
     size: {
-      lg: "h-[28px] w-[52px]",
-      sm: "h-[20px] w-[36px]",
+      lg: "h-[24px] w-[40px]",
+      sm: "h-[16px] w-[32px]",
+    },
+  },
+  defaultVariants: { size: "lg" },
+});
+
+/* Border width — both sizes now use a 1px border (was 2px, shared via a
+   hardcoded `border-2` on the root). */
+const switchBorderVariants = cva("", {
+  variants: {
+    size: {
+      lg: "border",
+      sm: "border",
     },
   },
   defaultVariants: { size: "lg" },
@@ -43,8 +55,8 @@ const switchTrackVariants = cva("", {
 const switchThumbVariants = cva("", {
   variants: {
     size: {
-      lg: "h-[20px] w-[20px]",
-      sm: "h-[14px] w-[14px]",
+      lg: "h-[18px] w-[18px]",
+      sm: "h-[12px] w-[12px]",
     },
   },
   defaultVariants: { size: "lg" },
@@ -53,8 +65,25 @@ const switchThumbVariants = cva("", {
 const switchThumbTranslateVariants = cva("", {
   variants: {
     size: {
-      lg: "translate-x-[24px]",
-      sm: "translate-x-[16px]",
+      /* 19px keeps the thumb's 2px gap from the track's outer right edge
+         matching its 2px gap from the left edge in the off position below
+         (1px border + 1px translate each side) — recomputed from the new
+         24x40 track / 18px thumb / 1px border dimensions so the thumb
+         doesn't overshoot the track when on. */
+      lg: "translate-x-[19px]",
+      sm: "translate-x-[17px]",
+    },
+  },
+  defaultVariants: { size: "lg" },
+});
+
+/* Off-position translate — was a flat `translate-x-[2px]` for every size;
+   both sizes now use 1px. */
+const switchThumbOffTranslateVariants = cva("", {
+  variants: {
+    size: {
+      lg: "translate-x-[1px]",
+      sm: "translate-x-[1px]",
     },
   },
   defaultVariants: { size: "lg" },
@@ -74,7 +103,7 @@ const switchLabelVariants = cva("", {
   variants: {
     size: {
       lg: "lyra-body-md",
-      sm: "lyra-body-sm",
+      sm: "lyra-body-md",
     },
   },
   defaultVariants: { size: "lg" },
@@ -106,11 +135,12 @@ const Switch = React.forwardRef<
         onCheckedChange={onCheckedChange}
         disabled={disabled}
         className={cn(
-          "peer relative inline-flex shrink-0 items-center rounded-full border-2 transition-colors",
+          "peer relative inline-flex shrink-0 items-center rounded-full transition-colors",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
 
           /* Size */
           switchTrackVariants({ size }),
+          switchBorderVariants({ size }),
 
           /* ── Track colors ── */
           /* On */
@@ -122,7 +152,7 @@ const Switch = React.forwardRef<
 
           /* Off */
           isOff && [
-            "bg-lyra-bg-secondary border-lyra-border-default",
+            "bg-lyra-bg-secondary border-lyra-border-strong",
             !disabled && "hover:border-lyra-border-strong hover:bg-lyra-state-hover",
             !disabled && "active:border-lyra-border-strong active:bg-lyra-state-pressed",
           ],
@@ -146,7 +176,7 @@ const Switch = React.forwardRef<
             switchThumbVariants({ size }),
 
             /* Position */
-            isOn ? switchThumbTranslateVariants({ size }) : "translate-x-[2px]",
+            isOn ? switchThumbTranslateVariants({ size }) : switchThumbOffTranslateVariants({ size }),
 
             /* Thumb color */
             isOn ? "bg-lyra-bg-surface-base" : "bg-lyra-fg-secondary"

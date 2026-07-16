@@ -8,7 +8,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, useAutoF
 import { cn } from "../../lib/utils";
 
 const meta = {
-  title: "Atoms/Dashboard Card",
+  title: "UI/Dashboard Card",
   component: DashboardCard,
   tags: ["autodocs"],
   // fullscreen — every story below stretches its card to `w-full` inside a

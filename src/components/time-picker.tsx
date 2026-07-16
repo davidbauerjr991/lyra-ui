@@ -3,7 +3,7 @@ import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Clock } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Label } from "./label";
-import { NumberInput } from "./number-input";
+import { NumberField } from "./number-field";
 
 /* ── Helpers ── */
 
@@ -46,7 +46,7 @@ interface TimeSelectorProps {
 function TimeSelector({ hour, minute, ampm, onHourChange, onMinuteChange, onAmpmChange }: TimeSelectorProps) {
   return (
     <div className="flex items-center gap-1.5 p-3">
-      <NumberInput
+      <NumberField
         value={hour}
         min={1} max={12} wrap
         padWidth={2}
@@ -55,7 +55,7 @@ function TimeSelector({ hour, minute, ampm, onHourChange, onMinuteChange, onAmpm
         aria-label="Hour"
       />
       <span className="lyra-body-md text-lyra-fg-secondary flex-shrink-0">:</span>
-      <NumberInput
+      <NumberField
         value={minute}
         min={0} max={59} wrap
         padWidth={2}

@@ -74,7 +74,7 @@ export const AllStates: Story = {
         <div className="inline-flex items-center rounded-lyra-md border border-lyra-border-subtle bg-lyra-bg-surface-base p-0.5">
           <button
             type="button"
-            className="px-3 py-1.5 lyra-body-md rounded-lyra-sm text-lyra-fg-default bg-lyra-bg-surface-shell border border-lyra-border-default transition-colors"
+            className="px-4 py-1.5 lyra-body-md rounded-lyra-sm text-lyra-fg-default bg-lyra-bg-surface-shell border border-lyra-border-default transition-colors"
           >
             Toggle
           </button>
@@ -87,7 +87,7 @@ export const AllStates: Story = {
         <div className="inline-flex items-center rounded-lyra-md border border-lyra-border-subtle bg-lyra-bg-surface-base p-0.5">
           <button
             type="button"
-            className="px-3 py-1.5 lyra-body-md rounded-lyra-sm text-lyra-fg-default bg-lyra-bg-disabled border border-lyra-border-default transition-colors"
+            className="px-4 py-1.5 lyra-body-md rounded-lyra-sm text-lyra-fg-default bg-lyra-bg-disabled border border-lyra-border-default transition-colors"
           >
             Toggle
           </button>
@@ -111,7 +111,7 @@ export const AllStates: Story = {
           <button
             type="button"
             className={cn(
-              "px-3 py-1.5 lyra-body-md rounded-lyra-sm font-medium transition-colors",
+              "px-4 py-1.5 lyra-body-md rounded-lyra-sm font-medium transition-colors",
               "bg-lyra-state-hover-active-subtle border border-lyra-border-active text-lyra-fg-active-strong"
             )}
           >
@@ -127,7 +127,7 @@ export const AllStates: Story = {
           <button
             type="button"
             className={cn(
-              "px-3 py-1.5 lyra-body-md rounded-lyra-sm font-medium transition-colors",
+              "px-4 py-1.5 lyra-body-md rounded-lyra-sm font-medium transition-colors",
               "bg-lyra-state-pressed-active-subtle border border-lyra-border-active text-lyra-fg-active-strong"
             )}
           >

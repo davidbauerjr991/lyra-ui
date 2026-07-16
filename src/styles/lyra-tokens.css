@@ -636,3 +636,46 @@
     display: flex;
   }
 }
+
+/* ════════════════════════════════════════════════════
+   PageHeader breadcrumb collapse
+   ════════════════════════════════════════════════════
+   Same "react to this element's own width" container-query technique as
+   `.lyra-tab-overflow-wrap` above, applied to `PageHeader`'s breadcrumb
+   slot (page-header.tsx): once the slot's own available width drops to
+   480px or below, swap the full parent-crumb trail for a single ellipsis
+   trigger (all parent crumbs collapsed into its popover, via
+   `BreadcrumbEllipsis`'s `items` prop — see breadcrumb.tsx) followed by
+   the current-page title, which truncates with an ellipsis instead of
+   wrapping onto a second line — wrapping is what pushed the title below
+   the crumbs before this existed, which is the behavior this replaces.
+   480px is an approximation (a fixed breakpoint, not an exact "does the
+   text actually overflow" measurement — see CONTRIBUTING.md's CSS
+   container-query pattern note on this tradeoff) chosen to collapse
+   comfortably before a two-or-more-crumb trail plus a merely medium-length
+   title would start crowding the row.
+
+   `.lyra-page-header-breadcrumb-full` (hidden below 480px) and
+   `.lyra-page-header-breadcrumb-collapsed` (the reverse) are both real
+   `Breadcrumb` instances rendered at all times — same reasoning as
+   `.lyra-tab-overflow-full` staying in the DOM above, just for CSS
+   toggling rather than programmatic `.click()`. Scoped with the
+   `.lyra-page-header-breadcrumb-wrap` ancestor, not bare single classes,
+   for the same specificity reason documented on `.lyra-tab-overflow-wrap`
+   above (a bare `.lyra-page-header-breadcrumb-full { display: none }`
+   would tie with Tailwind's `.flex` utility on the same element and could
+   lose depending on bundler-emitted CSS order). */
+.lyra-page-header-breadcrumb-wrap {
+  container-type: inline-size;
+}
+.lyra-page-header-breadcrumb-wrap .lyra-page-header-breadcrumb-collapsed {
+  display: none;
+}
+@container (max-width: 480px) {
+  .lyra-page-header-breadcrumb-wrap .lyra-page-header-breadcrumb-full {
+    display: none;
+  }
+  .lyra-page-header-breadcrumb-wrap .lyra-page-header-breadcrumb-collapsed {
+    display: flex;
+  }
+}
