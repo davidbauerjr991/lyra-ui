@@ -390,22 +390,24 @@ function AgentNextGenTemplate({
     }
   }, [isNavNarrow]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // No hidden gating here — matches `Panel.stories.tsx`'s "Side Panel"
-  // story, where `pinned` and `open` are two plain, independent booleans
-  // and nothing about toggling one disables the other's normal control
-  // going forward. Hovering the icon always previews the panel while
-  // unpinned, exactly like that story's `Panel` does — including right
-  // after an icon-click unpin, which previously left a `sidePanelHoverEnabled`
-  // flag permanently `false` for the rest of the interaction (reset only on
-  // leaving the interaction or going narrow) — a stricter, one-off "click
-  // to reopen" behavior that doesn't match the plain Panel model and that
-  // this fixes.
+  // Both guarded on `sidePanelPinned` — matches `admin-shell.tsx`'s
+  // `handleLeftHoverStart`/`handleLeftHoverEnd` (the canonical `SidePanel`
+  // reference): hover previews the panel while *unpinned* only. Once
+  // pinned, hover does nothing at all in either direction — open/closed is
+  // controlled exclusively by the click toggle (`handleSidePanelIconToggle`)
+  // while pinned, same as every other `SidePanel` consumer in this system.
+  // `onSidePanelHoverStart` used to have no pinned guard at all, so hovering
+  // the icon could silently reopen a pinned-but-closed panel — inconsistent
+  // with the click-only contract above. (Still no `sidePanelHoverEnabled`
+  // flag or other hidden gating beyond this one plain check — that flag was
+  // removed earlier this session for leaving a stricter one-off "click to
+  // reopen" state stuck after an icon-click unpin; this fix is orthogonal to
+  // that and doesn't reintroduce it.)
   const onSidePanelHoverStart = () => {
+    if (sidePanelPinned) return;
     clearTimeout(sidePanelTimer.current);
     setSidePanelOpen(true);
   };
-  // Guarded on `sidePanelPinned` — see agent-next-gen-v1's copy of this
-  // handler for the full rationale.
   const onSidePanelHoverEnd = () => {
     if (sidePanelPinned) return;
     sidePanelTimer.current = setTimeout(() => setSidePanelOpen(false), 300);
@@ -414,14 +416,19 @@ function AgentNextGenTemplate({
     setSidePanelPinned((v) => !v);
     setSidePanelOpen(true); // keep open when toggling pin state
   };
-  /* Click on the interaction record icon — a real on/off toggle, distinct
-     from `handleSidePanelPinToggle` above. See agent-next-gen-v1's copy of
-     this handler for the full rationale. */
+  /* Click on the interaction record icon — toggles open/closed only, and
+     only while already pinned (matching `admin-shell.tsx`'s
+     `handleLeftToggle`/`handleRightToggle`: a no-op while unpinned, since
+     that state is hover-driven instead). Deliberately does NOT touch
+     `sidePanelPinned` — pinning/unpinning is `handleSidePanelPinToggle`'s
+     job alone (the panel's own internal pin button). This used to also
+     flip `sidePanelPinned` to match, which meant "closing" a pinned panel
+     via this icon silently unpinned it too — so reopening it later (e.g. by
+     hovering) came back unpinned instead of staying pinned like Panel.
+     stories.tsx's "Side Panel" reference behavior requires. See
+     agent-next-gen-v1's copy of this handler for the full rationale. */
   const handleSidePanelIconToggle = () => {
-    clearTimeout(sidePanelTimer.current);
-    const nextPinned = !sidePanelPinned;
-    setSidePanelPinned(nextPinned);
-    setSidePanelOpen(nextPinned);
+    if (effectivePinned) setSidePanelOpen((v) => !v);
   };
 
   const MAX_PANEL_HEIGHT = 860;

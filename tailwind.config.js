@@ -50,6 +50,31 @@ export default {
       fontFamily: {
         sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "sans-serif"],
       },
+      /* ── Accordion height animation ── `Accordion` (accordion.tsx) is
+         built on `@radix-ui/react-accordion`, which exposes each item's
+         measured open height as `--radix-accordion-content-height`; these
+         keyframes animate between 0 and that variable, replacing the
+         component's previous ResizeObserver + JS-measured-height approach
+         (still used by `TreeMenu`'s own `CollapsiblePanel` in
+         tree-menu.tsx, unaffected by this). 200ms/ease-in-out matches that
+         prior approach's own transition timing exactly. Kept in sync with
+         the identical block in src/tailwind-preset.ts — that's the copy
+         consuming apps actually pull in, since this file only builds this
+         repo's own Storybook. ── */
+      keyframes: {
+        "accordion-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+      },
+      animation: {
+        "accordion-down": "accordion-down 200ms ease-in-out",
+        "accordion-up": "accordion-up 200ms ease-in-out",
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],

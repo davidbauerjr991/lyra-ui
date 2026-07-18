@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { Checkbox } from "../checkbox";
 
 const meta: Meta<typeof Checkbox> = {
-  title: "Atoms/Checkbox",
+  title: "Radix Primitives/Checkbox",
   component: Checkbox,
   tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
@@ -214,7 +214,7 @@ export const Interactive: Story = {
   },
 };
 
-// Group stories moved to Atoms/Checkbox Group
+// Group stories moved to Custom Primitives/Checkbox Group
 
 /* ── With Secondary Text ── */
 

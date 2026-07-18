@@ -1,9 +1,22 @@
 import * as React from "react";
+import * as LabelPrimitive from "@radix-ui/react-label";
 import { Info } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Tooltip } from "./tooltip";
 
-/* ── Types ── */
+/* ── Types ──
+   Was a hand-rolled `<label>` — genuinely is a Radix primitive
+   (`@radix-ui/react-label`, unlike `Autocomplete`/`DatePicker`/
+   `DateTimePicker`/`PhoneInput`/`Table`/`TimePicker`, which only use Radix
+   internally as an implementation detail and were moved out of the "Radix
+   Primitives" Storybook category for exactly that reason). Rebuilt on
+   `LabelPrimitive.Root` — same "swap internals, keep the same export API"
+   playbook used for `Select`/`Accordion`/`Separator`. Radix's `Root` renders
+   the same `<label>` element and adds one behavior the hand-rolled version
+   didn't have: it guards against a Safari quirk where double-clicking a
+   label selects text in whatever's next to it instead of just interacting
+   with the associated control. Everything else — `htmlFor` via `labelFor`,
+   the required asterisk, the help-text tooltip — is unchanged. */
 
 export interface LabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {
   /** The label text */
@@ -50,7 +63,7 @@ const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
     const showHelp = !!labelHelpText && !disabled;
 
     return (
-      <label
+      <LabelPrimitive.Root
         ref={ref}
         htmlFor={labelFor}
         className={cn(
@@ -87,7 +100,7 @@ const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
             </span>
           </Tooltip>
         )}
-      </label>
+      </LabelPrimitive.Root>
     );
   }
 );

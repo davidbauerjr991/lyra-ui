@@ -45,12 +45,23 @@ export interface ProgressBarProps
   showLabel?: boolean;
   /** Override the label text (defaults to "{value}%") */
   label?: string;
+  /**
+   * Escape hatch to override the indicator's transition (default
+   * `transition-all duration-300 ease-in-out`, from `indicatorVariants`) for
+   * a specific usage — e.g. matching a particular reference animation curve
+   * — without changing the default for every other consumer. Merged in via
+   * `cn()`/tailwind-merge, so e.g. `"duration-[330ms] ease-[cubic-bezier(0.65,0,0.35,1)]"`
+   * correctly overrides just those two utility groups. See
+   * `ProgressBar.stories.tsx`'s "Animated — Dashboard Loading" story for a
+   * real usage (matching Radix's own Progress primitive docs easing curve).
+   */
+  indicatorClassName?: string;
 }
 
 const ProgressBar = React.forwardRef<
   React.ElementRef<typeof ProgressPrimitive.Root>,
   ProgressBarProps
->(({ className, value = 0, size, variant, showLabel, label, ...props }, ref) => (
+>(({ className, value = 0, size, variant, showLabel, label, indicatorClassName, ...props }, ref) => (
   <div className="flex flex-col gap-1 w-full">
     <ProgressPrimitive.Root
       ref={ref}
@@ -60,7 +71,7 @@ const ProgressBar = React.forwardRef<
       {...props}
     >
       <ProgressPrimitive.Indicator
-        className={indicatorVariants({ variant })}
+        className={cn(indicatorVariants({ variant }), indicatorClassName)}
         style={{ transform: `translateX(-${100 - Math.min(100, Math.max(0, value))}%)` }}
       />
     </ProgressPrimitive.Root>

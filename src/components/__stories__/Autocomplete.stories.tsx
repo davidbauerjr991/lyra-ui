@@ -35,7 +35,7 @@ const AGENTS = [
 ];
 
 const meta: Meta<typeof Autocomplete> = {
-  title: "Atoms/Autocomplete",
+  title: "Custom Primitives/Autocomplete",
   component: Autocomplete,
   tags: ["autodocs"],
   parameters: {

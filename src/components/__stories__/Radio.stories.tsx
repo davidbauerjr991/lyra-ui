@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { RadioGroup, RadioGroupItem } from "../radio";
 
 const meta: Meta<typeof RadioGroup> = {
-  title: "Atoms/Radio",
+  title: "Radix Primitives/Radio",
   component: RadioGroup,
   tags: ["autodocs"],
   parameters: {
@@ -150,4 +150,4 @@ export const AllVariants: Story = {
   ),
 };
 
-// Group stories moved to Atoms/Radio Button Group
+// Group stories moved to Custom Primitives/Radio Button Group

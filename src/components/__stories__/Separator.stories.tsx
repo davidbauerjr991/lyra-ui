@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { Divider } from "../divider";
+import { Separator } from "../separator";
 
 const meta = {
-  title: "Atoms/Divider",
-  component: Divider,
+  title: "Custom Primitives/Separator",
+  component: Separator,
   tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
   argTypes: {
@@ -12,7 +12,7 @@ const meta = {
       options: ["horizontal", "vertical"],
     },
   },
-} satisfies Meta<typeof Divider>;
+} satisfies Meta<typeof Separator>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -24,7 +24,7 @@ export const Horizontal: Story = {
   render: () => (
     <div className="w-96 rounded-lyra-md bg-lyra-bg-surface-container-subtle p-5">
       <span className="lyra-body-md text-lyra-fg-default">Section one</span>
-      <Divider className="my-4" />
+      <Separator className="my-4" />
       <span className="lyra-body-md text-lyra-fg-default">Section two</span>
     </div>
   ),
@@ -37,9 +37,9 @@ export const Vertical: Story = {
   render: () => (
     <div className="flex h-6 items-center gap-3">
       <span className="lyra-body-md text-lyra-fg-default">Item one</span>
-      <Divider orientation="vertical" />
+      <Separator orientation="vertical" />
       <span className="lyra-body-md text-lyra-fg-default">Item two</span>
-      <Divider orientation="vertical" />
+      <Separator orientation="vertical" />
       <span className="lyra-body-md text-lyra-fg-default">Item three</span>
     </div>
   ),

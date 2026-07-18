@@ -2,11 +2,11 @@ import * as React from "react";
 import { UserPlus, MessageSquare, AlertTriangle, PhoneMissed, Bell, Trash2, GripVertical, MoreHorizontal } from "lucide-react";
 import { cn } from "../lib/utils";
 import { ListItem } from "./list-item";
-import { StatusBadge } from "./status-badge";
+import { Badge } from "./badge";
 import { Tooltip } from "./tooltip";
 import { Draggable, type DraggableVariant } from "./draggable";
 import { ContainerHeader } from "./container-header";
-import { Menu } from "./menu";
+import { MenuRadix } from "./menu-radix";
 
 /* ── Types ── */
 
@@ -103,7 +103,6 @@ const AgentNotifications = React.forwardRef<HTMLDivElement, AgentNotificationsPr
 
     const unreadCount = notifications.filter((n) => !n.read).length;
     const hasUnread = notifications.some((n) => !n.read);
-    const [overflowOpen, setOverflowOpen] = React.useState(false);
 
     // Pre-compute outside JSX to avoid IIFE type-widening issues
     const overflowItems: Array<{ id: string; label: string; onClick: () => void; destructive?: boolean }> = [
@@ -136,49 +135,61 @@ const AgentNotifications = React.forwardRef<HTMLDivElement, AgentNotificationsPr
         renderHeaderControls={({ gripProps, dockButtonProps, dockIcon, variant }) => (
           <ContainerHeader
             title="Notifications"
-            /* Grip icon in float mode; spacer div to preserve header height in docked mode */
+            /* Grip icon in float mode; no icon at all in docked mode — see
+               draggable-panel.tsx's matching comment. The blank `w-4`
+               spacer this used to render in docked mode was a leftover
+               height-preservation hack from before ContainerHeader's title
+               got its own fixed-height box; it no longer does anything but
+               misalign the docked title with the rest of the panel. */
             icon={
-              variant === "float" ? (
-                <div {...gripProps}><GripVertical className="h-4 w-4" strokeWidth={1.5} /></div>
-              ) : (
-                <div className="w-4" aria-hidden="true" />
-              )
+              variant === "float"
+                ? <div {...gripProps}><GripVertical className="h-4 w-4" strokeWidth={1.5} /></div>
+                : undefined
             }
             /* Count badge sits inline right after the title */
             titleBadge={
               unreadCount > 0
-                ? <StatusBadge variant="info" size="sm" className="-translate-y-0.5">{unreadCount}</StatusBadge>
+                ? <Badge shape="circle" variant="info" size="sm" className="-translate-y-0.5">{unreadCount}</Badge>
                 : undefined
             }
             /* lyra-heading-md line-height collapses so items-center aligns the badge correctly */
             titleClassName="lyra-heading-md leading-none"
             actions={
               <>
-                {/* Overflow menu — "Mark all as read" + "Clear all" */}
+                {/* Overflow menu — "Mark all as read" + "Clear all". Built on
+                    MenuRadix rather than a hand-rolled trigger + open-state
+                    + absolute-positioned Menu — self-triggered, no
+                    embedding inside another Popover, so MenuRadix owns the
+                    whole thing (trigger, open state, positioning) instead
+                    of the `overflowOpen` state this file used to manage by
+                    hand. Tooltip wraps the whole `<MenuRadix>` via a plain
+                    `<span>` first (a real DOM element), not `<MenuRadix>`
+                    directly — Radix's Trigger clones its props onto its
+                    immediate child via asChild/Slot, and Tooltip doesn't
+                    forward arbitrary props to a DOM node, so it can't sit
+                    as that immediate child (see profile-menu.tsx's own
+                    comment on this same pattern). `asLabel` dropped from
+                    Tooltip here since it would now land on the inert
+                    wrapping span instead of the button — the button
+                    already carries its own explicit `aria-label`. */}
                 {overflowItems.length > 0 && (
-                  <div className="relative">
-                    <Tooltip content="More options" placement="bottom" asLabel>
-                      <button
-                        type="button"
-                        aria-label="More options"
-                        aria-expanded={overflowOpen}
-                        onClick={() => setOverflowOpen((v) => !v)}
-                        className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover hover:text-lyra-fg-default transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
-                      >
-                        <MoreHorizontal className="h-4 w-4" strokeWidth={1.5} />
-                      </button>
-                    </Tooltip>
-                    {overflowOpen && (
-                      <div className="absolute right-0 top-full mt-1 z-50">
-                        <Menu
-                          items={overflowItems.map((item) => ({
-                            ...item,
-                            onClick: () => { item.onClick(); setOverflowOpen(false); },
-                          }))}
-                        />
-                      </div>
-                    )}
-                  </div>
+                  <Tooltip content="More options" placement="bottom">
+                    <span className="inline-flex">
+                      <MenuRadix
+                        trigger={
+                          <button
+                            type="button"
+                            aria-label="More options"
+                            className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover hover:text-lyra-fg-default transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+                          >
+                            <MoreHorizontal className="h-4 w-4" strokeWidth={1.5} />
+                          </button>
+                        }
+                        items={overflowItems}
+                        align="end"
+                      />
+                    </span>
+                  </Tooltip>
                 )}
                 {/* Dock / undock toggle */}
                 <Tooltip content={dockButtonProps["aria-label"]} placement="bottom" asLabel>

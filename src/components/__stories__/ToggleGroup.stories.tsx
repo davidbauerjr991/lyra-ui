@@ -4,7 +4,7 @@ import { ToggleGroup } from "../toggle-group";
 import { cn } from "../../lib/utils";
 
 const meta: Meta<typeof ToggleGroup> = {
-  title: "Atoms/Toggle Group",
+  title: "Custom Primitives/Toggle Group",
   component: ToggleGroup,
   tags: ["autodocs"],
   parameters: { layout: "centered", backgrounds: { default: "lyra-shell" } },

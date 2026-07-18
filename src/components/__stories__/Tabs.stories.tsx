@@ -4,7 +4,7 @@ import { TabList, Tab, TabPanel } from "../tabs";
 import { LayoutGrid, Settings, FileText, Lock, MoreVertical, Pencil, Copy, Trash2 } from "lucide-react";
 
 const meta: Meta<typeof TabList> = {
-  title: "Atoms/Tabs",
+  title: "Custom Primitives/Tabs",
   component: TabList,
   tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },

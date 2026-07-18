@@ -104,6 +104,12 @@ const RadioGroupItem = React.forwardRef<HTMLButtonElement, RadioGroupItemProps>(
             /* Disabled — must come after checked/unchecked to win */
             "disabled:cursor-not-allowed",
             "disabled:data-[state=unchecked]:border-lyra-border-disabled disabled:data-[state=unchecked]:bg-lyra-bg-disabled",
+            // Unchecked+disabled+hover — without this, the plain
+            // `data-[state=unchecked]:hover:border-lyra-state-border-hover-
+            // neutral` above still fires on a disabled unchecked radio
+            // (native `disabled` doesn't block `:hover`). The checked case
+            // right below already had this override; unchecked didn't.
+            "disabled:data-[state=unchecked]:hover:border-lyra-border-disabled",
             "disabled:data-[state=checked]:border-lyra-border-disabled disabled:data-[state=checked]:bg-lyra-bg-disabled",
             "disabled:data-[state=checked]:hover:border-lyra-border-disabled disabled:data-[state=checked]:hover:bg-lyra-bg-disabled",
             /* Focus */

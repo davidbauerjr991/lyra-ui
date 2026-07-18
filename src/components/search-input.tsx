@@ -1,6 +1,7 @@
 import * as React from "react";
-import { Search, X } from "lucide-react";
+import { Search } from "lucide-react";
 import { cn } from "../lib/utils";
+import { ClearButton } from "./clear-button";
 
 interface SearchInputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type"> {
@@ -47,15 +48,11 @@ const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
           {...props}
         />
         {hasValue && !readonly && (
-          <button
-            type="button"
+          <ClearButton
             onClick={() => onValueChange?.("")}
-            className="absolute right-2 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-lyra-xs text-lyra-fg-secondary hover:text-lyra-fg-default hover:bg-lyra-state-hover transition-colors"
-            tabIndex={-1}
+            className="absolute right-2 top-1/2 -translate-y-1/2"
             aria-label="Clear search"
-          >
-            <X className="h-3.5 w-3.5" strokeWidth={1.5} />
-          </button>
+          />
         )}
       </div>
     );

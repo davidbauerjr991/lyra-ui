@@ -4,7 +4,7 @@ import { DatePicker, DateRangePicker } from "../date-picker";
 import type { DateRange } from "../calendar";
 
 const meta: Meta<typeof DatePicker> = {
-  title: "Atoms/DatePicker",
+  title: "Custom Primitives/DatePicker",
   component: DatePicker,
   tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },

@@ -1,13 +1,13 @@
 import * as React from "react";
-import { ChevronDown, Moon, Sun, Activity, LogOut, Link2Off, Link2, Loader2, Search, CircleHelp, Check, Minus } from "lucide-react";
+import { ChevronDown, Moon, Sun, Activity, LogOut, Link2Off, Link2, Loader2, CircleHelp, Check, Minus } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Menu, type MenuEntry } from "./menu";
 import { ConnectedAppsPanel, type ConnectedApp } from "./connected-apps";
 import { Popover } from "./popover";
 import { Tooltip } from "./tooltip";
 import { FavoriteButton } from "./favorite-button";
-import { StatusBadge, type StatusBadgeProps } from "./status-badge";
-import { Input } from "./input";
+import { Badge, type BadgeProps } from "./badge";
+import { SearchInput } from "./search-input";
 
 /* ── Types ──
    Was "available" | "busy" | "away" | "offline" — "away" was dropped
@@ -15,9 +15,10 @@ import { Input } from "./input";
    glance, color-only) and "busy" renamed to "unavailable" to match the
    same terminology `AgentDashboard`'s "Unavailable Agents" badge already
    uses (see agent-dashboard.tsx) — same word, same red/critical color,
-   now also the same icon. */
+   now also the same icon. "offline" was dropped too, per explicit
+   request: just Available and Unavailable for now. */
 
-export type AgentStatus = "available" | "unavailable" | "offline";
+export type AgentStatus = "available" | "unavailable";
 
 export interface AgentProfileProps {
   name: string;
@@ -40,38 +41,35 @@ export interface AgentProfileProps {
 }
 
 /* ── Status config ──
-   `badgeVariant`/`icon` are only set for statuses that get a real icon
-   badge in the status menu (ADA — color alone isn't an accessible signal).
-   "offline" has neither and falls back to `StatusBadge`'s own `dot` mode
-   in `StatusIcon` below — a solid gray circle doesn't read as "which
-   status" the way a check/minus glyph does, so there's no icon metaphor
-   worth forcing there. */
+   `badgeVariant`/`icon` are set for every current status so each gets a
+   real icon badge in the status menu (ADA — color alone isn't an
+   accessible signal). `StatusIcon` below still falls back to a plain dot
+   for any future status added without a dedicated icon. */
 
-type StatusBadgeVariant = NonNullable<StatusBadgeProps["variant"]>;
+type StatusBadgeVariant = NonNullable<Extract<BadgeProps, { shape: "circle" }>["variant"]>;
 
 const statusConfig: Record<AgentStatus, { label: string; color: string; textColor: string; icon?: typeof Check; badgeVariant?: StatusBadgeVariant }> = {
   available:   { label: "Available",   color: "bg-lyra-status-success-strong",  textColor: "text-lyra-status-success-strong",  icon: Check, badgeVariant: "success" },
   unavailable: { label: "Unavailable", color: "bg-lyra-status-critical-strong", textColor: "text-lyra-status-critical-strong", icon: Minus, badgeVariant: "critical" },
-  offline:     { label: "Offline",     color: "bg-lyra-accent-slate-strong",    textColor: "text-lyra-accent-slate-strong" },
 };
 
-/** Status menu row icon — `StatusBadge` with the status glyph as its
- *  content (same badge used for the Connected Apps count, just an icon
- *  instead of a number) for statuses that have one, `StatusBadge`'s own
- *  `dot` mode for "offline". */
+/** Status menu row icon — circle-shape `Badge` with the status glyph as
+ *  its content (same badge used for the Connected Apps count, just an
+ *  icon instead of a number) for statuses that have one, `Badge`'s own
+ *  `dot` mode as a fallback for any status without one. */
 function StatusIcon({ status, className }: { status: AgentStatus; className?: string }) {
   const { icon: StatusGlyph, badgeVariant } = statusConfig[status];
   if (StatusGlyph && badgeVariant) {
     return (
-      <StatusBadge variant={badgeVariant} size="sm" className={className}>
+      <Badge shape="circle" variant={badgeVariant} size="sm" className={className}>
         <StatusGlyph className="h-2 w-2" strokeWidth={3} aria-hidden="true" />
-      </StatusBadge>
+      </Badge>
     );
   }
   return (
-    <StatusBadge variant="neutral" size="sm" className={className} aria-label={statusConfig[status].label}>
+    <Badge shape="circle" variant="neutral" size="sm" className={className} aria-label={statusConfig[status].label}>
       <span className="block h-2 w-2 rounded-full bg-white" aria-hidden="true" />
-    </StatusBadge>
+    </Badge>
   );
 }
 
@@ -93,7 +91,7 @@ function Avatar({ initials, src, status }: { initials?: string; src?: string; st
 const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
   ({
     name, initials = "AG", avatarSrc,
-    status = "offline", onStatusChange,
+    status = "available", onStatusChange,
     timer,
     connectedApps = [],
     onReconnect,
@@ -172,7 +170,7 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
     );
 
     /* Build Menu entries using the Menu component's interface */
-    const allStatuses = ["available", "unavailable", "offline"] as AgentStatus[];
+    const allStatuses = ["available", "unavailable"] as AgentStatus[];
     const filteredStatuses = statusSearch.trim()
       ? allStatuses.filter((s) => statusConfig[s].label.toLowerCase().includes(statusSearch.toLowerCase()))
       : allStatuses;
@@ -234,17 +232,25 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
         // as a regular `submenu`) — this just supplies the rich panel
         // content instead of a flat list of menu items.
         submenuContent: <ConnectedAppsPanel apps={connectedApps} onReconnect={handleReconnect} />,
+        // Menu's own submenu flyout defaults to `z-[9999]` — correct for a
+        // top-level submenu, but this one is nested inside the status
+        // menu's own `z-[10001]` panel, so it needs to clear that parent
+        // (same reason the tooltips on this row and below are bumped to
+        // `z-[10002]`). See CONTRIBUTING.md §5 — this is a new documented
+        // tier (`10004`) since `10002`/`10003` are already claimed by other
+        // specific cases.
+        submenuZIndexClassName: "z-[10004]",
         rightElement: (
           issueCount > 0 ? (
             <Tooltip content={`${issueCount} app${issueCount > 1 ? "s" : ""} not fully connected`} placement="left" className="z-[10002]">
               <span>
-                <StatusBadge variant="warning" size="sm">{connectedApps.length}</StatusBadge>
+                <Badge shape="circle" variant="warning" size="sm">{connectedApps.length}</Badge>
               </span>
             </Tooltip>
           ) : connectedApps.length > 0 ? (
-            <StatusBadge variant="success" size="sm">{connectedApps.length}</StatusBadge>
+            <Badge shape="circle" variant="success" size="sm">{connectedApps.length}</Badge>
           ) : (
-            <StatusBadge variant="neutral" size="sm">0</StatusBadge>
+            <Badge shape="circle" variant="neutral" size="sm">0</Badge>
           )
         ),
       },
@@ -341,14 +347,15 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
                 // scroll (search stays pinned) keeps this on-screen no
                 // matter how many favorites/statuses there are.
                 <div className="flex flex-col" style={{ maxHeight: "var(--radix-popper-available-height, 400px)" }}>
-                  {/* Search statuses */}
+                  {/* Search statuses — SearchInput (not the generic Input +
+                      manual startIcon this used before), so typing a query
+                      gets the built-in clear ("x") button for free instead
+                      of leaving no way to clear the field but backspacing. */}
                   <div className="px-3 py-2.5 border-b border-lyra-border-subtle flex-shrink-0">
-                    <Input
-                      type="text"
+                    <SearchInput
                       placeholder="Search statuses"
                       value={statusSearch}
-                      onChange={(e) => setStatusSearch(e.target.value)}
-                      startIcon={<Search className="h-4 w-4 text-lyra-fg-disabled" strokeWidth={1.4} aria-hidden="true" />}
+                      onValueChange={setStatusSearch}
                     />
                   </div>
 
@@ -365,7 +372,7 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
               <button
                 type="button"
                 aria-label="Agent Status and More"
-                className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-lyra-lg hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
+                className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-lyra-sm hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
               >
                 <Avatar initials={initials} src={avatarSrc} status={status} />
                 <div className="flex flex-col items-start min-w-0">

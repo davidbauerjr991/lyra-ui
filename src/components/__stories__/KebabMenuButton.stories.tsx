@@ -10,7 +10,7 @@ const GENERIC_ITEMS: MenuEntry[] = [
 ];
 
 const meta = {
-  title: "Atoms/KebabMenuButton",
+  title: "Custom Primitives/KebabMenuButton",
   component: KebabMenuButton,
   tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
@@ -26,7 +26,7 @@ type Story = StoryObj<typeof meta>;
    Extracted from `ChannelRow`'s per-row kebab (see `channel-row.tsx`) into
    its own atom — this is the same trigger+portal+positioning behavior,
    just with a generic Edit/Refresh/Remove menu instead of channel-specific
-   actions. `DashboardCard`'s header kebab (see `Atoms/Dashboard Card`)
+   actions. `DashboardCard`'s header kebab (see `Custom Primitives/Dashboard Card`)
    uses this exact component. */
 
 export const Default: Story = {

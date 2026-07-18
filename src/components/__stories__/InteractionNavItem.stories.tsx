@@ -1,6 +1,10 @@
+import * as React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
+import { MessageSquare, Mail, Phone } from "lucide-react";
 import { InteractionNavItem, type InteractionChannel } from "../interaction-nav-item";
 import { CreateNew, useOutboundAddButton, type CreateNewOutboundConfig } from "../create-new";
+import { WhatsAppIcon, type ChannelType } from "../channel-row";
+import { Badge } from "../badge";
 import { OUTBOUND_CONFIG } from "./create-new-outbound-mock";
 
 /** Body copy below each channel chip shows the routing skill, not a message
@@ -107,6 +111,70 @@ export const CompactStack: Story = {
         elapsed="02:05"
         channels={[{ type: "voice", elapsed: "02:05", current: true }]}
       />
+    </div>
+  ),
+};
+
+/* ── Compact — channel icon in the badge, instead of a count ──
+   Storybook-only demo: the real compact tile's top-left badge always shows
+   a numeric open-channel count (see interaction-nav-item.tsx — it only
+   appears once `channels.length > 1`, and always renders that length as
+   text, with no slot for arbitrary content). This story hand-builds the
+   same tile markup (avatar square + badge position/tone, matching the real
+   component's classes exactly) but swaps the badge's content for that
+   channel's own icon — a single-channel visual concept, not a new real
+   prop on `InteractionNavItem` itself.
+
+   Lucide's default thin (1.5) stroke icons all but disappear this small,
+   but a full solid `fill` turns line icons like `MessageSquare`/`Mail`/
+   `Phone` into unrecognizable blobs (they're built as open stroke paths,
+   not closed fillable shapes) — a heavier stroke (3, same weight
+   `agent-profile.tsx`'s `StatusIcon` glyphs already use) reads far better
+   than either extreme. `WhatsAppIcon` is already a solid glyph (see
+   channel-row.tsx), so it's untouched.
+
+   Badge is `size="md"` (Badge's standard 20×20 circle — no custom
+   dimension override) with an h-2 w-2 (8px) icon: 8px content + `md`'s
+   `px-1.5` padding (6px each side) = 20px, exactly matching `md`'s own
+   `min-w-[20px]`, so it renders as a true 20×20 circle using the same
+   size any other `Badge` consumer reaches for, not a one-off value. */
+
+const ICON_BADGE_TYPES: { type: ChannelType; label: string; icon: React.ReactNode }[] = [
+  { type: "chat", label: "Chat", icon: <MessageSquare className="h-2 w-2" strokeWidth={3} /> },
+  { type: "email", label: "Email", icon: <Mail className="h-2 w-2" strokeWidth={3} /> },
+  { type: "voice", label: "Voice", icon: <Phone className="h-2 w-2" strokeWidth={3} /> },
+  { type: "whatsapp", label: "WhatsApp", icon: <WhatsAppIcon className="h-2 w-2" /> },
+];
+
+export const CompactChannelIconBadge: Story = {
+  name: "Compact — Channel Icon Badge",
+  render: () => (
+    <div className="flex items-end gap-6">
+      {ICON_BADGE_TYPES.map(({ type, label, icon }) => (
+        <div key={type} className="flex flex-col items-center gap-2">
+          <div className="flex flex-col items-center gap-1 rounded-lyra-sm p-1.5">
+            <span className="relative inline-flex">
+              <span
+                className="flex h-8 w-8 items-center justify-center rounded-lyra-sm border bg-lyra-status-info-subtle text-lyra-status-info-strong border-lyra-status-info-medium/30 lyra-body-sm-emphasis"
+                aria-hidden="true"
+              >
+                {type === "email" ? "SM" : "RT"}
+              </span>
+              <Badge
+                shape="circle"
+                variant="info"
+                size="md"
+                className="absolute -left-2 -top-2"
+                aria-label={`${label} channel`}
+              >
+                {icon}
+              </Badge>
+            </span>
+            <span className="lyra-body-xs text-lyra-fg-secondary" aria-hidden="true">08:27</span>
+          </div>
+          <span className="lyra-body-xs text-lyra-fg-secondary">{label}</span>
+        </div>
+      ))}
     </div>
   ),
 };

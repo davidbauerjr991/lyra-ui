@@ -76,7 +76,7 @@ export {
   ChannelTab,
 } from "./components/channel-row";
 export type { ChannelRowInstanceProps, ChannelTabProps } from "./components/channel-row";
-export { ActionIconButton, ActionAvatarButton, actionIconButtonVariants } from "./components/actions";
+export { ActionIconButton, ActionAvatarButton } from "./components/actions";
 export type { ActionIconButtonProps, ActionAvatarButtonProps } from "./components/actions";
 export { ShellIconButton, ShellAvatarButton } from "./components/shell-button";
 export { SearchInput } from "./components/search-input";
@@ -144,10 +144,10 @@ export type { CXoneSmileyProps } from "./components/cxone-smiley";
 export { ProfileMenu, defaultProfileMenuGroups } from "./components/profile-menu";
 export type { ProfileMenuItem, ProfileMenuGroup, ProfileMenuProps } from "./components/profile-menu";
 
-export { Chip } from "./components/chip";
-export type { ChipProps, ChipColor, ChipVariant } from "./components/chip";
+export { Badge } from "./components/badge";
+export type { BadgeProps, BadgeShape, BadgeColor, BadgePillVariant, BadgeCircleVariant, BadgeSize } from "./components/badge";
 
-export { FilterChip, filterChipVariants } from "./components/filter-chip";
+export { FilterChip, filterChipVariants, filterChipRemoveButtonVariants } from "./components/filter-chip";
 export type { FilterChipProps, FilterChipOption, FilterChipVariant } from "./components/filter-chip";
 
 export { FavoriteButton } from "./components/favorite-button";
@@ -175,9 +175,9 @@ export type { PopoverProps, PopoverPlacement } from "./components/popover";
 export { Label } from "./components/label";
 export type { LabelProps } from "./components/label";
 
-/* ── Divider ── */
-export { Divider } from "./components/divider";
-export type { DividerProps, DividerOrientation } from "./components/divider";
+/* ── Separator ── */
+export { Separator } from "./components/separator";
+export type { SeparatorProps, SeparatorOrientation } from "./components/separator";
 
 /* ── Chart ── */
 export { Chart } from "./components/chart";
@@ -230,12 +230,17 @@ export { WarningIcon } from "./components/icons/warning-icon";
 export { ErrorIcon } from "./components/icons/error-icon";
 export { InfoIcon } from "./components/icons/info-icon";
 export { SuccessIcon } from "./components/icons/success-icon";
+export { WarningIconSolid } from "./components/icons/warning-icon-solid";
+export { ErrorIconSolid } from "./components/icons/error-icon-solid";
+export { InfoIconSolid } from "./components/icons/info-icon-solid";
+export { SuccessIconSolid } from "./components/icons/success-icon-solid";
 export { ColumnsIcon } from "./components/icons/columns-icon";
 
 export { ProgressBar } from "./components/progress-bar";
 export type { ProgressBarProps } from "./components/progress-bar";
 export { Overlay, OverlayBackdrop } from "./components/overlay";
-export { StatusBadge } from "./components/status-badge";
+export { Modal } from "./components/modal";
+export type { ModalProps } from "./components/modal";
 export { TimePicker, TimeRangePicker } from "./components/time-picker";
 export { ActionBar } from "./components/action-bar";
 export { TransferBox } from "./components/transfer-box";

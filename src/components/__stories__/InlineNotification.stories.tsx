@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { InlineNotification } from "../inline-notification";
 
 const meta: Meta = {
-  title: "Atoms/Inline Notification",
+  title: "Custom Primitives/Inline Notification",
   tags: ["autodocs"],
   parameters: {
     layout: "padded",

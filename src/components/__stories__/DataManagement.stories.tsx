@@ -93,7 +93,7 @@ interface TableFeatures {
   showTabs: boolean;
   showToolbar: boolean;
   showAskAI: boolean;
-  showChip: boolean;
+  showBadge: boolean;
   headerPanelToggle: "none" | "left" | "right" | "both";
   toolbarPanelToggle: "none" | "left" | "right" | "both";
   showQuickSearch: boolean;
@@ -108,7 +108,7 @@ interface TableFeatures {
 
 /* ── Template Component ── */
 
-function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, showTabs, showToolbar, showAskAI, showChip, headerPanelToggle, toolbarPanelToggle, showQuickSearch, showRefresh, showEdit, showCopy, showDelete, showColumns, showFilters, showTitle }: TableFeatures) {
+function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, showTabs, showToolbar, showAskAI, showBadge, headerPanelToggle, toolbarPanelToggle, showQuickSearch, showRefresh, showEdit, showCopy, showDelete, showColumns, showFilters, showTitle }: TableFeatures) {
   /* Interior panels (controlled by Toolbar toggle) */
   const [toolbarLeftOpen, setToolbarLeftOpen] = useState(false);
   const [toolbarRightOpen, setToolbarRightOpen] = useState(false);
@@ -488,7 +488,7 @@ function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, sho
       {/* Page Header */}
       <PageHeader
         title="Desktop Designs"
-        chip={showChip ? "Active" : undefined}
+        badge={showBadge ? "Active" : undefined}
         panelToggle={headerPanelToggle === "none" ? undefined : headerPanelToggle}
         panelPinned={leftPanelPinned}
         onPanelToggle={handleLeftPanelToggle}
@@ -673,7 +673,7 @@ const meta: Meta = {
     showTabs: { control: "boolean", description: "Show tab navigation" },
     showToolbar: { control: "boolean", description: "Show table toolbar" },
     showAskAI: { control: "boolean", description: "Show Ask AI button" },
-    showChip: { control: "boolean", description: "Show chip next to page title" },
+    showBadge: { control: "boolean", description: "Show badge next to page title" },
     headerPanelToggle: { control: "select", options: ["none", "left", "right", "both"], description: "PageHeader panel toggle → opens side panels" },
     toolbarPanelToggle: { control: "select", options: ["none", "left", "right", "both"], description: "Toolbar panel toggle → opens interior panels" },
     showQuickSearch: { control: "boolean", description: "Show quick search input" },
@@ -692,7 +692,7 @@ const meta: Meta = {
     showTabs: true,
     showToolbar: true,
     showAskAI: true,
-    showChip: false,
+    showBadge: false,
     headerPanelToggle: "none",
     toolbarPanelToggle: "none",
     showQuickSearch: true,
@@ -720,7 +720,7 @@ export const Default: Story = {
         showTabs={args.showTabs as boolean}
         showToolbar={args.showToolbar as boolean}
         showAskAI={args.showAskAI as boolean}
-        showChip={args.showChip as boolean}
+        showBadge={args.showBadge as boolean}
         headerPanelToggle={args.headerPanelToggle as "none" | "left" | "right" | "both"}
         toolbarPanelToggle={args.toolbarPanelToggle as "none" | "left" | "right" | "both"}
         showQuickSearch={args.showQuickSearch as boolean}
@@ -753,7 +753,7 @@ export const AutoFit: Story = {
         showTabs={args.showTabs as boolean}
         showToolbar={args.showToolbar as boolean}
         showAskAI={args.showAskAI as boolean}
-        showChip={args.showChip as boolean}
+        showBadge={args.showBadge as boolean}
         headerPanelToggle={args.headerPanelToggle as "none" | "left" | "right" | "both"}
         toolbarPanelToggle={args.toolbarPanelToggle as "none" | "left" | "right" | "both"}
         showQuickSearch={args.showQuickSearch as boolean}

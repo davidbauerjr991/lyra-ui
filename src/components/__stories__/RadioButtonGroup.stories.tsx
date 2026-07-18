@@ -3,7 +3,7 @@ import { useState } from "react";
 import { RadioButtonGroup } from "../radio-button-group";
 
 const meta: Meta<typeof RadioButtonGroup> = {
-  title: "Atoms/Radio Button Group",
+  title: "Custom Primitives/Radio Button Group",
   component: RadioButtonGroup,
   tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { PhoneInput, type PhoneValue } from "../phone-input";
 
 const meta: Meta<typeof PhoneInput> = {
-  title: "Atoms/PhoneInput",
+  title: "Custom Primitives/PhoneInput",
   component: PhoneInput,
   tags: ["autodocs"],
   parameters: {

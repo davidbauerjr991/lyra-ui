@@ -43,8 +43,11 @@ function useTimer(running: boolean) {
 export const Interactive: Story = {
   name: "Interactive",
   render: () => {
-    const [status, setStatus] = useState<AgentStatus>("offline");
-    const timer = useTimer(status !== "offline");
+    const [status, setStatus] = useState<AgentStatus>("available");
+    // No more "offline" state to gate on — only Available/Unavailable
+    // remain, and the agent is always in one of those, so the timer just
+    // runs continuously.
+    const timer = useTimer(true);
     return (
       <div className="p-8">
         <AgentProfile
@@ -68,7 +71,7 @@ export const AllStatuses: Story = {
   name: "All statuses",
   render: () => (
     <div className="flex flex-col gap-4 p-8">
-      {(["available","unavailable","offline"] as AgentStatus[]).map((s) => (
+      {(["available","unavailable"] as AgentStatus[]).map((s) => (
         <AgentProfile
           key={s}
           name="Sarah Johnson"

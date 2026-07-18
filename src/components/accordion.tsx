@@ -1,7 +1,29 @@
 import * as React from "react";
+import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { ChevronDown } from "lucide-react";
 import { cn } from "../lib/utils";
-import { CollapsiblePanel } from "./tree-menu";
+
+/**
+ * Built on `@radix-ui/react-accordion`. Previously hand-rolled (own
+ * open/close state, plain `<button>` rows, and a `CollapsiblePanel` —
+ * still in tree-menu.tsx, shared with `TreeMenu` — that measured
+ * `scrollHeight` via a `ResizeObserver` and animated height in JS). Radix's
+ * `Root` now owns all open/close and single-vs-multiple toggle logic
+ * directly, and the height animation runs off `AccordionPrimitive.Content`'s
+ * own `--radix-accordion-content-height` CSS variable (see the
+ * `accordion-down`/`accordion-up` keyframes in tailwind.config.js — 200ms
+ * ease-in-out, matching the original's own transition timing exactly) —
+ * see CONTRIBUTING.md / the "Radix Primitives" exercise for the side-by-side
+ * comparison this replaced. Public API (`AccordionProps`, `AccordionItem`)
+ * is unchanged from before this swap — every existing caller (`dashboard-
+ * queue.tsx`, and this component's own Storybook stories) needed zero
+ * changes.
+ *
+ * `collapsible` is set on the single-mode `Root` so clicking the currently
+ * open item closes it again — Radix's own default (without that flag) is
+ * that one item is always open and re-clicking it does nothing, which
+ * doesn't match this component's original behavior.
+ */
 
 /* ── Types ── */
 
@@ -20,7 +42,7 @@ export interface AccordionItem {
    * Extra content rendered at the end of the trigger row, between the
    * title/subhead and the chevron — e.g. a couple of `DashboardCard`'s
    * `Metric`s ("Skills" "4", "Contacts" "8") inline with a queue row.
-   * Rendered inside the same `<button>` as the rest of the row, so
+   * Rendered inside the same trigger button as the rest of the row, so
    * anything passed here should stay non-interactive (display-only); an
    * interactive control here would be a button-inside-a-button.
    */
@@ -53,7 +75,102 @@ export interface AccordionProps {
   className?: string;
 }
 
-/* ── Component ── */
+/* ── Per-item row (trigger + content + divider) ── */
+
+function AccordionRow({ item }: { item: AccordionItem }) {
+  return (
+    <AccordionPrimitive.Item value={item.id} disabled={item.disabled}>
+      <AccordionPrimitive.Header>
+        <AccordionPrimitive.Trigger
+          className={cn(
+            "group w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-inset",
+            item.disabled
+              ? "cursor-not-allowed"
+              : "hover:bg-lyra-state-hover active:bg-lyra-state-pressed cursor-pointer"
+          )}
+        >
+          {/* Title (+ icon) row + optional subhead below. Icon sits in its
+              own inner row with the title — not as a sibling of the whole
+              title+subhead+endSlot block — so it centers against the title
+              text specifically rather than against whichever sibling is
+              tallest (the metric `endSlot` boxes, once those shipped). */}
+          <span className="flex-1 flex flex-col min-w-0">
+            <span className="flex items-center gap-2 min-w-0">
+              {item.icon && (
+                <span
+                  className={cn(
+                    "flex-shrink-0",
+                    item.disabled ? "text-lyra-fg-disabled" : "text-lyra-fg-secondary"
+                  )}
+                >
+                  {item.icon}
+                </span>
+              )}
+              <span
+                className={cn(
+                  "lyra-body-md truncate",
+                  item.disabled ? "text-lyra-fg-disabled" : "text-lyra-fg-default"
+                )}
+              >
+                {item.title}
+              </span>
+            </span>
+            {item.subhead && (
+              <span
+                className={cn(
+                  "lyra-body-sm",
+                  // Indent to align under the title text (not the icon) —
+                  // only when there is an icon to clear; pl-7 (28px) = the
+                  // icon's own width (h-5, 20px) plus the gap-2 (8px)
+                  // between it and the title.
+                  item.icon && "pl-7",
+                  item.disabled ? "text-lyra-fg-disabled" : "text-lyra-fg-secondary"
+                )}
+              >
+                {item.subhead}
+              </span>
+            )}
+          </span>
+
+          {/* End slot — e.g. a couple of DashboardCard `Metric`s inline with the row */}
+          {item.endSlot && (
+            <span className="flex flex-shrink-0 items-center gap-2">{item.endSlot}</span>
+          )}
+
+          {/* Chevron — `data-state` lives on Trigger itself (Radix mirrors
+              it from the parent Item), so the unnamed "group" on Trigger
+              is all that's needed here. */}
+          <ChevronDown
+            className={cn(
+              "h-5 w-5 flex-shrink-0 transition-transform duration-200",
+              "group-data-[state=open]:rotate-180",
+              item.disabled ? "text-lyra-fg-disabled" : "text-lyra-fg-secondary"
+            )}
+            strokeWidth={1.5}
+            aria-hidden="true"
+          />
+        </AccordionPrimitive.Trigger>
+      </AccordionPrimitive.Header>
+
+      {/* Collapsible content — height animation via
+          --radix-accordion-content-height (tailwind.config.js). */}
+      <AccordionPrimitive.Content
+        className={cn(
+          "overflow-hidden",
+          "data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up"
+        )}
+      >
+        <div className="p-4">{item.content}</div>
+      </AccordionPrimitive.Content>
+
+      {/* Divider — rendered after every item, including the last one */}
+      <div className="border-b border-lyra-border-subtle" />
+    </AccordionPrimitive.Item>
+  );
+}
+
+/* ── Accordion ── */
 
 const Accordion = React.forwardRef<HTMLDivElement, AccordionProps>(
   (
@@ -70,134 +187,40 @@ const Accordion = React.forwardRef<HTMLDivElement, AccordionProps>(
     },
     ref
   ) => {
-    /* ── Uncontrolled state ── */
-    const [internalValue, setInternalValue] = React.useState<string>(
-      defaultValue ?? ""
-    );
-    const [internalValues, setInternalValues] = React.useState<string[]>(
-      defaultValues ?? []
-    );
-
     const isControlledSingle = value !== undefined;
     const isControlledMulti = values !== undefined;
 
-    const currentValue = isControlledSingle ? value : internalValue;
-    const currentValues = isControlledMulti ? values : internalValues;
-
-    const isOpen = (id: string) =>
-      type === "multiple"
-        ? currentValues.includes(id)
-        : currentValue === id;
-
-    const toggle = (id: string) => {
-      if (type === "multiple") {
-        const next = currentValues.includes(id)
-          ? currentValues.filter((v) => v !== id)
-          : [...currentValues, id];
-        if (!isControlledMulti) setInternalValues(next);
-        onValuesChange?.(next);
-      } else {
-        const next = currentValue === id ? "" : id;
-        if (!isControlledSingle) setInternalValue(next);
-        onValueChange?.(next);
-      }
-    };
+    if (type === "multiple") {
+      return (
+        <AccordionPrimitive.Root
+          ref={ref}
+          type="multiple"
+          className={cn("w-full", className)}
+          value={isControlledMulti ? values : undefined}
+          defaultValue={!isControlledMulti ? defaultValues : undefined}
+          onValueChange={onValuesChange}
+        >
+          {items.map((item) => (
+            <AccordionRow key={item.id} item={item} />
+          ))}
+        </AccordionPrimitive.Root>
+      );
+    }
 
     return (
-      <div ref={ref} className={cn("w-full", className)}>
-        {items.map((item) => {
-          const open = isOpen(item.id);
-          return (
-            <div key={item.id}>
-              {/* Trigger row */}
-              <button
-                type="button"
-                disabled={item.disabled}
-                aria-expanded={open}
-                onClick={() => !item.disabled && toggle(item.id)}
-                className={cn(
-                  "w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-inset",
-                  item.disabled
-                    ? "cursor-not-allowed"
-                    : "hover:bg-lyra-state-hover active:bg-lyra-state-pressed cursor-pointer"
-                )}
-              >
-                {/* Title (+ icon) row + optional subhead below. Icon sits in
-                    its own inner row with the title — not as a sibling of
-                    the whole title+subhead+endSlot block — so it centers
-                    against the title text specifically. Left as a direct
-                    sibling of the block (the old structure), the button's
-                    own `items-center` centers the icon against whichever
-                    sibling is tallest, which became the metric `endSlot`
-                    boxes once those shipped — visibly off from the title
-                    it's meant to sit next to. */}
-                <span className="flex-1 flex flex-col min-w-0">
-                  <span className="flex items-center gap-2 min-w-0">
-                    {item.icon && (
-                      <span
-                        className={cn(
-                          "flex-shrink-0",
-                          item.disabled ? "text-lyra-fg-disabled" : "text-lyra-fg-secondary"
-                        )}
-                      >
-                        {item.icon}
-                      </span>
-                    )}
-                    <span
-                      className={cn(
-                        "lyra-body-md truncate",
-                        item.disabled ? "text-lyra-fg-disabled" : "text-lyra-fg-default"
-                      )}
-                    >
-                      {item.title}
-                    </span>
-                  </span>
-                  {item.subhead && (
-                    <span
-                      className={cn(
-                        "lyra-body-sm",
-                        // Indent to align under the title text (not the
-                        // icon) — only when there is an icon to clear;
-                        // pl-7 (28px) = the icon's own width (h-5, 20px)
-                        // plus the gap-2 (8px) between it and the title.
-                        item.icon && "pl-7",
-                        item.disabled ? "text-lyra-fg-disabled" : "text-lyra-fg-secondary"
-                      )}
-                    >
-                      {item.subhead}
-                    </span>
-                  )}
-                </span>
-
-                {/* End slot — e.g. a couple of DashboardCard `Metric`s inline with the row */}
-                {item.endSlot && (
-                  <span className="flex flex-shrink-0 items-center gap-2">{item.endSlot}</span>
-                )}
-
-                {/* Chevron */}
-                <ChevronDown
-                  className={cn(
-                    "h-5 w-5 flex-shrink-0 transition-transform duration-200",
-                    open && "rotate-180",
-                    item.disabled ? "text-lyra-fg-disabled" : "text-lyra-fg-secondary"
-                  )}
-                  strokeWidth={1.5}
-                  aria-hidden="true"
-                />
-              </button>
-
-              {/* Collapsible content */}
-              <CollapsiblePanel open={open}>
-                <div className="p-4">{item.content}</div>
-              </CollapsiblePanel>
-
-              {/* Divider */}
-              <div className="border-b border-lyra-border-subtle" />
-            </div>
-          );
-        })}
-      </div>
+      <AccordionPrimitive.Root
+        ref={ref}
+        type="single"
+        collapsible
+        className={cn("w-full", className)}
+        value={isControlledSingle ? value : undefined}
+        defaultValue={!isControlledSingle ? defaultValue : undefined}
+        onValueChange={onValueChange}
+      >
+        {items.map((item) => (
+          <AccordionRow key={item.id} item={item} />
+        ))}
+      </AccordionPrimitive.Root>
     );
   }
 );

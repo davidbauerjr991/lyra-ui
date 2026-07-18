@@ -1,16 +1,17 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import ReactDOM from "react-dom";
-import { FilterChip, filterChipVariants } from "../filter-chip";
+import { FilterChip, filterChipVariants, filterChipRemoveButtonVariants } from "../filter-chip";
 import { Button } from "../button";
 import { Input } from "../input";
 import { ToggleGroup } from "../toggle-group";
 import { Select } from "../select";
 import { Popover } from "../popover";
+import { Tooltip } from "../tooltip";
 import { RadioGroup, RadioGroupItem } from "../radio";
 import { DateRangePicker } from "../date-picker";
 import type { DateRange } from "../calendar";
-import { Plus, Copy, Check, ChevronDown } from "lucide-react";
+import { Plus, Copy, Check, ChevronDown, X } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 const addFilterOptions = Array.from({ length: 50 }, (_, i) => ({
@@ -19,7 +20,7 @@ const addFilterOptions = Array.from({ length: 50 }, (_, i) => ({
 }));
 
 const meta: Meta<typeof FilterChip> = {
-  title: "Atoms/FilterChip",
+  title: "Custom Primitives/FilterChip",
   component: FilterChip,
   tags: ["autodocs"],
   parameters: {
@@ -35,6 +36,210 @@ const sampleOptions = Array.from({ length: 50 }, (_, i) => ({
   value: `option-${i + 1}`,
   label: `Option ${i + 1}`,
 }));
+
+/* ── Basic (value + remove only) ──
+   `FilterChip` itself is always a dropdown trigger (`Select` underneath) —
+   there's no prop to strip that down to a plain static value pill. When a
+   caller just needs something that *looks* like a filter chip (rounded
+   bordered pill, same colors/height) but holds a fixed value with nothing
+   to open — e.g. an already-applied filter rendered as a read-only summary
+   token, or search-result "tags" that are removable but not editable —
+   the supported pattern (same one used by the "Custom Content (Popover)"
+   story below) is reusing the real `filterChipVariants`/
+   `filterChipRemoveButtonVariants` CVA definitions directly, rather than
+   hand-rolling new classes that could drift from the real component. */
+
+/** Shared basic (non-dropdown) value chip markup — reused by both the
+ *  32px and 24px single-chip demos and both overflow-group demos, so all
+ *  four stay backed by the same real `filterChipVariants`/
+ *  `filterChipRemoveButtonVariants` classes (now with a `size` axis, `md` =
+ *  32px default / `sm` = 24px) instead of independent copies that could
+ *  drift from each other. */
+function BasicValueChip({
+  value,
+  onRemove,
+  size = "md",
+}: {
+  value: string;
+  onRemove: () => void;
+  size?: "sm" | "md";
+}) {
+  return (
+    <div className="inline-flex">
+      <div
+        className={cn(
+          filterChipVariants({ variant: "default", size }),
+          "rounded-l-lyra-md rounded-r-none border-r-0"
+        )}
+      >
+        <span className={cn(size === "sm" ? "lyra-body-sm" : "lyra-body-md", "text-lyra-fg-default whitespace-nowrap")}>
+          {value}
+        </span>
+      </div>
+      <Tooltip content={`Remove ${value}`} placement="top" asLabel>
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Remove ${value}`}
+          className={filterChipRemoveButtonVariants({ variant: "default", size })}
+        >
+          <X className={size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5"} strokeWidth={1.5} />
+        </button>
+      </Tooltip>
+    </div>
+  );
+}
+
+function BasicDemo() {
+  const [visible, setVisible] = useState(true);
+  if (!visible) return null;
+  return <BasicValueChip value="Value" onRemove={() => setVisible(false)} />;
+}
+
+export const Basic: Story = {
+  name: "Basic (Value + Remove only)",
+  render: () => <BasicDemo />,
+};
+
+function BasicSmallDemo() {
+  const [visible, setVisible] = useState(true);
+  if (!visible) return null;
+  return <BasicValueChip value="Value" size="sm" onRemove={() => setVisible(false)} />;
+}
+
+export const BasicSmall: Story = {
+  name: "Basic — 24px (Value + Remove only)",
+  render: () => <BasicSmallDemo />,
+};
+
+/* ── Basic Group (with overflow) ──
+   Same "+N" overflow pattern as the `Removable` story further down
+   (hidden measurement row + ResizeObserver + a `+N` button that opens a
+   dropdown listing whatever didn't fit), just driving a row of the plain
+   `BasicValueChip`s above instead of full dropdown `FilterChip`s — for
+   cases like an applied-filters summary bar where every chip is a fixed,
+   already-resolved value rather than something to reopen and edit. */
+
+function BasicGroupDemo({ size = "md" }: { size?: "sm" | "md" }) {
+  const [values, setValues] = useState<string[]>(
+    Array.from({ length: 10 }, (_, i) => `Value ${i + 1}`)
+  );
+  const [visibleCount, setVisibleCount] = useState<number>(Infinity);
+  const [overflowOpen, setOverflowOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const chipsRef = useRef<HTMLDivElement>(null);
+  const overflowRef = useRef<HTMLDivElement>(null);
+
+  const removeValue = (v: string) => setValues((vs) => vs.filter((x) => x !== v));
+
+  /* Measure which chips fit */
+  const measureOverflow = useCallback(() => {
+    const container = containerRef.current;
+    const chips = chipsRef.current;
+    if (!container || !chips) return;
+
+    const containerWidth = container.offsetWidth;
+    // Reserve space for the +N button and Clear button (~140px)
+    const reserved = 140;
+    const maxWidth = containerWidth - reserved;
+
+    const children = Array.from(chips.children) as HTMLElement[];
+    let usedWidth = 0;
+    let count = 0;
+
+    for (const child of children) {
+      usedWidth += child.offsetWidth + 12; // 12px = gap-3
+      if (usedWidth > maxWidth && count > 0) break;
+      count++;
+    }
+
+    setVisibleCount(count);
+  }, []);
+
+  useEffect(() => {
+    measureOverflow();
+    const ro = new ResizeObserver(measureOverflow);
+    if (containerRef.current) ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, [measureOverflow, values.length]);
+
+  // Re-measure when values change
+  useEffect(() => {
+    measureOverflow();
+  }, [values, measureOverflow]);
+
+  /* Close overflow on outside click */
+  useEffect(() => {
+    if (!overflowOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (overflowRef.current && !overflowRef.current.contains(e.target as Node)) {
+        setOverflowOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [overflowOpen]);
+
+  const visibleValues = values.slice(0, visibleCount);
+  const overflowValues = values.slice(visibleCount);
+
+  return (
+    <div ref={containerRef} className="flex items-center gap-3 w-full">
+      {/* Hidden measurement row */}
+      <div ref={chipsRef} className="absolute invisible flex items-center gap-3" aria-hidden="true">
+        {values.map((v) => (
+          <BasicValueChip key={`measure-${v}`} value={v} size={size} onRemove={() => {}} />
+        ))}
+      </div>
+
+      {/* Visible chips */}
+      {visibleValues.map((v) => (
+        <BasicValueChip key={v} value={v} size={size} onRemove={() => removeValue(v)} />
+      ))}
+
+      {/* +N overflow button — white (`bg-lyra-bg-control`, the same themed
+          "white" token Button's own `outline` variant uses) instead of the
+          subtle gray-tinted `bg-lyra-bg-control-subtle` fill it had before.
+          Height matches the chip row (`h-6` for the 24px group, `h-8` for
+          the 32px one) so it doesn't look mismatched sitting next to them. */}
+      {overflowValues.length > 0 && (
+        <div ref={overflowRef} className="relative inline-flex">
+          <button
+            type="button"
+            onClick={() => setOverflowOpen((v) => !v)}
+            className={cn(
+              "inline-flex items-center justify-center rounded-lyra-md border border-lyra-border-default bg-lyra-bg-control text-lyra-fg-action hover:bg-lyra-state-hover active:bg-lyra-state-pressed transition-colors",
+              size === "sm" ? "h-6 px-2 lyra-body-sm-emphasis" : "h-8 px-3 lyra-body-md-emphasis"
+            )}
+          >
+            +{overflowValues.length}
+          </button>
+          {overflowOpen && (
+            <div className="absolute left-0 top-full z-50 mt-1 min-w-[200px] rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg">
+              <div className="max-h-[320px] overflow-y-auto p-3 flex flex-col gap-2">
+                {overflowValues.map((v) => (
+                  <BasicValueChip key={v} value={v} size={size} onRemove={() => removeValue(v)} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <Button variant="ghost" size="sm" onClick={() => setValues([])}>Clear</Button>
+    </div>
+  );
+}
+
+export const BasicGroup: Story = {
+  name: "Basic Group (with Overflow)",
+  render: () => <BasicGroupDemo />,
+};
+
+export const BasicGroupSmall: Story = {
+  name: "Basic Group — 24px (with Overflow)",
+  render: () => <BasicGroupDemo size="sm" />,
+};
 
 /* ── Empty (default) ── */
 
@@ -215,11 +420,26 @@ function RemovableDemo() {
     measureOverflow();
   }, [filters, measureOverflow]);
 
-  /* Close overflow on outside click */
+  /* Close overflow on outside click.
+     Each FilterChip inside the overflow panel opens its own `Select`
+     dropdown (checkbox list, search, etc.) via `Popover` — which, being
+     Radix-based, renders that dropdown into a portal at the end of
+     `document.body`, *not* as a DOM descendant of `overflowRef`. Without
+     the check below, clicking a checkbox/search box inside one of those
+     nested dropdowns registers as an "outside" click on the overflow
+     panel itself, closing the whole panel — and the nested dropdown along
+     with it — out from under you. Every Radix Popper-based floating
+     surface (Popover, Select, DropdownMenu, Tooltip) wraps its portaled
+     content in a `[data-radix-popper-content-wrapper]` div (see
+     `@radix-ui/react-popper`'s `PopperContent`), so checking for that
+     ancestor is a general way to recognize "this click landed in some
+     Radix dropdown/popover," regardless of which specific one. */
   useEffect(() => {
     if (!overflowOpen) return;
     function handleClick(e: MouseEvent) {
-      if (overflowRef.current && !overflowRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (overflowRef.current && !overflowRef.current.contains(target)) {
+        if ((target as Element).closest?.("[data-radix-popper-content-wrapper]")) return;
         setOverflowOpen(false);
       }
     }
@@ -263,7 +483,7 @@ function RemovableDemo() {
           <button
             type="button"
             onClick={() => setOverflowOpen((v) => !v)}
-            className="inline-flex items-center justify-center h-8 px-3 rounded-lyra-md border border-lyra-border-default bg-lyra-bg-control-subtle text-lyra-fg-action lyra-body-md-emphasis hover:bg-lyra-state-hover active:bg-lyra-state-pressed transition-colors"
+            className="inline-flex items-center justify-center h-8 px-3 rounded-lyra-md border border-lyra-border-default bg-lyra-bg-control text-lyra-fg-action lyra-body-md-emphasis hover:bg-lyra-state-hover active:bg-lyra-state-pressed transition-colors"
           >
             +{overflowFilters.length}
           </button>

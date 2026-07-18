@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { SearchInput } from "../search-input";
 
 const meta: Meta<typeof SearchInput> = {
-  title: "Atoms/SearchInput",
+  title: "Custom Primitives/SearchInput",
   component: SearchInput,
   tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },

@@ -16,7 +16,7 @@ const SKILLS = [
 const PRESELECTED = ["api_cc2_quick_connect", "basicskill", "billingqueue"];
 
 const meta: Meta<typeof TransferBox> = {
-  title: "Atoms/TransferBox",
+  title: "Custom Primitives/TransferBox",
   component: TransferBox,
   tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },

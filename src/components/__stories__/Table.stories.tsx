@@ -30,7 +30,7 @@ import { cn } from "../../lib/utils";
 import { CircleCheck, Minus, MoreVertical } from "lucide-react";
 
 const meta: Meta<typeof Table> = {
-  title: "Atoms/Table",
+  title: "Custom Primitives/Table",
   component: Table,
   tags: ["autodocs"],
   parameters: {

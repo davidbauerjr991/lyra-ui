@@ -26,7 +26,7 @@ import { DashboardQueue, type DashboardQueueItem } from "./dashboard-queue";
 import { Icon } from "./icon";
 import { Tag } from "./tag";
 import { Button } from "./button";
-import { Divider } from "./divider";
+import { Separator } from "./separator";
 import { DonutChart } from "./donut-chart";
 import { Popover } from "./popover";
 import { RadioGroup, RadioGroupItem } from "./radio";
@@ -46,7 +46,7 @@ import { Tooltip } from "./tooltip";
    content living in more than one place is exactly the kind of thing that
    quietly drifts. See CONTRIBUTING.md §"Composition over reimplementation" —
    every piece below is built from existing lyra-ui atoms (`DashboardCard`,
-   `DashboardQueue`, `Tag`, `Icon`, `DonutChart`, `Divider`, `Popover` +
+   `DashboardQueue`, `Tag`, `Icon`, `DonutChart`, `Separator`, `Popover` +
    `RadioGroup`), nothing hand-rolled.
 
    All of the demo data (queue counts, contact history rows, performance/
@@ -349,7 +349,7 @@ function PerformanceBreakdownCard() {
           );
         })}
 
-        <Divider />
+        <Separator />
 
         <div className="flex items-center gap-6">
           <div className="h-[120px] w-[120px] shrink-0">
@@ -451,7 +451,7 @@ function PerformanceSummaryCard() {
           <span className="lyra-body-md text-lyra-fg-secondary">CSAT Score</span>
           <span className="lyra-heading-sm text-lyra-status-success-strong">{data.csat}</span>
         </div>
-        <Divider />
+        <Separator />
 
         <span className="lyra-body-sm-emphasis text-lyra-fg-secondary">Channel Type</span>
         <div className="flex flex-col gap-4">
@@ -475,7 +475,7 @@ function PerformanceSummaryCard() {
             );
           })}
 
-          <Divider />
+          <Separator />
 
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between gap-3">

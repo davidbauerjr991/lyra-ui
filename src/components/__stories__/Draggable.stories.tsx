@@ -6,7 +6,7 @@ import { PageHeader } from "../page-header";
 import { Button } from "../button";
 
 const meta: Meta<typeof Draggable> = {
-  title: "Atoms/Draggable",
+  title: "Custom Primitives/Draggable",
   component: Draggable,
   tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },

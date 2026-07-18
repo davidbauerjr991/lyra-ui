@@ -34,7 +34,7 @@ export interface AdminShellProps {
   /** Renders the PageHeader row. Off for the bare "Shell" template. */
   showPageHeader?: boolean;
   pageTitle?: string;
-  pageChip?: string;
+  pageBadge?: string;
   pageActions?: React.ReactNode;
 
   /**
@@ -70,7 +70,7 @@ export function AdminShell({
   defaultLeftPinned = false,
   showPageHeader = false,
   pageTitle,
-  pageChip,
+  pageBadge,
   pageActions,
   interiorPanelTitle = "Details",
   interiorPanelOpen = false,
@@ -176,7 +176,7 @@ export function AdminShell({
           <PageHeader
             title={pageTitle ?? ""}
             panelToggle="left"
-            chip={pageChip}
+            badge={pageBadge}
             panelPinned={effectiveLeftPinned}
             onPanelToggle={handleLeftToggle}
             onPanelHoverStart={!effectiveLeftPinned ? handleLeftHoverStart : undefined}

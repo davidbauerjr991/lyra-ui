@@ -15,7 +15,7 @@ const ALL_VARIANTS = [
 ] as const;
 
 const meta: Meta<typeof Container> = {
-  title: "Atoms/Container",
+  title: "Custom Primitives/Container",
   component: Container,
   tags: ["autodocs"],
   parameters: {
@@ -50,9 +50,9 @@ export const Default: Story = {
   ),
 };
 
-// Modal stories moved to Atoms/Modal
+// Modal stories moved to Custom Primitives/Modal
 
-// Popover story moved to Atoms/Popover
+// Popover story moved to Radix Primitives/Popover
 
 // Panel stories moved to UI/Panel
 

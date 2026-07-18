@@ -3,7 +3,7 @@ import { useState } from "react";
 import { EmailInput } from "../email-input";
 
 const meta: Meta<typeof EmailInput> = {
-  title: "Atoms/EmailInput",
+  title: "Custom Primitives/EmailInput",
   component: EmailInput,
   tags: ["autodocs"],
   parameters: {
@@ -21,7 +21,7 @@ export const Default: Story = {
     const [value, setValue] = useState("");
     return (
       <div className="w-80">
-        <EmailInput label="Email address" value={value} onChange={setValue} />
+        <EmailInput label="Email Address" value={value} onChange={setValue} />
       </div>
     );
   },
@@ -31,7 +31,7 @@ export const WithValue: Story = {
   name: "Valid value",
   render: () => (
     <div className="w-80">
-      <EmailInput label="Email address" value="dave@example.com" onChange={() => {}} />
+      <EmailInput label="Email Address" value="dave@example.com" onChange={() => {}} />
     </div>
   ),
 };
@@ -41,7 +41,7 @@ export const Invalid: Story = {
   render: () => (
     <div className="w-80">
       <EmailInput
-        label="Email address"
+        label="Email Address"
         value="notanemail"
         error="Enter a valid email address (e.g. name@example.com)"
         onChange={() => {}}

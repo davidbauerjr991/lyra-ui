@@ -407,4 +407,5 @@ export {
   CHANNEL_ROW_COMPONENTS,
   CHANNEL_TYPE_META,
   ChannelTab,
+  WhatsAppIcon,
 };

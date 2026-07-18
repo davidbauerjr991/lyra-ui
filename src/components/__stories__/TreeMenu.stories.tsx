@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 
 const meta: Meta<typeof TreeMenu> = {
-  title: "Atoms/TreeMenu",
+  title: "Custom Primitives/TreeMenu",
   component: TreeMenu,
   tags: ["autodocs"],
   parameters: {

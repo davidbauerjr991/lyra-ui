@@ -261,7 +261,7 @@
   }
 }
 
-/* Stage 3 — 1-up grid; horizontal Divider comes back. */
+/* Stage 3 — 1-up grid; horizontal Separator comes back. */
 @container (max-width: 360px) {
   .lyra-metric-row {
     grid-template-columns: 1fr;

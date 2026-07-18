@@ -4,7 +4,7 @@ import { Button } from "../button";
 import { Sparkles, MoreVertical, ChevronDown, RefreshCw, Trash2 } from "lucide-react";
 
 const meta: Meta<typeof Button> = {
-  title: "Atoms/Button",
+  title: "Custom Primitives/Button",
   component: Button,
   tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
@@ -15,7 +15,7 @@ const meta: Meta<typeof Button> = {
     },
     size: {
       control: "select",
-      options: ["sm", "default", "md", "lg", "xl", "icon-sm", "icon", "icon-md", "icon-lg", "icon-xl"],
+      options: ["sm", "default", "md", "lg", "xl", "icon-sm", "icon", "icon-md", "icon-lg", "icon-xl", "icon-2xl"],
     },
     disabled: { control: "boolean" },
   },
@@ -162,7 +162,39 @@ export const Sizes: Story = {
             </Button>
             <span className="lyra-body-sm text-lyra-fg-secondary">40px</span>
           </div>
+          <div className="flex flex-col items-center gap-1">
+            <Button variant="icon" size="icon-2xl" title="More options">
+              <MoreVertical className="h-5 w-5" strokeWidth={1.5} />
+            </Button>
+            <span className="lyra-body-sm text-lyra-fg-secondary">44px (AppHeader standard)</span>
+          </div>
         </div>
+      </div>
+    </div>
+  ),
+};
+
+/* ── Icon button with badge ──
+   `badge` overlays a count `Badge` (shape="circle") on the button's
+   top-right corner — the same shared rendering `ActionIconButton` and
+   `notifications-bell.tsx` use, so any icon `Button` can show a count
+   without a bespoke wrapper. */
+
+export const IconButtonWithBadge: Story = {
+  name: "Icon Button — With Badge",
+  render: () => (
+    <div className="flex items-end gap-4">
+      <div className="flex flex-col items-center gap-1">
+        <Button variant="icon" size="icon-2xl" title="Notifications" badge={4}>
+          <MoreVertical className="h-5 w-5" strokeWidth={1.5} />
+        </Button>
+        <span className="lyra-body-sm text-lyra-fg-secondary">badge=4</span>
+      </div>
+      <div className="flex flex-col items-center gap-1">
+        <Button variant="icon" size="icon-2xl" title="Notifications" badge={128}>
+          <MoreVertical className="h-5 w-5" strokeWidth={1.5} />
+        </Button>
+        <span className="lyra-body-sm text-lyra-fg-secondary">badge=128 → 99+</span>
       </div>
     </div>
   ),

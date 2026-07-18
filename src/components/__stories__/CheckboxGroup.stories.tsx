@@ -3,7 +3,7 @@ import { useState } from "react";
 import { CheckboxGroup } from "../checkbox-group";
 
 const meta: Meta<typeof CheckboxGroup> = {
-  title: "Atoms/Checkbox Group",
+  title: "Custom Primitives/Checkbox Group",
   component: CheckboxGroup,
   tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },

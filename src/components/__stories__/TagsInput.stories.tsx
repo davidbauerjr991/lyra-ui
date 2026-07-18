@@ -3,7 +3,7 @@ import { useState } from "react";
 import { TagsInput } from "../tags-input";
 
 const meta: Meta<typeof TagsInput> = {
-  title: "Atoms/Tags Input",
+  title: "Custom Primitives/Tags Input",
   component: TagsInput,
   tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },

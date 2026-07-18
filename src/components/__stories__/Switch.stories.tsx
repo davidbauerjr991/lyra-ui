@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { Switch } from "../switch";
 
 const meta: Meta<typeof Switch> = {
-  title: "Atoms/Switch",
+  title: "Radix Primitives/Switch",
   component: Switch,
   tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },

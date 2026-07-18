@@ -32,39 +32,74 @@ interface TooltipProps {
   disabled?: boolean;
 }
 
-/* ── Arrow — CSS rotated square, seamless with the tooltip container ── */
+/* ── Arrow ──
+   Was a hand-rolled CSS rotated square, always horizontally/vertically
+   centered on the *content box* via `left-1/2`/`top-1/2` — which is wrong
+   as soon as Radix shifts that box to avoid a viewport edge (its default
+   `avoidCollisions` behavior keeps the requested `side`, e.g. "bottom", and
+   just slides the box left/right to stay on-screen). The box moves, the
+   hand-rolled arrow doesn't, so the triangle drifts away from the actual
+   trigger center exactly like the report: tooltip pinned bottom-right of a
+   button near the screen edge, arrow floating off to one side instead of
+   pointing at the button.
+
+   Fixed by rendering Radix's real `TooltipPrimitive.Arrow` (built on
+   `@radix-ui/react-popper`'s `Arrow`) instead. Radix measures this element
+   and feeds it into Floating UI's `arrow` middleware, which repositions it
+   along the content box's cross-axis to stay centered on the trigger no
+   matter how far the box has shifted — and also auto-rotates it per side
+   (no more manual `group-data-[side=*]` classes needed). If centering ever
+   becomes geometrically impossible (box already flush against the padding
+   edge with nowhere left to slide the arrow), Radix hides the arrow rather
+   than showing a misaligned one, which is a better fallback than what was
+   here before.
+
+   Note this does NOT make the tooltip flip to a left/right placement when
+   horizontally constrained — `avoidCollisions` only flips the *main* axis
+   (e.g. bottom → top) when there's no room in the requested direction; a
+   horizontal shift while `side="bottom"` is Radix's normal, correct
+   behavior for a cross-axis collision, not a bug. Pass an explicit
+   `placement="left"`/`"right"` on a per-trigger basis if a given tooltip
+   specifically needs to never sit bottom/top near that edge.
+
+   Styling note: don't pass `asChild` to `TooltipPrimitive.Arrow` to try to
+   render a custom two-tone (border + fill) shape. `@radix-ui/react-arrow`'s
+   own `asChild` check isn't scoped to "use my custom children instead of
+   the default polygon" the way it looks — the prop also passes straight
+   through to the underlying `Primitive.svg`, which has its *own*,
+   unrelated `asChild` (Radix's general compose-into-child-element
+   pattern) and swaps the outer `<svg>` itself for a `Slot`. A `Slot`
+   requires exactly one child element; passing the two stacked polygons
+   needed for a bordered look either throws or silently renders nothing —
+   which is exactly what made the arrow disappear entirely after an earlier
+   attempt at this.
+
+   So: no `asChild`, no custom children. Style the *default* polygon purely
+   via `className`/`style` props on `Arrow` itself — those land on the
+   outer `<svg>`, and `fill`/`stroke`/`stroke-width` are inherited SVG
+   properties, so they cascade down to the polygon with nothing extra
+   needed.
+
+   Getting the border onto just the two slanted "wing" edges (not the flat
+   base that overlaps the content box) turns out not to need custom
+   children at all: the default polygon is always `points="0,0 30,0 15,10"`
+   — a fixed path, traced in that point order — and Radix's own per-side
+   `rotate()` on the wrapping `<span>` (see `PopperArrow` in
+   `@radix-ui/react-popper`) is specifically designed to keep the *same*
+   first edge (0,0 → 30,0) flush against the content box for every side,
+   only rotating which way the tip points on screen. That first edge is
+   always exactly 30 (of the viewBox's 30×10) units long, so
+   `stroke-dasharray: "0 30 40"` — 0 drawn, skip 30 (hides the base edge),
+   then draw the next 40 units (comfortably covers both remaining slanted
+   edges, ~36 units combined) — masks the stroke off that one edge and
+   leaves it on the other two, recreating the original two-edge-only
+   bordered-diamond look without ever touching `asChild`/`Slot`. */
 const TooltipArrow = () => (
-  <span
-    aria-hidden="true"
-    className={cn(
-      "absolute w-[10px] h-[10px] rotate-45",
-      "bg-lyra-bg-surface-overlay",
-      "border-lyra-border-subtle",
-      // side=bottom → content below trigger → arrow points UP → top edge of content
-      "group-data-[side=bottom]:-top-[5px]",
-      "group-data-[side=bottom]:left-1/2",
-      "group-data-[side=bottom]:-translate-x-1/2",
-      "group-data-[side=bottom]:border-t",
-      "group-data-[side=bottom]:border-l",
-      // side=top → content above trigger → arrow points DOWN → bottom edge
-      "group-data-[side=top]:-bottom-[5px]",
-      "group-data-[side=top]:left-1/2",
-      "group-data-[side=top]:-translate-x-1/2",
-      "group-data-[side=top]:border-b",
-      "group-data-[side=top]:border-r",
-      // side=right → content right of trigger → arrow points LEFT → left edge
-      "group-data-[side=right]:-left-[5px]",
-      "group-data-[side=right]:top-1/2",
-      "group-data-[side=right]:-translate-y-1/2",
-      "group-data-[side=right]:border-l",
-      "group-data-[side=right]:border-b",
-      // side=left → content left of trigger → arrow points RIGHT → right edge
-      "group-data-[side=left]:-right-[5px]",
-      "group-data-[side=left]:top-1/2",
-      "group-data-[side=left]:-translate-y-1/2",
-      "group-data-[side=left]:border-r",
-      "group-data-[side=left]:border-t",
-    )}
+  <TooltipPrimitive.Arrow
+    width={16}
+    height={8}
+    className="fill-lyra-bg-surface-overlay stroke-lyra-border-subtle stroke-1"
+    style={{ strokeDasharray: "0 30 40" }}
   />
 );
 
@@ -116,7 +151,7 @@ const Tooltip: React.FC<TooltipProps> = ({
             avoidCollisions={avoidCollisions}
             collisionPadding={8}
             className={cn(
-              "relative group z-[10000]",
+              "relative z-[10000]",
               "rounded-lyra-md border border-lyra-border-subtle bg-lyra-bg-surface-overlay px-3 py-2 shadow-md",
               "lyra-body-md text-lyra-fg-default",
               "animate-in fade-in-0 duration-100",

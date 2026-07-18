@@ -35,6 +35,14 @@ export interface ContainerHeaderProps extends React.HTMLAttributes<HTMLDivElemen
   topSlot?: React.ReactNode;
   /** Show a bottom border (default: true) */
   bordered?: boolean;
+  /**
+   * Header background. `"subtle"` applies `bg-lyra-bg-control-subtle` (the
+   * same subdued fill used by `FilterChip`'s default variant) — useful when
+   * the header needs to read as a distinct control/toolbar strip rather than
+   * blend into the surface behind it. Default `"none"` (transparent, inherits
+   * whatever surface it's placed on).
+   */
+  background?: "none" | "subtle";
 }
 
 /* ── Component ── */
@@ -51,29 +59,53 @@ const ContainerHeader = React.forwardRef<HTMLDivElement, ContainerHeaderProps>(
     titleBadge,
     topSlot,
     bordered = true,
+    background = "none",
     ...props
   }, ref) => (
     <div
       ref={ref}
       className={cn(
-        "flex items-center justify-between px-4 py-5 shrink-0",
+        "flex items-center justify-between px-4 py-3 shrink-0",
         bordered && "border-b border-lyra-border-subtle",
+        background === "subtle" && "bg-lyra-bg-control-subtle",
         className
       )}
       {...props}
     >
-      {/* Left: optional top slot, above icon + title + optional subhead */}
-      <div className="flex flex-col items-start gap-1 min-w-0">
+      {/* Left: optional top slot, above icon + title + optional subhead.
+          `flex-1` (instead of relying on default flex-basis:auto shrinking)
+          + `min-w-0` at every level down to the title/subhead text is what
+          actually makes `truncate` take effect here — the right side is
+          `shrink-0` (never gives up width), so without an explicit
+          flex-basis on this side the title text was overflowing past its
+          box and getting visually painted over by the action buttons
+          rather than genuinely truncating with an ellipsis. */}
+      <div className="flex flex-1 flex-col items-start gap-1 min-w-0">
         {topSlot}
         <div className="flex items-center gap-2 min-w-0">
           {icon && <span className="flex-shrink-0 text-lyra-fg-secondary">{icon}</span>}
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              {title && <h2 className={cn(titleClassName, "text-lyra-fg-default truncate")}>{title}</h2>}
-              {titleBadge && <span className="shrink-0">{titleBadge}</span>}
-            </div>
-            {subhead && (
-              <p className="lyra-body-sm text-lyra-fg-secondary truncate">{subhead}</p>
+          <div className="min-w-0 flex-1">
+            {(title || titleBadge) && (
+              <div className="flex h-9 flex-col justify-center overflow-hidden min-w-0">
+                {/* titleBadge sits in its own row with just the title text,
+                    so it's centered against the title's line height — not
+                    stretched to align against the full title+subhead block
+                    the way it was when it lived in a row alongside that
+                    whole two-line container. No `shrink-0` wrapper around
+                    it anymore either — that wrapper was a `<span>` (inline
+                    by default) sitting next to the title's flex column,
+                    which threw off `items-center`'s vertical centering;
+                    rendered directly as a sibling flex item here instead. */}
+                <div className="flex items-center gap-2 min-w-0">
+                  {title && (
+                    <h2 className={cn(titleClassName, "text-lyra-fg-default truncate min-w-0")}>{title}</h2>
+                  )}
+                  {titleBadge}
+                </div>
+                {subhead && (
+                  <p className="lyra-body-sm text-lyra-fg-secondary truncate min-w-0">{subhead}</p>
+                )}
+              </div>
             )}
           </div>
         </div>

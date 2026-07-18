@@ -20,6 +20,19 @@ interface MenuItemDef {
    *  positioning as `submenu` — use this instead of hand-rolling a separate
    *  flyout/portal for non-menu-list content. */
   submenuContent?: React.ReactNode;
+  /**
+   * Override the submenu flyout's z-index class. Defaults to `z-[9999]` —
+   * the standard "portal wrapper" tier from CONTRIBUTING.md §5's z-index
+   * hierarchy, correct for a submenu in normal, top-level use. Needed when
+   * this item's own `Menu`/`submenuContent` is nested inside something
+   * already at or above that tier — e.g. `AgentProfile`'s "Connected Apps"
+   * row, whose flyout lives inside the status menu's own `z-[10001]`
+   * panel, so the default `z-[9999]` would render behind it. Same escape-
+   * hatch pattern as `PhoneInput`'s `dropdownClassName`: nested overlay-ish
+   * content can't assume its own default z-index will clear whatever it
+   * happens to be nested inside.
+   */
+  submenuZIndexClassName?: string;
   /** Render the item in destructive (red) styling */
   destructive?: boolean;
   /** Disable the item */
@@ -37,6 +50,16 @@ interface MenuItemDef {
    *  background + left accent bar, with dedicated one-shade-darker hover
    *  and pressed states (`active`, `active-hover`, `active-pressed`). */
   active?: boolean;
+  /**
+   * MenuRadix only — has no effect on the hand-rolled `Menu` above, which
+   * never closes itself (whatever composes it owns that decision entirely,
+   * e.g. `ProfileMenu`'s own `close()` wrapping). Radix's own
+   * `DropdownMenu.Item`, unlike bare `Menu`, closes on select by default;
+   * set this to `false` to keep the menu open after this item is chosen —
+   * e.g. a theme toggle you want to stay open so its new state is visible
+   * immediately. Defaults to `true` (Radix's own default behavior).
+   */
+  closeOnSelect?: boolean;
 }
 
 /** Non-interactive section header rendered inline within the list (e.g.
@@ -367,7 +390,7 @@ const MenuItemRow: React.FC<MenuItemRowProps> = ({ item, itemRole = "menuitem" }
           ref={submenuRef}
           data-menu-submenu-for={item.id}
           style={{ position: "fixed", top: submenuPos.top, bottom: submenuPos.bottom, left: submenuPos.left, right: submenuPos.right }}
-          className="z-50"
+          className={item.submenuZIndexClassName ?? "z-[9999]"}
           onMouseEnter={openSubmenu}
           onMouseLeave={closeSubmenu}
         >

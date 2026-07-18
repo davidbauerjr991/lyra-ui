@@ -15,7 +15,7 @@ import { PanelPinButton } from "../panel-pin-button";
    a side panel pinned when a specific prototype actually calls for it. */
 
 const meta: Meta<typeof SidePanel> = {
-  title: "Atoms/SidePanel",
+  title: "Custom Primitives/SidePanel",
   component: SidePanel,
   parameters: {
     layout: "padded",

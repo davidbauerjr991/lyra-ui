@@ -5,7 +5,7 @@ import { Toast, ToastContainer, useToast } from "../toast";
 import type { ToastVariant } from "../toast";
 
 const meta: Meta = {
-  title: "Atoms/Toastr Notification",
+  title: "Radix Primitives/Toastr Notification",
   tags: ["autodocs"],
   parameters: {
     layout: "padded",
@@ -19,10 +19,20 @@ type Story = StoryObj;
    Toasts
    ══════════════════════════════════════════ */
 
+/* Each static example below needs a `ToastContainer` ancestor even though
+   it's just showing one toast sitting in the page flow, not floating —
+   `Toast` is now built on Radix's real Toast primitive, which portals its
+   actual rendered content into whatever `Toast.Viewport` is registered on
+   the nearest `Toast.Provider` (see `toast.tsx`'s own doc comment); with no
+   `ToastContainer` anywhere in the tree at all, `Toast` renders nothing.
+   `className="static inset-auto"` overrides `ToastContainer`'s own
+   `fixed bottom-4 right-4` positioning back to normal document flow, since
+   these stories are documentation examples, not the real floating widget. */
+
 export const ToastAll: Story = {
   name: "Toast — All Variants",
   render: () => (
-    <div className="flex flex-col gap-3 w-[380px]">
+    <ToastContainer className="static inset-auto w-[400px]">
       <Toast variant="warning" title="Warning" onDismiss={() => {}}>
         Advise users of conditions that might cause issues.
       </Toast>
@@ -35,51 +45,51 @@ export const ToastAll: Story = {
       <Toast variant="success" title="Success" onDismiss={() => {}}>
         Action completed successfully.
       </Toast>
-    </div>
+    </ToastContainer>
   ),
 };
 
 export const ToastWarning: Story = {
   name: "Toast — Warning",
   render: () => (
-    <div className="w-[380px]">
+    <ToastContainer className="static inset-auto w-[400px]">
       <Toast variant="warning" title="Warning" onDismiss={() => {}}>
         Advise users of conditions that might cause issues.
       </Toast>
-    </div>
+    </ToastContainer>
   ),
 };
 
 export const ToastError: Story = {
   name: "Toast — Error",
   render: () => (
-    <div className="w-[380px]">
+    <ToastContainer className="static inset-auto w-[400px]">
       <Toast variant="error" title="Error" onDismiss={() => {}}>
         A critical action has failed and needs attention.
       </Toast>
-    </div>
+    </ToastContainer>
   ),
 };
 
 export const ToastInfo: Story = {
   name: "Toast — Info",
   render: () => (
-    <div className="w-[380px]">
+    <ToastContainer className="static inset-auto w-[400px]">
       <Toast variant="info" title="Info" onDismiss={() => {}}>
         Important background information or system updates.
       </Toast>
-    </div>
+    </ToastContainer>
   ),
 };
 
 export const ToastSuccess: Story = {
   name: "Toast — Success",
   render: () => (
-    <div className="w-[380px]">
+    <ToastContainer className="static inset-auto w-[400px]">
       <Toast variant="success" title="Success" onDismiss={() => {}}>
         Action completed successfully.
       </Toast>
-    </div>
+    </ToastContainer>
   ),
 };
 

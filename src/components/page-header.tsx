@@ -1,8 +1,8 @@
 import * as React from "react";
 import { PanelLeft, PanelRight } from "lucide-react";
 import { Tooltip } from "./tooltip";
-import { Chip } from "./chip";
-import type { ChipColor, ChipVariant } from "./chip";
+import { Badge } from "./badge";
+import type { BadgeColor, BadgePillVariant } from "./badge";
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator, BreadcrumbEllipsis } from "./breadcrumb";
 import { cn } from "../lib/utils";
 
@@ -65,12 +65,12 @@ interface PageHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
    * rather than a one-off `<nav>`.
    */
   breadcrumb?: PageHeaderBreadcrumb | PageHeaderBreadcrumb[];
-  /** Optional chip displayed inline after the title */
-  chip?: string;
-  /** Chip color — defaults to "green" */
-  chipColor?: ChipColor;
-  /** Chip variant — defaults to "subtle" */
-  chipVariant?: ChipVariant;
+  /** Optional badge displayed inline after the title */
+  badge?: string;
+  /** Badge color — defaults to "green" */
+  badgeColor?: BadgeColor;
+  /** Badge variant — defaults to "subtle" */
+  badgeVariant?: BadgePillVariant;
 }
 
 const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
@@ -91,9 +91,9 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
       onInnerPanelHoverStart,
       onInnerPanelHoverEnd,
       breadcrumb,
-      chip,
-      chipColor = "green",
-      chipVariant = "subtle",
+      badge,
+      badgeColor = "green",
+      badgeVariant = "subtle",
       ...props
     },
     ref
@@ -147,7 +147,7 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
             <div className="flex flex-col justify-center min-w-0 flex-1">
               <div className="flex items-center gap-2 min-w-0">
                 <h1 className="lyra-heading-lg text-lyra-fg-default leading-tight truncate min-w-0">{title}</h1>
-                {chip && <Chip color={chipColor} variant={chipVariant}>{chip}</Chip>}
+                {badge && <Badge color={badgeColor} variant={badgeVariant}>{badge}</Badge>}
               </div>
               {subtitle && <span className="lyra-body-sm text-lyra-fg-secondary truncate">{subtitle}</span>}
             </div>
@@ -175,7 +175,7 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
                 ))}
                 <BreadcrumbItem aria-current="page" className="gap-2 min-w-0 flex-1">
                   <h1 className="lyra-heading-lg text-lyra-fg-default truncate min-w-0">{title}</h1>
-                  {chip && <Chip color={chipColor} variant={chipVariant}>{chip}</Chip>}
+                  {badge && <Badge color={badgeColor} variant={badgeVariant}>{badge}</Badge>}
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
@@ -194,7 +194,7 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
                 <BreadcrumbSeparator className="shrink-0" />
                 <BreadcrumbItem aria-current="page" className="gap-2 min-w-0 flex-1">
                   <h1 className="lyra-heading-lg text-lyra-fg-default truncate min-w-0">{title}</h1>
-                  {chip && <Chip color={chipColor} variant={chipVariant}>{chip}</Chip>}
+                  {badge && <Badge color={badgeColor} variant={badgeVariant}>{badge}</Badge>}
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
@@ -202,7 +202,7 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
         ) : (
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <h1 className="lyra-heading-lg text-lyra-fg-default truncate min-w-0">{title}</h1>
-            {chip && <Chip color={chipColor} variant={chipVariant}>{chip}</Chip>}
+            {badge && <Badge color={badgeColor} variant={badgeVariant}>{badge}</Badge>}
           </div>
         )}
       </div>

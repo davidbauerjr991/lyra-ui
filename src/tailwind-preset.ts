@@ -50,6 +50,8 @@ const lyraPreset: Partial<Config> = {
         "lyra-status-success-medium": "var(--lyra-color-status-success-medium)",
         "lyra-status-success-subtle": "var(--lyra-color-status-success-subtle)",
         "lyra-status-info-strong": "var(--lyra-color-status-info-strong)",
+        "lyra-status-info-medium": "var(--lyra-color-status-info-medium)",
+        "lyra-status-info-subtle": "var(--lyra-color-status-info-subtle)",
         "lyra-status-critical-strong": "var(--lyra-color-status-critical-strong)",
         "lyra-status-critical-medium": "var(--lyra-color-status-critical-medium)",
         "lyra-status-critical-subtle": "var(--lyra-color-status-critical-subtle)",
@@ -100,6 +102,32 @@ const lyraPreset: Partial<Config> = {
           "-apple-system",
           "sans-serif",
         ],
+      },
+      /* ── Accordion height animation ── kept in sync with the matching
+         block in this repo's own tailwind.config.js (used for Storybook).
+         `Accordion` (accordion.tsx) is built on `@radix-ui/react-accordion`,
+         which exposes each item's measured open height as the
+         `--radix-accordion-content-height` CSS variable; these keyframes
+         animate between 0 and that variable. Consumers who extend this
+         preset need this block too — without it, `Accordion`'s
+         `data-[state=open]:animate-accordion-down` / `...-up` classes exist
+         in the DOM but have no matching CSS rule, so the accordion still
+         opens/closes correctly, just with the animation silently missing
+         (snaps instead of animating). 200ms/ease-in-out matches the
+         component's previous hand-rolled transition timing exactly. */
+      keyframes: {
+        "accordion-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+      },
+      animation: {
+        "accordion-down": "accordion-down 200ms ease-in-out",
+        "accordion-up": "accordion-up 200ms ease-in-out",
       },
     },
   },

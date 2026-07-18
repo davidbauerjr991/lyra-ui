@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Calendar, type DateRange } from "../calendar";
 
 const meta: Meta<typeof Calendar> = {
-  title: "Atoms/Calendar",
+  title: "Custom Primitives/Calendar",
   component: Calendar,
   tags: ["autodocs"],
   parameters: {

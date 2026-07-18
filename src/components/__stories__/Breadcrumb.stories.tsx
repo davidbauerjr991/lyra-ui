@@ -11,7 +11,7 @@ import {
 } from "../breadcrumb";
 
 const meta: Meta<typeof Breadcrumb> = {
-  title: "Atoms/Breadcrumb",
+  title: "Custom Primitives/Breadcrumb",
   component: Breadcrumb,
   tags: ["autodocs"],
   parameters: {

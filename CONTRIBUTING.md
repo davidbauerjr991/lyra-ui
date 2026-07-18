@@ -24,6 +24,8 @@
 15. [Debugging: diagnose rendering before behavior](#15-debugging-diagnose-rendering-before-behavior)
 16. [Tooltip placement](#16-tooltip-placement)
 17. [Portals still bubble through the React tree](#17-portals-still-bubble-through-the-react-tree)
+18. [Field label casing](#18-field-label-casing)
+19. [Match reference component behavior in prototypes](#19-match-reference-component-behavior-in-prototypes)
 
 ---
 
@@ -73,14 +75,17 @@ If a higher-level component needs a dropdown, trigger, input, panel, or any othe
 
 | You need | Use | Do not create |
 |---|---|---|
-| A dropdown attached to a trigger | `Menu` or `Popover` + `PopoverContent` | A custom `<ul>` dropdown |
+| A dropdown attached to a trigger | `Menu` or `Popover` + `PopoverContent` (or `MenuRadix` for a self-triggered flyout that owns its own trigger — see below) | A custom `<ul>` dropdown |
 | A text field | `Input` | A raw `<input>` with manual styling |
 | A select / combobox | `Select` + `Menu` (or Radix `Select`) | A new dropdown+input hybrid from scratch |
 | A panel over the page header (hover/pin, left or right) | `SidePanel` + `PanelHeader`/`PanelFooter` | A custom modal-like div with its own header |
 | An inline panel below the page header (click-triggered, left or right) | `InteriorPanel` + `PanelHeader`/`PanelFooter` | A custom modal-like div with its own header |
-| A chip / badge | `Chip` | An inline-styled `<span>` |
+| A chip / badge (pill tint or circular count/icon) | `Badge` (`shape="pill"` or `shape="circle"`) | An inline-styled `<span>` |
 | A breadcrumb trail | `Breadcrumb` + `BreadcrumbList`/`Item`/`Link`/`Page`/`Separator`/`Ellipsis` | A hand-rolled `<nav><ol>` |
-| An icon button | `ActionIconButton` or `Button` with icon size | A bare `<button>` with a Lucide icon |
+| An icon button | `ActionIconButton` (AppHeader row — Help/Dashboards/Notifications/Ask AI, `size="xl"` → 44px, the canonical AppHeader shape) or `Button` (`variant="icon"`, any other icon-button context — `size="icon-2xl"` is the same 44px AppHeader size `ActionIconButton` composes internally). Both share one `badge` count-overlay implementation (`Button`'s own `badge` prop, rendered via `Badge shape="circle"`) — never hand-roll a second one. | A bare `<button>` with a Lucide icon, or a second hand-rolled badge span |
+| A modal / dialog (backdrop, focus trap, Escape-to-dismiss) | `Modal` | `Overlay` + `Container variant="modal"` hand-composed at the call site, or a custom modal-like div |
+
+**`Menu` vs. `MenuRadix`**: `Menu` is a bare list with no trigger or open state of its own — use it whenever something else (`Select`, `PhoneInput`, a hand-rolled `Popover` wrapper) needs to embed "just the list part" inside a surface it already supplies (`bare` prop). `MenuRadix` (built on `@radix-ui/react-dropdown-menu`) is the opposite: a self-contained trigger-plus-menu unit that owns its own open state, positioning, and surface — use it for anything self-triggered (a kebab button, a profile dropdown, an overflow-actions menu) instead of hand-rolling a trigger + portal + outside-click/Escape listener around bare `Menu`, which was the old pattern for these (see `kebab-menu-button.tsx`, `profile-menu.tsx`, `agent-notifications.tsx`'s overflow menu). `MenuRadix` cannot be used in `bare` mode — Radix's `DropdownMenu.Root` requires exactly one `Trigger` and owns state via context that only its own descendants can read, so it can't decompose into "just the list" the way bare `Menu` can. If you're building something self-triggered, reach for `MenuRadix` first; if you're embedding a list inside an already-open surface someone else supplies, use bare `Menu`.
 
 ### Panels
 
@@ -153,10 +158,18 @@ Use `active` (not a hand-rolled `selected` boolean) to mark the current/chosen i
 
 This scale applies to `Menu`/`Popover`-based item-list panels specifically — calendar/time pickers (`date-picker.tsx`, `time-picker.tsx`) and trigger-matched dropdowns (`autocomplete.tsx`, `phone-input.tsx`, which intentionally size to `var(--radix-popover-trigger-width)`) have their own width drivers and are exempt. Do not invent a new fixed width for a `Menu`/`Popover` combo without checking this table first — this is exactly the kind of raw-Tailwind-value drift the "Important Patterns" section of `PROJECT_SUMMARY.md` already warns about (see the `h-3.5` vs `h-3` badge-sizing incident).
 
+### Every modal must be built on `Modal` — no exceptions
+
+**Requirement:** any dialog that needs a backdrop, focus trap, Escape-to-dismiss, and portal rendering — in this library or in a repo consuming it (`agent-next-gen-v1`, `Outbound-Campaigns`, `lyra-ux-templates`, `Agent Nav Testing`, etc.) — must render through the shared `Modal` component (`modal.tsx`), which wraps `@radix-ui/react-dialog` directly. Never hand-compose `Overlay` + `Container variant="modal"` at a call site the way `CampaignDetailsModal.tsx` and `agent-next-gen-v1`'s welcome modal used to — that pattern still works, but every call site has to remember Radix's `Title` requirement, the hidden-trigger workaround, and the backdrop-click/Escape wiring on its own, and it's easy for one of those to quietly drift or go missing (the Storybook-only `UI/Modal` stories drifted the furthest: they used to render a bare `Container variant="modal"` with no `Overlay` at all, meaning no focus trap, no portal, and no Escape handling ever existed there — a design reviewer looking at Storybook had no way to notice, since it still looked identical to a real modal).
+
+`Modal` exposes the exact same `header*` props `Container` does (`headerTitle`, `headerIcon`, `headerActions`, etc. — see `modal.tsx`), plus `open`/`onClose`/`closeOnBackdropClick`/`variant` (backdrop dark/light)/`container`, so it's a drop-in replacement: swap `<Overlay ...><Container variant="modal" ...>` for `<Modal ...>` and delete the now-redundant `Overlay` wrapper. If your modal's body already renders its own heading (e.g. `AgentWelcomeMessage`, `LoginCard`'s pattern), pass that component `bare` (where supported) so `Modal`'s own surface is the only card chrome rendered, and use `Modal`'s `ariaTitle` prop to still give screen readers a real accessible name without a duplicate visible header row.
+
+`Overlay` itself isn't deprecated — it's still the right tool for layered UI that isn't a `Container`-chromed dialog (see `Overlay.stories.tsx`). `Modal` is specifically the "backdrop + focus trap + modal card chrome" composition, for the case `Overlay` + `Container variant="modal"` was always being manually reassembled to build anyway.
+
 ### How to check what exists
 
 1. Search `src/index.ts` — every public component is listed there.
-2. Browse Storybook — categories `Atoms`, `UI`, and `Templates` cover the full component surface.
+2. Browse Storybook — categories `Custom Primitives`, `UI`, and `Templates` cover the full component surface.
 3. If something close-but-not-quite exists, **extend it via props** (new variant, new size, new slot) rather than duplicating it.
 
 ### When a brand-new primitive is genuinely needed
@@ -245,6 +258,7 @@ All overlapping layers in Lyra UI follow a fixed z-index scale. **Never use an a
 | Priority menus | `10001` | `AgentProfile` status menu — always the topmost interactive layer |
 | Tooltips nested inside a priority menu | `10002` | `AgentProfile`'s favorite-star, agent-leg, and connected-apps-badge tooltips — must clear their own `z-[10001]` parent panel |
 | Popovers nested inside another popover | `10003` | `CreateNew`'s per-row channel flyout (Outbound picker); `PhoneInput`'s country dropdown when used inside `CreateNew` (dialpad group and drill-down screen 1, via its `dropdownClassName` prop) — both must clear their own `z-[9999]` parent panel |
+| `Menu` submenu flyout nested inside a priority menu | `10004` | `AgentProfile`'s "Connected Apps" row — its `submenuContent` flyout must clear its own `z-[10001]` parent panel, set via `MenuItemDef`'s `submenuZIndexClassName` |
 
 ### Rules
 
@@ -255,6 +269,7 @@ All overlapping layers in Lyra UI follow a fixed z-index scale. **Never use an a
 - **The same problem applies to a `Popover` nested inside another `Popover`** — e.g. a per-row hover flyout inside an already-open picker panel. The default `Popover` z-index (`z-50`, see below) sits well below its own parent's `z-[9999]`, so pass `className="z-[10003]"` to the nested instance. General rule: whenever you nest one overlay-ish component inside another, check this table and give the nested one the next unused integer above its own parent's tier — don't assume defaults compose correctly just because each component works fine in isolation.
 - **This isn't limited to components literally named `Popover`.** Anything with its own internal Radix Popover/Popper (a searchable dropdown, a country selector, a color picker, etc.) has the exact same failure mode when it's nested inside something else's `z-[9999]` panel — `PhoneInput`'s country dropdown is a concrete example: it hardcodes `z-50` internally for its normal-flow case, so it needed a dedicated `dropdownClassName` prop (not just `className`, which targets the field shell instead) so a consumer like `CreateNew` can raise it to `z-[10003]` when nesting it. When adding a new overlay-ish component, ask "can this be nested inside another popover/menu?" — if yes, expose a way to override its overlay's z-index rather than assuming it'll only ever be used at the top level.
 - **Why `z-50` breaks in portals:** Tailwind's `z-50` is z-index 50, which loses to any stacking context created by a `z-[9999]` portal container rendered later in the DOM. Always use the scale above for any component that renders outside normal document flow.
+- **`Menu`'s own submenu flyout (`submenu`/`submenuContent`) is the same failure mode again**, one level further down. It's portaled to `document.body`, so it needs its own `z-[9999]` default, exposed via `MenuItemDef`'s `submenuZIndexClassName` for the same reason `PhoneInput`'s `dropdownClassName` exists: a submenu nested inside something already at or above `z-[9999]` (e.g. `AgentProfile`'s "Connected Apps" row, whose flyout lives inside the status menu's `z-[10001]` panel) needs to clear that specific parent, so it's raised to `z-[10004]` there — the next unused integer, since `10002`/`10003` are already claimed by the tooltip- and popover-nesting cases above. This was a real, shipped bug (not just a hypothetical): the submenu wrapper hardcoded `z-50` — below even the portal-wrapper baseline — so any submenu nested inside a higher-tier panel silently rendered behind it.
 
 ### Adding a new layer
 
@@ -378,9 +393,9 @@ export type { MyComponentProps };
 
 | Thing | Convention | Example |
 |---|---|---|
-| Props interface | `{ComponentName}Props` | `ChipProps`, `PanelProps` |
-| CVA variants constant | `{componentName}Variants` | `buttonVariants`, `chipVariants` |
-| Union type (color, variant, etc.) | descriptive PascalCase | `ChipColor`, `ChipVariant`, `PanelSide` |
+| Props interface | `{ComponentName}Props` | `BadgeProps`, `PanelProps` |
+| CVA variants constant | `{componentName}Variants` | `buttonVariants`, `circleBadgeVariants` |
+| Union type (color, variant, etc.) | descriptive PascalCase | `BadgeColor`, `BadgePillVariant`, `PanelSide` |
 
 ### Union types over enums
 
@@ -388,10 +403,10 @@ Use union types, not TypeScript enums:
 
 ```tsx
 // ✅ correct
-export type ChipColor = "slate" | "red" | "orange" | "yellow" | "lime" | "green" | "teal" | "blue" | "purple" | "pink";
+export type BadgeColor = "slate" | "red" | "orange" | "yellow" | "lime" | "green" | "teal" | "blue" | "purple" | "pink";
 
 // ❌ wrong
-export enum ChipColor { Slate = "slate", ... }
+export enum BadgeColor { Slate = "slate", ... }
 ```
 
 ### Props interface extension pattern
@@ -482,7 +497,7 @@ Always use lyra CSS variable tokens via Tailwind utility classes rather than arb
 - `border-lyra-border-active` — active / selected state
 
 **Border radius**
-- `rounded-lyra-sm` — buttons, inputs
+- `rounded-lyra-sm` — buttons, icon buttons (incl. AppHeader's `ActionIconButton`/`Button` icon sizes — see `ActionIconButton`'s own doc comment for a real case where a hand-rolled AppHeader icon button drifted onto `rounded-lyra-lg` instead), inputs
 - `rounded-lyra-md` — chips, tags, badges
 - `rounded-lyra-lg` — cards, panels, modals
 
@@ -548,7 +563,7 @@ src/components/__stories__/MyComponent.stories.tsx
 "Category/ComponentName"
 ```
 
-Common categories: `Atoms`, `Atoms/Container`, `UI`, `Templates`.
+Common categories: `Custom Primitives`, `Custom Primitives/Container`, `UI`, `Templates`.
 
 ### Meta boilerplate
 
@@ -557,7 +572,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { MyComponent } from "../my-component";
 
 const meta: Meta<typeof MyComponent> = {
-  title: "Atoms/MyComponent",
+  title: "Custom Primitives/MyComponent",
   component: MyComponent,
   tags: ["autodocs"],
   parameters: {
@@ -609,7 +624,7 @@ export const Interactive: Story = {
 };
 ```
 
-- **Panel sub-components** (`Panel/Interior`, `Panel/Side`) live under `Atoms/Container`, not as separate top-level stories.
+- **Panel sub-components** (`Panel/Interior`, `Panel/Side`) live under `Custom Primitives/Container`, not as separate top-level stories.
 - **Delete obsolete stories** when a component is renamed or consolidated — do not leave orphaned story files.
 
 ### Controls guidance
@@ -762,3 +777,23 @@ onBlur={stopSyntheticBubble}
 This is safe: Radix's own outside-click/focus-trap detection is implemented via native document-level listeners, not React bubbling, so it's unaffected. `onClick` is deliberately left alone — Radix's composed `onClick` handler on `Tooltip.Trigger` only *closes* the tooltip, and letting that bubble is harmless.
 
 **Rule:** any new component that renders content via a portal (a new `Popover`-like primitive, a custom flyout, etc.) needs this same containment at its content root — don't rely on every consumer remembering not to wrap it in a Tooltip carelessly. If you're building something that *could* reasonably be wrapped by a Tooltip or similar hover-triggered wrapper from the outside, stop the bubbling at the source.
+
+## 18. Field label casing
+
+**Rule:** when building or updating a prototype (a consuming app's screens/flows — `agent-next-gen-v1`, `lyra-ux-templates`, `Outbound-Campaigns`, `Agent Nav Testing`, etc.), form field labels (`Input`/`Select`/`PhoneInput`/`EmailInput`/`Checkbox`/`Radio`/anything using `Label` or a `label` prop) should capitalize the first letter of each word — e.g. **"Email Address"**, not "Email address" — unless the user has explicitly specified different casing for that label. This is Title Case for the label text itself, not a restyling instruction (don't add `text-transform: capitalize`; type the label text correctly to begin with).
+
+This does **not** apply to `aria-label` attributes (screen-reader-only strings, which stay natural sentence case — "Close dialog" is correct as an `aria-label`, not a visible label) or to lyra-ui's own internal Storybook demo labels (placeholder content like "Radio label" used purely to demonstrate a component in isolation, not real prototype copy).
+
+**Example of the bug this catches:** an `EmailInput` labeled `"Email address"` — grammatically fine as a sentence, but inconsistent with the rest of a form where every other label ("Phone Number", "Full Name") is Title Case. Caught via a screenshot of the rendered field, not by reading the source — casing bugs like this are easy to miss in code review since `"Email address"` isn't a typo, just the wrong convention.
+
+---
+
+## 19. Match reference component behavior in prototypes
+
+**Rule:** when a prototype (`agent-next-gen-v1`, `lyra-ux-templates`, `Outbound-Campaigns`, `Agent Nav Testing`, etc.) wires up a lyra-ui component with its own state/handlers, that glue code must faithfully reproduce the component's real, documented behavior contract — not just import the right component and then invent divergent open/close/pin/hover/focus semantics around it — unless the user has explicitly asked for that specific prototype to behave differently.
+
+Using the correct component (rule 3, "Composition over reimplementation") is necessary but not sufficient. A prototype can import `SidePanel` correctly and still drift from what `SidePanel` actually means, purely in the surrounding `useState`/handler code the prototype writes to drive it. That drift is easy to miss because the component itself never changed — only the call site's logic did — so a diff of the component file shows nothing wrong, and the bug only shows up as an inconsistent *interaction*, not a visibly different render.
+
+**Before wiring open/close/pin/hover/select/etc. state around a component, find its real reference usage first** — the component's own Storybook story (e.g. `Panel.stories.tsx`'s "Side Panel" story) and/or its most established real consumer (e.g. `admin-shell.tsx`'s `SidePanel` usage) — and copy that behavior contract exactly: which state transitions are allowed, which are guarded, and under what conditions. Don't infer the contract from what "seems reasonable" for the new prototype in isolation.
+
+**Example of the bug this catches:** `AgentNextGenTemplate.stories.tsx` (and its two consumer-app mirrors) used `SidePanel`/`CustomerInformationPanel` correctly as a component, but wrote their own pin/hover handlers from scratch instead of copying `admin-shell.tsx`'s `handleLeftHoverStart`/`handleLeftHoverEnd`/`handleLeftPinToggle` reference pattern. That produced two separate real bugs, both invisible from the component's own code: (1) the record-icon click handler toggled `pinned` and `open` together, so "closing" a pinned panel silently unpinned it too — reopening it later came back unpinned instead of staying pinned; (2) `onSidePanelHoverStart` had no pinned guard at all (unlike `onSidePanelHoverEnd`, which did), so hovering could still reopen a pinned-but-closed panel even though pinned mode is supposed to be click-only in both directions. Both were fixed by making the prototype's handlers match `admin-shell.tsx`'s handlers line-for-line, not by changing `SidePanel` itself — the component was never the problem.

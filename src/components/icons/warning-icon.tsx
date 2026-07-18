@@ -1,18 +1,20 @@
 import * as React from "react";
-import { cn } from "../../lib/utils";
 
 interface WarningIconProps extends React.SVGAttributes<SVGSVGElement> {}
 
+// No hardcoded `width`/`height`/default size class here — every real caller
+// (`Icon`'s `size="md"`, or a direct `className="h-X w-X"` override at the
+// call site) already supplies its own sizing, so this is sized purely by
+// whatever `className` is passed in, not by a redundant intrinsic value
+// baked into the asset itself.
 const WarningIcon = React.forwardRef<SVGSVGElement, WarningIconProps>(
   ({ className, ...props }, ref) => (
     <svg
       ref={ref}
-      width="16"
-      height="16"
       viewBox="0 0 16 16"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={cn("h-5 w-5", className)}
+      className={className}
       {...props}
     >
       <path

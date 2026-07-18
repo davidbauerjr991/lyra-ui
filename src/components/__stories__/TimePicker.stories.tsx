@@ -4,7 +4,7 @@ import { TimePicker } from "../time-picker";
 import { TimeRangePicker } from "../time-picker";
 
 const meta: Meta = {
-  title: "Atoms/TimePicker",
+  title: "Custom Primitives/TimePicker",
   tags: ["autodocs"],
   parameters: {
     layout: "padded",

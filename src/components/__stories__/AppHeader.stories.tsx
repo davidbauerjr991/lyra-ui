@@ -8,7 +8,6 @@ import { AppMenu, type AppMenuGroup } from "../app-menu";
 import { AiPanel } from "../ai-panel";
 import { CXoneLogo } from "../cxone-logo";
 import { ActionIconButton } from "../actions";
-import { Tooltip } from "../tooltip";
 import { ProfileMenu, defaultProfileMenuGroups } from "../profile-menu";
 import { AgentProfile, type AgentStatus } from "../agent-profile";
 import { NotificationsBell } from "../notifications-bell";
@@ -212,18 +211,16 @@ export const AgentNextGen: Story = {
               onDismiss={(id) => setNotifications((prev) => prev.filter((n) => n.id !== id))}
               onNotificationClick={(n) => setNotifications((prev) => prev.map((i) => i.id === n.id ? { ...i, read: true } : i))}
             />
-            <Tooltip content="Ask AI" placement="bottom" asLabel>
-              <button
-                ref={aiBtnRef}
-                type="button"
-                aria-label="Ask AI"
-                aria-expanded={aiPanelOpen}
-                onClick={handleAiButtonClick}
-                className={`relative flex h-10 w-10 items-center justify-center rounded-lyra-lg text-lyra-fg-default transition-colors hover:bg-lyra-state-hover active:bg-lyra-state-pressed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus ${aiPanelOpen ? "bg-lyra-state-hover" : ""}`}
-              >
-                <AiSparkleIcon />
-              </button>
-            </Tooltip>
+            <ActionIconButton
+              ref={aiBtnRef}
+              size="xl"
+              title="Ask AI"
+              aria-expanded={aiPanelOpen}
+              onClick={handleAiButtonClick}
+              className={aiPanelOpen ? "bg-lyra-state-hover" : undefined}
+            >
+              <AiSparkleIcon />
+            </ActionIconButton>
             <AgentProfile
               name="John Smith"
               initials="JS"

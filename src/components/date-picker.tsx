@@ -52,6 +52,9 @@ const inputClass = cn(
   "focus-within:border-lyra-border-active focus-within:ring-2 focus-within:ring-lyra-border-active/20",
   "data-[disabled=true]:bg-lyra-bg-disabled data-[disabled=true]:border-transparent",
   "data-[disabled=true]:text-lyra-fg-disabled data-[disabled=true]:cursor-not-allowed",
+  // `pointer-events-none` blocks `:hover` from matching at all — without
+  // it, the hover border above would still show on a disabled trigger.
+  "data-[disabled=true]:pointer-events-none",
   "data-[readonly=true]:bg-lyra-bg-surface-canvas data-[readonly=true]:cursor-default data-[readonly=true]:pointer-events-none"
 );
 

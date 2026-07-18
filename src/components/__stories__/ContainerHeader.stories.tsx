@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
 import { ContainerHeader } from "../container-header";
 import { Button } from "../button";
-import { StatusBadge } from "../status-badge";
+import { Badge } from "../badge";
 import { Settings, Maximize2, Minimize2 } from "lucide-react";
 import { InfoIcon } from "../icons/info-icon";
 import { Tooltip } from "../tooltip";
@@ -16,16 +16,79 @@ const meta: Meta<typeof ContainerHeader> = {
     backgrounds: { default: "lyra-shell" },
   },
   argTypes: {
-    title:    { control: "text" },
-    bordered: { control: "boolean" },
-  },
+    title:      { control: "text" },
+    bordered:   { control: "boolean" },
+    background: { control: "select", options: ["none", "subtle"] },
+    /* Story-only toggles below — not real `ContainerHeader` props. They let
+       the Default story act as an interactive playground for the same
+       patterns previously only viewable as separate fixed-render stories
+       (still kept below for direct reference), plus the new "with buttons"
+       pattern. Consumed and stripped out of `args` inside Default's
+       `render`, below, before the rest are spread onto the real component. */
+    showClose:   { control: "boolean", name: "Close button" },
+    showIcon:    { control: "boolean", name: "With icon" },
+    showActions: { control: "boolean", name: "With actions" },
+    showBadge:   { control: "boolean", name: "With badge" },
+    showSubhead: { control: "boolean", name: "With subhead" },
+    showButtons: { control: "boolean", name: "With buttons" },
+  } as Meta<typeof ContainerHeader>["argTypes"],
 };
 
 export default meta;
 type Story = StoryObj<typeof ContainerHeader>;
 
 export const Default: Story = {
-  args: { title: "Container Title", bordered: false },
+  args: {
+    title: "Container Title",
+    bordered: false,
+    background: "none",
+    showClose: false,
+    showIcon: false,
+    showActions: false,
+    showBadge: false,
+    showSubhead: false,
+    showButtons: false,
+  } as Story["args"],
+  render: (args: any) => {
+    const { showClose, showIcon, showActions, showBadge, showSubhead, showButtons, ...rest } = args;
+    return (
+      <ContainerHeader
+        {...rest}
+        icon={showIcon ? <InfoIcon className="h-5 w-5" /> : undefined}
+        onClose={showClose ? () => {} : undefined}
+        titleBadge={
+          showBadge ? <Badge shape="circle" count={5} variant="critical" size="sm" /> : undefined
+        }
+        subhead={showSubhead ? "Filter and search across all records" : undefined}
+        actions={
+          showActions || showButtons ? (
+            <>
+              {/* Left-to-right order: buttons, then actions (gear), then the
+                  component's own built-in close button — actions sits
+                  immediately to the left of close, buttons sits to the left
+                  of actions. */}
+              {showButtons && (
+                <>
+                  {/* No literal "secondary" button variant exists in `Button`
+                      — `outline` is the design system's non-primary/bordered
+                      button, i.e. the closest equivalent (see
+                      Button.stories.tsx, which labels this same variant
+                      "Outline" in its legend). */}
+                  <Button variant="outline" size="md">Action</Button>
+                  <Button variant="outline" size="md">Action</Button>
+                </>
+              )}
+              {showActions && (
+                <Button variant="ghost" size="icon" title="Settings">
+                  <Settings className="h-4 w-4" strokeWidth={1.5} />
+                </Button>
+              )}
+            </>
+          ) : undefined
+        }
+      />
+    );
+  },
 };
 
 export const WithClose: Story = {
@@ -82,7 +145,7 @@ export const WithBadge: Story = {
   render: () => (
     <ContainerHeader
       title="Notifications"
-      titleBadge={<StatusBadge count={5} variant="critical" size="sm" />}
+      titleBadge={<Badge shape="circle" count={5} variant="critical" size="sm" />}
       bordered={false}
       onClose={() => {}}
     />
@@ -101,6 +164,23 @@ export const WithSubhead: Story = {
   ),
 };
 
+export const WithButtons: Story = {
+  name: "With buttons",
+  render: () => (
+    <ContainerHeader
+      title="Query Builder"
+      bordered={false}
+      actions={
+        <>
+          <Button variant="outline" size="md">Action</Button>
+          <Button variant="outline" size="md">Action</Button>
+        </>
+      }
+      onClose={() => {}}
+    />
+  ),
+};
+
 export const AllVariants: Story = {
   name: "All variants",
   render: () => (
@@ -109,9 +189,16 @@ export const AllVariants: Story = {
       <ContainerHeader title="With close" bordered={false} onClose={() => {}} />
       <ContainerHeader title="With icon" icon={<InfoIcon className="h-5 w-5" />} bordered={false} onClose={() => {}} />
       <ContainerHeader title="With actions" bordered={false} onClose={() => {}}
-        actions={<Button variant="outline" size="sm">Action</Button>} />
+        actions={<Button variant="outline" size="md">Action</Button>} />
+      <ContainerHeader title="With buttons" bordered={false} onClose={() => {}}
+        actions={
+          <>
+            <Button variant="outline" size="md">Action</Button>
+            <Button variant="outline" size="md">Action</Button>
+          </>
+        } />
       <ContainerHeader title="With badge" bordered={false} onClose={() => {}}
-        titleBadge={<StatusBadge count={3} variant="default" size="sm" />} />
+        titleBadge={<Badge shape="circle" count={3} variant="default" size="sm" />} />
       <ContainerHeader title="With subhead" subhead="Secondary description text" bordered={false} onClose={() => {}} />
     </div>
   ),

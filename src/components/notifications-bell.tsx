@@ -1,10 +1,16 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { Bell } from "lucide-react";
-import { cn } from "../lib/utils";
-import { StatusBadge } from "./status-badge";
-import { Tooltip } from "./tooltip";
+import { ActionIconButton } from "./actions";
 import { AgentNotifications, type AgentNotification } from "./agent-notifications";
+
+/* NotificationsBell's trigger now composes the shared `ActionIconButton`
+   (which itself composes `Button`) instead of hand-rolling its own
+   `<button>` + `Tooltip` + `Badge` — this was the exact duplicate
+   implementation responsible for AppHeader's icon buttons drifting into
+   two different shapes (this trigger's old 40px/`rounded-lyra-lg` vs.
+   `ActionIconButton`'s 44px/`rounded-lyra-sm`). See actions.tsx/button.tsx
+   for where the canonical 44px AppHeader shape now lives. */
 
 /* ── Types ── */
 
@@ -89,34 +95,18 @@ const NotificationsBell = React.forwardRef<HTMLDivElement, NotificationsBellProp
 
     return (
       <div ref={ref} className={className}>
-        <Tooltip content="Notifications" placement="bottom" asLabel>
-          <button
-            ref={buttonRef}
-            type="button"
-            aria-label={`Notifications${count > 0 ? `, ${count} unread` : ""}`}
-            aria-expanded={open}
-            onClick={handleToggle}
-            className={cn(
-              "relative flex h-10 w-10 items-center justify-center rounded-lyra-lg",
-              "text-lyra-fg-default transition-colors",
-              "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus",
-              open && "bg-lyra-state-hover"
-            )}
-          >
-            <span className="relative inline-flex">
-              <Bell className="h-5 w-5" strokeWidth={1.5} />
-              {count > 0 && (
-                <StatusBadge
-                  variant="critical"
-                  size="sm"
-                  count={count}
-                  className="absolute -right-1.5 -top-1.5"
-                />
-              )}
-            </span>
-          </button>
-        </Tooltip>
+        <ActionIconButton
+          ref={buttonRef}
+          size="xl"
+          title="Notifications"
+          aria-label={`Notifications${count > 0 ? `, ${count} unread` : ""}`}
+          aria-expanded={open}
+          badge={count}
+          onClick={handleToggle}
+          className={open ? "bg-lyra-state-hover" : undefined}
+        >
+          <Bell className="h-5 w-5" strokeWidth={1.5} />
+        </ActionIconButton>
 
         {/* Built-in portal panel — only rendered when renderPanel is true */}
         {renderPanel && open && ReactDOM.createPortal(

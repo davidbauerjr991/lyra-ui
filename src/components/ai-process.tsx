@@ -1,6 +1,7 @@
 import * as React from "react";
 import { ChevronDown, Check, Clock, AlertCircle, Loader } from "lucide-react";
 import { cn } from "../lib/utils";
+import { Icon } from "./icon";
 
 /* ── Types ── */
 
@@ -23,37 +24,30 @@ export interface AIProcessProps {
   className?: string;
 }
 
-/* ── Step icon ── */
+/* ── Step icon ──
+   Built on the shared `Icon` component (`size="xs"`, background + `shape=
+   "circle"`) instead of a bespoke span — this used to be its own hand-
+   rolled "colored circle + lucide glyph" implementation, parallel to (and
+   drifted from) `Icon`'s own `background`+`shape="circle"` mode, which is
+   the same pattern the "Queue Agent status" icons (`agent-dashboard.tsx`'s
+   `AgentDashboardQueueDrilldown`) already use. `Icon` gained `xs` (24px
+   container / 14px glyph, matching this component's original dimensions
+   exactly), a `shell` background (for "pending" — distinct from `neutral`,
+   see `icon.tsx`'s own comment on why), and `strokeWidth`/`spin` props (for
+   the heavier "done"/"error" strokes and the spinning "active" loader) so
+   this could move onto it without changing anything visually. */
 
 function StepIcon({ status }: { status: AIProcessStepStatus }) {
-  const base = "flex h-6 w-6 items-center justify-center rounded-full shrink-0";
-
   switch (status) {
     case "done":
-      return (
-        <span className={cn(base, "bg-lyra-status-success-subtle")}>
-          <Check className="h-3.5 w-3.5 text-lyra-status-success-strong" strokeWidth={2.5} />
-        </span>
-      );
+      return <Icon icon={Check} size="xs" background="success" shape="circle" strokeWidth={2.5} decorative />;
     case "active":
-      return (
-        <span className={cn(base, "bg-lyra-bg-active-subtle")}>
-          <Loader className="h-3.5 w-3.5 text-lyra-fg-active-strong animate-spin" strokeWidth={2} />
-        </span>
-      );
+      return <Icon icon={Loader} size="xs" background="active" shape="circle" strokeWidth={2} spin decorative />;
     case "error":
-      return (
-        <span className={cn(base, "bg-lyra-status-critical-subtle")}>
-          <AlertCircle className="h-3.5 w-3.5 text-lyra-status-critical-strong" strokeWidth={2} />
-        </span>
-      );
+      return <Icon icon={AlertCircle} size="xs" background="critical" shape="circle" strokeWidth={2} decorative />;
     case "pending":
     default:
-      return (
-        <span className={cn(base, "bg-lyra-bg-surface-shell")}>
-          <Clock className="h-3.5 w-3.5 text-lyra-fg-secondary" strokeWidth={1.5} />
-        </span>
-      );
+      return <Icon icon={Clock} size="xs" background="shell" shape="circle" strokeWidth={1.5} decorative />;
   }
 }
 

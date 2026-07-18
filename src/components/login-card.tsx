@@ -5,7 +5,7 @@ import { Button } from "./button";
 import { Checkbox } from "./checkbox";
 import { RadioGroup, RadioGroupItem } from "./radio";
 import { PhoneInput, PHONE_COUNTRIES, type PhoneValue } from "./phone-input";
-import { Divider } from "./divider";
+import { Separator } from "./separator";
 import { ConversationMessage } from "./conversation-message";
 import { Input } from "./input";
 import { Container } from "./container";
@@ -49,7 +49,7 @@ const VALID_STATION_ID = "12345";
 
 /* ── Component ──
    Rendered as a small (360px) modal-style Container — matches the "Small (360px)"
-   convention from Atoms/Modal (Container variant="modal" + w-[360px]), rather than
+   convention from Custom Primitives/Modal (Container variant="modal" + w-[360px]), rather than
    a hand-rolled card div. */
 
 const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
@@ -159,7 +159,7 @@ const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
               <RadioGroupItem value="work-station" label="Station ID" />
             </RadioGroup>
 
-            <Divider className="my-5" />
+            <Separator className="my-5" />
 
             <Button variant="ghost" onClick={handleDarkModeToggle} disabled={launching}>
               {darkMode ? <Sun className="h-4 w-4" strokeWidth={1.5} /> : <Moon className="h-4 w-4" strokeWidth={1.5} />}
@@ -175,7 +175,7 @@ const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
               aria-hidden={!needsPhoneNumber}
             >
               <div className={cn("min-h-0", needsPhoneNumber ? "overflow-visible" : "overflow-hidden")}>
-                <Divider
+                <Separator
                   className={cn(
                     "my-5 transition-opacity duration-200",
                     needsPhoneNumber ? "opacity-100 delay-100" : "opacity-0"
@@ -207,7 +207,7 @@ const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
               aria-hidden={!needsStationId}
             >
               <div className={cn("min-h-0", needsStationId ? "overflow-visible" : "overflow-hidden")}>
-                <Divider
+                <Separator
                   className={cn(
                     "my-5 transition-opacity duration-200",
                     needsStationId ? "opacity-100 delay-100" : "opacity-0"

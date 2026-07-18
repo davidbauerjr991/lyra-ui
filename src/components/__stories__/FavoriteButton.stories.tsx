@@ -3,7 +3,7 @@ import { useState } from "react";
 import { FavoriteButton } from "../favorite-button";
 
 const meta: Meta<typeof FavoriteButton> = {
-  title: "Atoms/FavoriteButton",
+  title: "Custom Primitives/FavoriteButton",
   component: FavoriteButton,
   tags: ["autodocs"],
   parameters: {

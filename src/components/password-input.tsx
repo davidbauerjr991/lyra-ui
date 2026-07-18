@@ -1,9 +1,32 @@
 import * as React from "react";
+import * as PasswordToggleField from "@radix-ui/react-password-toggle-field";
 import { Eye, EyeOff, Info, Check, X } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Label } from "./label";
 import { Tooltip } from "./tooltip";
 import { ErrorIcon } from "./icons/error-icon";
+
+/* Was a fully hand-rolled show/hide password field (local `useState` +
+   a plain `<button>` flipping `type="password"`/`"text"`). Rebuilt on
+   Radix's actual Password Toggle Field primitive
+   (`@radix-ui/react-password-toggle-field`) — `Root` owns the visible/
+   hidden state, `Input` renders the real `<input>` (switches its own
+   `type` internally — never pass `type` to it), `Toggle` is the show/hide
+   button. This picks up real behavior the hand-rolled version didn't have,
+   for free:
+     - The toggle button is a normal tab stop with a real auto-generated
+       "Show password"/"Hide password" `aria-label` (our old version set
+       `tabIndex={-1}`, pulling it out of the tab order entirely — keyboard
+       users had no way to reach it).
+     - Clicking the toggle refocuses the input and restores the text
+       cursor/selection exactly where it was, instead of just leaving focus
+       whichever way the browser defaults.
+     - The field automatically re-hides on the surrounding `<form>`'s
+       `submit`/`reset` events.
+     - `autoCapitalize="off"` / `spellCheck={false}` are set on the input
+       by default (Radix's own default) — the hand-rolled `<input>` never
+       set these, so a mobile keyboard could autocapitalize/spellcheck a
+       password field's contents. */
 
 /* ── Password requirements ── */
 
@@ -63,7 +86,8 @@ export interface PasswordInputProps {
   showRequirements?: boolean;
   requirements?: PasswordRequirement[];
   onBlur?: React.FocusEventHandler<HTMLInputElement>;
-  autoComplete?: string;
+  /** Narrowed to match `PasswordToggleField.Input`'s own `autoComplete` type. */
+  autoComplete?: "current-password" | "new-password";
   className?: string;
   id?: string;
 }
@@ -90,15 +114,15 @@ const PasswordInput = React.forwardRef<HTMLDivElement, PasswordInputProps>(
     const inputId = id ?? autoId;
     const errorId = `${inputId}-error`;
 
-    const [visible, setVisible] = React.useState(false);
-
     const shellClass = cn(
       "relative flex h-9 w-full items-center rounded-lyra-sm border lyra-body-md transition-colors",
       "bg-lyra-bg-field text-lyra-fg-default",
       error
         ? "border-lyra-status-critical-strong focus-within:ring-2 focus-within:ring-lyra-status-critical-strong/20"
         : "border-lyra-border-strong hover:border-lyra-state-border-hover-neutral focus-within:border-lyra-border-active focus-within:ring-2 focus-within:ring-lyra-border-active/20",
-      disabled  && "bg-lyra-bg-disabled border-transparent cursor-not-allowed",
+      // `pointer-events-none` blocks `:hover` from matching at all — without
+      // it, the hover border above would still show on a disabled field.
+      disabled  && "bg-lyra-bg-disabled border-transparent cursor-not-allowed pointer-events-none",
       readonly  && "bg-lyra-bg-surface-canvas cursor-default pointer-events-none"
     );
 
@@ -121,35 +145,41 @@ const PasswordInput = React.forwardRef<HTMLDivElement, PasswordInputProps>(
           </div>
         )}
 
-        <div className={shellClass}>
-          <input
-            id={inputId}
-            type={visible ? "text" : "password"}
-            value={value}
-            onChange={(e) => onChange?.(e.target.value)}
-            placeholder={placeholder}
-            disabled={disabled}
-            readOnly={readonly}
-            autoComplete={autoComplete}
-            onBlur={onBlur}
-            aria-invalid={!!error}
-            aria-describedby={error ? errorId : undefined}
-            className="flex-1 bg-transparent outline-none pl-3 pr-1 truncate placeholder:text-lyra-fg-disabled disabled:cursor-not-allowed"
-          />
-          {!disabled && !readonly && (
-            <button
-              type="button"
-              tabIndex={-1}
-              onClick={() => setVisible((v) => !v)}
-              aria-label={visible ? "Hide password" : "Show password"}
-              className="pr-3 flex items-center text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors shrink-0"
-            >
-              {visible
-                ? <EyeOff className="h-4 w-4" strokeWidth={1.5} />
-                : <Eye    className="h-4 w-4" strokeWidth={1.5} />}
-            </button>
-          )}
-        </div>
+        <PasswordToggleField.Root>
+          <div className={shellClass}>
+            <PasswordToggleField.Input
+              id={inputId}
+              value={value}
+              onChange={(e) => onChange?.(e.target.value)}
+              placeholder={placeholder}
+              disabled={disabled}
+              readOnly={readonly}
+              autoComplete={autoComplete}
+              onBlur={onBlur}
+              aria-invalid={!!error}
+              aria-describedby={error ? errorId : undefined}
+              className="flex-1 bg-transparent outline-none pl-3 pr-1 truncate placeholder:text-lyra-fg-disabled disabled:cursor-not-allowed"
+            />
+            {!disabled && !readonly && (
+              // A real tab stop (Radix's own default — no `tabIndex={-1}`
+              // hack like `ClearButton` uses elsewhere), so it needs a
+              // visible focus-visible ring of its own, unlike the old
+              // hand-rolled button which was never keyboard-reachable at
+              // all. `aria-label` is auto-generated by `Toggle` itself
+              // ("Show password" / "Hide password") since this button has
+              // no visible text content — no need to set it manually.
+              <PasswordToggleField.Toggle
+                id={`${inputId}-toggle`}
+                className="pr-3 flex items-center text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors shrink-0 rounded-lyra-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
+              >
+                <PasswordToggleField.Icon
+                  visible={<EyeOff className="h-4 w-4" strokeWidth={1.5} />}
+                  hidden={<Eye className="h-4 w-4" strokeWidth={1.5} />}
+                />
+              </PasswordToggleField.Toggle>
+            )}
+          </div>
+        </PasswordToggleField.Root>
 
         {error && (
           <p id={errorId} role="alert" className="mt-1.5 lyra-body-sm text-lyra-status-critical-strong flex items-center gap-1">

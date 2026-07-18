@@ -1,9 +1,10 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
+import { SlidersHorizontal, ChevronDown } from "lucide-react";
 import { Select, type SelectOption } from "../select";
 
 const meta: Meta<typeof Select> = {
-  title: "Atoms/Select",
+  title: "Radix Primitives/Select",
   component: Select,
   tags: ["autodocs"],
   parameters: {
@@ -156,6 +157,72 @@ export const Controlled: Story = {
         <p className="lyra-body-sm text-lyra-fg-secondary">
           Selected: <span className="text-lyra-fg-default">{val}</span>
         </p>
+      </div>
+    );
+  },
+};
+
+export const CustomIconTrigger: Story = {
+  name: "Custom Trigger (Icon, Single-Select)",
+  render: () => {
+    const [val, setVal] = useState("opt2");
+    return (
+      <div className="flex items-center justify-end rounded-lyra-md border border-lyra-border-subtle p-2 w-72">
+        <span className="lyra-body-md text-lyra-fg-default mr-auto">Card header</span>
+        {/* Bare icon (not a <button>) — same pattern as `table.tsx`'s
+            `ColumnToggle`, which passes `trigger={<ColumnsIcon .../>}`.
+            Wrapped in the default icon-button shell for non-button
+            triggers. `dropdownAlign="right"` pins the dropdown's
+            preferred side to the trigger's right edge (still
+            collision-aware — Radix flips if it would overflow), matching
+            how a header-aligned trigger like this needs its dropdown to
+            open left instead of overflowing off-screen. */}
+        <Select
+          options={sampleOptions}
+          value={val}
+          onValueChange={setVal}
+          trigger={<SlidersHorizontal className="h-4 w-4" aria-hidden="true" />}
+          dropdownAlign="right"
+        />
+      </div>
+    );
+  },
+};
+
+export const CustomButtonTrigger: Story = {
+  name: "Custom Trigger (Button, Multi-Select)",
+  render: () => {
+    const [vals, setVals] = useState<string[]>(["opt1", "opt3"]);
+    const [open, setOpen] = useState(false);
+    return (
+      <div className="flex justify-end w-72">
+        {/* A full <button> trigger — same pattern as `filter-chip.tsx`'s
+            `chipTrigger`/`operatorTrigger`: a plain button with its own
+            visual content and no onClick of its own (Select supplies the
+            interactivity). */}
+        <Select
+          multiple
+          options={sampleOptions}
+          values={vals}
+          onValuesChange={setVals}
+          onOpenChange={setOpen}
+          dropdownAlign="right"
+          trigger={
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lyra-sm border border-lyra-border-strong bg-lyra-bg-field hover:border-lyra-state-border-hover-neutral transition-colors"
+            >
+              <span className="lyra-body-md-emphasis text-lyra-fg-default">
+                {vals.length > 0 ? `${vals.length} selected` : "Filter"}
+              </span>
+              <ChevronDown
+                className={`h-3.5 w-3.5 flex-shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+                strokeWidth={1.5}
+                aria-hidden="true"
+              />
+            </button>
+          }
+        />
       </div>
     );
   },

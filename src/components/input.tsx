@@ -77,7 +77,13 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
                 ? "border-lyra-border-strong bg-lyra-bg-surface-canvas text-lyra-fg-default cursor-default pointer-events-none"
                 : "border-lyra-border-strong bg-lyra-bg-field text-lyra-fg-default hover:border-lyra-state-border-hover-neutral focus:border-lyra-border-active focus:ring-2 focus:ring-lyra-border-active/20",
               disabled &&
-                "bg-lyra-bg-disabled border-transparent text-lyra-fg-disabled cursor-not-allowed"
+                // `pointer-events-none` (matching the `readonly` branch
+                // above) blocks `:hover` from matching at all — without it,
+                // the plain `hover:border-lyra-state-border-hover-neutral`
+                // above still fires on a disabled field (native `disabled`
+                // only blocks focus/typing, not `:hover`), showing a border
+                // that's supposed to be `border-transparent`.
+                "bg-lyra-bg-disabled border-transparent text-lyra-fg-disabled cursor-not-allowed pointer-events-none"
             )}
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? `${inputId}-error` : undefined}

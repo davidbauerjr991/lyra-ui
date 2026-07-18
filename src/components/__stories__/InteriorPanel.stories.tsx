@@ -13,7 +13,7 @@ import { Input } from "../input";
    matching pair on the other panel type. */
 
 const meta: Meta<typeof InteriorPanel> = {
-  title: "Atoms/InteriorPanel",
+  title: "Custom Primitives/InteriorPanel",
   component: InteriorPanel,
   parameters: {
     layout: "padded",

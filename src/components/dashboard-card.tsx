@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Pencil, RefreshCw, Trash2, TrendingUp, TrendingDown, type LucideIcon } from "lucide-react";
 import { Container, type ContainerProps } from "./container";
-import { Divider } from "./divider";
+import { Separator } from "./separator";
 import { FilterChip, type FilterChipProps, type FilterChipOption } from "./filter-chip";
 import { KebabMenuButton } from "./kebab-menu-button";
 import type { MenuEntry } from "./menu";
@@ -127,7 +127,7 @@ export interface DashboardCardProps extends Omit<ContainerProps, "children"> {
   /** Up to 4 metrics rendered as equal-width columns. Takes over the card body in place of `children` when provided. */
   metrics?: DashboardCardMetric[];
   /**
-   * "divided" (default) — plain columns separated by a vertical `Divider`, no per-item border.
+   * "divided" (default) — plain columns separated by a vertical `Separator`, no per-item border.
    * "contained" — each metric renders inside its own `Container` (bordered box); pair with `metric.selected` for the active-card look.
    */
   metricVariant?: DashboardCardMetricVariant;
@@ -392,18 +392,18 @@ function MetricRow({ metrics, variant }: { metrics: DashboardCardMetric[]; varia
           </div>
           {i < metrics.length - 1 && (
             <>
-              <Divider orientation="horizontal" className="lyra-metric-row-divider--horizontal" />
-              {/* Divider's own vertical styling is `h-full` (height:
+              <Separator orientation="horizontal" className="lyra-metric-row-divider--horizontal" />
+              {/* Separator's own vertical styling is `h-full` (height:
                   100%) — inside `.lyra-metric-row`'s intrinsic (content-
                   driven), not fixed, height, that percentage has nothing
                   definite to resolve against and the divider collapses to
                   0 height instead of stretching, so no line ever shows.
                   Overriding to `h-auto self-stretch` (the className prop
-                  is merged in *after* Divider's own base classes via
+                  is merged in *after* Separator's own base classes via
                   `cn`'s twMerge, so it wins) sidesteps the percentage
                   entirely and stretches purely via the flex algorithm,
                   which has no such ambiguity. */}
-              <Divider orientation="vertical" className="lyra-metric-row-divider--vertical h-auto self-stretch" />
+              <Separator orientation="vertical" className="lyra-metric-row-divider--vertical h-auto self-stretch" />
             </>
           )}
         </React.Fragment>

@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { ListItem } from "../list-item";
 import { UserPlus, MessageSquare, Bell } from "lucide-react";
-import { StatusBadge } from "../status-badge";
+import { Badge } from "../badge";
 
 const meta: Meta<typeof ListItem> = {
-  title: "Atoms/ListItem",
+  title: "Custom Primitives/ListItem",
   component: ListItem,
   tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
@@ -37,7 +37,7 @@ export const WithLeading: Story = {
         title="System Update"
         subtitle="Maintenance window at midnight"
         meta="2h ago"
-        trailing={<StatusBadge variant="info" size="sm">New</StatusBadge>}
+        trailing={<Badge shape="circle" variant="info" size="sm">New</Badge>}
       />
     </div>
   ),

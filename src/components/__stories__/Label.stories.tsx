@@ -4,7 +4,7 @@ import { Input } from "../input";
 import { Select } from "../select";
 
 const meta = {
-  title: "Atoms/Label",
+  title: "Radix Primitives/Label",
   component: Label,
   tags: ["autodocs"],
   parameters: { layout: "centered", backgrounds: { default: "lyra-shell" } },
@@ -52,7 +52,7 @@ export const LabelWithHelpText: Story = {
 export const RequiredLabel: Story = {
   name: "Required Label",
   args: {
-    label: "Email address",
+    label: "Email Address",
     labelFor: "required-input",
     required: true,
   },

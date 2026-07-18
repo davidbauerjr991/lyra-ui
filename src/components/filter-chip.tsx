@@ -21,7 +21,7 @@ type FilterChipVariant = "default" | "active" | "error" | "disabled";
 /* ── CVA definitions ── */
 
 const filterChipVariants = cva(
-  "inline-flex items-center gap-1.5 border px-3 h-8 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
+  "inline-flex items-center gap-1.5 border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
   {
     variants: {
       variant: {
@@ -30,8 +30,17 @@ const filterChipVariants = cva(
         error:    "border-lyra-status-critical-strong bg-lyra-status-critical-subtle text-lyra-status-critical-strong hover:bg-lyra-state-hover-critical-subtle active:bg-lyra-state-pressed-critical-subtle",
         disabled: "border-lyra-border-disabled bg-lyra-bg-disabled text-lyra-fg-disabled cursor-not-allowed",
       },
+      /** `md` (32px, default) is FilterChip's only historical height — every
+       *  existing call site keeps that exact size since it's the default.
+       *  `sm` (24px) exists for compact contexts (e.g. a dense applied-
+       *  filters summary row) — see the "Basic" stories in
+       *  FilterChip.stories.tsx for both heights side by side. */
+      size: {
+        md: "h-8 px-3",
+        sm: "h-6 px-2",
+      },
     },
-    defaultVariants: { variant: "default" },
+    defaultVariants: { variant: "default", size: "md" },
   }
 );
 
@@ -61,9 +70,12 @@ const filterChipOuterBorderVariants = cva("", {
   defaultVariants: { variant: "default" },
 });
 
-/** Remove button classes */
+/** Remove button classes — no left border: it sits flush against the chip/
+ *  operator-wrapper's own right edge (which has its right border stripped
+ *  for the same reason), so the whole thing reads as one continuous
+ *  bordered shape instead of two pieces with a seam down the middle. */
 const filterChipRemoveButtonVariants = cva(
-  "inline-flex items-center justify-center h-8 w-8 -ml-px rounded-r-lyra-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
+  "inline-flex items-center justify-center rounded-r-lyra-md border border-l-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
   {
     variants: {
       variant: {
@@ -72,8 +84,14 @@ const filterChipRemoveButtonVariants = cva(
         error:    "border-lyra-status-critical-strong bg-lyra-status-critical-subtle text-lyra-status-critical-strong hover:bg-lyra-state-hover-critical-subtle active:bg-lyra-state-pressed-critical-subtle",
         disabled: "border-lyra-border-disabled bg-lyra-bg-disabled text-lyra-fg-disabled cursor-not-allowed",
       },
+      /** Matches `filterChipVariants`' `size` axis so the remove button
+       *  stays exactly as tall as the chip it's attached to. */
+      size: {
+        md: "h-8 w-8",
+        sm: "h-6 w-6",
+      },
     },
-    defaultVariants: { variant: "default" },
+    defaultVariants: { variant: "default", size: "md" },
   }
 );
 
@@ -172,7 +190,13 @@ const FilterChip = React.forwardRef<HTMLButtonElement, FilterChipProps>(
           // In operator wrapper, the trigger has no visible border (wrapper provides it)
           hasOperators
             ? "border-0 rounded-none"
-            : onRemove && !disabled ? "rounded-l-lyra-md" : "rounded-lyra-md",
+            : onRemove && !disabled
+              // No right border here — it sits flush against the remove
+              // button's own left-border-less edge (see
+              // `filterChipRemoveButtonVariants`), so the pair reads as one
+              // continuous bordered shape instead of two with a seam.
+              ? "rounded-l-lyra-md rounded-r-none border-r-0"
+              : "rounded-lyra-md",
         )}
       >
         {/* Error icon */}
@@ -262,7 +286,10 @@ const FilterChip = React.forwardRef<HTMLButtonElement, FilterChipProps>(
           <div className={cn(
             "inline-flex items-center rounded-l-lyra-md border h-8 overflow-hidden",
             outerBorder, segmentColor,
-            onRemove && !disabled ? "rounded-r-none" : "rounded-r-lyra-md"
+            // Same seam fix as the non-operator trigger above: no right
+            // border when a remove button follows, so it sits flush
+            // against the remove button's left-border-less edge.
+            onRemove && !disabled ? "rounded-r-none border-r-0" : "rounded-r-lyra-md"
           )}>
             {/* Label */}
             <span className="px-3 lyra-body-md-emphasis whitespace-nowrap select-none">{label}:</span>
@@ -350,5 +377,5 @@ const FilterChip = React.forwardRef<HTMLButtonElement, FilterChipProps>(
 );
 FilterChip.displayName = "FilterChip";
 
-export { FilterChip, filterChipVariants };
+export { FilterChip, filterChipVariants, filterChipRemoveButtonVariants };
 export type { FilterChipProps, FilterChipOption, FilterChipVariant };

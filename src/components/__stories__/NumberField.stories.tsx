@@ -3,7 +3,7 @@ import { useState } from "react";
 import { NumberField } from "../number-field";
 
 const meta: Meta<typeof NumberField> = {
-  title: "Atoms/Number Field",
+  title: "Custom Primitives/Number Field",
   component: NumberField,
   tags: ["autodocs"],
   parameters: { layout: "centered", backgrounds: { default: "lyra-shell" } },

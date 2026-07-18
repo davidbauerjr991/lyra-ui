@@ -60,9 +60,10 @@ const preview: Preview = {
         // here still falls back to alphabetical, same as before.
         order: [
           "Foundations", ["Colors", "Typography", "Spacing", "Border Radius", "Shadows"],
-          "Atoms",
+          "Custom Primitives",
           "UI",
           "Templates", ["Admin UIs", "Agent Next Gen", "Data Management", "Dashboards"],
+          "Radix Primitives",
         ],
       },
     },

@@ -3,7 +3,7 @@ import { Tooltip } from "../tooltip";
 import { Button } from "../button";
 
 const meta: Meta<typeof Tooltip> = {
-  title: "Atoms/Tooltip",
+  title: "Radix Primitives/Tooltip",
   component: Tooltip,
   tags: ["autodocs"],
   parameters: {

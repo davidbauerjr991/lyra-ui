@@ -1,9 +1,9 @@
 import * as React from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
-import { X } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Label } from "./label";
 import { Menu } from "./menu";
+import { ClearButton } from "./clear-button";
 
 /* ── Types ── */
 
@@ -144,7 +144,7 @@ const Autocomplete = React.forwardRef<HTMLDivElement, AutocompleteProps>(
       "bg-lyra-bg-field text-lyra-fg-default",
       "border-lyra-border-strong hover:border-lyra-state-border-hover-neutral",
       open && "border-lyra-border-active ring-2 ring-lyra-border-active/20",
-      disabled && "bg-lyra-bg-disabled border-transparent cursor-not-allowed",
+      disabled && "bg-lyra-bg-disabled border-transparent cursor-not-allowed pointer-events-none",
       readonly && "bg-lyra-bg-surface-canvas cursor-default pointer-events-none"
     );
 
@@ -196,15 +196,11 @@ const Autocomplete = React.forwardRef<HTMLDivElement, AutocompleteProps>(
                 )}
               />
               {inputValue && !disabled && !readonly && (
-                <button
-                  type="button"
+                <ClearButton
                   onClick={handleClear}
-                  tabIndex={-1}
                   aria-label="Clear"
-                  className="pr-3 flex items-center text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors flex-shrink-0"
-                >
-                  <X className="h-4 w-4" strokeWidth={1.5} />
-                </button>
+                  className="mr-2 flex-shrink-0"
+                />
               )}
             </div>
           </PopoverPrimitive.Anchor>

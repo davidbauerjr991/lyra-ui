@@ -84,7 +84,9 @@ const inputShell = (disabled?: boolean, readonly?: boolean) =>
     "bg-lyra-bg-field text-lyra-fg-default",
     "border-lyra-border-strong hover:border-lyra-state-border-hover-neutral",
     "focus-within:border-lyra-border-active focus-within:ring-2 focus-within:ring-lyra-border-active/20",
-    disabled  && "bg-lyra-bg-disabled border-transparent cursor-not-allowed",
+    // `pointer-events-none` blocks `:hover` from matching at all — without
+    // it, the hover border above would still show on a disabled field.
+    disabled  && "bg-lyra-bg-disabled border-transparent cursor-not-allowed pointer-events-none",
     readonly  && "bg-lyra-bg-surface-canvas cursor-default pointer-events-none"
   );
 

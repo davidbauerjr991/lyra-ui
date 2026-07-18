@@ -85,13 +85,22 @@ const DraggablePanel = React.forwardRef<HTMLDivElement, DraggablePanelProps>(
           <>
             <ContainerHeader
               title={title}
-              /* Grip icon in float mode; spacer div to preserve header height in docked mode */
+              /* Grip icon in float mode; no icon at all in docked mode.
+                 This used to render a blank `w-4` spacer div here "to
+                 preserve header height" — but `ContainerHeader`'s title
+                 (and titleBadge) now sit in their own fixed-height (36px)
+                 box regardless of whether an icon is present, so the
+                 header's height no longer depends on the icon at all. The
+                 spacer was purely a leftover width-reservation hack at that
+                 point, and its actual effect was an unwanted ~24px
+                 (spacer + gap) left indent on the docked title — it
+                 misaligned "Screen Pop"/etc. from the rest of the docked
+                 panel's content below it, which starts flush with the
+                 header's own left padding. */
               icon={
-                variant === "float" ? (
-                  <div {...gripProps}><GripVertical className="h-4 w-4" strokeWidth={1.5} /></div>
-                ) : (
-                  <div className="w-4" aria-hidden="true" />
-                )
+                variant === "float"
+                  ? <div {...gripProps}><GripVertical className="h-4 w-4" strokeWidth={1.5} /></div>
+                  : undefined
               }
               actions={
                 <Tooltip content={dockButtonProps["aria-label"]} placement="bottom" asLabel>

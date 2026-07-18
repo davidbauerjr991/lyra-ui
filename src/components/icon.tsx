@@ -6,7 +6,7 @@ import { Tooltip } from "./tooltip";
 
 /* ── Types ── */
 
-export type IconSize = "sm" | "md" | "lg";
+export type IconSize = "xs" | "sm" | "md" | "lg";
 export type IconColor =
   | "default"
   | "secondary"
@@ -31,7 +31,8 @@ export type IconBackground =
   | "critical"
   | "info"
   | "neutral"
-  | "surface";
+  | "surface"
+  | "shell";
 
 export type IconShape = "none" | "rounded" | "circle";
 
@@ -47,6 +48,20 @@ export interface IconProps {
   decorative?: boolean;
   label?: string;
   tooltip?: boolean;
+  /**
+   * Stroke width passed straight to the underlying Lucide icon (default
+   * `1.5`, matching every other icon in the library). Override for contexts
+   * that need a heavier glyph to stay legible at small sizes — e.g.
+   * `AIProcess`'s step icons use `2`/`2.5` at `size="xs"`, the same
+   * heavier-stroke-at-small-size fix used for `InteractionNavItem`'s
+   * channel icon badges.
+   */
+  strokeWidth?: number;
+  /**
+   * Adds a continuous rotation (`animate-spin`) — for an in-progress/
+   * loading icon (e.g. a `Loader` glyph as `AIProcess`'s "active" step).
+   */
+  spin?: boolean;
 }
 
 /* ── CVA definitions ── */
@@ -54,6 +69,10 @@ export interface IconProps {
 const iconVariants = cva("", {
   variants: {
     size: {
+      // `xs` (14px) exists solely to back `AIProcess`'s step icons at their
+      // 24px container size — see `iconContainerVariants`'s matching `xs`
+      // entry below and `ai-process.tsx`'s `StepIcon`.
+      xs: "h-3.5 w-3.5",
       sm: "h-4 w-4",
       md: "h-5 w-5",
       lg: "h-6 w-6",
@@ -85,6 +104,7 @@ const iconContainerVariants = cva(
   {
     variants: {
       size: {
+        xs: "h-6 w-6",
         sm: "h-7 w-7",
         md: "h-9 w-9",
         lg: "h-11 w-11",
@@ -99,6 +119,12 @@ const iconContainerVariants = cva(
         info:     "bg-lyra-accent-purple-soft text-lyra-accent-purple-strong",
         neutral:  "bg-lyra-bg-surface-container-subtle text-lyra-fg-secondary",
         surface:  "bg-lyra-bg-surface-base border border-lyra-border-subtle text-lyra-fg-default",
+        // Distinct from `neutral` (`bg-surface-container-subtle`, near-white
+        // `#fbfcfe`) — `shell` uses the visibly grayer page-shell token
+        // (`#f3f5f6`), matching `AIProcess`'s "pending" step exactly (that
+        // state needs to read as a quiet gray dot against a white card, not
+        // near-invisible).
+        shell:    "bg-lyra-bg-surface-shell text-lyra-fg-secondary",
       },
       shape: {
         none:    "",
@@ -128,6 +154,8 @@ const Icon = React.forwardRef<SVGSVGElement, IconProps>(
       decorative = false,
       label,
       tooltip = false,
+      strokeWidth = 1.5,
+      spin = false,
     },
     ref
   ) => {
@@ -144,9 +172,10 @@ const Icon = React.forwardRef<SVGSVGElement, IconProps>(
     const iconEl = (
       <LucideIconComponent
         ref={ref}
-        strokeWidth={1.5}
+        strokeWidth={strokeWidth}
         className={cn(
           iconVariants({ size, color: resolvedColor }),
+          spin && "animate-spin",
           background === "none" && className
         )}
         {...svgProps}
@@ -163,8 +192,8 @@ const Icon = React.forwardRef<SVGSVGElement, IconProps>(
           )}
         >
           <LucideIconComponent
-            strokeWidth={1.5}
-            className={iconVariants({ size })}
+            strokeWidth={strokeWidth}
+            className={cn(iconVariants({ size }), spin && "animate-spin")}
             {...svgProps}
           />
         </div>

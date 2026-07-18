@@ -40,13 +40,13 @@ export const Default: Story = {
   },
 };
 
-export const WithChip: Story = {
-  name: "With Chip",
+export const WithBadge: Story = {
+  name: "With Badge",
   args: {
     title: "Desktop Designs",
-    chip: "Active",
-    chipColor: "green",
-    chipVariant: "subtle",
+    badge: "Active",
+    badgeColor: "green",
+    badgeVariant: "subtle",
     actions: defaultActions,
   },
 };
@@ -105,7 +105,7 @@ export const WithBreadcrumbs: Story = {
     title: "Dashboard Name",
     // `breadcrumb` also accepts an array for a deeper trail — each entry
     // renders as its own parent crumb before the title, composed from the
-    // shared Breadcrumb parts (see breadcrumb.tsx / Atoms/Breadcrumb).
+    // shared Breadcrumb parts (see breadcrumb.tsx / Custom Primitives/Breadcrumb).
     breadcrumb: [
       { label: "Dashboards" },
       { label: "Sales" },

@@ -1,69 +1,57 @@
 import * as React from "react";
 import { ChevronDown } from "lucide-react";
-import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/utils";
 import { Tooltip } from "./tooltip";
+import { Button } from "./button";
 
-/* ── Action Icon Button (icon with optional badge) ── */
+/* ── Action Icon Button (icon with optional badge) ──
+   Composes the shared `Button` component (`variant="icon"`) rather than
+   hand-rolling its own `<button>` + cva — this used to be a fully separate
+   implementation with its own radius/size scale, which is exactly how
+   AppHeader's icon buttons ended up drifting into two different shapes
+   across the design system (this component's old 44px/`rounded-lyra-sm`
+   vs. `notifications-bell.tsx`/`AgentNextGenPage.tsx`'s hand-rolled
+   40px/`rounded-lyra-lg` copies). `Button` is now the single source of
+   truth for every icon-button shape (including the badge overlay, which
+   `Button` itself renders — see button.tsx); this component just maps its
+   own legacy size names onto `Button`'s icon sizes so existing callers
+   (`Header.tsx` in every consuming app, `OutboundCampaignsPage.tsx`, every
+   Storybook usage) don't need to change. */
+
+const ACTION_ICON_BUTTON_SIZE_MAP = {
+  sm: "icon-md",
+  default: "icon-lg",
+  lg: "icon-xl",
+  /* AppHeader standard — 44px. See button.tsx's own `icon-2xl` doc comment
+     for why this is its own size tier rather than a redefinition of
+     `icon-xl` (40px, used elsewhere). */
+  xl: "icon-2xl",
+} as const;
 
 interface ActionIconButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   /** Badge count — hidden when 0 or undefined */
   badge?: number;
-  /** Size: sm=32, default=36, lg=40, xl=44 */
+  /** Size: sm=32 (Button `icon-md`), default=36 (`icon-lg`), lg=40 (`icon-xl`), xl=44 (`icon-2xl`, the AppHeader standard) */
   size?: "sm" | "default" | "lg" | "xl";
 }
-
-const actionIconButtonVariants = cva(
-  "relative flex items-center justify-center rounded-lyra-sm text-lyra-fg-action transition-colors hover:bg-lyra-state-hover active:bg-lyra-state-pressed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
-  {
-    variants: {
-      size: {
-        sm:      "h-8 w-8",
-        default: "h-9 w-9",
-        lg:      "h-10 w-10",
-        xl:      "h-11 w-11",
-      },
-    },
-    defaultVariants: { size: "default" },
-  }
-);
 
 const ActionIconButton = React.forwardRef<
   HTMLButtonElement,
   ActionIconButtonProps
->(({ className, badge, size = "default", title, children, ...props }, ref) => {
-  const button = (
-    <button
-      ref={ref}
-      aria-label={title}
-      className={cn(actionIconButtonVariants({ size }), className)}
-      {...props}
-    >
-      <span className="relative inline-flex">
-        <span aria-hidden="true">{children}</span>
-        {badge != null && badge > 0 && (
-          <span
-            className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-lyra-bg-destructive px-1 text-[10px] font-bold text-lyra-fg-on-primary"
-            aria-label={`${badge} notifications`}
-          >
-            <span aria-hidden="true">{badge}</span>
-          </span>
-        )}
-      </span>
-    </button>
-  );
-
-  if (title) {
-    return (
-      <Tooltip content={title} placement="bottom" asLabel>
-        {button}
-      </Tooltip>
-    );
-  }
-
-  return button;
-});
+>(({ className, badge, size = "default", title, children, ...props }, ref) => (
+  <Button
+    ref={ref}
+    variant="icon"
+    size={ACTION_ICON_BUTTON_SIZE_MAP[size]}
+    title={title}
+    badge={badge}
+    className={className}
+    {...props}
+  >
+    {children}
+  </Button>
+));
 ActionIconButton.displayName = "ActionIconButton";
 
 /* ── Action Avatar Button (avatar circle + chevron) ── */
@@ -119,6 +107,5 @@ export {
   ActionAvatarButton,
   ShellIconButton,
   ShellAvatarButton,
-  actionIconButtonVariants,
 };
 export type { ActionIconButtonProps, ActionAvatarButtonProps };

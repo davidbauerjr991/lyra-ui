@@ -2,6 +2,7 @@ import * as React from "react";
 import { cn } from "../lib/utils";
 import { CHANNEL_ROW_COMPONENTS, type InteractionChannel, type ChannelType } from "./channel-row";
 import { Popover } from "./popover";
+import { Badge } from "./badge";
 
 /* ── Helpers ── */
 
@@ -443,8 +444,17 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                 </span>
               )}
               {awaitingResponse && (
-                <span
-                  className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-lyra-status-critical-strong ring-2 ring-lyra-bg-surface-shell"
+                /* Bottom-right corner (was top-right), now a small `Badge`
+                   dot (`size="sm"` — Badge's own size vocabulary) instead
+                   of a bespoke span, so this dot indicator shares the same
+                   implementation as every other corner badge in the
+                   library. */
+                <Badge
+                  shape="circle"
+                  dot
+                  variant="critical"
+                  size="sm"
+                  className="absolute bottom-[-2px] right-[-2px] ring-2 ring-lyra-bg-surface-shell"
                   aria-hidden="true"
                 />
               )}

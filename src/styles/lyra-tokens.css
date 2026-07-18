@@ -408,7 +408,7 @@
         side-by-side sparkline was taking.
      2. (≤560px) The row becomes a strict 2-column grid (`.lyra-metric-row`
         flex → grid, `repeat(2, minmax(0,1fr))`), wrapping 3-4 metrics onto
-        a second row. A flat `Divider` sibling can't represent "between
+        a second row. A flat `Separator` sibling can't represent "between
         column 1 and 2" *and* "between row 1 and 2" at once, so both
         dividers hide here and a real `gap` takes over spacing instead —
         the same convention "contained" metrics (bordered boxes, no
@@ -444,9 +444,9 @@
   display: flex;
   flex-direction: row;
 }
-/* "divided" variant only — the vertical Divider between metrics relies on
-   zero flex gap in row mode (the Divider + each item's own px-4 provide
-   all the spacing); once stacked, there's no Divider doing that job in
+/* "divided" variant only — the vertical Separator between metrics relies on
+   zero flex gap in row mode (the Separator + each item's own px-4 provide
+   all the spacing); once stacked, there's no Separator doing that job in
    the cross axis, so a real gap is needed instead. "contained" doesn't
    use this class — its own `gap-3` Tailwind utility already looks right
    at every stage, since a single-value `gap` isn't direction specific. */
@@ -508,7 +508,7 @@
   }
 }
 
-/* Stage 3 — 1-up grid; horizontal Divider comes back (unambiguous with
+/* Stage 3 — 1-up grid; horizontal Separator comes back (unambiguous with
    only one column). */
 @container (max-width: 360px) {
   .lyra-metric-row {

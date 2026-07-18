@@ -4,7 +4,7 @@ import { Spinner } from "../spinner";
 import { Button } from "../button";
 
 const meta: Meta<typeof Spinner> = {
-  title: "Atoms/Spinner",
+  title: "Custom Primitives/Spinner",
   component: Spinner,
   tags: ["autodocs"],
   parameters: { layout: "centered", backgrounds: { default: "lyra-shell" } },
