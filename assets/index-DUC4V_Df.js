@@ -1,0 +1,1 @@
+import{o as u,r as e}from"./index-CXOcBcs0.js";var t=!1;function n(){const[s,a]=e.useState(t);return e.useEffect(()=>{t||(t=!0,a(!0))},[]),s}var r=u[" useSyncExternalStore ".trim().toString()];function o(){return()=>{}}function d(){return r(o,()=>!0,()=>!1)}var f=typeof r=="function"?d:n;export{f as u};
