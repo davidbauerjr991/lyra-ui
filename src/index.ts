@@ -137,7 +137,7 @@ export { Select } from "./components/select";
 export type { SelectOption } from "./components/select";
 export { Menu } from "./components/menu";
 export type { MenuItemDef, MenuEntry, MenuProps, MenuSectionLabel } from "./components/menu";
-export { TreeMenu } from "./components/tree-menu";
+export { TreeMenu, CollapsiblePanel } from "./components/tree-menu";
 export type { TreeMenuItem, TreeMenuChild, TreeMenuProps } from "./components/tree-menu";
 export { CXoneSmiley } from "./components/cxone-smiley";
 export type { CXoneSmileyProps } from "./components/cxone-smiley";
@@ -190,6 +190,8 @@ export type { SparklineProps } from "./components/sparkline";
 /* ── Dashboard Card ── */
 export { DashboardCard, Metric } from "./components/dashboard-card";
 export type { DashboardCardProps, DashboardCardMetric, DashboardCardMetricVariant, MetricProps } from "./components/dashboard-card";
+export { EmptyState } from "./components/empty-state";
+export type { EmptyStateProps } from "./components/empty-state";
 
 /* ── Dashboard Queue ── */
 export { DashboardQueue } from "./components/dashboard-queue";

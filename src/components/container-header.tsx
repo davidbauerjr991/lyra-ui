@@ -65,7 +65,12 @@ const ContainerHeader = React.forwardRef<HTMLDivElement, ContainerHeaderProps>(
     <div
       ref={ref}
       className={cn(
-        "flex items-center justify-between px-4 py-3 shrink-0",
+        // py-2.5 (10px), not py-3 (12px) — the title+subhead block below is
+        // a fixed-height overflow-hidden box (h-10, 40px, was h-9/36px); at
+        // 12px top/bottom padding the row read taller than that box needed,
+        // py-2.5 keeps the header snug around it now that it's sized to fit
+        // the subhead's descenders (see that div's own comment).
+        "flex items-center justify-between px-4 py-2.5 shrink-0",
         bordered && "border-b border-lyra-border-subtle",
         background === "subtle" && "bg-lyra-bg-control-subtle",
         className
@@ -86,7 +91,11 @@ const ContainerHeader = React.forwardRef<HTMLDivElement, ContainerHeaderProps>(
           {icon && <span className="flex-shrink-0 text-lyra-fg-secondary">{icon}</span>}
           <div className="min-w-0 flex-1">
             {(title || titleBadge) && (
-              <div className="flex h-9 flex-col justify-center overflow-hidden min-w-0">
+              <div className="flex h-10 flex-col justify-center overflow-hidden min-w-0">
+                {/* h-10 (40px), not h-9 (36px) — at 36px the subhead's
+                    descenders (g, y, etc.) were clipped by `overflow-hidden`;
+                    40px gives the title + subhead two lines enough room to
+                    render in full. */}
                 {/* titleBadge sits in its own row with just the title text,
                     so it's centered against the title's line height — not
                     stretched to align against the full title+subhead block

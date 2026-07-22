@@ -1,7 +1,9 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
-import { SlidersHorizontal, ChevronDown } from "lucide-react";
+import { SlidersHorizontal, ChevronDown, Pencil, Settings, Copy } from "lucide-react";
 import { Select, type SelectOption } from "../select";
+import { Label } from "../label";
+import { Button } from "../button";
 
 const meta: Meta<typeof Select> = {
   title: "Headless Primitives/Select",
@@ -11,6 +13,44 @@ const meta: Meta<typeof Select> = {
     layout: "padded",
     backgrounds: { default: "lyra-shell" },
   },
+  argTypes: {
+    required: { control: "boolean" },
+    /* Story-only toggles below — not real `Select` props. Mirrors
+       Input.stories.tsx's own Default playground (same names/behavior),
+       minus that story's "Label only" and "Horizontal" — `Select` doesn't
+       have a display-only/no-input equivalent, so those two don't apply
+       here. */
+    showWithButtons: { control: "boolean", name: "With buttons" },
+    buttonsPosition: {
+      control: "select",
+      options: ["left", "right", "both"],
+      name: "Buttons position",
+    },
+    buttonVariant: {
+      control: "select",
+      options: ["default", "destructive", "warning", "success", "outline", "ghost"],
+      name: "Button type",
+    },
+    buttonIconOnly: { control: "boolean", name: "Icon buttons" },
+    buttonSize: {
+      control: "select",
+      options: ["sm", "default", "lg", "xl"],
+      name: "Button size",
+    },
+    /* How many placeholder buttons render — 3 is the cap, matching
+       Input.stories.tsx's own control. */
+    buttonCount: {
+      control: "select",
+      options: [1, 2, 3],
+      name: "Button count",
+    },
+    showHelp: { control: "boolean", name: "Help" },
+    showError: { control: "boolean", name: "Error" },
+    /* Off (default): full width, matching every other story below now that
+       none of them hardcode a width anymore. On: caps it at 320px — the
+       same guide width this file used to wrap every demo in. */
+    maxWidth: { control: "boolean", name: "Max width" },
+  } as Meta<typeof Select>["argTypes"],
 };
 
 export default meta;
@@ -32,47 +72,129 @@ const manyOptions: SelectOption[] = Array.from({ length: 20 }, (_, i) => ({
 
 export const Default: Story = {
   name: "Default",
-  render: () => (
-    <div className="max-w-[320px]">
-      <Select label="Input Label" options={sampleOptions} />
-    </div>
-  ),
+  args: {
+    label: "Input Label",
+    required: false,
+    showWithButtons: false,
+    buttonsPosition: "left",
+    buttonVariant: "ghost",
+    buttonIconOnly: true,
+    buttonSize: "sm",
+    buttonCount: 2,
+    showHelp: false,
+    showError: false,
+    maxWidth: false,
+  } as Story["args"],
+  render: (args: any) => {
+    const {
+      required,
+      showWithButtons,
+      buttonsPosition,
+      buttonVariant,
+      buttonIconOnly,
+      buttonSize,
+      buttonCount,
+      showHelp,
+      showError,
+      maxWidth,
+      label,
+    } = args;
+
+    const labelHelpText = showHelp ? "Helpful context about this field." : undefined;
+
+    // Same height-matched icon-size scale as Input.stories.tsx's own
+    // Default playground (button.tsx: icon-sm/icon-md/icon-lg/icon-xl line
+    // up with sm/default|md/lg/xl exactly).
+    const ICON_SIZE_MAP: Record<string, string> = {
+      sm: "icon-sm",
+      default: "icon-md",
+      lg: "icon-lg",
+      xl: "icon-xl",
+    };
+
+    // One icon per possible `buttonCount` slot — sliced below rather than
+    // repeating the same icon three times.
+    const PLACEHOLDER_ICONS = [Pencil, Settings, Copy];
+
+    const renderButtons = () =>
+      buttonIconOnly ? (
+        <>
+          {PLACEHOLDER_ICONS.slice(0, buttonCount).map((Icon, i) => (
+            <Button key={i} variant={buttonVariant} size={ICON_SIZE_MAP[buttonSize]} title="Placeholder action">
+              <Icon className="h-4 w-4" strokeWidth={1.5} />
+            </Button>
+          ))}
+        </>
+      ) : (
+        <>
+          {Array.from({ length: buttonCount }).map((_, i) => (
+            <Button key={i} variant={buttonVariant} size={buttonSize}>Action</Button>
+          ))}
+        </>
+      );
+
+    if (showWithButtons) {
+      // Same composition as Input.stories.tsx's own "With buttons" branch —
+      // the caption renders separately (not through `Select`'s own `label`
+      // prop) so it sits above the row while the buttons flank the trigger
+      // itself, positioned by `buttonsPosition`. `items-start`, not
+      // `items-center` — same reason as Input.stories.tsx: `Select` renders
+      // its own error text below its trigger (select.tsx) when `error` is
+      // set, which makes its wrapper taller than the buttons; aligning tops
+      // keeps the buttons level with the trigger itself regardless of
+      // whether that error text is showing.
+      return (
+        <div className={maxWidth ? "max-w-[320px]" : undefined}>
+          <div className="flex flex-col gap-1.5">
+            <Label label={label} required={required} labelHelpText={labelHelpText} />
+            <div className="flex items-start gap-0.5">
+              {(buttonsPosition === "left" || buttonsPosition === "both") && renderButtons()}
+              <Select
+                options={sampleOptions}
+                error={showError ? "Required" : undefined}
+                className="flex-1"
+              />
+              {(buttonsPosition === "right" || buttonsPosition === "both") && renderButtons()}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className={maxWidth ? "max-w-[320px]" : undefined}>
+        <Select
+          label={label}
+          labelHelpText={labelHelpText}
+          required={required}
+          options={sampleOptions}
+          error={showError ? "Required" : undefined}
+        />
+      </div>
+    );
+  },
 };
 
 export const WithPlaceholder: Story = {
   name: "With Placeholder",
   render: () => (
-    <div className="max-w-[320px]">
-      <Select label="Input Label" placeholder="Choose an option..." options={sampleOptions} />
-    </div>
+    <Select label="Input Label" placeholder="Choose an option..." options={sampleOptions} />
   ),
 };
 
 export const Disabled: Story = {
   name: "Disabled",
-  render: () => (
-    <div className="max-w-[320px]">
-      <Select label="Input Label" options={sampleOptions} disabled />
-    </div>
-  ),
+  render: () => <Select label="Input Label" options={sampleOptions} disabled />,
 };
 
 export const ErrorState: Story = {
   name: "Error",
-  render: () => (
-    <div className="max-w-[320px]">
-      <Select label="Input Label" options={sampleOptions} error="Required" />
-    </div>
-  ),
+  render: () => <Select label="Input Label" options={sampleOptions} error="Required" />,
 };
 
 export const Searchable: Story = {
   name: "Searchable",
-  render: () => (
-    <div className="max-w-[320px]">
-      <Select label="Input Label" options={manyOptions} searchable />
-    </div>
-  ),
+  render: () => <Select label="Input Label" options={manyOptions} searchable />,
 };
 
 export const MultiSelect: Story = {
@@ -80,17 +202,15 @@ export const MultiSelect: Story = {
   render: () => {
     const [vals, setVals] = useState<string[]>(["item-1", "item-2", "item-3"]);
     return (
-      <div className="max-w-[320px]">
-        <Select
-          label="Input Label"
-          options={manyOptions}
-          multiple
-          searchable
-          showSelectAll
-          values={vals}
-          onValuesChange={setVals}
-        />
-      </div>
+      <Select
+        label="Input Label"
+        options={manyOptions}
+        multiple
+        searchable
+        showSelectAll
+        values={vals}
+        onValuesChange={setVals}
+      />
     );
   },
 };
@@ -112,17 +232,15 @@ export const MaxSelectionSelect: Story = {
       { value: "orange", label: "Orange" },
     ];
     return (
-      <div className="max-w-[320px]">
-        <Select
-          label="Color"
-          options={colorOptions}
-          multiple
-          searchable
-          maxSelection={4}
-          values={values}
-          onValuesChange={setValues}
-        />
-      </div>
+      <Select
+        label="Color"
+        options={colorOptions}
+        multiple
+        searchable
+        maxSelection={4}
+        values={values}
+        onValuesChange={setValues}
+      />
     );
   },
 };
@@ -130,15 +248,13 @@ export const MaxSelectionSelect: Story = {
 export const MultiSelectEmpty: Story = {
   name: "Multi-Select (Empty)",
   render: () => (
-    <div className="max-w-[320px]">
-      <Select
-        label="Input Label"
-        options={manyOptions}
-        multiple
-        searchable
-        showSelectAll
-      />
-    </div>
+    <Select
+      label="Input Label"
+      options={manyOptions}
+      multiple
+      searchable
+      showSelectAll
+    />
   ),
 };
 
@@ -147,7 +263,7 @@ export const Controlled: Story = {
   render: () => {
     const [val, setVal] = useState("opt2");
     return (
-      <div className="max-w-[320px] flex flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <Select
           label="Input Label"
           options={sampleOptions}
@@ -231,7 +347,7 @@ export const CustomButtonTrigger: Story = {
 export const AllStates: Story = {
   name: "All States",
   render: () => (
-    <div className="flex flex-col gap-6 max-w-[320px]">
+    <div className="flex flex-col gap-6">
       <Select label="Input Label" placeholder="Select..." options={sampleOptions} />
       <Select label="Input Label" options={sampleOptions} disabled />
       <Select label="Input Label" options={sampleOptions} error="Required" />

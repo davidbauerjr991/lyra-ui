@@ -6,6 +6,8 @@ import { InteractionNavItem, type InteractionChannel, type ChannelType } from ".
 import { OUTBOUND_CONFIG } from "./create-new-outbound-mock";
 import { Container } from "../container";
 import { ContentArea } from "../content-area";
+import { Tooltip } from "../tooltip";
+import { cn } from "../../lib/utils";
 import {
   Monitor,
   LayoutGrid,
@@ -19,6 +21,79 @@ import {
   Gauge,
   BarChart3,
 } from "lucide-react";
+
+/**
+ * A minimal `footer`/`pinnedHeader`-slot button that expands into a
+ * full-width, labeled button alongside the rail — the same single-
+ * persistent-button/conditional-classes technique `CreateNew`'s own trigger
+ * uses (create-new.tsx's own doc comment on its `trigger` — one element,
+ * width/padding/label-reveal all driven by classes tied to `expanded`, so
+ * the open↔collapse transition is one continuous CSS animation instead of
+ * an unmount/remount), just without that component's Popover/outbound-flow
+ * complexity. For consumers that only need "an icon button that reveals a
+ * label once the rail opens" — e.g. Outbound-Campaigns' "Online Help"
+ * launcher — rather than a full flyout trigger.
+ *
+ * `rounded-lyra-sm` (not `rounded-full`) — the only corner radius
+ * `buttonVariants` (button.tsx) ever applies, across every real variant and
+ * size; there's no circular/pill shape anywhere in `Button`'s actual API,
+ * so this stays square-cornered like every other button rather than
+ * inventing a shape outside the design system's real scale.
+ *
+ * Kept local to this story rather than exported as its own component: every
+ * real usage so far (this story, Outbound-Campaigns' `OnlineHelpButton`)
+ * only needs a handful of lines copied and adapted (different icon/label),
+ * not a shared implementation — promote this into a real exported
+ * component once a second consumer needs the *exact* same shape, not just
+ * the same technique.
+ */
+function FooterButton({ expanded }: { expanded: boolean }) {
+  const trigger = (
+    <button
+      aria-label="Help"
+      className={cn(
+        "flex h-9 items-center justify-center rounded-lyra-sm overflow-hidden",
+        "bg-lyra-bg-primary text-lyra-fg-on-primary transition-all duration-200",
+        "hover:bg-lyra-state-hover-primary active:bg-lyra-state-pressed-primary",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
+        expanded ? "w-full px-4" : "w-9 px-0"
+      )}
+    >
+      <HelpCircle className="h-4 w-4 flex-shrink-0" strokeWidth={1.5} aria-hidden="true" />
+      {/* Same reveal mechanism as `CreateNew`'s own label span: `max-w-0`/
+          `ml-0`/`opacity-0` when collapsed (not `display: none`, which
+          can't be transitioned) vs. `max-w-[200px]`/`ml-2`/`opacity-100`
+          when expanded — spacing lives on the label itself, not a `gap-*`
+          on the button, so it contributes nothing at all (not even a
+          reserved gap) while collapsed and the icon stays centered. */}
+      <span
+        aria-hidden={!expanded}
+        className={cn(
+          "lyra-body-md overflow-hidden whitespace-nowrap transition-all duration-200",
+          expanded ? "max-w-[200px] ml-2 opacity-100" : "max-w-0 ml-0 opacity-0"
+        )}
+      >
+        Help
+      </span>
+    </button>
+  );
+
+  // Tooltip only needed collapsed (the expanded button already has a
+  // visible label) — `disabled={expanded}` suppresses it instead of
+  // conditionally wrapping, so this wrapper's own shape never changes and
+  // React never remounts anything underneath it just because `expanded`
+  // toggled. `flex w-full justify-center` (not `inline-flex`) so the
+  // wrapper stretches to the slot's real width — required for the
+  // expanded button's own `w-full` to resolve against the right
+  // containing block — while still centering the collapsed, fixed-width
+  // button within it. See `CreateNew`'s own trigger-wrapping comment
+  // (create-new.tsx) for the fuller rationale; this mirrors it exactly.
+  return (
+    <Tooltip content="Help" placement="right" disabled={expanded}>
+      <span className="flex w-full justify-center">{trigger}</span>
+    </Tooltip>
+  );
+}
 
 /** One InteractionNavItem card in the "Agent Next Gen Left Nav" story below.
  *  Kept as a flat elapsed string (not the live-ticking clock-tick tracking
@@ -447,6 +522,23 @@ export const OutboundEngagement: Story = {
         items={items}
         open={open}
         onToggle={() => setOpen((v) => !v)}
+      />
+    );
+  },
+};
+
+/* ── Footer Button (expandable) ── */
+
+export const FooterButtonExample: Story = {
+  name: "Footer Button (Expandable)",
+  render: () => {
+    const [open, setOpen] = useState(true);
+    return (
+      <LeftNav
+        items={sampleItems}
+        open={open}
+        onToggle={() => setOpen((v) => !v)}
+        footer={<FooterButton expanded={open} />}
       />
     );
   },

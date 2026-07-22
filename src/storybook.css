@@ -223,6 +223,60 @@
   }
 }
 
+/* ── Metric card grid (CSS container query) — kept in sync with
+   lyra-tokens.css; see that file for the full explanation. For a 3-up grid
+   of independent cards (e.g. a dashboard's metric-card row), collapsing to
+   2-up then 1-up. ── */
+.lyra-metric-card-grid-wrap {
+  container-type: inline-size;
+}
+.lyra-metric-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+@container (max-width: 900px) {
+  .lyra-metric-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container (max-width: 500px) {
+  .lyra-metric-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Card split (CSS container query) — kept in sync with lyra-tokens.css;
+   see that file for the full explanation. Row layout for a DashboardCard's
+   two-region `children` body, stacking to a column when tight. ── */
+.lyra-card-split-wrap {
+  container-type: inline-size;
+}
+.lyra-card-split {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 1.5rem;
+}
+.lyra-card-split-divider {
+  display: block;
+}
+.lyra-card-split-fixed {
+  width: 12rem;
+  flex-shrink: 0;
+}
+@container (max-width: 480px) {
+  .lyra-card-split {
+    flex-direction: column;
+  }
+  .lyra-card-split-divider {
+    display: none;
+  }
+  .lyra-card-split-fixed {
+    width: 100%;
+  }
+}
+
 /* ── Metric row (CSS container query) — kept in sync with lyra-tokens.css;
    see that file for the full explanation. ── */
 .lyra-metric-row-wrap {

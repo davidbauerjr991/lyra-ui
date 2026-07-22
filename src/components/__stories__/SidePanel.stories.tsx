@@ -1,9 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
-import { User } from "lucide-react";
+import { ChevronDown, User } from "lucide-react";
 import { SidePanel } from "../side-panel";
 import { Button } from "../button";
 import { PanelPinButton } from "../panel-pin-button";
+import { Select } from "../select";
+import { TreeMenu, type TreeMenuItem } from "../tree-menu";
 
 /* ── SidePanel stories ──
    Split out of the old unified `Panel.stories.tsx` — see side-panel.tsx and
@@ -83,6 +85,62 @@ export const Right: Story = {
             <p className="lyra-body-md text-lyra-fg-secondary">Right side panel content.</p>
           </div>
         </SidePanel>
+      </div>
+    );
+  },
+};
+
+/* ── View Switcher (headerTitleBadge) ──
+   `headerTitleBadge` renders inline right after `headerTitle`, same row —
+   distinct from `headerActions`, which sits at the header's far right.
+   Here it's a bare-chevron `Select` (single-select, same composition as
+   `Select.stories.tsx`'s "Custom Trigger (Icon, Single-Select)" story)
+   letting the panel switch between two entirely different trees, the
+   header title following whichever is active. Modeled on Outbound-
+   Campaigns' Monitor dashboard side menu (`CallCentersSideMenu.tsx`),
+   which needed exactly this: a chevron after the title opening a
+   Call Centers / Service Groups switcher. */
+
+type ViewSwitcherView = "treeA" | "treeB";
+
+const TREE_A_ITEMS: TreeMenuItem[] = [
+  { label: "Financial Services", children: [{ label: "FS_HCI" }, { label: "FS_Manual" }] },
+  { label: "Hospitality", children: [{ label: "H_HCI" }, { label: "H_Manual" }] },
+];
+
+const TREE_B_ITEMS: TreeMenuItem[] = [
+  { label: "Team Alpha", children: [{ label: "Alpha_Primary" }, { label: "Alpha_Backup" }] },
+  { label: "Team Beta", children: [{ label: "Beta_Primary" }, { label: "Beta_Backup" }] },
+];
+
+export const ViewSwitcher: Story = {
+  name: "Side Panel — View Switcher (headerTitleBadge)",
+  render: () => {
+    const [view, setView] = useState<ViewSwitcherView>("treeA");
+    return (
+      <div className="relative h-[420px] flex overflow-hidden rounded-lyra-lg border border-lyra-border-subtle">
+        <SidePanel
+          side="left"
+          pinned
+          headerTitle={view === "treeA" ? "Tree A" : "Tree B"}
+          headerTitleBadge={
+            <Select
+              options={[
+                { value: "treeA", label: "Tree A" },
+                { value: "treeB", label: "Tree B" },
+              ]}
+              value={view}
+              onValueChange={(v) => setView(v as ViewSwitcherView)}
+              trigger={<ChevronDown className="h-4 w-4" aria-hidden="true" />}
+              dropdownAlign="left"
+            />
+          }
+        >
+          <TreeMenu key={view} className="px-2" items={view === "treeA" ? TREE_A_ITEMS : TREE_B_ITEMS} />
+        </SidePanel>
+        <div className="flex flex-1 flex-col bg-lyra-bg-surface-base p-4">
+          <p className="lyra-body-sm text-lyra-fg-secondary">Main content column.</p>
+        </div>
       </div>
     );
   },

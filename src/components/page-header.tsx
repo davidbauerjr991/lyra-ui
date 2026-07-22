@@ -33,7 +33,15 @@ interface PageHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
    * accessibility tree regardless of the control's own `aria-label`.
    */
   iconAriaHidden?: boolean;
-  /** Secondary line rendered under the title — only used together with `icon` */
+  /**
+   * Secondary line rendered under the title. With `icon`, this pairs with
+   * the leading icon (record header layout). Without `icon`/`breadcrumb`
+   * (the plain title branch), it still renders under the title as a plain
+   * caption — e.g. a category label like "CALL CENTERS" under a section
+   * title — just without the icon/divider treatment. Not rendered in the
+   * `breadcrumb` branch (a caption under an inline breadcrumb trail hasn't
+   * had a real usage yet).
+   */
   subtitle?: React.ReactNode;
   /** Actions rendered on the right side (buttons, icons, etc.) */
   actions?: React.ReactNode;
@@ -200,9 +208,12 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
             </Breadcrumb>
           </div>
         ) : (
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <h1 className="lyra-heading-lg text-lyra-fg-default truncate min-w-0">{title}</h1>
-            {badge && <Badge color={badgeColor} variant={badgeVariant}>{badge}</Badge>}
+          <div className="flex flex-col justify-center min-w-0 flex-1">
+            <div className="flex items-center gap-2 min-w-0">
+              <h1 className="lyra-heading-lg text-lyra-fg-default truncate min-w-0">{title}</h1>
+              {badge && <Badge color={badgeColor} variant={badgeVariant}>{badge}</Badge>}
+            </div>
+            {subtitle && <span className="lyra-body-sm text-lyra-fg-secondary truncate">{subtitle}</span>}
           </div>
         )}
       </div>

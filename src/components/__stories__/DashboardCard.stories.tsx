@@ -403,7 +403,10 @@ export const HeaderControls: Story = {
    percent + "vs. last week," colored success/warning/critical, plus a
    Sparkline alongside it colored to match — the same "Header Controls"
    `showTrend` toggle applies this, this is just the always-on dedicated
-   example. */
+   example. The last example (`variant="neutral-subtle"`) shows the same
+   divided metrics against a real `bg-lyra-bg-surface-container-subtle`
+   card surface (border unchanged from the default card) instead of the
+   borderless/transparent treatment the other examples use. */
 
 export const MetricCard: Story = {
   name: "Metric Card",
@@ -424,6 +427,14 @@ export const MetricCard: Story = {
       <div>
         <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-2">Divided — with trend + sparkline</p>
         <DashboardCard metrics={METRICS_WITH_TREND} metricVariant="divided" className="w-full border-0 bg-transparent shadow-none" />
+      </div>
+      <div>
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-2">Divided — surface-container-subtle background</p>
+        {/* variant="neutral-subtle" (container.tsx) — bg-lyra-bg-surface-container-subtle, keeping the
+            same border-lyra-border-subtle the default card variant already has (only the background
+            changes, not the border). Used by Outbound-Campaigns' Monitor dashboard metric cards
+            (MonitorDashboardPage.tsx) — see PROJECT_SUMMARY.md. */}
+        <DashboardCard metrics={METRICS} metricVariant="divided" variant="neutral-subtle" className="w-full" />
       </div>
     </div>
   ),

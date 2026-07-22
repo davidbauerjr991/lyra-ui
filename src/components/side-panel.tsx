@@ -69,6 +69,15 @@ export interface SidePanelProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Optional line below `headerTitle`, e.g. a record's name + id */
   headerSubhead?: string;
   headerIcon?: React.ReactNode;
+  /**
+   * Rendered inline immediately after `headerTitle`, same row (forwarded
+   * to `PanelHeader`/`ContainerHeader`'s own `titleBadge` slot) — e.g. a
+   * view-switcher trigger (a bare chevron opening a `Select` of view
+   * options) sitting right next to the title text itself. Distinct from
+   * `headerActions` below, which renders at the far right of the header
+   * row instead.
+   */
+  headerTitleBadge?: React.ReactNode;
   headerActions?: React.ReactNode;
 
   footer?: React.ReactNode;
@@ -91,6 +100,7 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
       headerTitle,
       headerSubhead,
       headerIcon,
+      headerTitleBadge,
       headerActions,
       footer,
       children,
@@ -143,6 +153,7 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
               title={headerTitle}
               subhead={headerSubhead}
               icon={headerIcon}
+              titleBadge={headerTitleBadge}
               actions={<>{headerActions}{pinButton}</>}
               bordered={false}
             />

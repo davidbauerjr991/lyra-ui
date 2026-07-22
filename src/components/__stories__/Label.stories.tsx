@@ -123,6 +123,23 @@ export const LabelWithSupportingText: Story = {
   ),
 };
 
+/* ── Horizontal — label left, value right ──
+   Some detail rows put the caption and its value on the same line instead
+   of stacked (the default `supportingText` layout above, label.tsx). The
+   value here reuses `supportingText`'s own typography exactly —
+   `lyra-body-md text-lyra-fg-secondary` — just arranged in a
+   `justify-between` row instead of a column, so it reads as the same value
+   styling in a different layout, not a new one. */
+export const Horizontal: Story = {
+  name: "Horizontal",
+  render: () => (
+    <div className="flex items-center justify-between w-72">
+      <Label label="Agent Name" />
+      <span className="lyra-body-md text-lyra-fg-secondary">Sarah Connor</span>
+    </div>
+  ),
+};
+
 export const Default: Story = {
   args: {
     label: "Default Label",

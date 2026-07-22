@@ -426,6 +426,96 @@
 }
 
 /* ════════════════════════════════════════════════════
+   Metric card grid (CSS container query)
+   ════════════════════════════════════════════════════
+   For a grid of independent cards (e.g. a dashboard's row of metric-card
+   widgets) meant to sit 3-up from the start — not a small fixed set of
+   summary cards that stay in one row until they don't fit (`.lyra-
+   container-grid` above). Reacts to the ACTUAL AVAILABLE WIDTH of the grid's
+   own container, not the browser window, same reasoning as every other
+   container-query class on this page.
+
+   Usage: `.lyra-metric-card-grid-wrap` on the wrapper, `.lyra-metric-card-
+   grid` on the grid itself (two different elements — a container can't
+   query its own size):
+     <div class="lyra-metric-card-grid-wrap">
+       <div class="lyra-metric-card-grid"> ...cards... </div>
+     </div>
+
+   Stays `display: grid` throughout (unlike `.lyra-container-grid`'s flex-row
+   → grid → flex-column toggle) — a 3-up card grid already wraps extra cards
+   onto additional rows at every stage, so there's no "everything fits in
+   one row" state to model separately; only the column count changes. */
+.lyra-metric-card-grid-wrap {
+  container-type: inline-size;
+}
+.lyra-metric-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+@container (max-width: 900px) {
+  .lyra-metric-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container (max-width: 500px) {
+  .lyra-metric-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   Card split (CSS container query)
+   ════════════════════════════════════════════════════
+   For a `DashboardCard`'s `children` body that splits into two side-by-side
+   regions (e.g. a couple of stat blocks beside a chart/empty-state area) —
+   row layout by default, stacking to a column once the card's own available
+   width gets tight. `.lyra-card-split-divider` hides the vertical divider
+   between the two regions in the stacked state, where a vertical rule no
+   longer makes sense.
+
+   Usage:
+     <div class="lyra-card-split-wrap">
+       <div class="lyra-card-split">
+         <div>...stat blocks...</div>
+         <Separator orientation="vertical" class="lyra-card-split-divider" />
+         <div>...chart/empty state...</div>
+       </div>
+     </div> */
+.lyra-card-split-wrap {
+  container-type: inline-size;
+}
+.lyra-card-split {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 1.5rem;
+}
+.lyra-card-split-divider {
+  display: block;
+}
+/* Optional — for whichever region should have a fixed width in the row
+   state (e.g. a column of stat blocks beside a chart) but grow to full
+   width once stacked, where a fixed width would otherwise leave it narrow
+   and off-center. */
+.lyra-card-split-fixed {
+  width: 12rem;
+  flex-shrink: 0;
+}
+@container (max-width: 480px) {
+  .lyra-card-split {
+    flex-direction: column;
+  }
+  .lyra-card-split-divider {
+    display: none;
+  }
+  .lyra-card-split-fixed {
+    width: 100%;
+  }
+}
+
+/* ════════════════════════════════════════════════════
    Metric row (CSS container query)
    ════════════════════════════════════════════════════
    Same rationale as `.lyra-container-grid-wrap` above, applied to

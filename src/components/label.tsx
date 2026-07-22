@@ -125,9 +125,9 @@ const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
     if (!showSupportingText) return labelRow;
 
     return (
-      <div className={cn("flex flex-col gap-1", className)}>
+      <div className={cn("flex flex-col", className)}>
         {labelRow}
-        <p className="lyra-body-sm text-lyra-fg-secondary">{supportingText}</p>
+        <p className="lyra-body-md text-lyra-fg-secondary">{supportingText}</p>
       </div>
     );
   }
