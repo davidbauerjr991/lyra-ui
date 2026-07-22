@@ -1,0 +1,15 @@
+import{O as a,C as d}from"./create-new-outbound-mock-DVxUPg74.js";import"./jsx-runtime-D_zvdyIk.js";import"./index-CXOcBcs0.js";import"./_commonjsHelpers-CqkleIqs.js";import"./utils-BLSKlp9E.js";import"./menu-Cb0mW4XG.js";import"./index-DWcjTdiE.js";import"./index-DujEZ9g2.js";import"./chevron-right-DZKRY3zX.js";import"./createLucideIcon-DEcfmm_F.js";import"./input-CYoQVZ2d.js";import"./error-icon-Jj0G9Pna.js";import"./label-BSWV0633.js";import"./tooltip-ughTrHl0.js";import"./index-DNfP5j1O.js";import"./floating-ui.react-dom-B7A2Lg_k.js";import"./circle-help-Bj2MpUE2.js";import"./popover-Bu_uJTp4.js";import"./index-DhUdNGNr.js";import"./index-MFm5DvZf.js";import"./Combination-CgjdYmp6.js";import"./tslib.es6-Ytcc2UEA.js";import"./container-header-DwQg5U0B.js";import"./x-N8aIqrq2.js";import"./select-CaE1qnaP.js";import"./checkbox-BvjRVYvk.js";import"./index-CoT6TaLL.js";import"./minus-DYrWPnXn.js";import"./check-DrRFj5bn.js";import"./scroll-chevron-CJM7PgJi.js";import"./chevron-up-DaHnz2kU.js";import"./chevron-down-BRCsRsv-.js";import"./search-aUstRSOi.js";import"./button-GxCpv2fL.js";import"./index-BDkVnVO1.js";import"./index-1evVQkiP.js";import"./badge-go1ZjKcF.js";import"./table-BTsMSqcT.js";import"./search-input-CP4Hs0kz.js";import"./clear-button-DmDUWwck.js";import"./filter-chip-CTqjfi9b.js";import"./sliders-horizontal-_yHPUfpC.js";import"./ellipsis-vertical-CZvSBcNM.js";import"./panel-left-CWVFPQ0g.js";import"./chevron-left-C6DiQdwt.js";import"./panel-right-CgZ2ABSM.js";import"./arrow-up-C-teBDU4.js";import"./favorite-button-tyyNLg2I.js";import"./star-BBKukw_S.js";import"./phone-input-DUQ64qmK.js";import"./tag-DxwG2peS.js";import"./plus-B2SVJpWV.js";import"./phone-Di4N1bEU.js";import"./mail-CGsQAUqz.js";import"./message-square-BpbTPZlK.js";const ut={title:"UI/CreateNew",component:d,parameters:{layout:"centered",backgrounds:{default:"lyra-shell"}},tags:["autodocs"]},t={name:"Icon Button",args:{title:"New Outbound",outbound:a,expanded:!1}},o={name:"Expanded (Full Button)",args:{title:"New Outbound",outbound:a,expanded:!0}};var r,p,m;t.parameters={...t.parameters,docs:{...(r=t.parameters)==null?void 0:r.docs,source:{originalSource:`{
+  name: "Icon Button",
+  args: {
+    title: "New Outbound",
+    outbound: OUTBOUND_CONFIG,
+    expanded: false
+  }
+}`,...(m=(p=t.parameters)==null?void 0:p.docs)==null?void 0:m.source}}};var e,i,n;o.parameters={...o.parameters,docs:{...(e=o.parameters)==null?void 0:e.docs,source:{originalSource:`{
+  name: "Expanded (Full Button)",
+  args: {
+    title: "New Outbound",
+    outbound: OUTBOUND_CONFIG,
+    expanded: true
+  }
+}`,...(n=(i=o.parameters)==null?void 0:i.docs)==null?void 0:n.source}}};const ct=["IconButton","Expanded"];export{o as Expanded,t as IconButton,ct as __namedExportsOrder,ut as default};
