@@ -4,7 +4,7 @@ import { SlidersHorizontal, ChevronDown } from "lucide-react";
 import { Select, type SelectOption } from "../select";
 
 const meta: Meta<typeof Select> = {
-  title: "Radix Primitives/Select",
+  title: "Headless Primitives/Select",
   component: Select,
   tags: ["autodocs"],
   parameters: {

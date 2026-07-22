@@ -13,7 +13,7 @@ import {
 } from "../table";
 
 const meta: Meta<typeof Accordion> = {
-  title: "Radix Primitives/Accordion",
+  title: "Headless Primitives/Accordion",
   component: Accordion,
   tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useRef, useCallback, useState, useEffect } from "react";
+import { useRef, useCallback, useState, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
 import { cn } from "../lib/utils";
@@ -35,6 +35,29 @@ interface TabListProps extends React.HTMLAttributes<HTMLDivElement> {
    * per `TabList` that actually wants this pattern.
    */
   overflowMenu?: boolean;
+  /**
+   * How `overflowMenu` decides when to collapse (default: `"wide"`).
+   *
+   * `"wide"` — a fixed ≤991px CSS container-query threshold (see the doc
+   * comment above), tuned for a wide record-detail page's own tab bar.
+   *
+   * `"compact"` — content-aware instead of a fixed threshold: measures
+   * whether the tabs actually fit their available width (via a hidden,
+   * unconstrained clone + `ResizeObserver`) and only collapses once they
+   * genuinely don't, at any container width. Meant for narrow, often-
+   * resizable hosts like an `InteriorPanel`'s own tabs (200–425px wide,
+   * see interior-panel.tsx) — a fixed threshold there is basically always
+   * wrong: either the panel's whole range sits above it (never collapses,
+   * clipping once tabs stop fitting) or below it (permanently collapsed,
+   * no visible response to resizing). Content-aware measurement collapses
+   * exactly when needed regardless of the panel's width or the tabs'
+   * label lengths, rather than guessing a pixel number tuned to one
+   * specific tab set. Note: the hidden measurement clone duplicates
+   * `children` in the DOM (aria-hidden, non-interactive) purely to read
+   * its natural width — avoid `"compact"` for a `TabList` whose children
+   * rely on globally-unique `id`/`panelId` values.
+   */
+  overflowBreakpoint?: "wide" | "compact";
   /** Formats the dropdown trigger's label from the number of tabs it
    *  holds (every tab except the active one). Defaults to `"{n} More"`. */
   overflowMoreLabel?: (count: number) => string;
@@ -46,6 +69,7 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
       className,
       fullWidth,
       overflowMenu,
+      overflowBreakpoint = "wide",
       overflowMoreLabel = (count) => `${count} More`,
       onKeyDown,
       children,
@@ -58,6 +82,39 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
     const [overflowPosition, setOverflowPosition] = useState<{ top: number; left: number; width: number } | null>(null);
     const overflowTriggerRef = useRef<HTMLButtonElement>(null);
     const overflowMenuRef = useRef<HTMLDivElement>(null);
+
+    // ── "compact" content-aware measurement ──
+    // `compactMeasureRef` is a hidden, unconstrained clone of the tab row
+    // (absolutely positioned, `whiteSpace: nowrap`, no wrapping ancestor to
+    // shrink it) — its `scrollWidth` is exactly how much space all the tabs
+    // need laid out in a single row with nothing squeezing them. Comparing
+    // that to `compactWrapRef`'s actual `clientWidth` (via `ResizeObserver`,
+    // since a docked/resizable panel can change width without the browser
+    // window resizing) tells us whether the real, visible row would clip —
+    // collapsing only when it actually would, not at some pre-guessed pixel
+    // number. Re-measures whenever `children` changes too, since a
+    // different tab set needs a different amount of space.
+    const compactWrapRef = useRef<HTMLDivElement>(null);
+    const compactMeasureRef = useRef<HTMLDivElement>(null);
+    const [compactCollapsed, setCompactCollapsed] = useState(false);
+    const isCompact = overflowMenu && overflowBreakpoint === "compact";
+
+    useLayoutEffect(() => {
+      if (!isCompact) return;
+      const wrapEl = compactWrapRef.current;
+      const measureEl = compactMeasureRef.current;
+      if (!wrapEl || !measureEl) return;
+
+      const recompute = () => {
+        setCompactCollapsed(measureEl.scrollWidth > wrapEl.clientWidth);
+      };
+      recompute();
+
+      const ro = new ResizeObserver(recompute);
+      ro.observe(wrapEl);
+      return () => ro.disconnect();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isCompact, children]);
 
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -129,8 +186,11 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
           // Stays in the DOM (just CSS-hidden below 991px, see
           // `.lyra-tab-overflow-full` in lyra-tokens.css) so its buttons
           // can still be `.click()`ed programmatically from the collapsed
-          // dropdown below.
-          overflowMenu && "lyra-tab-overflow-full",
+          // dropdown below. Only applies in `"wide"` mode — `"compact"`
+          // toggles which row renders via JS state instead (see below), so
+          // this CSS class would be a harmless no-op there, but leaving it
+          // off keeps that distinction unambiguous.
+          overflowMenu && overflowBreakpoint === "wide" && "lyra-tab-overflow-full",
           className
         )}
         {...props}
@@ -177,65 +237,104 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
       };
     });
 
+    const collapsedRowEl = activeChild && (
+      <div className="lyra-tab-overflow-collapsed [&>*]:flex-1 flex items-stretch gap-2 border-b border-lyra-border-subtle py-1.5">
+        {React.cloneElement(activeChild, {
+          key: `${activeChild.key ?? activeIndex}-overflow-active`,
+          // No `id` here — the tab with the real id lives in the full row
+          // (hidden in `"wide"` mode via `.lyra-tab-overflow-full`, or not
+          // rendered at all alongside this one in `"compact"` mode); this
+          // is purely a visible mirror of it for the collapsed two-slot
+          // layout, and duplicating that id on a second DOM node would be
+          // invalid HTML.
+          id: undefined,
+        })}
+        {otherChildren.length > 0 && (
+          // Styled as a plain (never-"active") `Tab` — no border/fill —
+          // rather than a bordered pill/chip, per feedback on the first
+          // pass: this is still just a tab, it just happens to open a
+          // menu instead of a panel directly. Same base classes and
+          // bottom hover indicator as `Tab`'s own non-active state
+          // below, minus the `role="tab"`/`aria-selected` semantics
+          // that wouldn't make sense for a trigger with no panel of its
+          // own.
+          <button
+            ref={overflowTriggerRef}
+            type="button"
+            onClick={handleOverflowTriggerClick}
+            aria-haspopup="menu"
+            aria-expanded={overflowOpen}
+            aria-label={`${otherChildren.length} more tabs`}
+            className="group relative inline-flex min-h-[48px] items-center justify-center gap-2 px-3 py-2.5 lyra-body-md-emphasis text-lyra-fg-secondary transition-colors hover:text-lyra-fg-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+          >
+            {overflowMoreLabel(otherChildren.length)}
+            <ChevronDown
+              className="h-4 w-4 flex-shrink-0 text-lyra-fg-disabled transition-colors group-hover:text-lyra-fg-secondary"
+              strokeWidth={1.5}
+              aria-hidden="true"
+            />
+            <span aria-hidden="true" className="absolute bottom-0 left-0 right-0 h-[4px] bg-transparent group-hover:bg-lyra-border-medium transition-colors" />
+          </button>
+        )}
+      </div>
+    );
+
+    const portalEl = overflowOpen && overflowPosition && createPortal(
+      <div
+        ref={overflowMenuRef}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: "fixed",
+          top: overflowPosition.top,
+          left: overflowPosition.left,
+          minWidth: overflowPosition.width,
+          zIndex: 9999,
+        }}
+      >
+        <Menu items={overflowEntries} aria-label="More tabs" />
+      </div>,
+      document.body
+    );
+
+    if (isCompact) {
+      return (
+        // `overflow-x-hidden` matters here, not just tidiness: the hidden
+        // measurement clone below is deliberately wider than this wrapper
+        // (that's the whole point — it needs to report its true
+        // unconstrained width). `visibility: hidden` keeps it unpainted but
+        // NOT removed from layout, so without clipping its overflow here,
+        // an ancestor with its own scrollable overflow (e.g. `PanelContent`
+        // — `overflow-y-auto` implicitly forces its `overflow-x` to `auto`
+        // too, per the CSS overflow spec, rather than leaving it `visible`)
+        // would pick up the clone's extra width and show an unwanted
+        // horizontal scrollbar under the actually-visible tabs.
+        <div ref={compactWrapRef} className="relative overflow-x-hidden">
+          {/* Hidden measurement clone — never visible, never interactive,
+              exists purely so `compactMeasureRef.current.scrollWidth`
+              reflects the tabs' true unconstrained width. `whiteSpace:
+              nowrap` + no `flex-wrap` + absolute positioning (out of normal
+              flow, so it can't be squeezed by `compactWrapRef`'s own
+              width) is what makes that measurement meaningful. */}
+          <div
+            ref={compactMeasureRef}
+            aria-hidden="true"
+            inert
+            style={{ position: "absolute", top: 0, left: 0, visibility: "hidden", pointerEvents: "none", whiteSpace: "nowrap" }}
+            className={cn("flex", fullWidth ? "" : "gap-6")}
+          >
+            {children}
+          </div>
+          {compactCollapsed ? collapsedRowEl : tablistEl}
+          {portalEl}
+        </div>
+      );
+    }
+
     return (
       <div className="lyra-tab-overflow-wrap">
         {tablistEl}
-        {activeChild && (
-          <div className="lyra-tab-overflow-collapsed [&>*]:flex-1 flex items-stretch gap-2 border-b border-lyra-border-subtle py-1.5">
-            {React.cloneElement(activeChild, {
-              key: `${activeChild.key ?? activeIndex}-overflow-active`,
-              // No `id` here — the tab with the real id lives in the
-              // hidden full-width row above (`.lyra-tab-overflow-full`);
-              // this is purely a visible mirror of it for the collapsed
-              // two-slot layout, and duplicating that id on a second DOM
-              // node would be invalid HTML.
-              id: undefined,
-            })}
-            {otherChildren.length > 0 && (
-              // Styled as a plain (never-"active") `Tab` — no border/fill —
-              // rather than a bordered pill/chip, per feedback on the first
-              // pass: this is still just a tab, it just happens to open a
-              // menu instead of a panel directly. Same base classes and
-              // bottom hover indicator as `Tab`'s own non-active state
-              // below, minus the `role="tab"`/`aria-selected` semantics
-              // that wouldn't make sense for a trigger with no panel of its
-              // own.
-              <button
-                ref={overflowTriggerRef}
-                type="button"
-                onClick={handleOverflowTriggerClick}
-                aria-haspopup="menu"
-                aria-expanded={overflowOpen}
-                aria-label={`${otherChildren.length} more tabs`}
-                className="group relative inline-flex min-h-[48px] items-center justify-center gap-2 px-3 py-2.5 lyra-body-md-emphasis text-lyra-fg-secondary transition-colors hover:text-lyra-fg-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
-              >
-                {overflowMoreLabel(otherChildren.length)}
-                <ChevronDown
-                  className="h-4 w-4 flex-shrink-0 text-lyra-fg-disabled transition-colors group-hover:text-lyra-fg-secondary"
-                  strokeWidth={1.5}
-                  aria-hidden="true"
-                />
-                <span aria-hidden="true" className="absolute bottom-0 left-0 right-0 h-[4px] bg-transparent group-hover:bg-lyra-border-medium transition-colors" />
-              </button>
-            )}
-          </div>
-        )}
-        {overflowOpen && overflowPosition && createPortal(
-          <div
-            ref={overflowMenuRef}
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: "fixed",
-              top: overflowPosition.top,
-              left: overflowPosition.left,
-              minWidth: overflowPosition.width,
-              zIndex: 9999,
-            }}
-          >
-            <Menu items={overflowEntries} aria-label="More tabs" />
-          </div>,
-          document.body
-        )}
+        {collapsedRowEl}
+        {portalEl}
       </div>
     );
   }

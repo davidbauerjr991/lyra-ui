@@ -165,22 +165,35 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
             item.active ||
             (item.children && item.children.some((c) => c.active));
           return (
-            <Tooltip key={i} content={item.label} placement="right" asLabel>
-              <button
-                onClick={item.onClick}
-                aria-label={item.label}
-                aria-current={isActive ? "page" : undefined}
-                className={cn(
-                  "flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lyra-sm transition-colors",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
-                  isActive
-                    ? "bg-lyra-bg-active-moderate text-lyra-fg-active-strong"
-                    : "text-lyra-fg-default hover:bg-lyra-state-hover active:bg-lyra-state-pressed"
-                )}
-              >
-                <span aria-hidden="true">{item.icon}</span>
-              </button>
-            </Tooltip>
+            // `relative w-full justify-center` (rather than relying on the
+            // parent nav's `items-center`) so the active-state bar below can
+            // be positioned `absolute left-0` against this row's own full
+            // width, flush with the rail's left edge, independent of the
+            // centered button inside it.
+            <div key={i} className="relative flex w-full flex-shrink-0 justify-center">
+              {isActive && (
+                <span
+                  aria-hidden="true"
+                  className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-lyra-state-hover-primary"
+                />
+              )}
+              <Tooltip content={item.label} placement="right" asLabel>
+                <button
+                  onClick={item.onClick}
+                  aria-label={item.label}
+                  aria-current={isActive ? "page" : undefined}
+                  className={cn(
+                    "flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lyra-sm transition-colors",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
+                    isActive
+                      ? "bg-lyra-bg-active-moderate text-lyra-fg-active-strong"
+                      : "text-lyra-fg-default hover:bg-lyra-state-hover active:bg-lyra-state-pressed"
+                  )}
+                >
+                  <span aria-hidden="true">{item.icon}</span>
+                </button>
+              </Tooltip>
+            </div>
           );
         })}
       </nav>

@@ -15,19 +15,266 @@ import { ColumnsIcon } from "./icons/columns-icon";
 import { FilterChip } from "./filter-chip";
 import type { FilterChipOption } from "./filter-chip";
 
-const Table = React.forwardRef<
-  HTMLTableElement,
-  React.HTMLAttributes<HTMLTableElement>
->(({ className, ...props }, ref) => (
-  <div className="relative w-full flex flex-col overflow-x-auto h-full" role="presentation">
-    <table
-      ref={ref}
-      role="table"
-      className={cn("w-full caption-bottom flex flex-col h-full", className)}
-      {...props}
+/* ── Column resize ──
+   `Table` is a flex-based "fake table" (see table.tsx's own top-of-file
+   history/CONTRIBUTING.md — no native `<table>`/`<colgroup>`), so a
+   column's width isn't one thing the browser applies everywhere it's
+   used: it's a Tailwind flex-basis className repeated independently on
+   that column's `TableHead` *and* every row's matching `TableCell`. Making
+   a column resizable therefore can't live inside `TableHead` alone —
+   there'd be nothing keeping the body cells in sync with a drag that only
+   `TableHead` knew about. Instead, `Table` itself owns a
+   `{ columnKey: width }` map via `useColumnResize` below and provides it
+   through context; `TableHead`/`SortableTableHead` (the drag handle) and
+   `TableCell` (matching `columnKey`) all read the *same* map, so a resize
+   applies everywhere that column is rendered without any consumer having
+   to wire the width through manually. Columns that never set `columnKey`
+   (i.e. every existing table today) never touch this map at all — they
+   keep rendering exactly as before, off their own className. */
+
+interface ColumnResizeContextValue {
+  /** Current resized width (px) per columnKey — only set for columns that have actually been dragged */
+  widths: Record<string, number>;
+  /** Begins a drag-resize for `key`, starting from `startWidth`, clamped to [min, max] */
+  startResize: (key: string, e: React.MouseEvent, startWidth: number, min: number, max: number) => void;
+  /** Nudges `key`'s width by `delta` from `current`, clamped to [min, max] — keyboard resize (arrow keys) */
+  nudge: (key: string, delta: number, current: number, min: number, max: number) => void;
+  /**
+   * Reports a column's current natural (className-driven) width getter, so
+   * the *first* resize in a table can freeze every column at once — see the
+   * comment on `useColumnResize`'s `registryRef` for why that matters.
+   * Returns an unregister function.
+   */
+  registerColumn: (key: string, getWidth: () => number) => () => void;
+  /** Sum of every registered column's current width (px) — `undefined` until the first resize. See `useColumnResize`'s return statement for why `Table` applies this as an explicit `min-width` instead of relying on CSS to size the row automatically. */
+  totalWidth?: number;
+}
+
+const ColumnResizeContext = React.createContext<ColumnResizeContextValue | null>(null);
+
+/**
+ * Owns the `{ columnKey: width }` map for one `Table`. Uncontrolled by
+ * default (plain internal state); pass `controlledWidths`/`onWidthsChange`
+ * (wired through `Table`'s own `columnWidths`/`onColumnWidthsChange` props)
+ * to lift the map to a consumer that wants to persist it (e.g. a cookie,
+ * same pattern as `InteriorPanel`'s `storageKey`).
+ */
+function useColumnResize(
+  controlledWidths?: Record<string, number>,
+  onWidthsChange?: (widths: Record<string, number>) => void
+): ColumnResizeContextValue {
+  const [internalWidths, setInternalWidths] = useState<Record<string, number>>({});
+  const isControlled = controlledWidths !== undefined;
+  const widths = isControlled ? controlledWidths! : internalWidths;
+
+  // Always mirrors the latest widths map (controlled or not) — read inside
+  // the `mousemove` handler below, which closes over a single `startResize`
+  // call and would otherwise see a stale map from whichever render it
+  // started in.
+  const widthsRef = useRef(widths);
+  widthsRef.current = widths;
+
+  const commit = useCallback(
+    (next: Record<string, number>) => {
+      if (!isControlled) setInternalWidths(next);
+      onWidthsChange?.(next);
+    },
+    [isControlled, onWidthsChange]
+  );
+
+  // Every column with a `columnKey` registers a lazy width-getter here on
+  // mount (see `TableHead`/`SortableTableHead`'s registration effect) — not
+  // measured until actually needed.
+  const registryRef = useRef(new Map<string, () => number>());
+  const registerColumn = useCallback((key: string, getWidth: () => number) => {
+    registryRef.current.set(key, getWidth);
+    return () => {
+      registryRef.current.delete(key);
+    };
+  }, []);
+
+  /**
+   * Before applying a resize, freezes every *other* registered column at
+   * its current natural width too, but only the first time this table has
+   * ever been resized (`widthsRef.current` still empty). Without this, only
+   * the dragged column becomes a fixed pixel width — every sibling still
+   * using its original `flex-1`/`flex-[n]` proportional className keeps
+   * doing exactly what flex-grow means: expand to absorb whatever space is
+   * freed up. Shrinking a couple of columns wouldn't shrink the table, it'd
+   * just force-feed that space into whichever column was still flexible,
+   * ballooning it out with blank space — reported via screenshot as the
+   * table's row separators appearing to vanish into a wide gap between two
+   * columns. Freezing the whole row's current layout at the moment of the
+   * first drag matches how resize behaves in a spreadsheet/data-grid: from
+   * that point on, every column's width is explicit, none of them are still
+   * "growing to fill leftover space" behind the scenes.
+   */
+  const freezeIfFirstResize = useCallback(
+    (key: string, ownWidth: number): Record<string, number> => {
+      if (Object.keys(widthsRef.current).length > 0) return { ...widthsRef.current };
+      const seeded: Record<string, number> = {};
+      registryRef.current.forEach((getWidth, k) => {
+        seeded[k] = k === key ? ownWidth : getWidth();
+      });
+      if (!(key in seeded)) seeded[key] = ownWidth;
+      return seeded;
+    },
+    []
+  );
+
+  const startResize = useCallback(
+    (key: string, e: React.MouseEvent, startWidth: number, min: number, max: number) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const startX = e.clientX;
+      commit(freezeIfFirstResize(key, startWidth));
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+
+      const onMove = (ev: MouseEvent) => {
+        const delta = ev.clientX - startX;
+        const next = Math.min(max, Math.max(min, startWidth + delta));
+        commit({ ...widthsRef.current, [key]: next });
+      };
+      const onUp = () => {
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+      };
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    },
+    [commit, freezeIfFirstResize]
+  );
+
+  const nudge = useCallback(
+    (key: string, delta: number, current: number, min: number, max: number) => {
+      const base = freezeIfFirstResize(key, current);
+      const next = Math.min(max, Math.max(min, current + delta));
+      commit({ ...base, [key]: next });
+    },
+    [commit, freezeIfFirstResize]
+  );
+
+  // Explicit, computed-in-JS floor for the table's own width — see the long
+  // comment on `Table`'s `<table>` element for why this replaced trying to
+  // get CSS to size the row via flexbox's "automatic minimum size": that's
+  // spec-correct in theory (confirmed by re-reading the spec closely) but
+  // Chrome does not reliably propagate it through this many nested flex
+  // levels (table → tbody → tr → td) in practice — confirmed directly via a
+  // screenshot showing the row's own hover background (which fills its
+  // real box, not just wherever a border happens to be drawn) still ending
+  // at the old boundary after the CSS-only fix. Summing every column's
+  // known width here and applying it as a concrete pixel `min-width` sidesteps
+  // that entirely: an explicit min-width in px is a basic, universally
+  // reliable CSS clamp (not dependent on any "automatic"/content-aware
+  // sizing heuristic), and normal top-down `align-items: stretch` (parent's
+  // *actual* size cascading to children) reliably carries that width down
+  // through `<thead>`/`<tbody>`/`<tr>` without needing any of them to have
+  // their own explicit width. Only reflects registered (`columnKey`-bearing)
+  // columns — a table's checkbox column and any other column without a
+  // `columnKey` (e.g. Outbound-Campaigns' fixed-width "controls" column)
+  // aren't counted, so this can under-count by up to roughly their combined
+  // width; harmless in practice since those are small, fixed-width columns,
+  // not the source of the overflow this exists to handle.
+  const totalWidth = Object.keys(widths).length > 0
+    ? Object.values(widths).reduce((sum, w) => sum + w, 0)
+    : undefined;
+
+  return { widths, startResize, nudge, registerColumn, totalWidth };
+}
+
+/** Thin drag/keyboard handle rendered on a resizable column's right edge — shared by `TableHead` and `SortableTableHead` so their resize behavior can't drift apart. */
+function ColumnResizeHandle({
+  columnKey,
+  minWidth,
+  maxWidth,
+  currentWidth,
+  label,
+}: {
+  columnKey: string;
+  minWidth: number;
+  maxWidth: number;
+  currentWidth: () => number;
+  label?: string;
+}) {
+  const ctx = React.useContext(ColumnResizeContext);
+  if (!ctx) return null;
+  return (
+    <span
+      role="separator"
+      aria-orientation="vertical"
+      aria-label={label ? `Resize ${label} column` : "Resize column"}
+      tabIndex={0}
+      draggable={false}
+      // Stops both the native HTML5 drag (column reorder, SortableTableHead)
+      // and the cell's own onClick (sort toggle) from firing when the user
+      // is actually grabbing this handle — a plain child of a `draggable`/
+      // `onClick`-bearing `<th>` would otherwise trigger both.
+      onMouseDown={(e) => {
+        e.stopPropagation();
+        ctx.startResize(columnKey, e, currentWidth(), minWidth, maxWidth);
+      }}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          ctx.nudge(columnKey, -10, currentWidth(), minWidth, maxWidth);
+        } else if (e.key === "ArrowRight") {
+          e.preventDefault();
+          ctx.nudge(columnKey, 10, currentWidth(), minWidth, maxWidth);
+        }
+      }}
+      className="absolute right-0 top-0 z-10 h-full w-2 -mr-1 cursor-col-resize touch-none select-none focus-visible:outline-none focus-visible:bg-lyra-border-active/60 hover:bg-lyra-border-active/40 active:bg-lyra-border-active"
     />
-  </div>
-));
+  );
+}
+
+interface TableProps extends React.HTMLAttributes<HTMLTableElement> {
+  /** Controlled `{ columnKey: width }` map (px) — pairs with `onColumnWidthsChange` for consumers that want to persist resized column widths. Uncontrolled (plain internal state) when omitted; resize still works fully without either prop. */
+  columnWidths?: Record<string, number>;
+  /** Called with the full updated widths map on every resize (drag or keyboard) */
+  onColumnWidthsChange?: (widths: Record<string, number>) => void;
+}
+
+const Table = React.forwardRef<HTMLTableElement, TableProps>(
+  ({ className, columnWidths, onColumnWidthsChange, style, ...props }, ref) => {
+    const resize = useColumnResize(columnWidths, onColumnWidthsChange);
+    return (
+      <ColumnResizeContext.Provider value={resize}>
+        <div className="relative w-full flex flex-col overflow-x-auto h-full" role="presentation">
+          <table
+            ref={ref}
+            role="table"
+            // No CSS-only `width`/`min-width` class here — two earlier
+            // attempts at that (`w-full`, then `min-w-full`) both failed:
+            // an explicit `min-width` *replaces* the browser's automatic,
+            // content-aware minimum size for a flex item rather than adding
+            // a floor on top of it, and even after fixing that (removing
+            // the explicit class so the automatic mechanism could theoretically
+            // take over), a live test showed Chrome still doesn't reliably
+            // propagate it through this many nested flex levels (table →
+            // tbody → tr → td) — confirmed via a screenshot where the row's
+            // own hover background (its real painted box, not just a
+            // border) still stopped short of its resized-wide cells.
+            // Sidestepping that entirely: `resize.totalWidth` is computed
+            // directly from the known column widths (useColumnResize's
+            // return statement), so this sets a concrete pixel `min-width`
+            // via inline style — a basic, universally reliable CSS clamp,
+            // not dependent on any browser's "automatic sizing" heuristic.
+            // Normal top-down `align-items: stretch` then reliably carries
+            // that width down through `<thead>`/`<tbody>`/`<tr>` without any
+            // of them needing their own explicit width.
+            style={resize.totalWidth !== undefined ? { ...style, minWidth: resize.totalWidth } : style}
+            className={cn("caption-bottom flex flex-col h-full", className)}
+            {...props}
+          />
+        </div>
+      </ColumnResizeContext.Provider>
+    );
+  }
+);
 Table.displayName = "Table";
 
 const TableHeader = React.forwardRef<
@@ -37,7 +284,18 @@ const TableHeader = React.forwardRef<
   <thead
     ref={ref}
     role="rowgroup"
-    className={cn("bg-lyra-bg-surface-base flex-shrink-0", className)}
+    // `flex flex-col` — explicit, not relied-on-by-accident. `<thead>`'s
+    // native default is `display: table-header-group`, which only means
+    // something browser-consistently when its ancestor `<table>` is
+    // genuinely `display: table` — ours is overridden to `flex` (this whole
+    // component is a flex-based "fake table"), so a `table-header-group`
+    // box with no real table to belong to is exactly the kind of edge case
+    // that's inconsistent across engines rather than reliably falling back
+    // to block. Setting the display explicitly removes that ambiguity.
+    // No `min-w-full`/`w-full` here — see the long comment on `Table`'s
+    // `<table>` above for why an explicit width/min-width is actively wrong
+    // here, not just unnecessary.
+    className={cn("flex flex-col bg-lyra-bg-surface-base flex-shrink-0", className)}
     {...props}
   />
 ));
@@ -50,7 +308,11 @@ const TableBody = React.forwardRef<
   <tbody
     ref={ref}
     role="rowgroup"
-    className={cn("flex-1 [&_tr:last-child]:border-0", className)}
+    // Same reasoning as `TableHeader` above — explicit `flex flex-col`
+    // instead of relying on `table-row-group`'s behavior with no real
+    // `display:table` ancestor to belong to, and no `min-w-full`/`w-full`
+    // (see the long comment on `Table`'s `<table>` for why).
+    className={cn("flex flex-col flex-1 [&_tr:last-child]:border-0", className)}
     {...props}
   />
 ));
@@ -64,7 +326,29 @@ const TableRow = React.forwardRef<
     ref={ref}
     role="row"
     className={cn(
-      "flex w-full border-b border-lyra-border-subtle transition-colors",
+      // No `width`/`min-width` class here — neither `w-full` (the original)
+      // nor `min-w-full` (a previous, insufficient attempt at fixing this)
+      // is correct. Both pin this row's own box to exactly 100% of its
+      // container: `w-full` obviously (a hard `width: 100%`), but
+      // `min-w-full` too — setting an explicit `min-width` *replaces* the
+      // browser's automatic, content-aware minimum size for a flex item
+      // rather than adding a floor on top of it, so it doesn't actually let
+      // the row grow when a resized cell inside needs more than 100%; it
+      // just pins the floor to 100% by a different property. Either way,
+      // cells inside can render wider than the row's own (capped) box
+      // without being clipped (`overflow: visible` is the default) — so a
+      // resized-wide row would visually spill past its right edge while
+      // `border-bottom`, painted at the row's own box edge, stayed at the
+      // old 100% boundary, looking like the separator "disappeared" under
+      // whichever columns rendered past that point.
+      // Leaving both properties at their default (`auto`) is what actually
+      // works: `align-items: stretch` (this row's flex-column ancestors'
+      // default) sizes it to 100% as a baseline, and flexbox's *own*
+      // automatic minimum size — which explicitly does account for
+      // descendant content, including a non-shrinking resized cell — grows
+      // it further if needed. No manual width class should be added back
+      // here for this reason.
+      "flex border-b border-lyra-border-subtle transition-colors",
       /* default row states */
       "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
       /* selected row states */
@@ -78,42 +362,112 @@ const TableRow = React.forwardRef<
 ));
 TableRow.displayName = "TableRow";
 
-const TableHead = React.forwardRef<
-  HTMLTableCellElement,
-  React.ThHTMLAttributes<HTMLTableCellElement>
->(({ className, children, title, ...props }, ref) => (
-  <th
-    ref={ref}
-    role="columnheader"
-    title={title ?? (typeof children === "string" ? children : undefined)}
-    className={cn(
-      "flex items-center h-10 px-3 text-left lyra-label text-lyra-fg-default border-b border-lyra-border-default [&:has([role=checkbox])]:pr-0 [&:has([role=checkbox])]:w-[40px] min-w-0",
-      className
-    )}
-    {...props}
-  >
-    <span className="truncate">{children}</span>
-  </th>
-));
+interface TableHeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
+  /** Enables the drag/keyboard resize handle on this column's right edge. Requires `columnKey`. */
+  resizable?: boolean;
+  /** Identifies this column — must match the `columnKey` used on this column's `TableCell`s so a resize applies to the whole column, not just the header. */
+  columnKey?: string;
+  /** Minimum width (px) a drag/keyboard resize can reach (default: 80) */
+  minWidth?: number;
+  /** Maximum width (px) a drag/keyboard resize can reach (default: 600) */
+  maxWidth?: number;
+}
+
+const TableHead = React.forwardRef<HTMLTableCellElement, TableHeadProps>(
+  (
+    {
+      className,
+      children,
+      title,
+      style,
+      resizable,
+      columnKey,
+      minWidth = 80,
+      maxWidth = 600,
+      ...props
+    },
+    ref
+  ) => {
+    const resizeCtx = React.useContext(ColumnResizeContext);
+    const localRef = useRef<HTMLTableCellElement | null>(null);
+    const setRefs = useCallback(
+      (node: HTMLTableCellElement | null) => {
+        localRef.current = node;
+        if (typeof ref === "function") ref(node);
+        else if (ref) (ref as React.MutableRefObject<HTMLTableCellElement | null>).current = node;
+      },
+      [ref]
+    );
+    const resizedWidth = columnKey ? resizeCtx?.widths[columnKey] : undefined;
+
+    // Registers this column's natural width so a sibling's first resize can
+    // freeze it in place too (see `freezeIfFirstResize` in table.tsx).
+    // `registerColumn` itself is a stable reference (empty-deps useCallback
+    // in useColumnResize) even though `resizeCtx` is a new object every
+    // render, so depending on it directly here — not on `resizeCtx` — keeps
+    // this from re-registering on every width change elsewhere in the table.
+    const registerColumn = resizeCtx?.registerColumn;
+    useEffect(() => {
+      if (!columnKey || !registerColumn) return;
+      return registerColumn(columnKey, () => localRef.current?.getBoundingClientRect().width ?? 0);
+    }, [columnKey, registerColumn]);
+
+    return (
+      <th
+        ref={setRefs}
+        role="columnheader"
+        title={title ?? (typeof children === "string" ? children : undefined)}
+        style={resizedWidth !== undefined ? { ...style, flex: `0 0 ${resizedWidth}px` } : style}
+        className={cn(
+          "relative flex items-center h-10 px-3 text-left lyra-label text-lyra-fg-default border-b border-lyra-border-default [&:has([role=checkbox])]:pr-0 [&:has([role=checkbox])]:w-[40px] min-w-0",
+          resizable && "pr-4",
+          className
+        )}
+        {...props}
+      >
+        <span className="truncate">{children}</span>
+        {resizable && columnKey && (
+          <ColumnResizeHandle
+            columnKey={columnKey}
+            minWidth={minWidth}
+            maxWidth={maxWidth}
+            label={typeof children === "string" ? children : undefined}
+            currentWidth={() => resizedWidth ?? localRef.current?.getBoundingClientRect().width ?? minWidth}
+          />
+        )}
+      </th>
+    );
+  }
+);
 TableHead.displayName = "TableHead";
 
-const TableCell = React.forwardRef<
-  HTMLTableCellElement,
-  React.TdHTMLAttributes<HTMLTableCellElement>
->(({ className, children, title, ...props }, ref) => (
-  <td
-    ref={ref}
-    role="cell"
-    title={title ?? (typeof children === "string" ? children : undefined)}
-    className={cn(
-      "flex items-center h-10 px-3 lyra-body-md text-lyra-fg-default [&:has([role=checkbox])]:pr-0 [&:has([role=checkbox])]:w-[40px] min-w-0",
-      className
-    )}
-    {...props}
-  >
-    <span className="truncate">{children}</span>
-  </td>
-));
+interface TableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
+  /** Column key matching this column's `TableHead`'s `columnKey` — only needed when that column is `resizable`, so this cell picks up the same resized width. */
+  columnKey?: string;
+}
+
+const TableCell = React.forwardRef<HTMLTableCellElement, TableCellProps>(
+  ({ className, children, title, style, columnKey, ...props }, ref) => {
+    const resizeCtx = React.useContext(ColumnResizeContext);
+    const resizedWidth = columnKey ? resizeCtx?.widths[columnKey] : undefined;
+
+    return (
+      <td
+        ref={ref}
+        role="cell"
+        title={title ?? (typeof children === "string" ? children : undefined)}
+        style={resizedWidth !== undefined ? { ...style, flex: `0 0 ${resizedWidth}px` } : style}
+        className={cn(
+          "flex items-center h-10 px-3 lyra-body-md text-lyra-fg-default [&:has([role=checkbox])]:pr-0 [&:has([role=checkbox])]:w-[40px] min-w-0",
+          className
+        )}
+        {...props}
+      >
+        <span className="truncate">{children}</span>
+      </td>
+    );
+  }
+);
 TableCell.displayName = "TableCell";
 
 /* ── Sort direction type ── */
@@ -128,83 +482,138 @@ interface SortableTableHeadProps
   sortDirection?: SortDirection;
   /** Called when the user clicks to toggle sort */
   onSort?: () => void;
-  /** Column key used by useColumnReorder — enables drag when provided */
+  /** Column key used by useColumnReorder — enables drag when provided. Also identifies this column for resize when `resizable` is set (must match this column's `TableCell`s' `columnKey`). */
   columnKey?: string;
   /** Drag handlers returned by useColumnReorder */
   dragHandlers?: ColumnDragHandlers;
   /** Whether this column is currently being dragged over */
   isDragOver?: boolean;
+  /** Enables the drag/keyboard resize handle on this column's right edge. Requires `columnKey`. */
+  resizable?: boolean;
+  /** Minimum width (px) a drag/keyboard resize can reach (default: 80) */
+  minWidth?: number;
+  /** Maximum width (px) a drag/keyboard resize can reach (default: 600) */
+  maxWidth?: number;
 }
 
-const SortableTableHead = React.forwardRef<
-  HTMLTableCellElement,
-  SortableTableHeadProps
->(({ className, children, sortDirection = null, onSort, columnKey, dragHandlers, isDragOver, ...props }, ref) => {
-  const draggable = !!(columnKey && dragHandlers);
+const SortableTableHead = React.forwardRef<HTMLTableCellElement, SortableTableHeadProps>(
+  (
+    {
+      className,
+      children,
+      sortDirection = null,
+      onSort,
+      columnKey,
+      dragHandlers,
+      isDragOver,
+      resizable,
+      minWidth = 80,
+      maxWidth = 600,
+      style,
+      ...props
+    },
+    ref
+  ) => {
+    const draggable = !!(columnKey && dragHandlers);
+    const resizeCtx = React.useContext(ColumnResizeContext);
+    const localRef = useRef<HTMLTableCellElement | null>(null);
+    const setRefs = useCallback(
+      (node: HTMLTableCellElement | null) => {
+        localRef.current = node;
+        if (typeof ref === "function") ref(node);
+        else if (ref) (ref as React.MutableRefObject<HTMLTableCellElement | null>).current = node;
+      },
+      [ref]
+    );
+    const resizedWidth = columnKey ? resizeCtx?.widths[columnKey] : undefined;
 
-  return (
-    <th
-      ref={ref}
-      role="columnheader"
-      tabIndex={0}
-      draggable={draggable}
-      onDragStart={draggable ? (e) => dragHandlers.onDragStart(e, columnKey!) : undefined}
-      onDragOver={draggable ? (e) => dragHandlers.onDragOver(e, columnKey!) : undefined}
-      onDrop={draggable ? (e) => dragHandlers.onDrop(e, columnKey!) : undefined}
-      onDragEnd={draggable ? dragHandlers.onDragEnd : undefined}
-      onDragLeave={draggable ? dragHandlers.onDragLeave : undefined}
-      className={cn(
-        "flex items-center h-10 px-3 text-left lyra-label text-lyra-fg-default border-b border-lyra-border-default whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&:has([role=checkbox])]:w-[40px] min-w-0 relative",
-        "group/sort cursor-pointer select-none hover:bg-lyra-state-hover active:bg-lyra-state-pressed transition-colors",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-inset",
-        sortDirection && "border-b-2 border-b-lyra-bg-primary",
-        isDragOver && "bg-lyra-bg-active-moderate",
-        className
-      )}
-      onClick={onSort}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onSort?.();
-        }
-      }}
-      aria-sort={
-        sortDirection === "asc"
-          ? "ascending"
-          : sortDirection === "desc"
-            ? "descending"
-            : "none"
-      }
-      {...props}
-    >
-      <span className="flex-1 truncate">
-        {/* Render only text/string children inside the truncated span */}
-        {React.Children.map(children, (child) =>
-          typeof child === "string" || typeof child === "number" ? child : null
-        )}
-      </span>
-      <span
-        aria-hidden="true"
+    // Registers this column's natural width so a sibling's first resize can
+    // freeze it in place too (see `freezeIfFirstResize` in table.tsx).
+    // `registerColumn` itself is a stable reference (empty-deps useCallback
+    // in useColumnResize) even though `resizeCtx` is a new object every
+    // render, so depending on it directly here — not on `resizeCtx` — keeps
+    // this from re-registering on every width change elsewhere in the table.
+    const registerColumn = resizeCtx?.registerColumn;
+    useEffect(() => {
+      if (!columnKey || !registerColumn) return;
+      return registerColumn(columnKey, () => localRef.current?.getBoundingClientRect().width ?? 0);
+    }, [columnKey, registerColumn]);
+
+    return (
+      <th
+        ref={setRefs}
+        role="columnheader"
+        tabIndex={0}
+        draggable={draggable}
+        onDragStart={draggable ? (e) => dragHandlers.onDragStart(e, columnKey!) : undefined}
+        onDragOver={draggable ? (e) => dragHandlers.onDragOver(e, columnKey!) : undefined}
+        onDrop={draggable ? (e) => dragHandlers.onDrop(e, columnKey!) : undefined}
+        onDragEnd={draggable ? dragHandlers.onDragEnd : undefined}
+        onDragLeave={draggable ? dragHandlers.onDragLeave : undefined}
+        style={resizedWidth !== undefined ? { ...style, flex: `0 0 ${resizedWidth}px` } : style}
         className={cn(
-          "ml-1.5 flex-shrink-0 transition-opacity",
-          sortDirection ? "opacity-100" : "opacity-0 group-hover/sort:opacity-100"
+          "flex items-center h-10 px-3 text-left lyra-label text-lyra-fg-default border-b border-lyra-border-default whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&:has([role=checkbox])]:w-[40px] min-w-0 relative",
+          "group/sort cursor-pointer select-none hover:bg-lyra-state-hover active:bg-lyra-state-pressed transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-inset",
+          sortDirection && "border-b-2 border-b-lyra-bg-primary",
+          isDragOver && "bg-lyra-bg-active-moderate",
+          resizable && "pr-4",
+          className
         )}
+        onClick={onSort}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onSort?.();
+          }
+        }}
+        aria-sort={
+          sortDirection === "asc"
+            ? "ascending"
+            : sortDirection === "desc"
+              ? "descending"
+              : "none"
+        }
+        {...props}
       >
-        {sortDirection === "asc" ? (
-          <ArrowUp className="h-3.5 w-3.5 text-lyra-fg-active-strong" strokeWidth={1.5} />
-        ) : sortDirection === "desc" ? (
-          <ArrowDown className="h-3.5 w-3.5 text-lyra-fg-active-strong" strokeWidth={1.5} />
-        ) : (
-          <ArrowUpDown className="h-3.5 w-3.5 text-lyra-fg-disabled" strokeWidth={1.5} />
+        <span className="flex-1 truncate">
+          {/* Render only text/string children inside the truncated span */}
+          {React.Children.map(children, (child) =>
+            typeof child === "string" || typeof child === "number" ? child : null
+          )}
+        </span>
+        <span
+          aria-hidden="true"
+          className={cn(
+            "ml-1.5 flex-shrink-0 transition-opacity",
+            sortDirection ? "opacity-100" : "opacity-0 group-hover/sort:opacity-100"
+          )}
+        >
+          {sortDirection === "asc" ? (
+            <ArrowUp className="h-3.5 w-3.5 text-lyra-fg-active-strong" strokeWidth={1.5} />
+          ) : sortDirection === "desc" ? (
+            <ArrowDown className="h-3.5 w-3.5 text-lyra-fg-active-strong" strokeWidth={1.5} />
+          ) : (
+            <ArrowUpDown className="h-3.5 w-3.5 text-lyra-fg-disabled" strokeWidth={1.5} />
+          )}
+        </span>
+        {/* Render non-text children (e.g. context menus) outside the truncated span */}
+        {React.Children.map(children, (child) =>
+          typeof child !== "string" && typeof child !== "number" ? child : null
         )}
-      </span>
-      {/* Render non-text children (e.g. context menus) outside the truncated span */}
-      {React.Children.map(children, (child) =>
-        typeof child !== "string" && typeof child !== "number" ? child : null
-      )}
-    </th>
-  );
-});
+        {resizable && columnKey && (
+          <ColumnResizeHandle
+            columnKey={columnKey}
+            minWidth={minWidth}
+            maxWidth={maxWidth}
+            label={typeof children === "string" ? children : undefined}
+            currentWidth={() => resizedWidth ?? localRef.current?.getBoundingClientRect().width ?? minWidth}
+          />
+        )}
+      </th>
+    );
+  }
+);
 SortableTableHead.displayName = "SortableTableHead";
 
 /* ── useColumnReorder hook ── */
@@ -1063,7 +1472,13 @@ const TableGroupRow = React.forwardRef<HTMLTableRowElement, TableGroupRowProps>(
       ref={ref}
       role="row"
       className={cn(
-        "flex w-full border-b border-lyra-border-subtle bg-lyra-bg-surface-shell cursor-pointer select-none hover:bg-lyra-state-hover transition-colors",
+        // No `width`/`min-width` class — same corrected reasoning as
+        // `TableRow` above: an explicit `min-w-full` replaces flexbox's own
+        // content-aware automatic minimum size rather than adding to it, so
+        // it wouldn't actually let this row grow past 100% when needed.
+        // Leaving both at their default lets stretch (100% baseline) and
+        // the automatic minimum (content-aware) combine correctly instead.
+        "flex border-b border-lyra-border-subtle bg-lyra-bg-surface-shell cursor-pointer select-none hover:bg-lyra-state-hover transition-colors",
         className
       )}
       onClick={onToggle}
@@ -1238,4 +1653,4 @@ export {
   useTableGrouping,
   useAutoFitRows,
 };
-export type { SortDirection, ColumnDragHandlers, TableToolbarProps, ToolbarFilterDef, ToolbarActionDef, TableFooterProps, ColumnToggleItem, ColumnToggleProps, TableGroupRowProps, GroupedData, UseTableGroupingReturn, UseAutoFitRowsReturn };
+export type { SortDirection, ColumnDragHandlers, TableProps, TableHeadProps, TableCellProps, TableToolbarProps, ToolbarFilterDef, ToolbarActionDef, TableFooterProps, ColumnToggleItem, ColumnToggleProps, TableGroupRowProps, GroupedData, UseTableGroupingReturn, UseAutoFitRowsReturn };

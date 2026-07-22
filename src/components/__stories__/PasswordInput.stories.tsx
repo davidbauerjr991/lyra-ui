@@ -3,7 +3,7 @@ import { useState } from "react";
 import { PasswordInput, ChangePassword } from "../password-input";
 
 const meta: Meta = {
-  title: "Radix Primitives/PasswordInput",
+  title: "Headless Primitives/PasswordInput",
   tags: ["autodocs"],
   parameters: {
     layout: "padded",

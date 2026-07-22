@@ -1,5 +1,6 @@
 import * as React from "react";
 import { X } from "lucide-react";
+import { Icon } from "./icon";
 import { Tooltip } from "./tooltip";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/utils";
@@ -47,7 +48,7 @@ const InlineNotification = React.forwardRef<
   HTMLDivElement,
   InlineNotificationProps
 >(({ className, variant = "info", onDismiss, children, ...props }, ref) => {
-  const Icon = iconMap[variant!];
+  const StatusIcon = iconMap[variant!];
 
   return (
     <div
@@ -56,15 +57,13 @@ const InlineNotification = React.forwardRef<
       role="alert"
       {...props}
     >
-      <span className="flex-shrink-0 pt-0.5" aria-hidden="true">
-        <Icon className="h-5 w-5" />
-      </span>
+      <Icon icon={StatusIcon} size="md" decorative className="shrink-0 pt-0.5" />
       <p className="flex-1 lyra-body-md text-lyra-fg-default">{children}</p>
       {onDismiss && (
         <Tooltip content="Dismiss alert" placement="left" asLabel>
           <button
             onClick={onDismiss}
-            className="flex-shrink-0 flex h-5 w-5 items-center justify-center rounded-lyra-xs text-lyra-fg-secondary transition-colors hover:text-lyra-fg-default"
+            className="flex-shrink-0 flex h-5 w-5 items-center justify-center rounded-lyra-xs text-lyra-fg-action transition-colors hover:text-lyra-fg-default"
             aria-label="Dismiss"
           >
             <X className="h-4 w-4" strokeWidth={1.5} />

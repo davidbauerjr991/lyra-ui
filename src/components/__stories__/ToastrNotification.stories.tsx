@@ -5,7 +5,7 @@ import { Toast, ToastContainer, useToast } from "../toast";
 import type { ToastVariant } from "../toast";
 
 const meta: Meta = {
-  title: "Radix Primitives/Toastr Notification",
+  title: "Headless Primitives/Toastr Notification",
   tags: ["autodocs"],
   parameters: {
     layout: "padded",

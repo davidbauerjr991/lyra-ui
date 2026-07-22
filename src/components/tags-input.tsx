@@ -118,7 +118,7 @@ const TagsInput = React.forwardRef<HTMLDivElement, TagsInputProps>(
             required={required}
             disabled={disabled}
             readonly={readonly}
-            className="block mb-1.5"
+            className="mb-1.5"
           />
         )}
 

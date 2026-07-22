@@ -132,9 +132,12 @@ const ToggleGroup = React.forwardRef<HTMLDivElement, ToggleGroupProps>(
                   ],
                   /* Disabled */
                   isDisabled && !selected && "text-lyra-fg-disabled cursor-not-allowed border border-transparent",
-                  /* Selected / On */
+                  /* Selected / On — color change only, no font-weight shift
+                     (matches the rest of the system's active-state
+                     treatment, e.g. Tag/TreeMenu's leaf-active styling —
+                     `font-medium` here was inconsistent with that). */
                   selected && !isDisabled && [
-                    "bg-lyra-bg-active-subtle border border-lyra-border-active text-lyra-fg-active-strong font-medium",
+                    "bg-lyra-bg-active-subtle border border-lyra-border-active text-lyra-fg-active-strong",
                     "hover:bg-lyra-state-hover-active-subtle",
                     "active:bg-lyra-state-pressed-active-subtle",
                   ],

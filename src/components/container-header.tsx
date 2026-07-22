@@ -119,7 +119,7 @@ const ContainerHeader = React.forwardRef<HTMLDivElement, ContainerHeaderProps>(
             <button
               aria-label={title ? `Close ${title}` : "Close"}
               onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+              className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-action hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
             >
               <X className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />
             </button>

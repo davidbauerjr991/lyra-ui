@@ -77,7 +77,7 @@ const RadioButtonGroup = React.forwardRef<HTMLDivElement, RadioButtonGroupProps>
             required={required}
             disabled={disabled}
             readonly={readonly}
-            className="block mb-2"
+            className="mb-2"
           />
         )}
 

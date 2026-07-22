@@ -39,7 +39,7 @@ export {
   useTableGrouping,
   useAutoFitRows,
 } from "./components/table";
-export type { SortDirection, ColumnDragHandlers, TableToolbarProps, ToolbarFilterDef, ToolbarActionDef, TableFooterProps, ColumnToggleItem, ColumnToggleProps, TableGroupRowProps, GroupedData, UseTableGroupingReturn, UseAutoFitRowsReturn } from "./components/table";
+export type { SortDirection, ColumnDragHandlers, TableProps, TableHeadProps, TableCellProps, TableToolbarProps, ToolbarFilterDef, ToolbarActionDef, TableFooterProps, ColumnToggleItem, ColumnToggleProps, TableGroupRowProps, GroupedData, UseTableGroupingReturn, UseAutoFitRowsReturn } from "./components/table";
 export { TabList, Tab, TabPanel } from "./components/tabs";
 export type { TabListProps, TabProps, TabPanelProps } from "./components/tabs";
 export { AppName } from "./components/app-name";
@@ -209,6 +209,10 @@ export type {
   AgentDashboardQueueSubItem,
   ContactHistoryCardProps,
 } from "./components/agent-dashboard";
+
+/* ── Form Template (the "Forms" record-detail template) ── */
+export { FormTemplate } from "./components/form-template";
+export type { FormTemplateProps } from "./components/form-template";
 
 /* ── Login Card ── */
 export { LoginCard } from "./components/login-card";

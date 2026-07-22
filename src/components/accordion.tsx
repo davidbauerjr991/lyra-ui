@@ -13,7 +13,7 @@ import { cn } from "../lib/utils";
  * own `--radix-accordion-content-height` CSS variable (see the
  * `accordion-down`/`accordion-up` keyframes in tailwind.config.js — 200ms
  * ease-in-out, matching the original's own transition timing exactly) —
- * see CONTRIBUTING.md / the "Radix Primitives" exercise for the side-by-side
+ * see CONTRIBUTING.md / the "Headless Primitives" exercise for the side-by-side
  * comparison this replaced. Public API (`AccordionProps`, `AccordionItem`)
  * is unchanged from before this swap — every existing caller (`dashboard-
  * queue.tsx`, and this component's own Storybook stories) needed zero

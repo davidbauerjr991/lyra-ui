@@ -390,6 +390,42 @@
 }
 
 /* ════════════════════════════════════════════════════
+   Form grid (CSS container query)
+   ════════════════════════════════════════════════════
+   Same mechanism as `.lyra-container-grid` above (container-type boundary +
+   a flex-row that collapses in two ordered stages), used by `FormTemplate`
+   (form-template.tsx) — but with its own, narrower thresholds: ≤768px for
+   the 2-up grid stage (vs. `.lyra-container-grid`'s ≤991px) and ≤550px for
+   the single-column stage (vs. its ≤767px). Kept as its own separate class
+   rather than changing `.lyra-container-grid`'s thresholds directly so
+   `AgentDashboard`'s card rows (which want the original 991/767 thresholds)
+   are unaffected. */
+.lyra-form-grid-wrap {
+  container-type: inline-size;
+}
+.lyra-form-grid {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+}
+.lyra-form-grid > * {
+  flex: 1 1 0%;
+  min-width: 0;
+}
+@container (max-width: 768px) {
+  .lyra-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container (max-width: 550px) {
+  .lyra-form-grid {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* ════════════════════════════════════════════════════
    Metric row (CSS container query)
    ════════════════════════════════════════════════════
    Same rationale as `.lyra-container-grid-wrap` above, applied to
@@ -636,6 +672,15 @@
     display: flex;
   }
 }
+
+/* Note: `TabList`'s `overflowBreakpoint="compact"` variant (tabs.tsx) does
+   NOT use a CSS container query like `.lyra-tab-overflow-wrap` above — it
+   measures whether the tabs actually fit via a hidden clone + JS
+   `ResizeObserver` instead, since a fixed pixel threshold tuned for one
+   narrow context (an `InteriorPanel`'s ~200–425px range) is still just a
+   guess that may not match when a *different* set of tab labels actually
+   stops fitting. See tabs.tsx's `overflowBreakpoint` doc comment for the
+   full rationale — no CSS class needed here for that mode. */
 
 /* ════════════════════════════════════════════════════
    PageHeader breadcrumb collapse

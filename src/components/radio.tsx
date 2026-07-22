@@ -39,7 +39,7 @@ const RadioGroup = React.forwardRef<HTMLDivElement, RadioGroupProps>(
             labelHelpText={labelHelpText}
             required={required}
             disabled={disabled}
-            className="block mb-1.5"
+            className="mb-1.5"
           />
         )}
         <RadioGroupPrimitive.Root

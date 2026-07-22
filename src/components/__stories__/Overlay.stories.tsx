@@ -7,7 +7,7 @@ import { X } from "lucide-react";
 import { Tooltip } from "../tooltip";
 
 const meta: Meta = {
-  title: "Radix Primitives/Overlay",
+  title: "Headless Primitives/Overlay",
   tags: ["autodocs"],
   parameters: {
     layout: "padded",

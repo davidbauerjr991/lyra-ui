@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { SidePanel } from "./side-panel";
 import { InteriorPanel } from "./interior-panel";
-import { PageHeader } from "./page-header";
+import { PageHeader, type PageHeaderBreadcrumb } from "./page-header";
 import { TreeMenu, type TreeMenuItem } from "./tree-menu";
 import { cn } from "../lib/utils";
 
@@ -36,6 +36,14 @@ export interface AdminShellProps {
   pageTitle?: string;
   pageBadge?: string;
   pageActions?: React.ReactNode;
+  /**
+   * Parent breadcrumb(s) shown before `pageTitle`, e.g. `{ label: "Forms",
+   * onClick: goBackToList }` — passed straight through to PageHeader's own
+   * `breadcrumb` prop (see page-header.tsx), which renders "ParentName /
+   * Title" (or a full multi-crumb trail for an array). Omit for a plain
+   * title with no trail, same as before this prop existed.
+   */
+  pageBreadcrumb?: PageHeaderBreadcrumb | PageHeaderBreadcrumb[];
 
   /**
    * Interior (in-content) detail panel. Left fully controlled by the
@@ -72,6 +80,7 @@ export function AdminShell({
   pageTitle,
   pageBadge,
   pageActions,
+  pageBreadcrumb,
   interiorPanelTitle = "Details",
   interiorPanelOpen = false,
   onInteriorPanelClose,
@@ -81,6 +90,12 @@ export function AdminShell({
   className,
 }: AdminShellProps) {
   const pinCookieKey = `${storageKeyPrefix}_panel_pinned`;
+  /* Tracks collapsed/expanded state *while pinned*, independent of the pin
+     flag itself — without this, toggling the panel closed (still pinned)
+     only lived in this mount's React state, so navigating to a page that
+     remounts AdminShell (e.g. a list ↔ detail swap) re-derived
+     `leftPanelOpen` from the pin cookie alone and snapped it back open. */
+  const openCookieKey = `${storageKeyPrefix}_panel_open`;
   const mainRef = useRef<HTMLElement>(null);
 
   /* ── Container-width pin guard ──
@@ -103,13 +118,20 @@ export function AdminShell({
 
   /* ── Left side panel ── */
   const [leftPanelPinned, setLeftPanelPinned] = useState(() => readBoolCookie(pinCookieKey, defaultLeftPinned));
-  const [leftPanelOpen, setLeftPanelOpen] = useState(() => readBoolCookie(pinCookieKey, defaultLeftPinned));
+  const [leftPanelOpen, setLeftPanelOpen] = useState(() =>
+    readBoolCookie(openCookieKey, readBoolCookie(pinCookieKey, defaultLeftPinned))
+  );
   const effectiveLeftPinned = isNarrowContainer ? false : leftPanelPinned;
   const leftHoverTimeout = useRef<ReturnType<typeof setTimeout>>();
 
   const handleLeftToggle = useCallback(() => {
-    if (effectiveLeftPinned) setLeftPanelOpen((v) => !v);
-  }, [effectiveLeftPinned]);
+    if (!effectiveLeftPinned) return;
+    setLeftPanelOpen((v) => {
+      const next = !v;
+      setCookie(openCookieKey, String(next));
+      return next;
+    });
+  }, [effectiveLeftPinned, openCookieKey]);
 
   const handleLeftHoverStart = useCallback(() => {
     if (!effectiveLeftPinned) { clearTimeout(leftHoverTimeout.current); setLeftPanelOpen(true); }
@@ -123,10 +145,11 @@ export function AdminShell({
     setLeftPanelPinned((prev) => {
       const next = !prev;
       setCookie(pinCookieKey, String(next));
+      setCookie(openCookieKey, String(next));
       setLeftPanelOpen(next);
       return next;
     });
-  }, [pinCookieKey]);
+  }, [pinCookieKey, openCookieKey]);
 
   /* ── Right side panel ── */
   const [rightSidePanelOpen, setRightSidePanelOpen] = useState(false);
@@ -175,6 +198,7 @@ export function AdminShell({
         {showPageHeader && (
           <PageHeader
             title={pageTitle ?? ""}
+            breadcrumb={pageBreadcrumb}
             panelToggle="left"
             badge={pageBadge}
             panelPinned={effectiveLeftPinned}
@@ -203,13 +227,20 @@ export function AdminShell({
             {children}
           </div>
 
-          {/* Interior right panel */}
+          {/* Interior right panel — `storageKey` scoped by both
+              `storageKeyPrefix` and `interiorPanelTitle` (not just the
+              prefix alone): `FormsPage.tsx` and `FormDetailPage.tsx` share
+              the same `storageKeyPrefix` on purpose (so the left panel's
+              pin state stays consistent across both), but their interior
+              panels are different panels ("Details" vs. "Settings") that
+              need independently remembered widths, not one shared value. */}
           {interiorPanelContent !== undefined && (
             <InteriorPanel
               side="right"
               open={interiorPanelOpen}
               headerTitle={interiorPanelTitle}
               onClose={onInteriorPanelClose}
+              storageKey={`${storageKeyPrefix}_interior_width_${interiorPanelTitle}`}
             >
               {interiorPanelContent}
             </InteriorPanel>

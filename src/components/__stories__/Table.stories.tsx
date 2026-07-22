@@ -342,6 +342,71 @@ export const Reorderable: Story = {
   render: () => <ReorderableDemo />,
 };
 
+/* ── Resizable ──
+   Drag the thin strip at each header's right edge (or focus it and use
+   Left/Right arrow keys) to resize that column. `columnKey` on both the
+   `TableHead` and its matching `TableCell`s is what keeps a resize applied
+   across the whole column instead of just the header — see the
+   "Column resize" comment block at the top of table.tsx for why that's
+   needed (this is a flex-based table, not a native `<table>`/`<colgroup>`,
+   so nothing syncs header/body cell widths automatically). */
+
+type ResizeColKey = "name" | "description" | "createdBy";
+
+const resizeColumnConfig: Record<ResizeColKey, { label: string; flex: string; minWidth: number }> = {
+  name: { label: "Name", flex: "flex-[2]", minWidth: 120 },
+  description: { label: "Description", flex: "flex-[2]", minWidth: 120 },
+  createdBy: { label: "Created By", flex: "flex-[1.3]", minWidth: 100 },
+};
+
+function ResizableDemo() {
+  return (
+    <div className="h-[400px]">
+      <Table>
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <TableHead className="w-[40px] shrink-0"><Checkbox aria-label="Select row" /></TableHead>
+            {(Object.keys(resizeColumnConfig) as ResizeColKey[]).map((key) => {
+              const col = resizeColumnConfig[key];
+              return (
+                <TableHead key={key} className={col.flex} resizable columnKey={key} minWidth={col.minWidth}>
+                  {col.label}
+                </TableHead>
+              );
+            })}
+            <TableHead className="w-[48px] shrink-0"><span className="sr-only">Actions</span></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {reorderData.map((row) => (
+            <TableRow key={row.id}>
+              <TableCell className="w-[40px] shrink-0"><Checkbox aria-label="Select row" /></TableCell>
+              {(Object.keys(resizeColumnConfig) as ResizeColKey[]).map((key) => {
+                const col = resizeColumnConfig[key];
+                return (
+                  <TableCell key={key} className={col.flex} columnKey={key}>
+                    {row[key]}
+                  </TableCell>
+                );
+              })}
+              <TableCell className="w-[48px] shrink-0">
+                <button aria-label="More options" className="flex h-7 w-7 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-bg-surface-shell transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2">
+                  <MoreVertical className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+                </button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+export const Resizable: Story = {
+  name: "Resizable",
+  render: () => <ResizableDemo />,
+};
+
 /* ── TableToolbar ── */
 
 const toolbarColumns: ColumnToggleItem[] = [

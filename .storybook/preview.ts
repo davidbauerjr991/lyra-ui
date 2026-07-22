@@ -61,9 +61,9 @@ const preview: Preview = {
         order: [
           "Foundations", ["Colors", "Typography", "Spacing", "Border Radius", "Shadows"],
           "Custom Primitives",
+          "Headless Primitives",
           "UI",
-          "Templates", ["Admin UIs", "Agent Next Gen", "Data Management", "Dashboards"],
-          "Radix Primitives",
+          "Templates", ["Admin UIs", "Agent Next Gen", "Data Management", "Dashboards", "Forms"],
         ],
       },
     },

@@ -5,7 +5,7 @@ import {
   ChevronDown, ChevronUp,
   ChevronsDown, ChevronsUp,
 } from "lucide-react";
-import { Info } from "lucide-react";
+import { CircleHelp } from "lucide-react";
 import { cn } from "../lib/utils";
 import { SearchInput } from "./search-input";
 import { Label } from "./label";
@@ -141,7 +141,7 @@ function Panel({ label, labelTooltip, items, highlighted, onToggle, onRangeToggl
           {labelTooltip && (
             <Tooltip content={labelTooltip} placement="top">
               <button type="button" className="flex items-center text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors focus:outline-none">
-                <Info className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
+                <CircleHelp className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
               </button>
             </Tooltip>
           )}

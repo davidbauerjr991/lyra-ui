@@ -305,7 +305,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               required={required}
               disabled={disabled}
               readonly={readonly}
-              className="block mb-1.5"
+              className="mb-1.5"
             />
           )}
 
@@ -314,6 +314,14 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
             onOpenChange={handleOpenChange}
             placement="bottom"
             align={radixAlign}
+            // Matches the single-select path's `sideOffset={4}` on Radix's
+            // own `SelectPrimitive.Content` below — left unset here, this
+            // fell back to `Popover`'s own default (10), so multi-select's
+            // dropdown sat visibly further from the trigger than
+            // single-select's for no real reason (both are the same "select
+            // trigger + dropdown" pattern and should sit the same distance
+            // away).
+            sideOffset={4}
             showArrow={false}
             className={trigger ? "w-[240px]" : "w-[var(--radix-popover-trigger-width)]"}
             header={
@@ -345,7 +353,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                           <button
                             type="button"
                             onClick={() => setSearch("")}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-lyra-xs text-lyra-fg-secondary hover:text-lyra-fg-default hover:bg-lyra-state-hover transition-colors"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-lyra-xs text-lyra-fg-action hover:text-lyra-fg-default hover:bg-lyra-state-hover transition-colors"
                             tabIndex={-1}
                             aria-label="Clear search"
                           >
@@ -528,7 +536,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
             required={required}
             disabled={disabled}
             readonly={readonly}
-            className="block mb-1.5"
+            className="mb-1.5"
           />
         )}
 
@@ -641,7 +649,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                       <button
                         type="button"
                         onClick={() => setSearch("")}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-lyra-xs text-lyra-fg-secondary hover:text-lyra-fg-default hover:bg-lyra-state-hover transition-colors"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-lyra-xs text-lyra-fg-action hover:text-lyra-fg-default hover:bg-lyra-state-hover transition-colors"
                         tabIndex={-1}
                         aria-label="Clear search"
                       >

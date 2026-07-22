@@ -158,7 +158,7 @@ const Autocomplete = React.forwardRef<HTMLDivElement, AutocompleteProps>(
             required={required}
             disabled={disabled}
             readonly={readonly}
-            className="block mb-1.5"
+            className="mb-1.5"
           />
         )}
 

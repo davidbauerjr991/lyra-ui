@@ -1,6 +1,6 @@
 import * as React from "react";
 import * as LabelPrimitive from "@radix-ui/react-label";
-import { Info } from "lucide-react";
+import { CircleHelp } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Tooltip } from "./tooltip";
 
@@ -37,6 +37,16 @@ export interface LabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> 
   disabled?: boolean;
   /** Applies read-only styling and hides the required indicator (help text remains visible). */
   readonly?: boolean;
+  /**
+   * Optional second line rendered directly below the label row — a short
+   * plain-language description of the field/section, distinct from
+   * `labelHelpText` (which surfaces in a tooltip on hover/focus of the help
+   * icon rather than always being visible). Hidden when `disabled`. When
+   * provided, `Label` renders a wrapping `<div>` around the label row + this
+   * text instead of returning the bare `<label>` element directly — every
+   * existing consumer that doesn't pass this prop is unaffected.
+   */
+  supportingText?: string;
 }
 
 /* ── Component ── */
@@ -47,6 +57,7 @@ const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
       label,
       labelFor,
       labelHelpText,
+      supportingText,
       required = false,
       disabled = false,
       readonly = false,
@@ -61,19 +72,25 @@ const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
     const showRequired = required && !disabled && !readonly;
     // Help text is hidden when disabled
     const showHelp = !!labelHelpText && !disabled;
+    // Supporting text is hidden when disabled, same as help text
+    const showSupportingText = !!supportingText && !disabled;
 
-    return (
+    const labelRow = (
       <LabelPrimitive.Root
         ref={ref}
         htmlFor={labelFor}
         className={cn(
-          "inline-flex items-center gap-1 lyra-label",
+          "flex items-center gap-1 lyra-label",
           disabled
             ? "text-lyra-fg-disabled"
             : readonly
             ? "text-lyra-fg-secondary"
             : "text-lyra-fg-default",
-          className
+          // Only applied here (not the outer wrapper below) — every
+          // existing consumer already expects `className` to land on the
+          // `<label>` element itself, and this keeps that unchanged
+          // whether or not `supportingText` is also passed.
+          !showSupportingText && className
         )}
         {...props}
       >
@@ -91,7 +108,7 @@ const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
         {showHelp && (
           <Tooltip content={labelHelpText!} placement="right">
             <span className="inline-flex items-center text-lyra-fg-secondary hover:text-lyra-fg-action transition-colors cursor-default">
-              <Info
+              <CircleHelp
                 className="h-3.5 w-3.5"
                 strokeWidth={1.5}
                 aria-hidden="true"
@@ -101,6 +118,17 @@ const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
           </Tooltip>
         )}
       </LabelPrimitive.Root>
+    );
+
+    // No supporting text: return the bare `<label>` exactly as before —
+    // zero markup change for the vast majority of existing call sites.
+    if (!showSupportingText) return labelRow;
+
+    return (
+      <div className={cn("flex flex-col gap-1", className)}>
+        {labelRow}
+        <p className="lyra-body-sm text-lyra-fg-secondary">{supportingText}</p>
+      </div>
     );
   }
 );

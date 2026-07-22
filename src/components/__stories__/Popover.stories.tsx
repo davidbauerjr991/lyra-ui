@@ -8,7 +8,7 @@ import { Menu } from "../menu";
 import type { MenuEntry } from "../menu";
 
 const meta: Meta<typeof Popover> = {
-  title: "Radix Primitives/Popover",
+  title: "Headless Primitives/Popover",
   component: Popover,
   tags: ["autodocs"],
   parameters: {

@@ -342,6 +342,25 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
           // popover the instant the pointer happens to land on the tile
           // would be disruptive (and isn't what a hover preview is for).
           onOpenAutoFocus={(e) => e.preventDefault()}
+          // Each channel row's kebab menu (`KebabMenuButton`, built on
+          // `MenuRadix`/Radix DropdownMenu) portals its own dropdown content
+          // straight to `document.body` — outside this hover popover's own
+          // DOM subtree — same as every other Radix Popper-based primitive
+          // (Popover, Select, DropdownMenu, Tooltip all share
+          // `@radix-ui/react-popper` under the hood, and every one of their
+          // portaled Content nodes gets wrapped in a
+          // `[data-radix-popper-content-wrapper]` div). Radix's own
+          // outside-interaction detection has no way to know that dropdown
+          // "belongs" to this popover, so clicking a kebab item registers as
+          // an interaction outside *this* popover's content and closes the
+          // whole hover card out from under the menu — see the identical fix
+          // for `FilterChip`'s nested dropdown-in-overflow-panel case
+          // (CONTRIBUTING.md §17).
+          onInteractOutside={(e) => {
+            if ((e.target as Element)?.closest?.("[data-radix-popper-content-wrapper]")) {
+              e.preventDefault();
+            }
+          }}
           // The preview card below already supplies its own complete
           // chrome (border/background/shadow, via `expandedCardClassName`)
           // matching the real expanded card exactly, so this popover's own

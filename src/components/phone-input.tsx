@@ -261,7 +261,7 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
         {label && (
           <Label label={label} labelFor={inputId} labelHelpText={labelHelpText}
             required={required} disabled={disabled} readonly={readonly}
-            className="block mb-1.5" />
+            className="mb-1.5" />
         )}
 
         {hideCountrySelector ? (
@@ -329,7 +329,7 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
                     />
                     {search && (
                       <button type="button" tabIndex={-1} onClick={() => setSearch("")}
-                        className="absolute right-2 text-lyra-fg-secondary hover:text-lyra-fg-default">
+                        className="absolute right-2 text-lyra-fg-action hover:text-lyra-fg-default">
                         <X className="h-3.5 w-3.5" strokeWidth={1.5} />
                       </button>
                     )}

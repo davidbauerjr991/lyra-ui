@@ -52,7 +52,7 @@ export const Default: Story = {
 
 // Modal stories moved to Custom Primitives/Modal
 
-// Popover story moved to Radix Primitives/Popover
+// Popover story moved to Headless Primitives/Popover
 
 // Panel stories moved to UI/Panel
 

@@ -10,7 +10,7 @@ import {
   FolderOpen, Users, Link, Mail, MoreVertical, Search, X,
 } from "lucide-react";
 
-/* ── Radix Primitives / Menu ──
+/* ── Headless Primitives / Menu ──
    Experimental rebuild of `Menu` on `@radix-ui/react-dropdown-menu`, for
    side-by-side comparison against the hand-rolled original in `Custom Primitives/Menu`.
    Unlike the original (a bare list embeddable in `Popover`/`Select`),
@@ -32,7 +32,7 @@ import {
    positioning/surface and has no bare mode for this to apply to. */
 
 const meta: Meta<typeof MenuRadix> = {
-  title: "Radix Primitives/Menu",
+  title: "Headless Primitives/Menu",
   component: MenuRadix,
   tags: ["autodocs"],
   parameters: {

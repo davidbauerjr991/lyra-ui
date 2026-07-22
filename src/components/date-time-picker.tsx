@@ -205,7 +205,7 @@ const DateTimePicker = React.forwardRef<HTMLDivElement, DateTimePickerProps>(
       <div ref={ref} className={className}>
         {label && (
           <Label label={label} labelFor={inputId} labelHelpText={labelHelpText}
-            required={required} disabled={disabled} readonly={readonly} className="block mb-1.5" />
+            required={required} disabled={disabled} readonly={readonly} className="mb-1.5" />
         )}
         <PopoverPrimitive.Root open={!disabled && !readonly && open} onOpenChange={setOpen}>
           <PopoverPrimitive.Anchor asChild>
@@ -364,7 +364,7 @@ const DateRangeTimePicker = React.forwardRef<HTMLDivElement, DateRangeTimePicker
       <div ref={ref} className={className}>
         {label && (
           <Label label={label} labelFor={inputId} labelHelpText={labelHelpText}
-            required={required} disabled={disabled} readonly={readonly} className="block mb-1.5" />
+            required={required} disabled={disabled} readonly={readonly} className="mb-1.5" />
         )}
         <PopoverPrimitive.Root open={!disabled && !readonly && open} onOpenChange={setOpen}>
           <PopoverPrimitive.Anchor asChild>

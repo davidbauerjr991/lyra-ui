@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Slider, SliderRange } from "../slider";
 
 const meta: Meta = {
-  title: "Radix Primitives/Slider",
+  title: "Headless Primitives/Slider",
   tags: ["autodocs"],
   parameters: {
     layout: "padded",

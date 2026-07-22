@@ -1081,7 +1081,7 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
               aria-label="Close"
               className={cn(
                 "flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lyra-sm",
-                "text-lyra-fg-secondary transition-colors",
+                "text-lyra-fg-action transition-colors",
                 "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
               )}
@@ -1109,7 +1109,7 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   startIcon={<Search className="h-4 w-4 text-lyra-fg-disabled" strokeWidth={1.4} aria-hidden="true" />}
-                  endIcon={search ? <X className="h-4 w-4 text-lyra-fg-disabled" strokeWidth={1.5} aria-hidden="true" /> : undefined}
+                  endIcon={search ? <X className="h-4 w-4 text-lyra-fg-action" strokeWidth={1.5} aria-hidden="true" /> : undefined}
                 />
                 {search && (
                   <button
@@ -1138,7 +1138,7 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 startIcon={<Search className="h-4 w-4 text-lyra-fg-disabled" strokeWidth={1.4} aria-hidden="true" />}
-                endIcon={search ? <X className="h-4 w-4 text-lyra-fg-disabled" strokeWidth={1.5} aria-hidden="true" /> : undefined}
+                endIcon={search ? <X className="h-4 w-4 text-lyra-fg-action" strokeWidth={1.5} aria-hidden="true" /> : undefined}
               />
               {search && (
                 <button

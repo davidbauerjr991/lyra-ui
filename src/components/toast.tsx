@@ -197,7 +197,7 @@ const Toast = React.forwardRef<React.ElementRef<typeof RadixToast.Root>, ToastPr
         {onDismiss && (
           <Tooltip content="Dismiss notification" placement="left" asLabel>
             <RadixToast.Close
-              className="flex-shrink-0 flex h-5 w-5 items-center justify-center rounded-lyra-xs text-lyra-fg-secondary transition-colors hover:text-lyra-fg-default"
+              className="flex-shrink-0 flex h-5 w-5 items-center justify-center rounded-lyra-xs text-lyra-fg-action transition-colors hover:text-lyra-fg-default"
               aria-label="Dismiss"
             >
               <X className="h-4 w-4" strokeWidth={1.5} />

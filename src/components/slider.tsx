@@ -92,7 +92,7 @@ const Slider = React.forwardRef<HTMLDivElement, SliderProps>(
       <div ref={ref} className={cn("w-full", className)}>
         {label && (
           <Label label={label} labelFor={inputId} labelHelpText={labelHelpText}
-            required={required} disabled={disabled} className="block mb-3" />
+            required={required} disabled={disabled} className="mb-3" />
         )}
 
         <SliderPrimitive.Root
@@ -145,7 +145,7 @@ const SliderRange = React.forwardRef<HTMLDivElement, SliderRangeProps>(
       <div ref={ref} className={cn("w-full", className)}>
         {label && (
           <Label label={label} labelFor={inputId} labelHelpText={labelHelpText}
-            required={required} disabled={disabled} className="block mb-3" />
+            required={required} disabled={disabled} className="mb-3" />
         )}
 
         <SliderPrimitive.Root

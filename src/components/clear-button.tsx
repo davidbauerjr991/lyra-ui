@@ -34,7 +34,7 @@ const ClearButton = React.forwardRef<HTMLButtonElement, ClearButtonProps>(
         type="button"
         tabIndex={-1}
         className={cn(
-          "flex h-5 w-5 items-center justify-center rounded-lyra-xs text-lyra-fg-secondary hover:text-lyra-fg-default hover:bg-lyra-state-hover transition-colors",
+          "flex h-5 w-5 items-center justify-center rounded-lyra-xs text-lyra-fg-action hover:text-lyra-fg-default hover:bg-lyra-state-hover transition-colors",
           className
         )}
         {...props}

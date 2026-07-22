@@ -4,7 +4,7 @@ import { ProgressBar } from "../progress-bar";
 import { Label } from "../label";
 
 const meta: Meta<typeof ProgressBar> = {
-  title: "Radix Primitives/Progress Bar",
+  title: "Headless Primitives/Progress Bar",
   component: ProgressBar,
   tags: ["autodocs"],
   parameters: {

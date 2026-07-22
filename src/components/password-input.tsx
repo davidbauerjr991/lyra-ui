@@ -1,6 +1,6 @@
 import * as React from "react";
 import * as PasswordToggleField from "@radix-ui/react-password-toggle-field";
-import { Eye, EyeOff, Info, Check, X } from "lucide-react";
+import { Eye, EyeOff, CircleHelp, Check, X } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Label } from "./label";
 import { Tooltip } from "./tooltip";
@@ -138,7 +138,7 @@ const PasswordInput = React.forwardRef<HTMLDivElement, PasswordInputProps>(
                 content={<RequirementsTooltip requirements={requirements} value={value} />}
               >
                 <button type="button" className="flex items-center text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors focus:outline-none">
-                  <Info className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  <CircleHelp className="h-3.5 w-3.5" strokeWidth={1.5} />
                 </button>
               </Tooltip>
             )}

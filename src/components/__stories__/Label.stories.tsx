@@ -4,7 +4,7 @@ import { Input } from "../input";
 import { Select } from "../select";
 
 const meta = {
-  title: "Radix Primitives/Label",
+  title: "Headless Primitives/Label",
   component: Label,
   tags: ["autodocs"],
   parameters: { layout: "centered", backgrounds: { default: "lyra-shell" } },
@@ -12,7 +12,15 @@ const meta = {
     required: { control: "boolean" },
     disabled: { control: "boolean" },
     readonly: { control: "boolean" },
-  },
+    /* Story-only toggles below — not real `Label` props. They let the
+       Default story act as an interactive playground (same pattern as
+       ContainerHeader.stories.tsx's Default). Consumed and stripped out of
+       `args` inside Default's `render`, before the rest are spread onto the
+       real component. */
+    showHelp:           { control: "boolean", name: "Help" },
+    showSupportingText: { control: "boolean", name: "Supporting text" },
+    showInput:          { control: "boolean", name: "Input box" },
+  } as Meta<typeof Label>["argTypes"],
 } satisfies Meta<typeof Label>;
 
 export default meta;
@@ -98,19 +106,45 @@ export const ReadonlyLabel: Story = {
   ),
 };
 
+export const LabelWithSupportingText: Story = {
+  name: "Label With Supporting Text",
+  args: {
+    label: "Input Label",
+    labelFor: "supporting-text-input",
+    required: true,
+    labelHelpText: "Helpful context about this field.",
+    supportingText: "Supporting text with additional info",
+  },
+  render: (args) => (
+    <div className="flex flex-col gap-1 w-72">
+      <Label {...args} />
+      <Input id="supporting-text-input" placeholder="Enter value..." />
+    </div>
+  ),
+};
+
 export const Default: Story = {
   args: {
     label: "Default Label",
     labelFor: "default-input",
     required: true,
-    labelHelpText: "Helpful context about this field.",
+    showHelp: true,
+    showSupportingText: false,
+    showInput: true,
+  } as Story["args"],
+  render: (args: any) => {
+    const { showHelp, showSupportingText, showInput, ...rest } = args;
+    return (
+      <div className="flex flex-col gap-1 w-72">
+        <Label
+          {...rest}
+          labelHelpText={showHelp ? "Helpful context about this field." : undefined}
+          supportingText={showSupportingText ? "Supporting text with additional info" : undefined}
+        />
+        {showInput && <Input id="default-input" placeholder="Enter value..." />}
+      </div>
+    );
   },
-  render: (args) => (
-    <div className="flex flex-col gap-1 w-72">
-      <Label {...args} />
-      <Input id="default-input" placeholder="Enter value..." />
-    </div>
-  ),
 };
 
 /* ── Lyra-specific: Label with Select ── */

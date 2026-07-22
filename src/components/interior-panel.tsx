@@ -6,6 +6,23 @@ import { PanelFooter } from "./panel-footer";
 import { usePanelDragResize } from "./use-panel-drag-resize";
 import { cn } from "../lib/utils";
 
+/* ── Cookie helpers (remembered resize width only) — same small local
+   getCookie/setCookie pattern already duplicated per-component elsewhere
+   in this codebase (e.g. admin-shell.tsx's own pinned-state cookies)
+   rather than a shared util. ── */
+function getCookie(name: string): string | null {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+function setCookie(name: string, value: string) {
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; SameSite=Lax`;
+}
+function readNumberCookie(name: string): number | null {
+  const val = getCookie(name);
+  const num = val ? Number(val) : NaN;
+  return Number.isFinite(num) ? num : null;
+}
+
 /* ── InteriorPanel ──
    The inline detail/properties panel that lives BELOW the page header,
    inside the main container (e.g. the record-details panel in
@@ -37,7 +54,7 @@ export interface InteriorPanelProps extends React.HTMLAttributes<HTMLDivElement>
 
   /** Allow drag-to-resize on the panel's leading border (default: true) */
   resizable?: boolean;
-  /** Min width when resizing, px (default: 200) */
+  /** Min width when resizing, px (default: 350) */
   minWidth?: number;
   /** Max width when resizing, px (default: 425) */
   maxWidth?: number;
@@ -45,8 +62,25 @@ export interface InteriorPanelProps extends React.HTMLAttributes<HTMLDivElement>
   onResizeStateChange?: (isResizing: boolean) => void;
   /** Fired whenever the width changes during a drag */
   onWidthChange?: (width: number) => void;
-  /** Width in px (default: 340) */
+  /**
+   * Width in px. Defaults to `maxWidth` (opens fully expanded) — unless
+   * `storageKey` is set and a previously drag-resized width was found under
+   * that key, in which case that remembered width is used instead. Passing
+   * this prop explicitly always wins over both.
+   */
   width?: number;
+  /**
+   * Cookie key to remember this panel's drag-resized width under, across
+   * opens/closes and even full remounts (e.g. navigating away from the page
+   * and back, which unmounts the component and would otherwise lose the
+   * resize). Omit to keep the current per-mount-only behavior (resizes
+   * persist while the component stays mounted, same as before this prop
+   * existed, but reset to `maxWidth` on a fresh mount). Give each distinct
+   * interior panel in an app its own key — sharing one between two
+   * different panels (e.g. two different pages' own interior panels) would
+   * incorrectly apply one's remembered size to the other.
+   */
+  storageKey?: string;
 
   headerTitle?: string;
   /** Optional line below `headerTitle`, e.g. a record's name + id */
@@ -65,11 +99,12 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       open = true,
       onClose,
       resizable = true,
-      minWidth = 200,
+      minWidth = 350,
       maxWidth = 425,
       onResizeStateChange,
       onWidthChange,
-      width = 340,
+      width,
+      storageKey,
       headerTitle,
       headerSubhead,
       headerIcon,
@@ -80,13 +115,30 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
     },
     ref
   ) => {
+    // Resolution order: an explicit `width` prop always wins; otherwise a
+    // previously drag-resized width remembered under `storageKey` (so it
+    // survives even a full remount, e.g. navigating away and back);
+    // otherwise `maxWidth` — panels open fully expanded by default. Read
+    // once via `useState(() => ...)` rather than on every render, since
+    // this only matters for the very first render's initial width; after
+    // that, drag state (`usePanelDragResize`'s own `dragWidth`) takes over.
+    const [initialWidth] = useState(() => {
+      if (width !== undefined) return width;
+      const stored = storageKey ? readNumberCookie(storageKey) : null;
+      return stored ?? maxWidth;
+    });
+
     const [isResizing, setIsResizing] = useState(false);
     const handleResizeStateChange = useCallback((r: boolean) => {
       setIsResizing(r);
       onResizeStateChange?.(r);
     }, [onResizeStateChange]);
+    const handleWidthChange = useCallback((w: number) => {
+      if (storageKey) setCookie(storageKey, String(w));
+      onWidthChange?.(w);
+    }, [storageKey, onWidthChange]);
     const { width: currentWidth, onMouseDown } = usePanelDragResize(
-      side, width, minWidth, maxWidth, handleResizeStateChange, onWidthChange
+      side, initialWidth, minWidth, maxWidth, handleResizeStateChange, handleWidthChange
     );
     const widthTransition = isResizing ? "none" : "width 250ms cubic-bezier(0.4, 0, 0.2, 1)";
 
