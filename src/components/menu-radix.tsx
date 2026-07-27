@@ -62,6 +62,26 @@ export interface MenuRadixProps {
    `overflow-hidden` here (matching the original Menu's own wrapper) keeps
    the rounded corners clean; the actual scrolling — where relevant — always
    happens in an inner div, never on this outer surface. */
+/* Selecting an item is a real DOM click inside this portaled content —
+ * and per CONTRIBUTING.md §16 ("Portals still bubble through the React
+ * tree"), React re-dispatches it up the *React* fiber tree the dropdown
+ * was declared in, not the DOM tree it's actually portaled into. Unlike
+ * Popover's own `stopSyntheticBubble` (which deliberately leaves `onClick`
+ * alone — bubbling it there is harmless), a click bubbling out of *this*
+ * dropdown is a real, shipped bug: `KebabMenuButton`'s "Unassign &
+ * Dismiss" item lives inside `ChannelRow`'s own clickable row (`onClick`
+ * selects that channel) which itself lives inside `InteractionNavItem`'s
+ * clickable card (`onClick` selects/re-activates that whole interaction).
+ * Without stopping it here, choosing "Unassign & Dismiss" removes the
+ * interaction and then the *same* click keeps bubbling and re-fires both
+ * ancestor `onClick`s, re-selecting the very card that was just dismissed
+ * — which no longer exists in state, so the screen falls back to the
+ * dashboard even when other assignments are still open. Stopped at the
+ * Content/SubContent root (not the individual `Item`) so every consumer
+ * gets this for free, the same "fix belongs on the portal-rendering
+ * component" rule §16 already established for Popover. */
+const stopClickBubble = (e: React.SyntheticEvent) => e.stopPropagation();
+
 const surfaceClassName = cn(
   "z-[9999] min-w-[200px] max-h-[300px] rounded-lyra-lg bg-lyra-bg-surface-overlay",
   "border border-lyra-border-subtle shadow-lg p-1 flex flex-col outline-none overflow-hidden",
@@ -201,6 +221,7 @@ function MenuRadixItem({ item }: { item: MenuItemDef }) {
             sideOffset={4}
             alignOffset={-4}
             className={surfaceClassName}
+            onClick={stopClickBubble}
           >
             {item.submenuContent ?? renderEntries(item.submenu!)}
           </DropdownMenuPrimitive.SubContent>
@@ -277,6 +298,7 @@ const MenuRadix = React.forwardRef<HTMLButtonElement, MenuRadixProps>(
             sideOffset={sideOffset}
             className={cn(surfaceClassName, className)}
             onAnimationEnd={recompute}
+            onClick={stopClickBubble}
           >
             {/* Chevrons are siblings of the scrollable div below, not
                 children of it — they must stay pinned at the top/bottom of

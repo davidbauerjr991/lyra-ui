@@ -672,6 +672,33 @@
   .lyra-metric-row-divider--vertical {
     display: none;
   }
+  /* Compact override — a row of ≤2 metrics (e.g. DashboardQueue's per-card
+     Contacts/Agents pair) is already 2 columns whether it's a flex row or
+     a 2-up grid, so Stage 2's grid conversion buys it nothing and only
+     costs it the "divided" variant's vertical Separator — confirmed live:
+     DashboardQueue's cards (2 metrics each, narrow by design since up to
+     5 sit side by side in a row) sat well under 550px container width and
+     lost their divider entirely, even though two numbers with a thin line
+     between them fit comfortably at that width. Stay in row mode and keep
+     the divider visible the whole way down instead — same "two classes
+     beats one, no `!important`" specificity trick the Stage 3 compact
+     override below already uses. */
+  .lyra-metric-row.lyra-metric-row--compact {
+    display: flex;
+  }
+  .lyra-metric-row.lyra-metric-row--compact .lyra-metric-row-item {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  .lyra-metric-row.lyra-metric-row--compact .lyra-metric-row-item:first-child {
+    padding-left: 0;
+  }
+  .lyra-metric-row.lyra-metric-row--compact .lyra-metric-row-item:last-child {
+    padding-right: 0;
+  }
+  .lyra-metric-row.lyra-metric-row--compact .lyra-metric-row-divider--vertical {
+    display: block;
+  }
 }
 
 /* Stage 3 — 1-up grid; horizontal Separator comes back (unambiguous with
@@ -685,14 +712,14 @@
   }
 }
 
-/* Compact override — a metric row of 2 or fewer items (e.g. DashboardQueue's
-   per-card Skills/Contacts pair) never needs Stage 3's single-column
-   collapse: two items already fit side by side at widths where a 4-metric
-   row genuinely needs to stack. `.lyra-metric-row--compact` (set by
-   `MetricRow` when `metrics.length <= 2`) keeps the row at Stage 2's 2-up
-   grid instead. Two classes on the row (vs. Stage 3's one) wins this
-   without `!important`; three classes for the divider override (vs. one)
-   does the same. */
+/* Compact override, continued — Stage 2 above already keeps a ≤2-metric
+   row in flex/row mode the whole way down (it never enters grid mode at
+   all now), so this block is mostly a no-op belt-and-suspenders for
+   `grid-template-columns` (harmless on a flex container). What it still
+   does for real: cancels Stage 3's unconditional horizontal-Separator
+   re-enable above, which isn't scoped to grid mode and would otherwise
+   turn on a horizontal divider inside a compact row that was never
+   stacked into a single column to begin with. */
 @container (max-width: 360px) {
   .lyra-metric-row.lyra-metric-row--compact {
     grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -218,6 +218,21 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     // they're only ever read there.
     const [hoverCardOpen, setHoverCardOpen] = React.useState(false);
     const closeHoverCardTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+    // Which of this card's channel rows currently have their own kebab
+    // dropdown open (see `handleChannelMenuOpenChange` below) — a Set, not a
+    // single bool, since a multi-channel card has one independent kebab per
+    // row. While non-empty, the hover-preview popover must never close out
+    // from under an open dropdown: `KebabMenuButton`'s menu portals its
+    // content straight to `document.body` (same as every Radix Popper-based
+    // primitive), landing outside both the compact tile and this preview's
+    // own wrapper div DOM-wise — so moving the pointer off the wrapper and
+    // onto that portaled menu genuinely fires the wrapper's `onMouseLeave`
+    // even though the agent is still actively using the card. Without this,
+    // clicking a row's kebab and then moving toward its dropdown reads as
+    // "left the card," the 150ms timer below elapses, and the whole preview
+    // (dropdown included, since it's a child of `content`) unmounts out from
+    // under the agent before they can pick an item.
+    const openChannelMenuKeysRef = React.useRef<Set<string>>(new Set());
     const openHoverCard = () => {
       if (closeHoverCardTimeoutRef.current) {
         clearTimeout(closeHoverCardTimeoutRef.current);
@@ -227,7 +242,26 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     };
     const scheduleCloseHoverCard = () => {
       if (closeHoverCardTimeoutRef.current) clearTimeout(closeHoverCardTimeoutRef.current);
+      // Never arm the close timer while any channel row's kebab dropdown is
+      // still open — see `openChannelMenuKeysRef`'s own doc comment above.
+      if (openChannelMenuKeysRef.current.size > 0) return;
       closeHoverCardTimeoutRef.current = setTimeout(() => setHoverCardOpen(false), 150);
+    };
+    // Passed to each channel row as `onMenuOpenChange` (threaded through
+    // `ChannelRow`/`ChannelRowInstanceProps` in channel-row.tsx down to that
+    // row's own `KebabMenuButton`). Opening a dropdown cancels/prevents the
+    // close timer immediately (`openHoverCard`); closing one only re-arms it
+    // once every kebab on this card is shut — a card can have more than one
+    // channel row, each with its own kebab, and this only ever fires for the
+    // one whose menu actually changed.
+    const handleChannelMenuOpenChange = (key: string, open: boolean) => {
+      if (open) {
+        openChannelMenuKeysRef.current.add(key);
+        openHoverCard();
+      } else {
+        openChannelMenuKeysRef.current.delete(key);
+        if (openChannelMenuKeysRef.current.size === 0) scheduleCloseHoverCard();
+      }
     };
     React.useEffect(() => {
       return () => {
@@ -276,6 +310,11 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                   awaitingResponse={ch.awaitingResponse}
                   removable={ch.removable}
                   menuItems={ch.menuItems}
+                  // Keeps the hover-preview popover open (and its close
+                  // timer disarmed) for as long as this row's own kebab
+                  // dropdown is open — see `handleChannelMenuOpenChange`'s
+                  // doc comment above.
+                  onMenuOpenChange={(open) => handleChannelMenuOpenChange(channelKey(ch), open)}
                   // More than one open channel — "Unassign & Dismiss" only
                   // ends this one, not the whole card (see `onDismissChannel`
                   // above). With just one, ending it means ending the card.

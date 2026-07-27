@@ -177,7 +177,7 @@ const DashboardQueue = React.forwardRef<HTMLDivElement, DashboardQueueProps>(
                 { value: item.contactsCount, label: "Contacts" },
                 { value: item.agentsCount, label: "Agents" },
               ]}
-              metricVariant="contained"
+              metricVariant="divided"
               role="button"
               tabIndex={0}
               aria-pressed={currentSelectedId === item.id}

@@ -247,7 +247,7 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
           // `fullWidth` is equal-width columns that stretch to fill the
           // row, which a fixed character cap would silently fight against
           // once a column's share of the row exceeds ~22 characters.
-          fullWidth ? "[&>*]:flex-1 [&>[role='tab']]:max-w-none" : "gap-6 [&>[role='tab']]:px-0",
+          fullWidth ? "[&>*]:flex-1 [&>[role='tab']]:max-w-none" : "[&>[role='tab']]:px-5",
           // Stays in the DOM (just CSS-hidden below 400px, see
           // `.lyra-tab-overflow-full` in lyra-tokens.css) so its buttons
           // can still be `.click()`ed programmatically from the collapsed
@@ -288,7 +288,7 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
           // reference: Radix's `Tooltip` (`asChild`) clones the button
           // directly with no wrapper, so it really is `tablistEl`'s direct
           // `[role="tab"]` child this selector targets, same as the
-          // existing `[&>[role='tab']]:px-0` above.
+          // existing `[&>[role='tab']]:px-5` above.
           isWideOverflow && "[&>[role='tab']]:flex-shrink-0",
           // Consumer's `className` (e.g. a horizontal inset like `px-4`/
           // `px-6`) merges onto THIS SAME element as `border-b` above —
@@ -456,7 +456,7 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
             aria-hidden="true"
             inert
             style={{ position: "absolute", top: 0, left: 0, visibility: "hidden", pointerEvents: "none", whiteSpace: "nowrap" }}
-            className={cn("flex", fullWidth ? "" : "gap-6")}
+            className={cn("flex", !fullWidth && "[&>[role='tab']]:px-5")}
           >
             {children}
           </div>
@@ -560,6 +560,21 @@ interface TabProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   onMenuOpenChange?: (open: boolean) => void;
   /** ID of the associated TabPanel */
   panelId?: string;
+  /**
+   * Suppresses this tab's own built-in truncation tooltip (see the class
+   * doc comment above). Default `true`. Set `false` when a caller already
+   * wraps this whole `Tab` in its own outer `Tooltip` covering at least the
+   * same text — e.g. `ChannelTab` (channel-row.tsx), whose outer tooltip
+   * shows "{label} {address}" plus a message-count/id line, a strict
+   * superset of this tab's own truncated label. Left both tooltips on and
+   * they'd both fire together whenever the label happens to be truncated —
+   * two stacked tooltip bubbles on one hover, a real, shipped bug. Only
+   * ever turn this off when the outer tooltip's content is confirmed to
+   * cover this tab's full untruncated label — otherwise an agent hovering
+   * a truncated tab with no fallback loses the only way to read its full
+   * text.
+   */
+  showTruncationTooltip?: boolean;
 }
 
 const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
@@ -575,6 +590,7 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
       menuAriaLabel = "More options",
       onMenuOpenChange,
       panelId,
+      showTruncationTooltip = true,
       children,
       id,
       ...props
@@ -715,7 +731,7 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
     );
 
     return (
-      <Tooltip content={children} placement="top" disabled={!isTruncated || menuOpen}>
+      <Tooltip content={children} placement="top" disabled={!showTruncationTooltip || !isTruncated || menuOpen}>
         {button}
       </Tooltip>
     );

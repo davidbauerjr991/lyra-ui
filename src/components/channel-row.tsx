@@ -14,7 +14,7 @@ import {
   PlayCircle,
 } from "lucide-react";
 import { cn } from "../lib/utils";
-import { tagVariants } from "./tag";
+import { tagVariants, type TagVariant } from "./tag";
 import { type MenuEntry } from "./menu";
 import { KebabMenuButton } from "./kebab-menu-button";
 import { Tab } from "./tabs";
@@ -41,6 +41,21 @@ const ConsultTransferIcon = () => (
 /* ── Channel types ── */
 
 export type ChannelType = "chat" | "email" | "sms" | "whatsapp" | "voice";
+
+/** Channel-type → `Tag` color, per CONTRIBUTING.md's "Channel type colors"
+ *  convention — Voice is purple, every text-based channel (Chat/SMS/
+ *  WhatsApp all read as "Chat" for this purpose) is teal, Email is pink.
+ *  Used by each `*ChannelRow` below for its chip's non-`awaitingResponse`
+ *  color (see `ChannelRow`'s own `variant` prop — `awaitingResponse` still
+ *  always overrides to "critical" red regardless of channel type, since
+ *  that's a status signal, not a type signal). */
+export const CHANNEL_TYPE_TAG_VARIANT: Record<ChannelType, TagVariant> = {
+  voice: "purple",
+  chat: "teal",
+  sms: "teal",
+  whatsapp: "teal",
+  email: "pink",
+};
 
 export interface InteractionChannel {
   /** Unique identifier for this specific channel instance. Required to
@@ -120,6 +135,10 @@ export function buildVoiceMenuItems(onDismiss?: () => void): MenuEntry[] {
 interface ChannelRowProps {
   icon: React.ReactNode;
   label: string;
+  /** This row's chip color when not `awaitingResponse` — see
+   *  `CHANNEL_TYPE_TAG_VARIANT` above. `awaitingResponse` always overrides
+   *  to "critical" (red) regardless of this value. */
+  variant: TagVariant;
   elapsed: string;
   preview?: string;
   /** Blue-highlighted row background — set by the parent when this row is
@@ -136,11 +155,18 @@ interface ChannelRowProps {
    *  stop the click from also bubbling up to the card's own `onClick`
    *  (selecting the whole card), only the kebab button does that. */
   onSelect?: () => void;
+  /** Forwarded straight to this row's own `KebabMenuButton` — lets
+   *  `InteractionNavItem`'s compact-mode hover-preview popover know when
+   *  this row's dropdown opens/closes, so it can keep itself open (and its
+   *  close-on-mouseleave timer disarmed) for as long as the dropdown is —
+   *  see that component's `handleChannelMenuOpenChange` doc comment. */
+  onMenuOpenChange?: (open: boolean) => void;
 }
 
 const ChannelRow: React.FC<ChannelRowProps> = ({
   icon,
   label,
+  variant,
   elapsed,
   preview,
   highlighted,
@@ -149,6 +175,7 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
   menuItems,
   showMenu = true,
   onSelect,
+  onMenuOpenChange,
 }) => (
   <div
     onClick={onSelect}
@@ -160,7 +187,7 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
     )}
   >
     <div className="flex items-center gap-2">
-      <span className={cn(tagVariants({ variant: awaitingResponse ? "critical" : "success", shape: "pill" }))}>
+      <span className={cn(tagVariants({ variant: awaitingResponse ? "critical" : variant, shape: "pill" }))}>
         <span aria-hidden="true">{icon}</span>
         {label}
       </span>
@@ -174,7 +201,13 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
         {elapsed}
       </span>
       <span className="flex-1" />
-      {showMenu && <KebabMenuButton items={menuItems} ariaLabel={`More options for ${label}`} />}
+      {showMenu && (
+        <KebabMenuButton
+          items={menuItems}
+          ariaLabel={`More options for ${label}`}
+          onOpenChange={onMenuOpenChange}
+        />
+      )}
     </div>
     {preview && <p className="lyra-body-sm text-lyra-fg-secondary truncate">{preview}</p>}
   </div>
@@ -199,6 +232,8 @@ export interface ChannelRowInstanceProps {
   onDismiss?: () => void;
   /** Passed straight through to `ChannelRow` — see its own doc comment. */
   onSelect?: () => void;
+  /** Passed straight through to `ChannelRow` — see its own doc comment. */
+  onMenuOpenChange?: (open: boolean) => void;
 }
 
 const ChatChannelRow: React.FC<ChannelRowInstanceProps> = ({ menuItems, removable, onDismiss, ...rest }) => (
@@ -206,6 +241,7 @@ const ChatChannelRow: React.FC<ChannelRowInstanceProps> = ({ menuItems, removabl
     {...rest}
     icon={<MessageSquare className="h-3 w-3" strokeWidth={1.5} />}
     label="Chat"
+    variant={CHANNEL_TYPE_TAG_VARIANT.chat}
     menuItems={menuItems ?? buildDigitalMenuItems(onDismiss)}
     showMenu={removable !== false}
   />
@@ -216,6 +252,7 @@ const EmailChannelRow: React.FC<ChannelRowInstanceProps> = ({ menuItems, removab
     {...rest}
     icon={<Mail className="h-3 w-3" strokeWidth={1.5} />}
     label="Email"
+    variant={CHANNEL_TYPE_TAG_VARIANT.email}
     menuItems={menuItems ?? buildDigitalMenuItems(onDismiss)}
     showMenu={removable !== false}
   />
@@ -226,6 +263,7 @@ const SmsChannelRow: React.FC<ChannelRowInstanceProps> = ({ menuItems, removable
     {...rest}
     icon={<MessageSquare className="h-3 w-3" strokeWidth={1.5} />}
     label="SMS"
+    variant={CHANNEL_TYPE_TAG_VARIANT.sms}
     menuItems={menuItems ?? buildDigitalMenuItems(onDismiss)}
     showMenu={removable !== false}
   />
@@ -236,6 +274,7 @@ const WhatsAppChannelRow: React.FC<ChannelRowInstanceProps> = ({ menuItems, remo
     {...rest}
     icon={<WhatsAppIcon />}
     label="WhatsApp"
+    variant={CHANNEL_TYPE_TAG_VARIANT.whatsapp}
     menuItems={menuItems ?? buildDigitalMenuItems(onDismiss)}
     showMenu={removable !== false}
   />
@@ -246,6 +285,7 @@ const VoiceChannelRow: React.FC<ChannelRowInstanceProps> = ({ menuItems, removab
     {...rest}
     icon={<Phone className="h-3 w-3" strokeWidth={1.5} />}
     label="Voice"
+    variant={CHANNEL_TYPE_TAG_VARIANT.voice}
     menuItems={menuItems ?? buildVoiceMenuItems(onDismiss)}
     showMenu={removable !== false}
   />
@@ -396,11 +436,24 @@ const ChannelTab: React.FC<ChannelTabProps> = ({
         menuItems={showMenu ? (menuItems ?? defaultMenuItems) : undefined}
         onMenuOpenChange={setMenuOpen}
         menuAriaLabel={`More options for ${meta.label}`}
+        // This outer `Tooltip` already shows "{label} {address}" (a
+        // superset of this tab's own truncated "{label} {address}"
+        // children) plus the message-count/id line — `Tab`'s own built-in
+        // truncation tooltip was firing alongside it whenever the address
+        // got clipped, stacking two tooltip bubbles on one hover. See
+        // `showTruncationTooltip`'s own doc comment in tabs.tsx.
+        showTruncationTooltip={false}
         className={className}
       >
         <span>{meta.label}</span>
         {address && (
-          <span className="ml-1 font-normal text-lyra-fg-disabled">{address}</span>
+          // `text-lyra-fg-secondary` — not `-disabled`: an address isn't
+          // disabled content, and `-disabled` is intentionally very low
+          // contrast (20% white in dark mode vs. secondary's 60%), which
+          // made phone numbers/addresses on an active dark-mode tab nearly
+          // unreadable. `-secondary` is the correct semantic token for
+          // "real but de-emphasized" text and is legible in both themes.
+          <span className="ml-1 font-normal text-lyra-fg-secondary">{address}</span>
         )}
       </Tab>
     </Tooltip>

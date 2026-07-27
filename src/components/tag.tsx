@@ -6,7 +6,19 @@ import { Tooltip } from "./tooltip";
 
 /* ── Types ── */
 
-export type TagVariant = "default" | "success" | "warning" | "critical" | "info" | "neutral";
+/**
+ * "purple"/"teal"/"pink" are the three fixed accent-hue variants — not
+ * status colors like the rest of this union, but a categorical color set
+ * for distinguishing same-weight *types* of thing that don't have a
+ * success/warning/critical reading (the motivating case: Voice/Chat/Email
+ * channel-type tags — see `channelTypeTagVariant` in CONTRIBUTING.md's
+ * "Channel type colors" convention). Pick from these three rather than
+ * inventing a fourth accent hue for a new categorical grouping — the
+ * `lyra-accent-*` token set has more hues available (slate/red/orange/
+ * yellow/lime/green/blue), but Tag only exposes the three actually in use
+ * so call sites can't drift into an arbitrary, undocumented pairing.
+ */
+export type TagVariant = "default" | "success" | "warning" | "critical" | "info" | "neutral" | "purple" | "teal" | "pink";
 export type TagSize = "sm";
 
 export type TagShape = "default" | "pill";
@@ -18,6 +30,8 @@ export interface TagProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: TagVariant;
   /** Shape — "default" uses rounded-xs corners, "pill" uses 50px border-radius */
   shape?: TagShape;
+  /** Optional leading icon, rendered before the label — e.g. a channel-type glyph (`Phone`/`MessageCircle`/`Mail`) on a "purple"/"teal"/"pink" channel tag. Sized/colored to match the label text; pass a Lucide icon element at `h-3 w-3` (matches the `X` remove glyph's own size). */
+  icon?: React.ReactNode;
   /** Show a remove button — calls onRemove when clicked */
   onRemove?: () => void;
   /** Accessible label for the remove button (default: "Remove {label}") */
@@ -50,6 +64,9 @@ const tagVariants = cva(
         critical: "bg-lyra-status-critical-subtle text-lyra-status-critical-strong border-[color-mix(in_srgb,var(--lyra-color-status-critical-strong)_30%,transparent)]",
         info:     "bg-lyra-status-info-subtle text-lyra-status-info-strong border-[color-mix(in_srgb,var(--lyra-color-status-info-strong)_30%,transparent)]",
         neutral:  "bg-lyra-bg-surface-canvas text-lyra-fg-secondary border-lyra-border-subtle",
+        purple:   "bg-lyra-accent-purple-soft text-lyra-accent-purple-strong border-[color-mix(in_srgb,var(--lyra-color-accent-purple-strong)_30%,transparent)]",
+        teal:     "bg-lyra-accent-teal-soft text-lyra-accent-teal-strong border-[color-mix(in_srgb,var(--lyra-color-accent-teal-strong)_30%,transparent)]",
+        pink:     "bg-lyra-accent-pink-soft text-lyra-accent-pink-strong border-[color-mix(in_srgb,var(--lyra-color-accent-pink-strong)_30%,transparent)]",
       },
       shape: {
         default: "rounded-lyra-xs",
@@ -72,6 +89,9 @@ const tagRemoveHoverVariants = cva("", {
       critical: "hover:bg-lyra-state-hover-critical-subtle",
       info:     "hover:bg-lyra-status-info-subtle",
       neutral:  "hover:bg-lyra-state-hover",
+      purple:   "hover:bg-lyra-accent-purple-soft",
+      teal:     "hover:bg-lyra-accent-teal-soft",
+      pink:     "hover:bg-lyra-accent-pink-soft",
     },
   },
   defaultVariants: { variant: "default" },
@@ -85,6 +105,7 @@ const Tag = React.forwardRef<HTMLSpanElement, TagProps>(
       label,
       variant = "default",
       shape = "default",
+      icon,
       onRemove,
       removeLabel,
       disabled,
@@ -102,6 +123,11 @@ const Tag = React.forwardRef<HTMLSpanElement, TagProps>(
         )}
         {...props}
       >
+        {icon && (
+          <span className="flex-shrink-0 [&>svg]:h-3 [&>svg]:w-3" aria-hidden="true">
+            {icon}
+          </span>
+        )}
         <span className="truncate max-w-[200px]">{label}</span>
 
         {onRemove && !disabled && (

@@ -149,6 +149,36 @@ Use `active` (not a hand-rolled `selected` boolean) to mark the current/chosen i
 
 This scale applies to `Menu`/`Popover`-based item-list panels specifically — calendar/time pickers (`date-picker.tsx`, `time-picker.tsx`) and trigger-matched dropdowns (`autocomplete.tsx`, `phone-input.tsx`, which intentionally size to `var(--radix-popover-trigger-width)`) have their own width drivers and are exempt. Do not invent a new fixed width for a `Menu`/`Popover` combo without checking this table first — this is exactly the kind of raw-Tailwind-value drift the "Important Patterns" section of `PROJECT_SUMMARY.md` already warns about (see the `h-3.5` vs `h-3` badge-sizing incident).
 
+### Channel type colors (canonical reference)
+
+Voice/Chat/Email (and any other communication channel type — SMS and WhatsApp read as "Chat" wherever they're grouped down to these three, e.g. `agent-next-gen-v1`'s `contactHistoryChannelType`) get one fixed, consistent color each, rather than every consuming app picking its own tint per instance:
+
+| Channel type | Color | `Tag` variant | Token pair |
+|---|---|---|---|
+| Voice | Purple | `variant="purple"` | `lyra-accent-purple-{soft,strong}` |
+| Chat (chat/SMS/WhatsApp) | Teal | `variant="teal"` | `lyra-accent-teal-{soft,strong}` |
+| Email | Pink | `variant="pink"` | `lyra-accent-pink-{soft,strong}` |
+
+`Tag` exposes exactly these three as fixed variants (not the full `lyra-accent-*` hue set — slate/red/orange/yellow/lime/green/blue exist as tokens but aren't wired into `Tag`) specifically so a channel-type tag can't drift into a fourth, undocumented hue. Pass an `icon` (a Lucide glyph — `Phone`/`MessageCircle`/`Mail`) alongside `label`/`variant="purple"|"teal"|"pink"` and `shape="pill"` for a channel-type pill (see `agent-next-gen-v1`'s `ContactHistoryCard`, the reference implementation this convention was pulled from). Where there's no room for a full pill (e.g. a 48px icon-only table column), tint the bare icon with the matching `text-lyra-accent-{purple,teal,pink}-strong` class instead of leaving it flat gray (see `AgentNextGenPage.tsx`'s `InteractionsTable` type-icon column) — same three colors, just without the pill chrome.
+
+`channel-row.tsx`'s own `ChannelRow` (the per-channel chip on an `InteractionNavItem` card — Voice/Chat/SMS/WhatsApp/Email) is the third reference: its `CHANNEL_TYPE_TAG_VARIANT` export is the canonical `ChannelType → TagVariant` lookup — reuse it (not a fresh hand-written switch) anywhere else in lyra-ui that needs to color a chip by `ChannelType`. Note `awaitingResponse` there always overrides to `"critical"` (red) regardless of channel type — that's a status signal layered on top of, not replacing, the type-color convention; a channel type never gets its own "urgent" tint.
+
+Don't reach for `Tag`'s status variants (`success`/`warning`/`critical`/`info`) for a channel type — those are reserved for state (resolved/pending/error/informational), and reusing one for "this is a Voice contact" would collide with an actual status tag sitting right next to it in the same row (see `ContactHistoryCard`'s `statusLabel`/`statusVariant` tag, which sits beside the channel tag and must read as a visually distinct kind of information).
+
+### Input width in bounded rows (card headers, toolbars)
+
+`Input`/`SearchInput`/every other field built on the same pattern render `w-full` by default — correct for a form column, where the field should fill whatever width its container already constrains it to. That default is wrong, though, for a field dropped into a `DashboardCard`/`Container` header or a toolbar row that sizes to its own content (e.g. `ContainerHeader`'s `actions` slot, which is `shrink-0`) — an un-overridden `w-full` there collapses to the input's intrinsic min-content width instead of reading as a real search field.
+
+**Convention:** in these bounded, non-form rows, size the field to try to stretch toward 320px, shrinking no further than 240px, via:
+
+```tsx
+<SearchInput className="flex-1 min-w-[240px] max-w-[320px]" ... />
+```
+
+This is the same scale `Table`'s own toolbar quick-search row already uses (`table.tsx`) and what `ContactHistoryCard`'s header search follows (`agent-next-gen-v1/src/components/AgentNextGenPage.tsx`) — match it rather than picking an arbitrary fixed width (`w-56`, `w-64`, etc.) for a new header/toolbar field. Note `flex-1` only pulls in real extra width when the field's immediate flex container is itself free to grow (a full-width toolbar row, for instance); inside a `shrink-0` header-actions slot with no other stretched sibling, the field will settle near the 240px floor instead of reaching 320px — that's expected, not a bug to chase, since there's no free space to distribute in the first place.
+
+Leave the `w-full` default alone for genuine full-width form fields — this scale is specifically for standalone search/filter inputs sitting in a header or toolbar, not a form's own inputs.
+
 ### Every modal must be built on `Modal` — no exceptions
 
 **Requirement:** any dialog that needs a backdrop, focus trap, Escape-to-dismiss, and portal rendering — in this library or in a repo consuming it (`agent-next-gen-v1`, `Outbound-Campaigns`, `lyra-ux-templates`, `Agent Nav Testing`, etc.) — must render through the shared `Modal` component (`modal.tsx`), which wraps `@radix-ui/react-dialog` directly. Never hand-compose `Overlay` + `Container variant="modal"` at a call site the way `CampaignDetailsModal.tsx` and `agent-next-gen-v1`'s welcome modal used to — that pattern still works, but every call site has to remember Radix's `Title` requirement, the hidden-trigger workaround, and the backdrop-click/Escape wiring on its own, and it's easy for one of those to quietly drift or go missing (the Storybook-only `UI/Modal` stories drifted the furthest: they used to render a bare `Container variant="modal"` with no `Overlay` at all, meaning no focus trap, no portal, and no Escape handling ever existed there — a design reviewer looking at Storybook had no way to notice, since it still looked identical to a real modal).
@@ -767,6 +797,8 @@ onBlur={stopSyntheticBubble}
 This is safe: Radix's own outside-click/focus-trap detection is implemented via native document-level listeners, not React bubbling, so it's unaffected. `onClick` is deliberately left alone — Radix's composed `onClick` handler on `Tooltip.Trigger` only *closes* the tooltip, and letting that bubble is harmless.
 
 **Rule:** any new component that renders content via a portal (a new `Popover`-like primitive, a custom flyout, etc.) needs this same containment at its content root — don't rely on every consumer remembering not to wrap it in a Tooltip carelessly. If you're building something that *could* reasonably be wrapped by a Tooltip or similar hover-triggered wrapper from the outside, stop the bubbling at the source.
+
+**`onClick` isn't always safe to leave alone.** Popover's own fix above deliberately skips `onClick` — Radix's composed click handler there only closes the tooltip, so letting it bubble is harmless. That's not a general rule, though: `menu-radix.tsx`'s `DropdownMenuPrimitive.Content`/`SubContent` (what `KebabMenuButton` renders under the hood) *do* stop `onClick` (`stopClickBubble`), because a dropdown is frequently nested inside another clickable element with real, stateful behavior — e.g. `ChannelRow`'s kebab lives inside its own clickable row (`onClick` selects that channel) inside `InteractionNavItem`'s clickable card (`onClick` selects/re-activates the interaction). Without stopping it, selecting "Unassign & Dismiss" removed the interaction from state and then the *same* click kept bubbling, re-firing both ancestor `onClick`s and re-selecting the just-removed card — since it no longer existed, the screen fell back to the dashboard even when other assignments were still open. This was a real, shipped bug (`agent-next-gen-v1`'s assignment-dismiss flow). Decide per portal: if an ancestor's `onClick` does something meaningful (select, navigate, toggle), stop it at the content root; only skip it, as Popover does, when you've confirmed the ancestor's `onClick` is inert or explicitly harmless to re-fire.
 
 ## 17. Field label casing
 
