@@ -184,6 +184,11 @@
         <p class="d">Agent Next Gen layout with page header — for agent-facing workspace screens.</p>
       </button>
     </div>
+    <div id="protoListWrap" class="hidden" style="margin-top:22px;">
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Your prototypes</div>
+      <div id="protoList"></div>
+      <p class="hint">Launch works when this wizard file sits next to your Prototypes folder. "Mark published" stores the live link after you deploy.</p>
+    </div>
     <div class="btn-row">
       <button class="btn" onclick="go(2)">Back</button>
       <span class="spacer"></span>
@@ -271,6 +276,67 @@
     state.step = n;
     var bars = document.querySelectorAll("#progress span");
     bars.forEach(function (b, i) { b.classList.toggle("done", i < n); });
+    if (n === 3) renderProtoList();
+  }
+
+  /* ── Prototype registry (localStorage; survives across wizard runs) ── */
+  function loadProtos() {
+    try { return JSON.parse(localStorage.getItem("lyraProtos") || "[]"); } catch (e) { return []; }
+  }
+  function saveProtos(list) {
+    try { localStorage.setItem("lyraProtos", JSON.stringify(list)); } catch (e) {}
+  }
+  function recordProto(name, file) {
+    var list = loadProtos().filter(function (p) { return p.file !== file; });
+    list.unshift({ name: name, file: file, created: new Date().toISOString().slice(0, 10), url: null });
+    saveProtos(list);
+  }
+  function markPublished(file) {
+    var url = window.prompt("Paste the live link (from Vercel or Netlify):");
+    if (!url) return;
+    var list = loadProtos();
+    list.forEach(function (p) { if (p.file === file) p.url = url; });
+    saveProtos(list); renderProtoList();
+  }
+  function removeProto(file) {
+    saveProtos(loadProtos().filter(function (p) { return p.file !== file; }));
+    renderProtoList();
+  }
+  function renderProtoList() {
+    var wrap = document.getElementById("protoListWrap");
+    var list = loadProtos();
+    if (!list.length) { wrap.classList.add("hidden"); return; }
+    wrap.classList.remove("hidden");
+    var host = document.getElementById("protoList");
+    host.innerHTML = "";
+    list.forEach(function (p) {
+      var row = document.createElement("div");
+      row.style.cssText = "display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border-subtle);border-radius:8px;margin-bottom:6px;background:var(--surface);font-size:13px;";
+      var open = document.createElement("a");
+      open.textContent = p.name;
+      open.href = "Prototypes/" + p.file + ".html";
+      open.target = "_blank";
+      open.style.cssText = "font-weight:600;color:var(--blue-active-text);text-decoration:none;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
+      row.appendChild(open);
+      var badge = document.createElement(p.url ? "a" : "button");
+      if (p.url) {
+        badge.textContent = "Published ↗";
+        badge.href = p.url; badge.target = "_blank";
+        badge.style.cssText = "font-size:11.5px;font-weight:600;color:var(--success-strong);background:var(--success-subtle);padding:3px 8px;border-radius:999px;text-decoration:none;flex-shrink:0;";
+      } else {
+        badge.textContent = "Mark published";
+        badge.onclick = function () { markPublished(p.file); };
+        badge.style.cssText = "font-size:11.5px;font-weight:600;color:var(--text-secondary);background:var(--shell);border:1px solid var(--border-subtle);padding:3px 8px;border-radius:999px;cursor:pointer;flex-shrink:0;";
+      }
+      row.appendChild(badge);
+      var del = document.createElement("button");
+      del.textContent = "×";
+      del.title = "Remove from list (doesn't delete the file)";
+      del.onclick = function () { removeProto(p.file); };
+      del.style.cssText = "border:none;background:none;font-size:15px;cursor:pointer;color:var(--text-disabled);flex-shrink:0;";
+      row.appendChild(del);
+      host.appendChild(row);
+    });
   }
 
   function pickType(t) {
@@ -315,6 +381,7 @@
     }
     document.getElementById("coworkSteps").classList.remove("hidden");
     document.getElementById("designSteps").classList.add("hidden");
+    recordProto(name, fileName);
 
     var setupLine = state.alreadyInstalled
       ? "- Lyra UI is already set up in this chat — reuse the lyra-ui copy already in your sandbox workspace. If there is none, clone the latest from https://github.com/davidbauerjr991/lyra-ui.git (main branch) yourself — never ask me to run any command.\n"
@@ -329,8 +396,7 @@
 "SETUP\n" +
 setupLine +
 fallbackLine +
-"- Read CLAUDE.md and CONTRIBUTING.md in the repo IN FULL before writing any UI code. They are the binding rules. Also read CLAUDE-INSTRUCTIONS.md at the repo root.\n" +
-"- Before using any component, check its matching .stories.tsx file in src/components/__stories__/ for real prop combinations. Never invent props or markup.\n" +
+"- FAST PATH (important for speed and cost): for this initial build, do NOT read CLAUDE.md, CONTRIBUTING.md, PROJECT_SUMMARY.md, or any story files. Read ONLY prototype-kit/README-FIRST.md and CLAUDE-INSTRUCTIONS.md, then run prototype-kit/build-prototype.mjs exactly as the README shows — it builds and verifies the template in seconds. Read the full rulebooks only later, if I ask for custom UI beyond the stock template; then also check each component's .stories.tsx for real props before using it.\n" +
 "- If my connected folder has lyra-ui/src/components/local/ with components in it, copy them into your build workspace and treat them as part of the library. If I ask for a brand-new component, save it there (on my machine) so it persists.\n" +
 "- Do ALL work in your own sandbox. The ONLY files you may ever create or modify in my connected folder are: the final prototype .html in Prototypes/, a -netlify.zip in Prototypes/ when I ask to share, and components in lyra-ui/src/components/local/ when I ask for one. NOTHING else — no entry files, configs, bundles, node_modules, or temp files, not even briefly. Creating a file on my computer and then deleting it counts as a violation.\n" +
 "\n" +
@@ -348,7 +414,7 @@ fallbackLine +
 "AFTER DELIVERY\n" +
 "- I will iterate by describing changes or pasting screenshots/mockups. Apply each change to this same prototype, re-check the story files before using any new component, and overwrite the same file in place. Do NOT re-present the file on updates — just tell me to refresh my browser (or close and re-open the file) to see the changes.\n" +
 "- Library components are read-only: if a change I ask for would mean editing a shared component's source — especially a \"Custom Primitives\" or \"Headless Primitives\" story-title component — don't do it; use its real props at the usage site, or tell me it needs the design-system maintainer (CLAUDE-INSTRUCTIONS.md, Protected primitives).\n" +
-"- If I ask to share or publish the prototype: create a zip named \"" + fileName + "-netlify.zip\" in the Prototypes folder containing the prototype renamed to index.html, present it, and give me the drag-and-drop steps for https://app.netlify.com/drop. You cannot deploy from your sandbox — never try, and never ask me to run commands.\n" +
+"- If I ask to share or publish the prototype: ask me whether I want Vercel or Netlify, then create a zip named \"" + fileName + "-publish.zip\" in the Prototypes folder containing the prototype renamed to index.html, present it, and give me the drag-and-drop steps for my choice (Vercel: https://vercel.com/drop, Netlify: https://app.netlify.com/drop — both free, no terminal). You cannot deploy from your sandbox — never try, and never ask me to run commands.\n" +
 "\n" +
 "Start by confirming you've read the rulebooks, then build the starting template with my product name in the header.";
 

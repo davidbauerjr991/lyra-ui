@@ -19,6 +19,9 @@ You are reading this because a user is building Lyra UI prototypes through Claud
 
 Follow the prompt's own instructions, plus these binding rules:
 
+### FAST PATH for the initial build (speed and token cost matter — users pay for both)
+For the stock template build, do NOT read `CLAUDE.md`, `CONTRIBUTING.md`, `PROJECT_SUMMARY.md`, or story files. Read `prototype-kit/README-FIRST.md` and run `prototype-kit/build-prototype.mjs` per its instructions — it injects the product name, bundles, compiles CSS, assembles, and verifies dark mode programmatically in seconds. Its exit code is the acceptance test. Spend your effort (and the user's tokens) only on what's custom to THIS user's request. Read the full rulebooks only when the user asks for UI beyond the stock template.
+
 ### If you can't find lyra-ui
 Follow "Getting Lyra UI" at the top: clone from GitHub first; reuse a sandbox copy if present; fall back to an attached zip. Only if all three fail, ask the user which they'd prefer:
 1. **Attach `lyra-ui.zip`** to this chat, or
@@ -59,8 +62,9 @@ This folder in the user's own lyra-ui copy holds their personal components. It i
 
 ### Strict write policy (the #1 trust rule)
 Users lose confidence the moment stray files appear in their folders — even briefly. The ONLY paths you may ever create or modify in the user's connected folder are:
-1. `Prototypes/<name>.html` (the deliverable) and `Prototypes/<name>-netlify.zip` (on a share request)
+1. `Prototypes/<name>.html` (the deliverable) and `Prototypes/<name>-publish.zip` (on a share request)
 2. `lyra-ui/src/components/local/<component>.tsx` (only when the user asks for a new/changed component)
+3. `create-lyra-prototype.html` at the connected-folder root (sibling of `Prototypes/`) — on FIRST delivery only, copy it there from the repo root if not already present, so the wizard's one-click launch links and re-runs work
 
 Everything else — entry files, configs, CSS output, bundles, temp files, node_modules — is created in YOUR sandbox only. Before every file write, check the target path. Creating a file in the user's folder and then deleting it is still a violation, not a fix.
 
@@ -126,13 +130,12 @@ A Storybook-style viewer for the USER's own components (`lyra-ui/src/components/
 - The gallery: left nav listing each component, canvas rendering each live, a few sensible prop variations where meaningful. Name it `my-component-gallery.html`.
 - **Component edits persist at the source**: when the user asks to change a component (text or screenshots), edit the component file in THEIR `lyra-ui/src/components/local/` (their machine), then rebuild and overwrite the gallery. Don't re-present it — tell them to refresh. The gallery is a view; the user's local folder is the source of truth.
 
-## Scenario F: The user wants to share/publish a prototype (Netlify)
+## Scenario F: The user wants to share/publish a prototype (Vercel or Netlify)
 
-You CANNOT reach Netlify (or most of the web) from your sandbox — do not try to deploy via API or CLI, and never ask the user to run terminal commands. Instead:
+You CANNOT reach Vercel/Netlify (or most of the web) from your sandbox — do not try to deploy via API or CLI, and never ask the user to run terminal commands. Instead:
 
-1. Create a Netlify-ready zip in the `Prototypes` folder named `<prototype-name>-netlify.zip`, containing the prototype as `index.html` (Netlify Drop needs that exact name at the zip root).
-2. Present the zip, then give the user these exact steps:
-   - Go to **https://app.netlify.com/drop** (sign up free if needed — no card).
-   - Drag the zip onto the page.
-   - Netlify gives you a public link in a few seconds — send that link to anyone.
-3. To update a published prototype: rebuild the zip, and the user drags it onto their existing site's "Deploys" page (or just Drop again for a fresh link).
+1. Ask the user which they'd prefer: **Vercel** (recommended default — generous free hobby tier) or **Netlify** (free tier caps hosted sites sooner).
+2. Create a zip in the `Prototypes` folder named `<prototype-name>-publish.zip`, containing the prototype renamed to `index.html` at the zip root (both services use it as the homepage).
+3. Present the zip, then give the user the steps for their choice:
+   - **Vercel**: go to **https://vercel.com/drop** (free account, no card), drag the zip onto the page, name the project, Deploy — public link in seconds. Note: each drop creates a NEW project; to update, drop again for a fresh link (or connect the project to git later for auto-deploys).
+   - **Netlify**: go to **https://app.netlify.com/drop**, drag the zip — public link in seconds. To update an existing site, drag the new zip onto that site's "Deploys" page.
