@@ -106,6 +106,7 @@ const HEADER_ACTIONS = (
       initials="JS"
       avatarColor="#5d6a79"
       groups={defaultProfileMenuGroups}
+      showThemeToggle
       className="ml-1"
     />
   </>
@@ -122,7 +123,12 @@ function AdminShellDemo({ children }: { children: React.ReactNode }) {
   const [navOpen, setNavOpen] = useState(false);
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
+    /* Shell background must sit on this ROOT div (matching AgentNextGen-
+       Template's root) so it extends behind the AppHeader — AppHeader itself
+       is transparent, and only Storybook's preview.ts body-background sync
+       makes a bg-less root look correct inside Storybook. Standalone builds
+       (e.g. prototype exports) have no such decorator. */
+    <div className="flex h-screen flex-col overflow-hidden bg-lyra-bg-surface-shell">
       <AppHeader
         appName={<AppNameWithMenu name="Outbound Engagement" />}
         actions={HEADER_ACTIONS}
@@ -248,7 +254,12 @@ function AdminShellWithAiDemo({ children }: { children: (onAskAi: () => void) =>
   ) : null;
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
+    /* Shell background must sit on this ROOT div (matching AgentNextGen-
+       Template's root) so it extends behind the AppHeader — AppHeader itself
+       is transparent, and only Storybook's preview.ts body-background sync
+       makes a bg-less root look correct inside Storybook. Standalone builds
+       (e.g. prototype exports) have no such decorator. */
+    <div className="flex h-screen flex-col overflow-hidden bg-lyra-bg-surface-shell">
       <AppHeader
         appName={<AppNameWithMenu name="Outbound Engagement" />}
         actions={HEADER_ACTIONS}

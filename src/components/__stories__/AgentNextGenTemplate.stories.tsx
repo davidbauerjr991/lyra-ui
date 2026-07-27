@@ -8,6 +8,7 @@ import { AppMenu, type AppMenuGroup } from "../app-menu";
 import { CXoneLogo } from "../cxone-logo";
 import { AiPanel } from "../ai-panel";
 import { AiSparkleIcon } from "../icons/ai-sparkle-icon";
+import { ActionIconButton } from "../actions";
 import { NotificationsBell } from "../notifications-bell";
 import { AgentNotifications, type AgentNotification } from "../agent-notifications";
 import { AgentProfile, type AgentStatus } from "../agent-profile";
@@ -894,15 +895,19 @@ function AgentNextGenTemplate({
               onOpenChange={setNotifOpen}
               renderPanel={false}
             />
-            <button
-              type="button"
-              aria-label="Ask AI"
+            {/* Same ActionIconButton form as AppHeader.stories.tsx's "Agent
+                Next Gen Header" story — this used to be a hand-rolled 40px
+                <button> duplicating ActionIconButton's hover/pressed/focus
+                classes; size="xl" (44px, icon-2xl) is the AppHeader standard. */}
+            <ActionIconButton
+              size="xl"
+              title="Ask AI"
               aria-expanded={aiPanelOpen}
               onClick={() => setAiPanelOpen((v) => !v)}
-              className={`relative flex h-10 w-10 items-center justify-center rounded-lyra-lg text-lyra-fg-default transition-colors hover:bg-lyra-state-hover active:bg-lyra-state-pressed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus ${aiPanelOpen ? "bg-lyra-state-hover" : ""}`}
+              className={aiPanelOpen ? "bg-lyra-state-hover" : undefined}
             >
               <AiSparkleIcon />
-            </button>
+            </ActionIconButton>
             <AgentProfile
               name="John Smith"
               initials="JS"

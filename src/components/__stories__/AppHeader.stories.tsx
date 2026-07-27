@@ -105,6 +105,7 @@ export const Default: Story = {
             initials="JS"
             avatarColor="#5d6a79"
             groups={defaultProfileMenuGroups}
+            showThemeToggle
             className="ml-1"
           />
         </>
@@ -295,6 +296,7 @@ export const ActionsOnly: Story = {
             initials="DB"
             avatarColor="#5d6a79"
             groups={defaultProfileMenuGroups}
+            showThemeToggle
             className="ml-1"
           />
         </>
@@ -326,6 +328,7 @@ export const WithBackground: Story = {
             initials="JS"
             avatarColor="#5d6a79"
             groups={defaultProfileMenuGroups}
+            showThemeToggle
             className="ml-1"
           />
         </>
