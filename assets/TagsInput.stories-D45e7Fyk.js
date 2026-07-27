@@ -1,0 +1,53 @@
+import{j as e}from"./jsx-runtime-D_zvdyIk.js";import{r as n}from"./index-CXOcBcs0.js";import{c as S}from"./utils-BLSKlp9E.js";import{L as pe}from"./label-DjGdKyh0.js";import{E as me}from"./error-icon-Jj0G9Pna.js";import{T as be}from"./tooltip-Cy9hcxi2.js";import{X as Te}from"./x-N8aIqrq2.js";import"./_commonjsHelpers-CqkleIqs.js";import"./index-DWcjTdiE.js";import"./index-DujEZ9g2.js";import"./circle-help-Bj2MpUE2.js";import"./createLucideIcon-DEcfmm_F.js";import"./index-DNfP5j1O.js";import"./floating-ui.react-dom-B7A2Lg_k.js";const s=n.forwardRef(({value:r,defaultValue:t,onChange:h,placeholder:N="Add a tag…",addKeys:ae=["Enter","Tab",","],maxTags:c,label:v,labelHelpText:se,required:re,readonly:o,disabled:i,error:u,className:te,id:ne},le)=>{const oe=n.useId(),q=ne??oe,I=n.useRef(null),R=r!==void 0,[ie,de]=n.useState(t??[]),l=R?r:ie,[g,w]=n.useState(""),[ce,C]=n.useState(!1),A=a=>{R||de(a),h==null||h(a)},E=a=>{const d=a.trim();if(!d||l.includes(d)){w("");return}c!==void 0&&l.length>=c||(A([...l,d]),w(""))},D=a=>{A(l.filter((d,j)=>j!==a))},ue=a=>{if(ae.includes(a.key)){a.preventDefault(),E(g);return}a.key==="Backspace"&&g===""&&l.length>0&&D(l.length-1)},ge=()=>{C(!1),g.trim()&&E(g)},W=c!==void 0&&l.length>=c;return e.jsxs("div",{ref:le,className:te,children:[v&&e.jsx(pe,{label:v,labelFor:q,labelHelpText:se,required:re,disabled:i,readonly:o,className:"mb-1.5"}),e.jsxs("div",{className:S("flex flex-wrap items-center gap-1.5 min-h-[36px] w-full rounded-lyra-sm border px-2.5 py-1.5 transition-colors cursor-text",u?"border-lyra-status-critical-strong bg-lyra-status-critical-subtle":o?"border-lyra-border-strong bg-lyra-bg-surface-canvas":i?"border-transparent bg-lyra-bg-disabled cursor-not-allowed":ce?"border-lyra-border-active ring-2 ring-lyra-border-active/20 bg-lyra-bg-field":"border-lyra-border-strong bg-lyra-bg-field hover:border-lyra-state-border-hover-neutral"),onClick:()=>{var a;return!i&&!o&&((a=I.current)==null?void 0:a.focus())},children:[l.map((a,d)=>e.jsxs("span",{className:S("inline-flex items-center gap-1 rounded-lyra-xs px-2 py-0.5 lyra-body-sm transition-colors",i?"bg-lyra-bg-disabled text-lyra-fg-disabled":u?"bg-lyra-status-critical-subtle text-lyra-status-critical-strong border border-lyra-status-critical-strong/30":"bg-lyra-bg-active-subtle text-lyra-fg-active-strong border border-lyra-border-active/30"),children:[a,!o&&!i&&e.jsx(be,{content:`Remove ${a}`,placement:"top",delayMs:400,children:e.jsx("button",{type:"button",onClick:j=>{j.stopPropagation(),D(d)},"aria-label":`Remove tag: ${a}`,className:S("rounded-full transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-lyra-border-focus","hover:bg-lyra-state-hover-active-subtle"),children:e.jsx(Te,{className:"h-3 w-3",strokeWidth:2,"aria-hidden":"true"})})})]},d)),!o&&!i&&!W&&e.jsx("input",{ref:I,id:q,type:"text",value:g,onChange:a=>w(a.target.value),onKeyDown:ue,onFocus:()=>C(!0),onBlur:ge,placeholder:l.length===0?N:"",className:"flex-1 min-w-[120px] bg-transparent outline-none lyra-body-md text-lyra-fg-default placeholder:text-lyra-fg-disabled py-0.5","aria-label":v??"Add tags",autoComplete:"off"}),o&&l.length===0&&e.jsx("span",{className:"lyra-body-md text-lyra-fg-disabled",children:N}),W&&!o&&!i&&e.jsxs("span",{className:"lyra-body-sm text-lyra-fg-secondary ml-1",children:["Max ",c," tags"]})]}),!u&&!o&&!i&&e.jsx("p",{className:"lyra-body-sm text-lyra-fg-secondary mt-1",children:"Press Enter or Tab to add a tag"}),u&&e.jsxs("div",{role:"alert",className:"flex items-center gap-1 mt-1.5",children:[e.jsx(me,{className:"h-3.5 w-3.5 flex-shrink-0","aria-hidden":"true"}),e.jsx("span",{className:"lyra-body-sm text-lyra-status-critical-strong",children:u})]})]})});s.displayName="TagsInput";s.__docgenInfo={description:"",methods:[],displayName:"TagsInput",props:{value:{required:!1,tsType:{name:"Array",elements:[{name:"string"}],raw:"string[]"},description:"Controlled tags array"},defaultValue:{required:!1,tsType:{name:"Array",elements:[{name:"string"}],raw:"string[]"},description:"Default tags (uncontrolled)"},onChange:{required:!1,tsType:{name:"signature",type:"function",raw:"(tags: string[]) => void",signature:{arguments:[{type:{name:"Array",elements:[{name:"string"}],raw:"string[]"},name:"tags"}],return:{name:"void"}}},description:"Called when tags change"},placeholder:{required:!1,tsType:{name:"string"},description:"Placeholder shown in the input area",defaultValue:{value:'"Add a tag…"',computed:!1}},addKeys:{required:!1,tsType:{name:"Array",elements:[{name:"string"}],raw:"string[]"},description:"Keys that confirm a tag (default: Enter, Tab)",defaultValue:{value:'["Enter", "Tab", ","]',computed:!1}},maxTags:{required:!1,tsType:{name:"number"},description:"Maximum number of tags allowed"},label:{required:!1,tsType:{name:"string"},description:"Label text"},labelHelpText:{required:!1,tsType:{name:"string"},description:"Help text in a tooltip on the label"},required:{required:!1,tsType:{name:"boolean"},description:"Shows asterisk on label"},readonly:{required:!1,tsType:{name:"boolean"},description:"Read-only — tags shown but input hidden"},disabled:{required:!1,tsType:{name:"boolean"},description:"Disabled state"},error:{required:!1,tsType:{name:"string"},description:"Error message"},className:{required:!1,tsType:{name:"string"},description:"Additional className on the root"},id:{required:!1,tsType:{name:"string"},description:""}}};const Ee={title:"Custom Primitives/Tags Input",component:s,tags:["autodocs"],parameters:{layout:"padded",backgrounds:{default:"lyra-shell"}}},p={render:()=>{const[r,t]=n.useState([]);return e.jsx("div",{className:"w-96",children:e.jsx(s,{label:"Tags",value:r,onChange:t,placeholder:"Add a tag…"})})}},m={name:"With Values",render:()=>{const[r,t]=n.useState(["React","TypeScript","Tailwind"]);return e.jsx("div",{className:"w-96",children:e.jsx(s,{label:"Technologies",labelHelpText:"Press Enter or Tab to add.",value:r,onChange:t})})}},b={name:"Max Tags",render:()=>{const[r,t]=n.useState(["Tag 1","Tag 2"]);return e.jsx("div",{className:"w-96",children:e.jsx(s,{label:"Labels (max 3)",value:r,onChange:t,maxTags:3})})}},T={name:"With Error",render:()=>{const[r,t]=n.useState([]);return e.jsx("div",{className:"w-96",children:e.jsx(s,{label:"Tags",required:!0,value:r,onChange:t,error:"At least one tag is required"})})}},y={render:()=>e.jsx("div",{className:"w-96",children:e.jsx(s,{label:"Tags",value:["React","TypeScript","Tailwind"],readonly:!0})})},f={render:()=>e.jsx("div",{className:"w-96",children:e.jsx(s,{label:"Tags",value:["React","TypeScript"],disabled:!0})})},x={name:"All States",render:()=>{const[r,t]=n.useState(["React","TypeScript"]);return e.jsxs("div",{className:"flex flex-col gap-6 max-w-sm",children:[e.jsx(s,{label:"Default",value:[],onChange:()=>{}}),e.jsx(s,{label:"With values",value:r,onChange:t}),e.jsx(s,{label:"Max 3 tags",value:["Tag 1","Tag 2"],onChange:()=>{},maxTags:3}),e.jsx(s,{label:"Readonly",value:["React","TypeScript"],readonly:!0}),e.jsx(s,{label:"Disabled",value:["React"],disabled:!0}),e.jsx(s,{label:"Error",value:[],onChange:()=>{},error:"At least one tag is required",required:!0})]})}};var M,k,V;p.parameters={...p.parameters,docs:{...(M=p.parameters)==null?void 0:M.docs,source:{originalSource:`{
+  render: () => {
+    const [tags, setTags] = useState<string[]>([]);
+    return <div className="w-96">
+        <TagsInput label="Tags" value={tags} onChange={setTags} placeholder="Add a tag…" />
+      </div>;
+  }
+}`,...(V=(k=p.parameters)==null?void 0:k.docs)==null?void 0:V.source}}};var P,L,_;m.parameters={...m.parameters,docs:{...(P=m.parameters)==null?void 0:P.docs,source:{originalSource:`{
+  name: "With Values",
+  render: () => {
+    const [tags, setTags] = useState(["React", "TypeScript", "Tailwind"]);
+    return <div className="w-96">
+        <TagsInput label="Technologies" labelHelpText="Press Enter or Tab to add." value={tags} onChange={setTags} />
+      </div>;
+  }
+}`,...(_=(L=m.parameters)==null?void 0:L.docs)==null?void 0:_.source}}};var H,K,B;b.parameters={...b.parameters,docs:{...(H=b.parameters)==null?void 0:H.docs,source:{originalSource:`{
+  name: "Max Tags",
+  render: () => {
+    const [tags, setTags] = useState(["Tag 1", "Tag 2"]);
+    return <div className="w-96">
+        <TagsInput label="Labels (max 3)" value={tags} onChange={setTags} maxTags={3} />
+      </div>;
+  }
+}`,...(B=(K=b.parameters)==null?void 0:K.docs)==null?void 0:B.source}}};var F,$,O;T.parameters={...T.parameters,docs:{...(F=T.parameters)==null?void 0:F.docs,source:{originalSource:`{
+  name: "With Error",
+  render: () => {
+    const [tags, setTags] = useState<string[]>([]);
+    return <div className="w-96">
+        <TagsInput label="Tags" required value={tags} onChange={setTags} error="At least one tag is required" />
+      </div>;
+  }
+}`,...(O=($=T.parameters)==null?void 0:$.docs)==null?void 0:O.source}}};var X,z,G;y.parameters={...y.parameters,docs:{...(X=y.parameters)==null?void 0:X.docs,source:{originalSource:`{
+  render: () => <div className="w-96">
+      <TagsInput label="Tags" value={["React", "TypeScript", "Tailwind"]} readonly />
+    </div>
+}`,...(G=(z=y.parameters)==null?void 0:z.docs)==null?void 0:G.source}}};var J,Q,U;f.parameters={...f.parameters,docs:{...(J=f.parameters)==null?void 0:J.docs,source:{originalSource:`{
+  render: () => <div className="w-96">
+      <TagsInput label="Tags" value={["React", "TypeScript"]} disabled />
+    </div>
+}`,...(U=(Q=f.parameters)==null?void 0:Q.docs)==null?void 0:U.source}}};var Y,Z,ee;x.parameters={...x.parameters,docs:{...(Y=x.parameters)==null?void 0:Y.docs,source:{originalSource:`{
+  name: "All States",
+  render: () => {
+    const [tags, setTags] = useState(["React", "TypeScript"]);
+    return <div className="flex flex-col gap-6 max-w-sm">
+        <TagsInput label="Default" value={[]} onChange={() => {}} />
+        <TagsInput label="With values" value={tags} onChange={setTags} />
+        <TagsInput label="Max 3 tags" value={["Tag 1", "Tag 2"]} onChange={() => {}} maxTags={3} />
+        <TagsInput label="Readonly" value={["React", "TypeScript"]} readonly />
+        <TagsInput label="Disabled" value={["React"]} disabled />
+        <TagsInput label="Error" value={[]} onChange={() => {}} error="At least one tag is required" required />
+      </div>;
+  }
+}`,...(ee=(Z=x.parameters)==null?void 0:Z.docs)==null?void 0:ee.source}}};const De=["Default","WithValues","MaxTags","WithError","Readonly","Disabled","AllStates"];export{x as AllStates,p as Default,f as Disabled,b as MaxTags,y as Readonly,T as WithError,m as WithValues,De as __namedExportsOrder,Ee as default};
