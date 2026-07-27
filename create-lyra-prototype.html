@@ -268,10 +268,11 @@ fallbackLine +
 "\n" +
 "DELIVERABLE\n" +
 "- One self-contained HTML file named \"" + fileName + ".html\" with all JavaScript bundled and all styles compiled and inlined, so it opens by double-clicking with nothing installed.\n" +
-"- Save it to the folder I've connected to this chat, NOT to your session outputs folder — I want it somewhere I can easily find. If lyra-ui is in that folder, save the file as a sibling next to the lyra-ui folder (not inside it). If no folder is connected yet, use your directory-access tool to ask me to pick a folder BEFORE building. Then present the file to me.\n" +
+"- Dark mode must ACTUALLY WORK, not just relabel the menu item: include the full lyra token CSS — the :root light block AND every [data-theme=\"dark\"] block from src/styles/lyra-tokens.css — and give the page/body background var(--lyra-color-bg-surface-shell) so it flips with the theme. Before delivering, verify that toggling dark mode from the profile menu visibly changes the page.\n" +
+"- Save it to the folder I've connected to this chat, NOT to your session outputs folder — I want it somewhere I can easily find. Create a folder named \"Prototypes\" in the connected folder if it doesn't exist (as a sibling of the lyra-ui folder if lyra-ui is there, never inside it) and save the file into that Prototypes folder. If no folder is connected yet, use your directory-access tool to ask me to pick a folder BEFORE building. Then present the file to me.\n" +
 "\n" +
 "AFTER DELIVERY\n" +
-"- I will iterate by describing changes or pasting screenshots/mockups. Apply each change to this same prototype, re-check the story files before using any new component, and re-deliver the same single file.\n" +
+"- I will iterate by describing changes or pasting screenshots/mockups. Apply each change to this same prototype, re-check the story files before using any new component, and overwrite the same file in place. Do NOT re-present the file on updates — just tell me to refresh my browser (or close and re-open the file) to see the changes.\n" +
 "\n" +
 "Start by confirming you've read the rulebooks, then build the starting template with my product name in the header.";
 

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useMemo, useState, useRef, useCallback } from "react";
+import { useMemo, useState, useRef, useCallback, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { TreeMenu, type TreeMenuItem } from "./tree-menu";
 import { Tooltip } from "./tooltip";
@@ -37,8 +37,21 @@ interface LeftNavProps extends React.HTMLAttributes<HTMLElement> {
   /**
    * Overlay mode (narrow screens): the aside keeps a fixed 52px footprint;
    * the expanded panel slides out as an absolutely-positioned overlay.
+   *
+   * Defaults to `"auto"`: LeftNav tracks the window width itself and
+   * switches into overlay mode below `overlayBreakpoint` — the same
+   * responsive behavior the Agent Next Gen template wires up by hand
+   * (`overlay={isNavNarrow}`). Pass an explicit boolean to opt out of the
+   * built-in tracking and control the mode yourself (e.g. a template that
+   * already tracks width for other reasons, like docked-panel handling).
    */
-  overlay?: boolean;
+  overlay?: boolean | "auto";
+  /**
+   * Window width (px) below which `overlay="auto"` engages overlay mode.
+   * 1280 matches the Agent Next Gen template's own nav breakpoint. Ignored
+   * when `overlay` is an explicit boolean.
+   */
+  overlayBreakpoint?: number;
   /** Content pinned to the bottom of the nav rail (e.g. a CreateNew button) */
   footer?: React.ReactNode;
   /**
@@ -107,7 +120,8 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
       open = true,
       onToggle,
       collapsible = true,
-      overlay = false,
+      overlay = "auto",
+      overlayBreakpoint = 1280,
       footer,
       pinnedHeader,
       header,
@@ -116,6 +130,23 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
     ref
   ) => {
     const treeItems = useMemo(() => toTreeItems(items), [items]);
+
+    /* `overlay="auto"` (the default): track window width internally and
+       engage overlay mode below `overlayBreakpoint`. Only wired up in auto
+       mode — an explicit boolean skips the listener entirely. SSR-safe:
+       starts at Infinity (inline mode) until a real window width is read. */
+    const [viewportWidth, setViewportWidth] = useState(() =>
+      typeof window === "undefined" ? Number.POSITIVE_INFINITY : window.innerWidth
+    );
+    useEffect(() => {
+      if (overlay !== "auto") return;
+      const onResize = () => setViewportWidth(window.innerWidth);
+      onResize();
+      window.addEventListener("resize", onResize);
+      return () => window.removeEventListener("resize", onResize);
+    }, [overlay]);
+    const effectiveOverlay =
+      overlay === "auto" ? viewportWidth < overlayBreakpoint : overlay;
 
     // Hover-open state used in overlay mode
     const [hoverOpen, setHoverOpen] = useState(false);
@@ -200,7 +231,7 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
     );
 
     /* ── Overlay mode (narrow screens): hover to open, no toggle button ── */
-    if (overlay) {
+    if (effectiveOverlay) {
       return (
         <aside
           ref={ref}

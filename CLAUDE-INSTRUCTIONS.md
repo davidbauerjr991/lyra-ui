@@ -54,15 +54,16 @@ Stories run inside Storybook, whose `preview.ts` decorator sets up the page envi
 - One self-contained `.html` file, named from the prototype name (kebab-case), with all JS bundled and all styles compiled and inlined so it opens by double-click.
 - Save it to the user's connected folder, NOT the session outputs folder (that's buried in Claude's app-data and hard for users to find):
   - If no folder is connected, use your directory-access tool to ask the user to pick one BEFORE building.
-  - If the connected folder contains a `lyra-ui` folder, save the file as a **sibling next to `lyra-ui`**, never inside it.
-- Present the file to the user.
-- On every re-delivery (iteration), overwrite that same file in the same location.
+  - Create a **`Prototypes`** folder in the connected folder if it doesn't exist, and save every prototype `.html` inside it.
+  - `Prototypes` must be a **sibling of the `lyra-ui` folder** (if lyra-ui is in the connected folder) — never inside lyra-ui.
+- Present the file to the user on FIRST delivery only (they need to find it once).
+- On every update after that, overwrite the same file in the same location and do NOT re-present it — just tell the user to refresh their browser (or close and re-open the file) to see the changes.
 
 ## Scenario C: The user asks for changes to an existing prototype (text or screenshots)
 
 - Apply changes to the same prototype in your sandbox copy.
 - Re-check the relevant `.stories.tsx` files before introducing any new component.
-- Re-bundle and re-deliver the same single `.html` file (same name).
+- Re-bundle and overwrite the same single `.html` file (same name, same location). Do NOT re-present the file — tell the user to refresh their browser (or close and re-open the file) to see the changes.
 
 ## Scenario D: The user wants a NEW prototype
 

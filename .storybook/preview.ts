@@ -21,12 +21,12 @@ const withTheme: Decorator = (Story, context) => {
   const theme = context.globals.theme ?? "light";
 
   document.documentElement.setAttribute("data-theme", theme);
-  const shellColor = getComputedStyle(document.documentElement)
-    .getPropertyValue("--lyra-color-bg-surface-shell")
-    .trim();
-  if (shellColor) {
-    document.body.style.backgroundColor = shellColor;
-  }
+  /* var() reference, NOT a baked computed literal — the canvas must keep
+     tracking the token when something *other* than this toolbar flips
+     data-theme (ProfileMenu's / AgentProfile's own dark mode toggle). A
+     literal left the canvas stuck on the old theme's color while every
+     component flipped. */
+  document.body.style.backgroundColor = "var(--lyra-color-bg-surface-shell)";
 
   return React.createElement(Story);
 };

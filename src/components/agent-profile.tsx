@@ -31,6 +31,13 @@ export interface AgentProfileProps {
   connectedApps?: ConnectedApp[];
   /** Called when reconnect is triggered for an app */
   onReconnect?: (appId: string) => void;
+  /**
+   * Called when the Dark Mode row is clicked. When BOTH this and
+   * `isDarkMode` are omitted, AgentProfile self-manages the theme exactly
+   * like `ProfileMenu` does: it reads/writes `data-theme` on
+   * `document.documentElement` itself, so the toggle works out of the box.
+   * Provide these props only to take controlled ownership of theming.
+   */
   onDarkModeToggle?: () => void;
   /** Whether dark mode is currently active — controls the label/icon shown in the menu */
   isDarkMode?: boolean;
@@ -95,9 +102,27 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
     timer,
     connectedApps = [],
     onReconnect,
-    onDarkModeToggle, isDarkMode = false, onHelpClick, onLogOut,
+    onDarkModeToggle, isDarkMode: isDarkModeProp, onHelpClick, onLogOut,
     className,
   }, ref) => {
+    /* Uncontrolled dark mode — same self-managing mechanism as ProfileMenu
+       (profile-menu.tsx): only active when neither `isDarkMode` nor
+       `onDarkModeToggle` is supplied. */
+    const [internalDark, setInternalDark] = React.useState(() =>
+      typeof document !== "undefined" &&
+      document.documentElement.getAttribute("data-theme") === "dark"
+    );
+    const darkControlled = isDarkModeProp !== undefined || onDarkModeToggle !== undefined;
+    const isDarkMode = darkControlled ? (isDarkModeProp ?? false) : internalDark;
+    const handleDarkModeToggle = () => {
+      if (darkControlled) {
+        onDarkModeToggle?.();
+        return;
+      }
+      const next = !internalDark;
+      setInternalDark(next);
+      document.documentElement.setAttribute("data-theme", next ? "dark" : "light");
+    };
     const [open, setOpen] = React.useState(false);
     const [statusSearch, setStatusSearch] = React.useState("");
     const [favoriteStatuses, setFavoriteStatuses] = React.useState<Set<AgentStatus>>(new Set());
@@ -221,7 +246,10 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
         icon: isDarkMode
           ? <Sun  className="h-4 w-4" strokeWidth={1.5} />
           : <Moon className="h-4 w-4" strokeWidth={1.5} />,
-        onClick: onDarkModeToggle,
+        onClick: handleDarkModeToggle,
+        // Keep the menu open so the new theme is visible immediately —
+        // matches ProfileMenu's theme-toggle entry.
+        closeOnSelect: false,
       },
       {
         id: "connected-apps",
