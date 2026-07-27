@@ -117,11 +117,11 @@
   <!-- Step 1: Install -->
   <div class="card" id="step1">
     <h2>Install Lyra UI?</h2>
-    <p class="sub">Lyra UI is the design system your prototype will be built from. Claude downloads the latest version automatically — nothing gets installed on your computer. Choose "I Already Installed It" only if Claude set up Lyra UI earlier in the same chat.</p>
+    <p class="sub">Lyra UI is the design system your prototype will be built from. Nothing installs on your computer, and this button doesn't install anything by itself — your choice here is written into the prompt this wizard generates at the end, and Claude does the actual download when you paste it. Choose "Already Installed" only if Claude set up Lyra UI earlier in the same chat you'll paste into.</p>
     <div class="btn-row">
       <span class="spacer"></span>
-      <button class="btn" onclick="skipInstall()">I Already Installed It</button>
-      <button class="btn primary" onclick="doInstall()">Yes, install Lyra UI</button>
+      <button class="btn" onclick="skipInstall()">Already Installed In This Chat</button>
+      <button class="btn primary" onclick="doInstall()">Yes, Install Lyra UI</button>
     </div>
   </div>
 
@@ -131,7 +131,7 @@
     <p class="sub">Pick how you want to build — everything stays no-terminal, no installs.</p>
     <div class="choice-grid" style="grid-template-columns: 1fr 1fr 1fr;">
       <button class="choice" onclick="pickTarget('design')">
-        <p class="t">Open In Claude Design</p>
+        <p class="t">Use Claude Design</p>
         <p class="d">Build the prototype on Claude Design's visual canvas — iterate with inline comments and share via link.</p>
       </button>
       <button class="choice" onclick="pickTarget('cowork')">
@@ -317,7 +317,7 @@
     document.getElementById("designSteps").classList.add("hidden");
 
     var setupLine = state.alreadyInstalled
-      ? "- Lyra UI is already set up in this chat — reuse the lyra-ui copy already in your sandbox workspace. If there is none, clone the latest from GitHub as below.\n"
+      ? "- Lyra UI is already set up in this chat — reuse the lyra-ui copy already in your sandbox workspace. If there is none, clone the latest from https://github.com/davidbauerjr991/lyra-ui.git (main branch) yourself — never ask me to run any command.\n"
       : "- Get the LATEST Lyra UI by cloning https://github.com/davidbauerjr991/lyra-ui.git (main branch) into your own sandbox workspace. Do this yourself — never ask me to run any command.\n";
 
     var fallbackLine =
@@ -332,7 +332,7 @@ fallbackLine +
 "- Read CLAUDE.md and CONTRIBUTING.md in the repo IN FULL before writing any UI code. They are the binding rules. Also read CLAUDE-INSTRUCTIONS.md at the repo root.\n" +
 "- Before using any component, check its matching .stories.tsx file in src/components/__stories__/ for real prop combinations. Never invent props or markup.\n" +
 "- If my connected folder has lyra-ui/src/components/local/ with components in it, copy them into your build workspace and treat them as part of the library. If I ask for a brand-new component, save it there (on my machine) so it persists.\n" +
-"- Do ALL installation and bundling (npm install, esbuild, Tailwind) inside your own sandbox only. NEVER write node_modules, build tooling, or source folders to my computer.\n" +
+"- Do ALL work in your own sandbox. The ONLY files you may ever create or modify in my connected folder are: the final prototype .html in Prototypes/, a -netlify.zip in Prototypes/ when I ask to share, and components in lyra-ui/src/components/local/ when I ask for one. NOTHING else — no entry files, configs, bundles, node_modules, or temp files, not even briefly. Creating a file on my computer and then deleting it counts as a violation.\n" +
 "\n" +
 "PROTOTYPE SPEC\n" +
 "- Prototype name: " + name + "\n" +
@@ -342,7 +342,7 @@ fallbackLine +
 "DELIVERABLE\n" +
 "- One self-contained HTML file named \"" + fileName + ".html\" with all JavaScript bundled and all styles compiled and inlined, so it opens by double-clicking with nothing installed.\n" +
 "- Stamp the build: a <meta name=\"lyra-ui-commit\"> tag with the clone's commit SHA, plus the update-notice script from CLAUDE-INSTRUCTIONS.md's Deliverable section, so the prototype can tell its user when the library has moved on.\n" +
-"- Dark mode must ACTUALLY WORK, not just relabel the menu item: include the full lyra token CSS — the :root light block AND every [data-theme=\"dark\"] block from src/styles/lyra-tokens.css — and give the page/body background var(--lyra-color-bg-surface-shell) so it flips with the theme. Before delivering, verify that toggling dark mode from the profile menu visibly changes the page.\n" +
+"- Dark mode must ACTUALLY WORK, not just relabel the menu item. The lyra tokens must appear EXACTLY ONCE in the final CSS (compiling storybook.css with Tailwind already inlines them via @import — do NOT add a second copy of lyra-tokens.css; a duplicate light :root later in the file silently kills the dark block forever, since equal specificity means last-in-source wins). Page/body background must be var(--lyra-color-bg-surface-shell). Before delivering, verify IN THE FINAL FILE, programmatically: exactly one :root block declares --lyra-color-bg-surface-shell, exactly one [data-theme=\"dark\"] block re-declares it, and the dark block appears AFTER that :root block.\n" +
 "- Save it to the folder I've connected to this chat, NOT to your session outputs folder — I want it somewhere I can easily find. Create a folder named \"Prototypes\" in the connected folder if it doesn't exist (as a sibling of the lyra-ui folder if lyra-ui is there, never inside it) and save the file into that Prototypes folder. If no folder is connected yet, use your directory-access tool to ask me to pick a folder BEFORE building. Then present the file to me.\n" +
 "\n" +
 "AFTER DELIVERY\n" +

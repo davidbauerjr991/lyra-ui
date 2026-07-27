@@ -57,11 +57,19 @@ This folder in the user's own lyra-ui copy holds their personal components. It i
 - Before creating any new component, check this folder too — the user may already have what's needed.
 - When the user asks for a component that doesn't exist in the library, create it in the USER's `lyra-ui/src/components/local/` (on their machine, via the connected folder) so it persists for future sessions — follow CONTRIBUTING.md's authoring rules there too. If the user has no local lyra-ui copy, keep the component inside the prototype and tell them it won't persist without one.
 
+### Strict write policy (the #1 trust rule)
+Users lose confidence the moment stray files appear in their folders — even briefly. The ONLY paths you may ever create or modify in the user's connected folder are:
+1. `Prototypes/<name>.html` (the deliverable) and `Prototypes/<name>-netlify.zip` (on a share request)
+2. `lyra-ui/src/components/local/<component>.tsx` (only when the user asks for a new/changed component)
+
+Everything else — entry files, configs, CSS output, bundles, temp files, node_modules — is created in YOUR sandbox only. Before every file write, check the target path. Creating a file in the user's folder and then deleting it is still a violation, not a fix.
+
 ### Standalone environment (what Storybook normally provides)
 Stories run inside Storybook, whose `preview.ts` decorator sets up the page environment. A standalone prototype HTML has no decorator, so you must replicate it yourself:
-- Include the FULL lyra tokens CSS (both light and dark `[data-theme]` blocks) — otherwise the dark mode toggle silently does nothing.
+- The lyra tokens (light `:root` + `[data-theme="dark"]` blocks) must be in the final CSS **exactly once**. Compiling `src/storybook.css` with Tailwind already inlines them via its `@import "./styles/lyra-tokens.css"` — do NOT concatenate another copy of lyra-tokens.css. **This is the known dark-mode killer**: `:root` and `[data-theme="dark"]` have equal specificity, so a second light `:root` appearing later in the file permanently overrides the dark block — the toggle relabels but the page never changes.
 - Set `data-theme="light"` on `<html>` initially.
-- Set the page/body background to `var(--lyra-color-bg-surface-shell)` and keep it synced if the theme changes (Storybook's preview.ts does exactly this) — otherwise headers and other transparent chrome render on white.
+- Set the page/body background to `var(--lyra-color-bg-surface-shell)` (the var reference, never a baked literal color) so it flips with the theme.
+- **Verify programmatically in the FINAL html before delivering** (no browser needed): exactly one `:root` block declares `--lyra-color-bg-surface-shell`; exactly one `[data-theme="dark"]` block re-declares it; the dark block's position in the file is AFTER that `:root` block; and utility classes reference `var(--lyra-...)`, not literal hex. If any check fails, fix the CSS assembly — do not deliver and ask the user to "eyeball it".
 
 ### Deliverable
 - One self-contained `.html` file, named from the prototype name (kebab-case), with all JS bundled and all styles compiled and inlined so it opens by double-click.
