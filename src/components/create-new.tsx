@@ -1495,6 +1495,12 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     // This wrapper is now unconditional (previously `if (expanded) return
     // popover;` returned early, only wrapping in the collapsed case) —
     // `Tooltip`'s own `disabled` prop suppresses it while expanded instead.
+    // Also disabled while `open` (the popover itself is showing) — without
+    // that, hovering the open dropdown while still collapsed would leave
+    // this tooltip visibly sitting on top of it, since `expanded` alone
+    // says nothing about whether the popover this same trigger opens is
+    // currently up (see `KebabMenuButton.onOpenChange`'s doc comment in
+    // kebab-menu-button.tsx for the general version of this issue).
     // Conditionally wrapping vs. not wrapping `popover` in a `<Tooltip>`
     // changes the JSX tree shape every time `expanded` toggles, which
     // forces React to unmount and remount the entire `Popover` (and its own
@@ -1522,7 +1528,7 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     // the tooltip needs to open into the page rather than toward the
     // rail's own edge — see CONTRIBUTING.md §16.
     return (
-      <Tooltip content={title} placement="right" disabled={expanded}>
+      <Tooltip content={title} placement="right" disabled={expanded || open}>
         <span className="flex w-full justify-center">{popover}</span>
       </Tooltip>
     );

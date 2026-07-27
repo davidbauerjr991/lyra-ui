@@ -101,6 +101,14 @@ const AgentNotifications = React.forwardRef<HTMLDivElement, AgentNotificationsPr
     // Sync when parent forces a variant change (single-dock rule)
     React.useEffect(() => { setDraggableVariant(draggableVariantProp); }, [draggableVariantProp]);
 
+    // The "More options" overflow `MenuRadix` below is otherwise fully
+    // uncontrolled/self-contained — tracked here only so the `Tooltip`
+    // wrapping it can be told to close while it's open (its trigger and the
+    // tooltip's trigger are the same DOM node, so the tooltip has no other
+    // way to find out). See `KebabMenuButton.onOpenChange`'s doc comment
+    // (kebab-menu-button.tsx) for the general version of this issue.
+    const [overflowMenuOpen, setOverflowMenuOpen] = React.useState(false);
+
     const unreadCount = notifications.filter((n) => !n.read).length;
     const hasUnread = notifications.some((n) => !n.read);
 
@@ -173,7 +181,7 @@ const AgentNotifications = React.forwardRef<HTMLDivElement, AgentNotificationsPr
                     wrapping span instead of the button — the button
                     already carries its own explicit `aria-label`. */}
                 {overflowItems.length > 0 && (
-                  <Tooltip content="More options" placement="bottom">
+                  <Tooltip content="More options" placement="bottom" disabled={overflowMenuOpen}>
                     <span className="inline-flex">
                       <MenuRadix
                         trigger={
@@ -187,6 +195,7 @@ const AgentNotifications = React.forwardRef<HTMLDivElement, AgentNotificationsPr
                         }
                         items={overflowItems}
                         align="end"
+                        onOpenChange={setOverflowMenuOpen}
                       />
                     </span>
                   </Tooltip>

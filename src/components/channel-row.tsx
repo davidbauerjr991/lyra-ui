@@ -359,6 +359,14 @@ const ChannelTab: React.FC<ChannelTabProps> = ({
 }) => {
   const meta = CHANNEL_TYPE_META[type];
   const defaultMenuItems = type === "voice" ? buildVoiceMenuItems(onDismiss) : buildDigitalMenuItems(onDismiss);
+  // This tab's own kebab dropdown (rendered by `Tab` itself, inside the
+  // same button this outer `Tooltip` wraps) has no other way to tell this
+  // Tooltip it opened — the tooltip's trigger and the dropdown's trigger
+  // are the same DOM node. `Tab`'s `onMenuOpenChange` reports it here so it
+  // can feed straight into `disabled` below, instead of the tooltip staying
+  // open (and visually sitting on top of the dropdown) the whole time the
+  // dropdown is showing.
+  const [menuOpen, setMenuOpen] = React.useState(false);
   // Second tooltip line — "16 Messages | #707535188548" — omitted entirely
   // when neither value is on hand rather than rendering an empty/half-blank
   // line under the "Label | address" one.
@@ -380,12 +388,13 @@ const ChannelTab: React.FC<ChannelTabProps> = ({
     </div>
   );
   return (
-    <Tooltip content={tooltipContent} placement="bottom">
+    <Tooltip content={tooltipContent} placement="bottom" disabled={menuOpen}>
       <Tab
         active={active}
         onClick={onClick}
         icon={meta.icon}
         menuItems={showMenu ? (menuItems ?? defaultMenuItems) : undefined}
+        onMenuOpenChange={setMenuOpen}
         menuAriaLabel={`More options for ${meta.label}`}
         className={className}
       >

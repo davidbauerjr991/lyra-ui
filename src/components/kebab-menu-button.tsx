@@ -56,10 +56,22 @@ export interface KebabMenuButtonProps {
    * `align="end"`/`"start"`.
    */
   align?: "left" | "right";
+  /**
+   * Fires whenever the dropdown opens or closes. Lets a caller that also
+   * wraps this trigger in its own `Tooltip` (e.g. `Tab`'s `menuItems` slot,
+   * or a card header's kebab) know when the dropdown is showing, so it can
+   * pass that straight to `Tooltip`'s own `disabled` prop and force the
+   * tooltip closed for as long as the dropdown is open. Without this, the
+   * two components have no way to coordinate: the tooltip's trigger and the
+   * dropdown's trigger are the same DOM node, so nothing tells the tooltip
+   * to stay shut once the dropdown takes over that same area — see
+   * CONTRIBUTING.md's "Tooltip wrapping a nested Menu trigger" note.
+   */
+  onOpenChange?: (open: boolean) => void;
 }
 
 const KebabMenuButton = React.forwardRef<HTMLButtonElement, KebabMenuButtonProps>(
-  ({ items, ariaLabel, className, as = "button", icon: iconProp, align = "right" }, ref) => {
+  ({ items, ariaLabel, className, as = "button", icon: iconProp, align = "right", onOpenChange }, ref) => {
     const triggerClassName = cn(
       "flex h-6 w-6 shrink-0 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary transition-colors hover:bg-lyra-state-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus",
       className
@@ -100,6 +112,7 @@ const KebabMenuButton = React.forwardRef<HTMLButtonElement, KebabMenuButtonProps
         items={items}
         align={align === "left" ? "start" : "end"}
         sideOffset={4}
+        onOpenChange={onOpenChange}
       />
     );
   }

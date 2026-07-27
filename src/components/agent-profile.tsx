@@ -326,7 +326,7 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
 
     return (
       <div ref={ref} className={className}>
-        <Tooltip content="Agent Status and More" placement="bottom" asLabel>
+        <Tooltip content="Agent Status and More" placement="bottom" asLabel disabled={open}>
           {/* Wrap the whole Popover (not just its trigger) in a plain span —
               Tooltip's own Trigger clones its hover/focus props onto its
               immediate child via Radix Slot, which only works on a plain

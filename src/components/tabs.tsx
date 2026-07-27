@@ -548,6 +548,16 @@ interface TabProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   menuItems?: MenuEntry[];
   /** Accessible label for the kebab menu trigger (default: "More options") */
   menuAriaLabel?: string;
+  /**
+   * Fires whenever this tab's own `menuItems` kebab dropdown opens/closes —
+   * forwarded straight from `KebabMenuButton`'s own `onOpenChange`. A
+   * caller that wraps this whole `Tab` in its own outer `Tooltip` (e.g.
+   * `ChannelTab` in channel-row.tsx) has no other way to find out the
+   * dropdown opened, since the tooltip's trigger and the dropdown's trigger
+   * are the same DOM node — pass this straight to that outer `Tooltip`'s
+   * `disabled` prop. See `KebabMenuButton.onOpenChange`'s own doc comment.
+   */
+  onMenuOpenChange?: (open: boolean) => void;
   /** ID of the associated TabPanel */
   panelId?: string;
 }
@@ -563,6 +573,7 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
       removeLabel = "Remove tab",
       menuItems,
       menuAriaLabel = "More options",
+      onMenuOpenChange,
       panelId,
       children,
       id,
@@ -583,6 +594,17 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
     // interaction state) every time the truncation state flips.
     const labelRef = useRef<HTMLSpanElement>(null);
     const [isTruncated, setIsTruncated] = useState(false);
+    // This tab's own embedded `menuItems` kebab (below) shares this same
+    // `button` with this tooltip — hovering it to reach the dropdown is
+    // still hovering the tooltip's trigger. Without tracking the dropdown's
+    // own open state here too, the tooltip has no reason to close once the
+    // dropdown takes over, and stays visible over it (see
+    // `KebabMenuButton.onOpenChange`'s doc comment for the full mechanism).
+    const [menuOpen, setMenuOpen] = useState(false);
+    const handleMenuOpenChange = (open: boolean) => {
+      setMenuOpen(open);
+      onMenuOpenChange?.(open);
+    };
 
     useLayoutEffect(() => {
       const el = labelRef.current;
@@ -647,6 +669,7 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
             as="span"
             items={menuItems}
             ariaLabel={menuAriaLabel}
+            onOpenChange={handleMenuOpenChange}
             className={cn(
               "h-5 w-5 flex-shrink-0",
               active ? "text-lyra-fg-active-strong" : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary"
@@ -692,7 +715,7 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
     );
 
     return (
-      <Tooltip content={children} placement="top" disabled={!isTruncated}>
+      <Tooltip content={children} placement="top" disabled={!isTruncated || menuOpen}>
         {button}
       </Tooltip>
     );

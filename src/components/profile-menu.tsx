@@ -110,7 +110,7 @@ const ProfileMenu = React.forwardRef<HTMLDivElement, ProfileMenuProps>(
 
     return (
       <div ref={ref} className={cn("relative", className)} {...props}>
-        <Tooltip content="Profile" placement="bottom" delayMs={open ? 999999 : 200}>
+        <Tooltip content="Profile" placement="bottom" disabled={open}>
           <span className="inline-block">
             <MenuRadix
               trigger={trigger}
