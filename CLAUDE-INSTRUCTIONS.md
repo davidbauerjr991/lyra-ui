@@ -44,6 +44,12 @@ Wait for their answer before doing anything else. Never ask the user to run term
 - NEVER write `node_modules`, `dist`, build tooling, or repo source into the user's mounted folder or outputs — only the final deliverable file.
 - The user must never be asked to run a terminal command or install anything.
 
+### User-local components (`src/components/local/`)
+This folder in the user's own lyra-ui copy holds their personal components. It is gitignored — never overwritten by pulls, never pushed. Rules:
+- After cloning the latest lyra-ui into your sandbox, check whether the user's connected folder has `lyra-ui/src/components/local/` with any `.tsx` files — if so, copy them into your sandbox clone's same path before building, so prototypes can use them.
+- Before creating any new component, check this folder too — the user may already have what's needed.
+- When the user asks for a component that doesn't exist in the library, create it in the USER's `lyra-ui/src/components/local/` (on their machine, via the connected folder) so it persists for future sessions — follow CONTRIBUTING.md's authoring rules there too. If the user has no local lyra-ui copy, keep the component inside the prototype and tell them it won't persist without one.
+
 ### Standalone environment (what Storybook normally provides)
 Stories run inside Storybook, whose `preview.ts` decorator sets up the page environment. A standalone prototype HTML has no decorator, so you must replicate it yourself:
 - Include the FULL lyra tokens CSS (both light and dark `[data-theme]` blocks) — otherwise the dark mode toggle silently does nothing.
@@ -68,3 +74,14 @@ Stories run inside Storybook, whose `preview.ts` decorator sets up the page envi
 ## Scenario D: The user wants a NEW prototype
 
 - Point them back to `create-lyra-prototype.html` (re-present it if needed): double-click it, run the wizard again, paste the new prompt.
+
+## Scenario E: The user wants to share/publish a prototype (Netlify)
+
+You CANNOT reach Netlify (or most of the web) from your sandbox — do not try to deploy via API or CLI, and never ask the user to run terminal commands. Instead:
+
+1. Create a Netlify-ready zip in the `Prototypes` folder named `<prototype-name>-netlify.zip`, containing the prototype as `index.html` (Netlify Drop needs that exact name at the zip root).
+2. Present the zip, then give the user these exact steps:
+   - Go to **https://app.netlify.com/drop** (sign up free if needed — no card).
+   - Drag the zip onto the page.
+   - Netlify gives you a public link in a few seconds — send that link to anyone.
+3. To update a published prototype: rebuild the zip, and the user drags it onto their existing site's "Deploys" page (or just Drop again for a fresh link).

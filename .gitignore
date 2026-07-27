@@ -4,3 +4,8 @@ storybook-static/
 storybook-static-old-please-delete/
 *.tsbuildinfo
 tsup.config.bundled_*.mjs
+
+# User-local components — personal, per-machine components that survive git pull.
+# Everything in src/components/local/ is ignored except the README that documents it.
+src/components/local/*
+!src/components/local/README.md

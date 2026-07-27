@@ -195,6 +195,7 @@
         <li>Paste the prompt and send it.</li>
         <li>Claude builds the prototype and gives you one <strong>.html</strong> file — double-click it to open.</li>
         <li>Want changes? Just describe them, or paste a screenshot/mockup into the same chat.</li>
+        <li>Want to share it? Say <strong>"publish this prototype"</strong> — Claude prepares a package you drag onto <strong>netlify.com</strong> (free account) to get a public link.</li>
         <li>Want another prototype later? Double-click this file again and repeat.</li>
       </ol>
     </div>
@@ -259,6 +260,7 @@ setupLine +
 fallbackLine +
 "- Read CLAUDE.md and CONTRIBUTING.md in the repo IN FULL before writing any UI code. They are the binding rules. Also read CLAUDE-INSTRUCTIONS.md at the repo root.\n" +
 "- Before using any component, check its matching .stories.tsx file in src/components/__stories__/ for real prop combinations. Never invent props or markup.\n" +
+"- If my connected folder has lyra-ui/src/components/local/ with components in it, copy them into your build workspace and treat them as part of the library. If I ask for a brand-new component, save it there (on my machine) so it persists.\n" +
 "- Do ALL installation and bundling (npm install, esbuild, Tailwind) inside your own sandbox only. NEVER write node_modules, build tooling, or source folders to my computer.\n" +
 "\n" +
 "PROTOTYPE SPEC\n" +
@@ -273,6 +275,7 @@ fallbackLine +
 "\n" +
 "AFTER DELIVERY\n" +
 "- I will iterate by describing changes or pasting screenshots/mockups. Apply each change to this same prototype, re-check the story files before using any new component, and overwrite the same file in place. Do NOT re-present the file on updates — just tell me to refresh my browser (or close and re-open the file) to see the changes.\n" +
+"- If I ask to share or publish the prototype: create a zip named \"" + fileName + "-netlify.zip\" in the Prototypes folder containing the prototype renamed to index.html, present it, and give me the drag-and-drop steps for https://app.netlify.com/drop. You cannot deploy from your sandbox — never try, and never ask me to run commands.\n" +
 "\n" +
 "Start by confirming you've read the rulebooks, then build the starting template with my product name in the header.";
 
