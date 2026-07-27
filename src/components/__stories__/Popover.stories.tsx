@@ -29,7 +29,7 @@ export const SimplePopover: Story = {
       title="Popover Title"
       placement="bottom"
       content={
-        <div className="px-5 pb-5">
+        <div className="pb-5">
           <p className="lyra-body-md text-lyra-fg-secondary mb-1">
             Contextual content related to the trigger element.
           </p>
@@ -63,6 +63,9 @@ export const MenuPopover: Story = {
       <Popover
         placement="bottom"
         showArrow={false}
+        // Menu's rows are edge-to-edge with their own p-1 inset — opt out
+        // of Popover's default 20px body padding.
+        bodyPadding={false}
         content={<Menu items={items} bare className="w-[200px]" />}
       >
         <Button variant="ghost" size="sm">
@@ -82,7 +85,7 @@ export const MaxHeightPopover: Story = {
       placement="bottom"
       maxHeight="240px"
       content={
-        <div className="px-5 pb-5 flex flex-col gap-3">
+        <div className="pb-5 flex flex-col gap-3">
           {Array.from({ length: 8 }, (_, i) => (
             <p key={i} className="lyra-body-md text-lyra-fg-secondary">
               Content row {i + 1} — this popover has a max height and scrolls.
@@ -104,7 +107,7 @@ export const MaxWidthPopover: Story = {
       placement="bottom"
       maxWidth="560px"
       content={
-        <div className="px-5 pb-5 flex flex-col gap-4">
+        <div className="pb-5 flex flex-col gap-4">
           <Input label="Name" placeholder="Enter name" />
           <Select
             label="Type"
@@ -144,7 +147,7 @@ export const Placements: Story = {
           placement={placement}
           title="Popover"
           content={
-            <div className="px-4 pb-4">
+            <div className="pb-4">
               <p className="lyra-body-md text-lyra-fg-secondary">
                 Placement: <strong>{placement}</strong>
               </p>
@@ -174,7 +177,7 @@ export const AllVariants: Story = {
               placement={placement}
               title={`Placement: ${placement}`}
               content={
-                <div className="px-4 pb-4">
+                <div className="pb-4">
                   <p className="lyra-body-md text-lyra-fg-secondary">
                     This popover opens to the <strong>{placement}</strong>.
                   </p>
@@ -195,7 +198,7 @@ export const AllVariants: Story = {
             placement="bottom"
             title="With Arrow"
             showArrow
-            content={<div className="px-4 pb-4"><p className="lyra-body-md text-lyra-fg-secondary">Arrow is visible.</p></div>}
+            content={<div className="pb-4"><p className="lyra-body-md text-lyra-fg-secondary">Arrow is visible.</p></div>}
           >
             <Button variant="outline">With Arrow</Button>
           </Popover>
@@ -203,7 +206,7 @@ export const AllVariants: Story = {
             placement="bottom"
             title="No Arrow"
             showArrow={false}
-            content={<div className="px-4 pb-4"><p className="lyra-body-md text-lyra-fg-secondary">Arrow is hidden.</p></div>}
+            content={<div className="pb-4"><p className="lyra-body-md text-lyra-fg-secondary">Arrow is hidden.</p></div>}
           >
             <Button variant="outline">No Arrow</Button>
           </Popover>
@@ -217,13 +220,13 @@ export const AllVariants: Story = {
           <Popover
             placement="bottom"
             title="With Title"
-            content={<div className="px-4 pb-4"><p className="lyra-body-md text-lyra-fg-secondary">Title is shown in the header.</p></div>}
+            content={<div className="pb-4"><p className="lyra-body-md text-lyra-fg-secondary">Title is shown in the header.</p></div>}
           >
             <Button variant="outline">With Title</Button>
           </Popover>
           <Popover
             placement="bottom"
-            content={<div className="px-5 py-4"><p className="lyra-body-md text-lyra-fg-secondary">No title header — content only.</p></div>}
+            content={<div className="py-4"><p className="lyra-body-md text-lyra-fg-secondary">No title header — content only.</p></div>}
           >
             <Button variant="outline">No Title</Button>
           </Popover>

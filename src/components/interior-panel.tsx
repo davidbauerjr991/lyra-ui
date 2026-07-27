@@ -29,8 +29,12 @@ function readNumberCookie(name: string): number | null {
    admin-shell.tsx's "interior panels row"). Always inline and resizable;
    opened via a click/trigger elsewhere in the main container (a button, a
    row select, etc. — there's no hover-to-open concept here, unlike
-   `SidePanel`). Below ~1050px of its parent container's width it switches
-   to an absolute overlay instead of squeezing the content column further.
+   `SidePanel`). Below 1024px of its parent container's width it switches
+   to an absolute overlay instead of squeezing the content column further —
+   the same 1024px threshold `SidePanel`'s own consumers (`AdminShell`, the
+   "Agent Next Gen" template) use for their pin guard, unified so every
+   panel in the system reacts to the same pixel width rather than each
+   picking its own nearby value (previously 1050px here).
 
    This is one of exactly two panel types in the design system — the other
    being `SidePanel` (over the page header, hover/pin, left or right).
@@ -156,11 +160,13 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       return () => clearTimeout(closeTimerRef.current);
     }, [open]);
 
-    /* ── Go absolute/overlay when the parent container is < 1050px, instead
-       of squeezing the main content column further ── */
+    /* ── Go absolute/overlay when the parent container is < 1024px, instead
+       of squeezing the main content column further — matches SidePanel's
+       own pin-guard threshold (admin-shell.tsx / AgentNextGenTemplate),
+       previously 1050px here ── */
     const outerRef = useRef<HTMLDivElement>(null);
     const [parentWidth, setParentWidth] = useState(9999);
-    const isNarrow = parentWidth < 1050;
+    const isNarrow = parentWidth < 1024;
 
     const stableOuterRef = useCallback((el: HTMLDivElement | null) => {
       (outerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;

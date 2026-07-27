@@ -142,6 +142,16 @@ interface SelectProps {
   className?: string;
 
   id?: string;
+
+  /**
+   * Trigger height. "md" (36px, default) matches every other field in the
+   * library; "sm" (32px) is for dense contexts — a table toolbar's filter
+   * row is the motivating case. Only affects the closed trigger itself —
+   * the open dropdown's search field, rows, and "select all"/footer
+   * controls stay full-size regardless, same as any other popover content
+   * doesn't shrink to match a compact trigger.
+   */
+  size?: "sm" | "md";
 }
 
 const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
@@ -170,6 +180,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
       portalDropdown = true,
       className,
       id,
+      size = "md",
     },
     ref
   ) => {
@@ -269,7 +280,8 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
     // trigger and the Popover trigger button below, so single- and
     // multi-select look the same regardless of which primitive backs them.
     const triggerClassName = cn(
-      "group flex h-9 w-full items-center justify-between rounded-lyra-sm border px-3 lyra-body-md transition-colors",
+      "group flex w-full items-center justify-between rounded-lyra-sm border px-3 lyra-body-md transition-colors",
+      size === "sm" ? "h-8" : "h-9",
       "focus:outline-none",
       error
         ? "border-lyra-status-critical-strong bg-lyra-status-critical-subtle text-lyra-fg-default focus:ring-2 focus:ring-lyra-status-critical-strong/20"
@@ -323,6 +335,11 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
             // away).
             sideOffset={4}
             showArrow={false}
+            // The listbox below is a full-bleed row list (its own `p-1`
+            // inset for the hover background, matching `Menu`'s own
+            // convention) — Popover's default 16px body inset would push
+            // every row in by another 16px on each side, so this opts out.
+            bodyPadding={false}
             className={trigger ? "w-[240px]" : "w-[var(--radix-popover-trigger-width)]"}
             header={
               (searchable || (maxSelection !== undefined) || showSelectAll) ? (

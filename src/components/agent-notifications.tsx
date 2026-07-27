@@ -1,7 +1,7 @@
 import * as React from "react";
 import { UserPlus, MessageSquare, AlertTriangle, PhoneMissed, Bell, Trash2, GripVertical, MoreHorizontal } from "lucide-react";
 import { cn } from "../lib/utils";
-import { ListItem } from "./list-item";
+import { MenuItem } from "./menu-item";
 import { Badge } from "./badge";
 import { Tooltip } from "./tooltip";
 import { Draggable, type DraggableVariant } from "./draggable";
@@ -208,48 +208,80 @@ const AgentNotifications = React.forwardRef<HTMLDivElement, AgentNotificationsPr
         )}
       >
         {/* ── Notification list ── */}
-        <div className="overflow-y-auto flex-1">
+        {/* `p-2` on request — rows previously sat flush against the panel's
+            own edges (no breathing room beyond each row's own internal
+            `MenuItem` padding); matches `Menu`'s/`MenuRadix`'s own `p-1`
+            convention of never letting a container's outer edge and its
+            rows' edges be the same line. Dividers between rows reuse
+            `Menu`'s real "separator" convention — a dedicated sibling
+            element (`border-b border-lyra-border-subtle my-1.5`, its own
+            margin providing the spacing) between rows, the same pattern
+            `ProfileMenu` already renders between its menu groups — rather
+            than a `border-b` living ON each row (which partially hid
+            behind an unread row's own rounded/tinted `MenuItem`
+            background, flagged from a screenshot) or spacing with no
+            divider at all (flagged from a follow-up screenshot showing
+            `ProfileMenu` already solves both at once). */}
+        <div className="overflow-y-auto flex-1 p-2">
           {notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 gap-2">
               <Bell className="h-8 w-8 text-lyra-fg-disabled" strokeWidth={1} />
               <p className="lyra-body-md text-lyra-fg-disabled">No notifications</p>
             </div>
           ) : (
-            notifications.map((n) => (
-              <div
-                key={n.id}
-                className={cn(
-                  "group/notif relative border-l-2",
-                  !n.read ? "border-lyra-bg-primary" : "border-transparent"
+            notifications.map((n, i) => (
+              <React.Fragment key={n.id}>
+                <div className="group/notif relative">
+                  {/* `MenuItem`'s own `active` state supplies the unread
+                      indicator (persistent accent bar + tinted blue
+                      background) — replaces this file's former hand-rolled
+                      `border-l-2` + manual `bg-lyra-bg-active-subtle`
+                      override, which duplicated what `MenuItem` already does
+                      for exactly this "highlighted row" case. `header`/
+                      `label`/`description` map onto this component's
+                      existing `title`/`subtitle`/`timestamp` fields — no
+                      content changed, just which component renders it:
+                      `header` (bold) = `title` when a `subtitle` exists
+                      (matching the two-line "New Case" / "Noah Patel" look);
+                      `label` falls back to `title` itself for a notification
+                      with no `subtitle`, since `MenuItem.label` is a required
+                      prop. `label`'s own `text-lyra-fg-default` override
+                      keeps the name text dark even when `active` — `active`
+                      on `Menu`'s original "current nav item" is meant to
+                      recolor its whole row's text blue, but a notification
+                      row's text should stay neutral regardless of read
+                      state; only the background/accent bar should tint. */}
+                  <MenuItem
+                    onClick={() => onNotificationClick?.(n)}
+                    icon={<NotificationIcon type={n.type} icon={n.icon} />}
+                    header={n.subtitle ? n.title : undefined}
+                    label={<span className="text-lyra-fg-default">{n.subtitle ?? n.title}</span>}
+                    description={n.timestamp}
+                    active={!n.read}
+                    className="pr-10"
+                  />
+                  {/* Dismiss button — visible on row hover */}
+                  <Tooltip content="Clear" placement="left" asLabel>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); onDismiss?.(n.id); }}
+                      aria-label={`Clear ${n.title}`}
+                      className={cn(
+                        "absolute right-3 top-1/2 -translate-y-1/2",
+                        "flex h-6 w-6 items-center justify-center rounded-lyra-sm",
+                        "text-lyra-fg-secondary hover:text-lyra-fg-default hover:bg-lyra-state-hover transition-colors",
+                        "opacity-0 group-hover/notif:opacity-100",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
+                      )}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                    </button>
+                  </Tooltip>
+                </div>
+                {i < notifications.length - 1 && (
+                  <div role="separator" className="border-b border-lyra-border-subtle my-1.5" />
                 )}
-              >
-                <ListItem
-                  onClick={() => onNotificationClick?.(n)}
-                  leading={<NotificationIcon type={n.type} icon={n.icon} />}
-                  title={n.title}
-                  subtitle={n.subtitle}
-                  meta={n.timestamp}
-                  divider
-                  className={cn("pr-10", !n.read && "bg-lyra-bg-active-subtle")}
-                />
-                {/* Dismiss button — visible on row hover */}
-                <Tooltip content="Clear" placement="left" asLabel>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); onDismiss?.(n.id); }}
-                    aria-label={`Clear ${n.title}`}
-                    className={cn(
-                      "absolute right-3 top-1/2 -translate-y-1/2",
-                      "flex h-6 w-6 items-center justify-center rounded-lyra-sm",
-                      "text-lyra-fg-secondary hover:text-lyra-fg-default hover:bg-lyra-state-hover transition-colors",
-                      "opacity-0 group-hover/notif:opacity-100",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
-                    )}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-                  </button>
-                </Tooltip>
-              </div>
+              </React.Fragment>
             ))
           )}
         </div>

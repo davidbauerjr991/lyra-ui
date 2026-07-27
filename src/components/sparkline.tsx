@@ -1,7 +1,6 @@
 import * as React from "react";
 import type { EChartsOption } from "echarts";
 import { Chart, resolveCssColor, useThemeVersion } from "./chart";
-import { cn } from "../lib/utils";
 
 /* ── Sparkline ──
    A minimal inline line+area chart built on the shared `Chart` (ECharts)
@@ -82,11 +81,14 @@ const Sparkline = React.forwardRef<HTMLDivElement, SparklineProps>(
       };
     }, [data, colorVar, strokeWidth, smooth, themeVersion]);
 
-    return (
-      <div ref={ref} className={cn("h-full w-full", className)} {...props}>
-        <Chart option={option} />
-      </div>
-    );
+    // No separate wrapping div here — `Chart` already renders its own
+    // `h-full w-full` div around the real `ReactECharts` instance and
+    // forwards `ref`/`className`/rest props straight onto it
+    // (`ChartProps extends React.HTMLAttributes<HTMLDivElement>`), so
+    // adding another div around `Chart` here was a redundant, do-nothing
+    // extra layer — confirmed live via DevTools showing two identical
+    // `<div class="h-full w-full">` wrappers stacked around one `<canvas>`.
+    return <Chart ref={ref} option={option} className={className} {...props} />;
   }
 );
 Sparkline.displayName = "Sparkline";

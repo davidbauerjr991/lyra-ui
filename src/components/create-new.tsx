@@ -411,6 +411,9 @@ function OutboundContactRow({
       // as the AgentProfile star tooltip incident. See CONTRIBUTING.md §5
       // ("Popovers nested inside another popover").
       className="z-[10003] w-48 p-1"
+      // Row list, edge-to-edge within its own `p-1` box (see className
+      // above) — Popover's default 16px body inset would double up here.
+      bodyPadding={false}
       content={
         <div onMouseEnter={openFlyout} onMouseLeave={scheduleClose}>
           {availableChannels.length > 0 ? (
@@ -521,6 +524,9 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
             // z-[10003], not the top-level z-[9999] — see this component's
             // own doc comment above for why.
             className="z-[10003] w-48 p-1"
+            // Row list, edge-to-edge within its own `p-1` box (see className
+            // above) — Popover's default 16px body inset would double up here.
+            bodyPadding={false}
             content={
               channelOptions.length > 0 ? (
                 <Menu
@@ -1247,6 +1253,12 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
              header + close button + icon items warrants the largest step. */
           "z-[9999] w-[320px] overflow-hidden"
         )}
+        // Every screen here already supplies its own complete padding
+        // per-section (p-4/p-2 divs throughout, see below) rather than
+        // relying on any inset from Popover itself — Popover's default
+        // 16px body inset would stack on top of those and double the
+        // margins on every screen.
+        bodyPadding={false}
         content={
           <>
             {isOutboundFlow ? (

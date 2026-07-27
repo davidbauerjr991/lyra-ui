@@ -84,9 +84,38 @@ const ContainerHeader = React.forwardRef<HTMLDivElement, ContainerHeaderProps>(
           `shrink-0` (never gives up width), so without an explicit
           flex-basis on this side the title text was overflowing past its
           box and getting visually painted over by the action buttons
-          rather than genuinely truncating with an ellipsis. */}
-      <div className="flex flex-1 flex-col items-start gap-1 min-w-0">
-        {topSlot}
+          rather than genuinely truncating with an ellipsis.
+
+          Deliberately NOT `items-start`: this div is a flex COLUMN, so
+          `align-items` governs its children's CROSS-axis size — i.e. their
+          width. `items-start` (still what a first pass at this reasonably
+          reached for, since it's also what visually left-aligns the
+          column's rows) sizes each child to its own fit-content width
+          instead of stretching it to match this box's own (flex-1/min-w-0-
+          computed) width — so the icon+title row below silently stopped
+          being width-constrained at all, and the `min-w-0`/`truncate`
+          chain inside it had no real box to clip against: the title just
+          grew to its natural content width and got visually painted over
+          by the header's actions instead of ellipsis-truncating. Left
+          alignment of the column's own content doesn't need `items-start`
+          at all — nothing inside this column is centered/stretched
+          horizontally on its own, so plain default stretch (this box's
+          full width, left-aligned content within it) reads identically
+          when everything fits, and actually constrains width once it
+          doesn't. Caught from a screenshot: cards in a narrow 3-up grid
+          (`DashboardCard`'s "Metric Card" mode) showing "Last 30 days"
+          overlapping straight through the title text with no ellipsis at
+          all. */}
+      <div className="flex flex-1 flex-col gap-1 min-w-0">
+        {/* `self-start`, not inherited stretch: this column deliberately
+            doesn't set `items-start` at its own level (see the comment
+            below — the icon+title row needs real stretch-to-full-width to
+            make its `truncate` chain work), but that same default stretch
+            also reaches `topSlot`, which should hug its own content instead
+            (e.g. a `Tag` like "Anomaly") — without this override it stretches
+            to the column's full width, rendering as a full-width pill
+            instead of a compact tag. */}
+        {topSlot && <div className="self-start">{topSlot}</div>}
         <div className="flex items-center gap-2 min-w-0">
           {icon && <span className="flex-shrink-0 text-lyra-fg-secondary">{icon}</span>}
           <div className="min-w-0 flex-1">

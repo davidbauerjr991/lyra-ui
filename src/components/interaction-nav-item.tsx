@@ -369,6 +369,11 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
           // chrome" convention `OutboundAddButton`'s Menu-in-Popover uses
           // in create-new.tsx.
           className="z-[9999] w-64 rounded-lyra-sm border-0 bg-transparent p-0 shadow-none"
+          // The preview card below supplies its own complete chrome (see
+          // the comment above `className`) — Popover's default 16px body
+          // inset would add an unwanted gap between this bare frame and
+          // that card's own edges.
+          bodyPadding={false}
           content={
             <div
               // Re-arms the open state on its own hover so moving the

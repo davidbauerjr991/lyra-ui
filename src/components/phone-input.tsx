@@ -154,6 +154,12 @@ export interface PhoneInputProps {
    * `z-[10003]` per-row flyout.
    */
   dropdownClassName?: string;
+  /**
+   * Field height. "md" (36px, default) or "sm" (32px) for dense contexts.
+   * Only the field shell shrinks — the country dropdown panel (search
+   * field, list rows) stays full-size, same as any other popover content.
+   */
+  size?: "sm" | "md";
 }
 
 /* ── Component ── */
@@ -173,6 +179,7 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
     id,
     hideCountrySelector = false,
     dropdownClassName,
+    size = "md",
   }, ref) => {
     const autoId    = React.useId();
     const inputId   = id ?? autoId;
@@ -226,7 +233,8 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
     };
 
     const shellClass = cn(
-      "flex h-9 w-full rounded-lyra-sm border lyra-body-md transition-colors overflow-hidden",
+      "flex w-full rounded-lyra-sm border lyra-body-md transition-colors overflow-hidden",
+      size === "sm" ? "h-8" : "h-9",
       "bg-lyra-bg-field text-lyra-fg-default",
       error
         ? "border-lyra-status-critical-strong hover:border-lyra-status-critical-strong focus-within:border-lyra-status-critical-strong focus-within:ring-2 focus-within:ring-lyra-status-critical-strong/20"
@@ -352,7 +360,7 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
                     itemRole="option"
                     bare
                     aria-label="Countries"
-                    className="overflow-y-auto p-2"
+                    className="p-2"
                     items={filtered.map((c, i) => ({
                       id: `${c.code}-${c.dial}`,
                       label: c.name,

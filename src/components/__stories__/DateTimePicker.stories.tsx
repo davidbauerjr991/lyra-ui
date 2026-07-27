@@ -8,17 +8,25 @@ const meta: Meta<typeof DateTimePicker> = {
   component: DateTimePicker,
   tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
+  argTypes: {
+    /** "sm" (32px) is for dense contexts vs. the "md" (36px) default every
+     *  other field in the library uses. */
+    size: { control: "select", options: ["sm", "md"], name: "Size" },
+  },
 };
 
 export default meta;
 type Story = StoryObj<typeof DateTimePicker>;
 
 export const Default: Story = {
-  render: () => {
+  args: {
+    size: "md",
+  },
+  render: (args) => {
     const [date, setDate] = useState<Date | undefined>();
     return (
       <div className="w-72 pb-[440px]">
-        <DateTimePicker label="Date & Time" value={date} onChange={setDate} />
+        <DateTimePicker label="Date & Time" value={date} onChange={setDate} size={args.size} />
       </div>
     );
   },
@@ -66,9 +74,15 @@ export const Readonly: Story = {
   },
 };
 
-export const RangeWithTime: Story = {
+export const RangeWithTime: StoryObj<{ size: "sm" | "md" }> = {
   name: "Date Range with Time",
-  render: () => {
+  argTypes: {
+    size: { control: "select", options: ["sm", "md"], name: "Size" },
+  },
+  args: {
+    size: "md",
+  },
+  render: (args) => {
     const [range, setRange] = useState<DateRangeTimeValue | undefined>();
     return (
       <div className="w-[500px] pb-[520px]">
@@ -77,6 +91,7 @@ export const RangeWithTime: Story = {
           labelHelpText="Select start and end date with time."
           value={range}
           onChange={setRange}
+          size={args.size}
         />
       </div>
     );

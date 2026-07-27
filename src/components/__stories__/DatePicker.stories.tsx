@@ -8,6 +8,11 @@ const meta: Meta<typeof DatePicker> = {
   component: DatePicker,
   tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
+  argTypes: {
+    /** "sm" (32px) is for dense contexts vs. the "md" (36px) default every
+     *  other field in the library uses. */
+    size: { control: "select", options: ["sm", "md"], name: "Size" },
+  },
 };
 
 export default meta;
@@ -16,7 +21,10 @@ type Story = StoryObj<typeof DatePicker>;
 /* ── Single date ── */
 
 export const Default: Story = {
-  render: () => {
+  args: {
+    size: "md",
+  },
+  render: (args) => {
     const [date, setDate] = useState<Date | undefined>();
     return (
       <div className="w-72">
@@ -24,6 +32,7 @@ export const Default: Story = {
           label="Date"
           value={date}
           onChange={setDate}
+          size={args.size}
         />
       </div>
     );
@@ -66,9 +75,15 @@ export const Readonly: Story = {
 
 /* ── Date range ── */
 
-export const DateRange: Story = {
+export const DateRange: StoryObj<{ size: "sm" | "md" }> = {
   name: "Date Range Picker",
-  render: () => {
+  argTypes: {
+    size: { control: "select", options: ["sm", "md"], name: "Size" },
+  },
+  args: {
+    size: "md",
+  },
+  render: (args) => {
     const [range, setRange] = useState<DateRange | undefined>();
     return (
       <div className="w-96">
@@ -76,6 +91,7 @@ export const DateRange: Story = {
           label="Date Range"
           value={range}
           onChange={setRange}
+          size={args.size}
         />
       </div>
     );

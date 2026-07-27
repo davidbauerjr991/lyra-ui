@@ -14,7 +14,7 @@ function validateEmail(value: string): string | null {
 
 /* ── Types ── */
 export interface EmailInputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type" | "onChange"> {
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type" | "onChange" | "size"> {
   value?: string;
   onChange?: (value: string) => void;
   label?: string;
@@ -26,6 +26,8 @@ export interface EmailInputProps
   error?: string;
   className?: string;
   id?: string;
+  /** Field height. "md" (36px, default) or "sm" (32px) for dense contexts. */
+  size?: "sm" | "md";
 }
 
 /* ── Component ── */
@@ -42,6 +44,7 @@ const EmailInput = React.forwardRef<HTMLInputElement, EmailInputProps>(
     placeholder = "name@example.com",
     className,
     id,
+    size = "md",
     ...props
   }, ref) => {
     const autoId   = React.useId();
@@ -65,7 +68,8 @@ const EmailInput = React.forwardRef<HTMLInputElement, EmailInputProps>(
     };
 
     const shellClass = cn(
-      "relative flex h-9 w-full items-center rounded-lyra-sm border lyra-body-md transition-colors",
+      "relative flex w-full items-center rounded-lyra-sm border lyra-body-md transition-colors",
+      size === "sm" ? "h-8" : "h-9",
       "bg-lyra-bg-field text-lyra-fg-default",
       error
         ? "border-lyra-status-critical-strong hover:border-lyra-status-critical-strong focus-within:ring-2 focus-within:ring-lyra-status-critical-strong/20"

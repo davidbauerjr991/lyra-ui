@@ -56,8 +56,13 @@ const preview: Preview = {
         // "Templates" subgroups are listed explicitly because plain
         // alphabetical order would put "Dashboards" *before* "Data
         // Management" ("Das" < "Dat") — the opposite of where it belongs
-        // (right below Data Management). Any Templates entry not listed
-        // here still falls back to alphabetical, same as before.
+        // (right below Data Management). "Agent Dashboard" used to be
+        // listed here too (split out of "Dashboards" into its own story,
+        // AgentDashboard.stories.tsx) but has since moved to the `UI`
+        // group (`UI/Agent Dashboard`) per explicit request — `UI` has no
+        // explicit sub-order, so it just falls back to alphabetical
+        // there. Any Templates entry not listed here still falls back to
+        // alphabetical, same as before.
         order: [
           "Foundations", ["Colors", "Typography", "Spacing", "Border Radius", "Shadows"],
           "Custom Primitives",

@@ -11,7 +11,9 @@ import { Tooltip } from "../tooltip";
 import { RadioGroup, RadioGroupItem } from "../radio";
 import { DateRangePicker } from "../date-picker";
 import type { DateRange } from "../calendar";
-import { Plus, Copy, Check, ChevronDown, X } from "lucide-react";
+import { Plus, Copy, Check, ChevronDown, X, Box, type LucideIcon } from "lucide-react";
+import { ErrorIcon } from "../icons/error-icon";
+import { Icon } from "../icon";
 import { cn } from "../../lib/utils";
 
 const addFilterOptions = Array.from({ length: 50 }, (_, i) => ({
@@ -54,62 +56,169 @@ const sampleOptions = Array.from({ length: 50 }, (_, i) => ({
  *  four stay backed by the same real `filterChipVariants`/
  *  `filterChipRemoveButtonVariants` classes (now with a `size` axis, `md` =
  *  32px default / `sm` = 24px) instead of independent copies that could
- *  drift from each other. */
+ *  drift from each other.
+ *
+ *  `icon` (optional, a `LucideIcon` component reference) renders a leading
+ *  icon before the value text via the real `Icon` component, `color=
+ *  "default"` (the same primary/default text color as the label itself).
+ *  Its `size` tracks the chip's own `size` at a fixed pairing rather than
+ *  scaling with the remove button's icon: the 24px chip pairs with
+ *  `size="xs"` (14×14px), the 32px chip pairs with `size="sm"` (16×16px) —
+ *  both `icon.tsx`'s own real size tiers, not arbitrary px values. `error`
+ *  swaps both the outer chip and the remove button over to
+ *  `filterChipVariants`/`filterChipRemoveButtonVariants`'s real `"error"`
+ *  variant (red border/background/text) and adds the same `ErrorIcon` the
+ *  real `FilterChip` component shows in its own error state — see
+ *  `filter-chip.tsx`'s `variant === "error"` branch. `ErrorIcon` and a
+ *  decorative `icon` are NOT mutually exclusive: the error icon is always
+ *  the leftmost element (it signals chip-level state, not chip content),
+ *  and a decorative `icon` — if supplied — renders after it, in its own
+ *  normal position ahead of the value text. This way the error icon never
+ *  displaces/overtakes whatever leading icon a given chip already has. The
+ *  decorative icon itself also switches to `color="status-critical"` when
+ *  `error` is set (rather than staying `"default"`), so it turns red in
+ *  step with the value text and the rest of the chip's error styling. The
+ *  value text has no color class of its own — it inherits the outer div's
+ *  `filterChipVariants({variant})` text color, so it turns red in the
+ *  error state the same way the real `FilterChip`'s label does. */
 function BasicValueChip({
   value,
   onRemove,
   size = "md",
+  icon,
+  error = false,
 }: {
   value: string;
-  onRemove: () => void;
+  /** Omit to render a non-removable chip (no "x", full rounding all
+   *  around) — see the `removable` control on the `Basic`/`BasicSmall`
+   *  stories below. */
+  onRemove?: () => void;
   size?: "sm" | "md";
+  icon?: LucideIcon;
+  error?: boolean;
 }) {
+  const variant = error ? "error" : "default";
+  const iconSize = size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5";
+  const leadingIconSize = size === "sm" ? "xs" : "sm";
+  const removable = !!onRemove;
+
   return (
     <div className="inline-flex">
       <div
         className={cn(
-          filterChipVariants({ variant: "default", size }),
-          "rounded-l-lyra-md rounded-r-none border-r-0"
+          filterChipVariants({ variant, size }),
+          // Full rounding + real border on all sides when there's no
+          // remove button to complete the right edge; otherwise the left
+          // half of the split-border pairing used everywhere else in this
+          // file (chip flush against the remove button's own left-
+          // border-less edge).
+          removable
+            ? "rounded-l-lyra-md rounded-r-none border-r-0"
+            : "rounded-lyra-md"
         )}
       >
-        <span className={cn(size === "sm" ? "lyra-body-sm" : "lyra-body-md", "text-lyra-fg-default whitespace-nowrap")}>
+        {error && <ErrorIcon className={cn(iconSize, "flex-shrink-0")} aria-hidden="true" />}
+        {icon && (
+          <Icon
+            icon={icon}
+            size={leadingIconSize}
+            color={error ? "status-critical" : "default"}
+            decorative
+            className="flex-shrink-0"
+          />
+        )}
+        <span className={cn(size === "sm" ? "lyra-body-sm" : "lyra-body-md", "whitespace-nowrap")}>
           {value}
         </span>
       </div>
-      <Tooltip content={`Remove ${value}`} placement="top" asLabel>
-        <button
-          type="button"
-          onClick={onRemove}
-          aria-label={`Remove ${value}`}
-          className={filterChipRemoveButtonVariants({ variant: "default", size })}
-        >
-          <X className={size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5"} strokeWidth={1.5} />
-        </button>
-      </Tooltip>
+      {removable && (
+        <Tooltip content={`Remove ${value}`} placement="top" asLabel>
+          <button
+            type="button"
+            onClick={onRemove}
+            aria-label={`Remove ${value}`}
+            className={filterChipRemoveButtonVariants({ variant, size })}
+          >
+            <X className={size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5"} strokeWidth={1.5} />
+          </button>
+        </Tooltip>
+      )}
     </div>
   );
 }
 
-function BasicDemo() {
+/* `error`, `removable`, and `icon` are live Storybook boolean controls on
+   both "Basic" demos below (not separate dedicated stories per
+   combination) — flip any of them in the Controls panel to see the chip
+   toggle into the real `"error"` variant, drop its remove button, or gain
+   a leading `Box` placeholder icon, same as `showFooter`/etc. do on
+   `DashboardCard.stories.tsx`'s "Card Controls" story. `icon` replaced the
+   former dedicated `BasicIconLeft`/`BasicSmallIconLeft` stories per the
+   same "control, not a new story" pattern used for `error` above. */
+
+function BasicDemo({
+  error,
+  removable = true,
+  icon = false,
+}: {
+  error?: boolean;
+  removable?: boolean;
+  icon?: boolean;
+}) {
   const [visible, setVisible] = useState(true);
   if (!visible) return null;
-  return <BasicValueChip value="Value" onRemove={() => setVisible(false)} />;
+  return (
+    <BasicValueChip
+      value="Value"
+      error={error}
+      icon={icon ? Box : undefined}
+      onRemove={removable ? () => setVisible(false) : undefined}
+    />
+  );
 }
 
 export const Basic: Story = {
   name: "Basic (Value + Remove only)",
-  render: () => <BasicDemo />,
+  args: { error: false, removable: true, icon: false },
+  argTypes: {
+    error: { control: "boolean" },
+    removable: { control: "boolean" },
+    icon: { control: "boolean" },
+  },
+  render: (args) => <BasicDemo error={args.error} removable={args.removable} icon={args.icon} />,
 };
 
-function BasicSmallDemo() {
+function BasicSmallDemo({
+  error,
+  removable = true,
+  icon = false,
+}: {
+  error?: boolean;
+  removable?: boolean;
+  icon?: boolean;
+}) {
   const [visible, setVisible] = useState(true);
   if (!visible) return null;
-  return <BasicValueChip value="Value" size="sm" onRemove={() => setVisible(false)} />;
+  return (
+    <BasicValueChip
+      value="Value"
+      size="sm"
+      error={error}
+      icon={icon ? Box : undefined}
+      onRemove={removable ? () => setVisible(false) : undefined}
+    />
+  );
 }
 
 export const BasicSmall: Story = {
   name: "Basic — 24px (Value + Remove only)",
-  render: () => <BasicSmallDemo />,
+  args: { error: false, removable: true, icon: false },
+  argTypes: {
+    error: { control: "boolean" },
+    removable: { control: "boolean" },
+    icon: { control: "boolean" },
+  },
+  render: (args) => <BasicSmallDemo error={args.error} removable={args.removable} icon={args.icon} />,
 };
 
 /* ── Basic Group (with overflow) ──
@@ -1039,7 +1148,7 @@ function PopoverContentDemo() {
       onOpenChange={setOpen}
       placement="bottom"
       content={
-        <div className="flex flex-col gap-3 p-3 w-[260px]">
+        <div className="flex flex-col gap-3 py-3 w-[260px]">
           <RadioGroup value={value} onValueChange={(v) => setValue(v as DateFilterValue)}>
             {DATE_FILTER_OPTIONS.map((option) => (
               <RadioGroupItem key={option.value} value={option.value} label={option.label} />

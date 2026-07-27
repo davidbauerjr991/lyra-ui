@@ -10,6 +10,11 @@ const meta: Meta<typeof PhoneInput> = {
     layout: "padded",
     backgrounds: { default: "lyra-shell" },
   },
+  argTypes: {
+    /** "sm" (32px) is for dense contexts vs. the "md" (36px) default every
+     *  other field in the library uses. */
+    size: { control: "select", options: ["sm", "md"], name: "Size" },
+  },
 };
 
 export default meta;
@@ -17,7 +22,10 @@ type Story = StoryObj<typeof PhoneInput>;
 
 export const Default: Story = {
   name: "Default",
-  render: () => {
+  args: {
+    size: "md",
+  },
+  render: (args) => {
     const [value, setValue] = useState<PhoneValue>({ countryCode: "us", number: "" });
     return (
       <div className="w-80">
@@ -25,6 +33,7 @@ export const Default: Story = {
           label="Phone number"
           value={value}
           onChange={setValue}
+          size={args.size}
         />
         {value.number && (
           <p className="lyra-body-sm text-lyra-fg-secondary mt-2">

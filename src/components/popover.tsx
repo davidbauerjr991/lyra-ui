@@ -33,6 +33,28 @@ export interface PopoverProps {
   showArrow?: boolean;
   maxHeight?: string;
   maxWidth?: string;
+  /**
+   * Whether the `content` slot gets a built-in 20px (`px-5`) left/right
+   * inset (default: true). The built-in `title` header (via `PanelHeader`)
+   * is aligned to the same 20px, so the header and body line up on the
+   * same left/right edge. This is the right default for plain body
+   * content — text, forms, a couple of fields — which is why every simple
+   * `content` usage no longer needs to remember its own horizontal padding.
+   *
+   * Set to `false` for content that needs to span edge-to-edge instead —
+   * a `Menu`/listbox whose rows already carry their own small `p-1`-style
+   * inset for the hover background (`select.tsx`'s multi-select listbox,
+   * `create-new.tsx`'s channel/action menus, `agent-profile.tsx`'s status
+   * menu, both menu demos in `MenuRadix.stories.tsx`), or content that
+   * supplies its own complete chrome and deliberately wants zero framing
+   * from Popover itself (`interaction-nav-item.tsx`'s hover-preview card,
+   * `create-new.tsx`'s multi-screen panel, `table.tsx`'s Advanced Search,
+   * whose `advancedSearchContent` is an arbitrary consumer-supplied slot
+   * that already owns its own padding end to end). An automatic inset
+   * would double up with padding those cases already provide, or break a
+   * full-bleed row's flush alignment against the panel's own edges.
+   */
+  bodyPadding?: boolean;
   className?: string;
   /** Passthrough Radix Content event hooks for cases that need more control
    *  than the default behavior — e.g. focusing a specific field on open
@@ -45,39 +67,47 @@ export interface PopoverProps {
   onInteractOutside?: PopoverContentProps["onInteractOutside"];
 }
 
-/* ── Arrow — CSS rotated square inside Content so it never moves independently ── */
+/* ── Arrow ──
+   Was a hand-rolled CSS rotated square, always horizontally/vertically
+   centered on the *content box* via `left-1/2`/`top-1/2` (same approach
+   `tooltip.tsx`'s arrow used to take, and the same bug: as soon as Radix's
+   `avoidCollisions` shifts the content box to stay on-screen, a
+   fixed-position hand-rolled arrow drifts away from the actual trigger
+   instead of following it). A rotated square is also fundamentally the
+   wrong shape for a non-square arrow — rotating a 24×12 rectangle 45°
+   produces a lopsided rhombus, not a symmetric triangle, so a wider/
+   flatter arrow can't be done with this trick at all.
+
+   Fixed the same way `tooltip.tsx`'s arrow was: render Radix's real
+   `PopoverPrimitive.Arrow` (built on `@radix-ui/react-popper`'s `Arrow`,
+   the same primitive Tooltip's Content sits on) instead. Radix measures
+   this element and feeds it into Floating UI's `arrow` middleware, which
+   repositions it along the content box's cross-axis to stay centered on
+   the trigger no matter how far the box has shifted, and auto-rotates it
+   per side — no more manual `group-data-[side=*]` classes needed.
+
+   Styling note (see tooltip.tsx's own arrow comment for the full
+   explanation): don't pass `asChild`/custom children to try to render a
+   two-tone (border + fill) shape — `@radix-ui/react-arrow`'s `asChild`
+   passes straight through to the underlying `Primitive.svg`'s own,
+   unrelated `asChild`, which swaps the `<svg>` for a `Slot` that requires
+   exactly one child; two stacked polygons either throw or silently render
+   nothing. Style the *default* polygon purely via `className`/`style` on
+   `Arrow` itself instead — `fill`/`stroke`/`stroke-width` are inherited SVG
+   properties that cascade to the polygon for free. The default polygon is
+   always `points="0,0 30,0 15,10"` regardless of the `width`/`height`
+   props (those just scale the rendered SVG's viewBox, `preserveAspectRatio="none"`
+   stretches non-uniformly to fit), so the same `stroke-dasharray: "0 30 40"`
+   mask Tooltip uses — 0 drawn, skip the 30-unit flat base (the edge that
+   overlaps the content box), draw the next 40 units (comfortably covers
+   both ~18-unit slanted edges) — works unchanged at this larger 24×12 size
+   too, leaving the border only on the two visible slanted "wing" edges. */
 const PopoverArrow = () => (
-  <span
-    aria-hidden="true"
-    className={cn(
-      "absolute w-[10px] h-[10px] rotate-45",
-      "bg-lyra-bg-surface-overlay",
-      "border-lyra-border-subtle",
-      // side=bottom → arrow points UP → top edge
-      "group-data-[side=bottom]:-top-[5px]",
-      "group-data-[side=bottom]:left-1/2",
-      "group-data-[side=bottom]:-translate-x-1/2",
-      "group-data-[side=bottom]:border-t",
-      "group-data-[side=bottom]:border-l",
-      // side=top → arrow points DOWN → bottom edge
-      "group-data-[side=top]:-bottom-[5px]",
-      "group-data-[side=top]:left-1/2",
-      "group-data-[side=top]:-translate-x-1/2",
-      "group-data-[side=top]:border-b",
-      "group-data-[side=top]:border-r",
-      // side=right → arrow points LEFT → left edge
-      "group-data-[side=right]:-left-[5px]",
-      "group-data-[side=right]:top-1/2",
-      "group-data-[side=right]:-translate-y-1/2",
-      "group-data-[side=right]:border-l",
-      "group-data-[side=right]:border-b",
-      // side=left → arrow points RIGHT → right edge
-      "group-data-[side=left]:-right-[5px]",
-      "group-data-[side=left]:top-1/2",
-      "group-data-[side=left]:-translate-y-1/2",
-      "group-data-[side=left]:border-r",
-      "group-data-[side=left]:border-t",
-    )}
+  <PopoverPrimitive.Arrow
+    width={24}
+    height={12}
+    className="fill-lyra-bg-surface-overlay stroke-lyra-border-default stroke-1"
+    style={{ strokeDasharray: "0 30 40" }}
   />
 );
 
@@ -118,6 +148,7 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
   showArrow = true,
   maxHeight,
   maxWidth,
+  bodyPadding = true,
   className,
   onOpenAutoFocus,
   onCloseAutoFocus,
@@ -149,8 +180,13 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
             : {}),
         }}
         className={cn(
-          "relative group z-50",
-          "rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg",
+          "relative z-50",
+          // border-default resolves to rgba(0, 0, 0, 0.16) in light mode
+          // (lyra-tokens.css) — "border-soft" per request; there's no
+          // token literally named that, but border-default is the exact
+          // 0.16-alpha value asked for (border-subtle, used before, is a
+          // lighter 0.10).
+          "rounded-lyra-lg border border-lyra-border-default bg-lyra-bg-surface-overlay shadow-lg",
           "animate-in fade-in-0 duration-150",
           "data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2",
           "data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2",
@@ -160,16 +196,28 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
           className
         )}
       >
-        {title && <PanelHeader title={title} bordered={false} />}
+        {/* px-5 pb-0: ContainerHeader/PanelHeader's own base classes are
+            `px-4 py-2.5` — overridden here so the title row lines up with
+            the body's own 20px (`px-5`) left/right inset instead of
+            ContainerHeader's usual 16px, and so the bottom half of that
+            `py-2.5` (which just adds dead space between the title and
+            whatever sits directly below it) is dropped. `cn`'s twMerge
+            resolves `px-4 py-2.5` + `px-5 pb-0` down to effectively
+            `px-5 pt-2.5 pb-0`. */}
+        {title && <PanelHeader title={title} bordered={false} className="px-5 pb-0" />}
         {header && <div style={{ flexShrink: 0 }}>{header}</div>}
         {/* Content scrolls; header/footer are flex-shrink-0 so they stay
             visible. overflow-auto is only applied when maxHeight actually
             constrains the height — otherwise it's dead weight that can
             backfire: a CSS-transform entrance animation on something inside
             (e.g. a slide-in) can register as scrollable overflow and paint a
-            horizontal scrollbar even though nothing is meant to scroll here. */}
+            horizontal scrollbar even though nothing is meant to scroll here.
+            `bodyPadding`'s `px-5` (20px) is the default inset for plain body
+            content — see its own doc comment above for which real consumers
+            opt out with `bodyPadding={false}` instead (full-bleed Menu/
+            listbox rows, or content supplying its own complete chrome). */}
         <div
-          className={maxHeight ? "overflow-auto" : undefined}
+          className={cn(bodyPadding && "px-5", maxHeight && "overflow-auto")}
           style={
             (header || footer) && maxHeight
               ? { flex: "1 1 auto", minHeight: 0, overflowY: "auto" }

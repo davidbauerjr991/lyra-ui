@@ -213,7 +213,16 @@ const INITIAL_NOTIFICATIONS: AgentNotification[] = [
   { id: "6", type: "missed-call", title: "Missed Call", subtitle: "David Brown",   timestamp: "1h ago",  read: true  },
 ];
 
-/* ── Template component ── */
+/* ── Template component ──
+   This template's AI panel + Notifications panel (below) are two
+   Draggable-backed panels sharing a single dock slot under an AppHeader,
+   with the same "only one docked at a time" rule implemented directly
+   (`handleAiVariantChange`/`handleNotifVariantChange`). For an isolated,
+   controllable Storybook sandbox demonstrating that exact same shape of
+   problem — multiple Draggable panels + single-dock rule + AppHeader —
+   without this template's full Agent Next Gen chrome, see
+   Draggable.stories.tsx's `MultiplePanelsSingleDock` story and its
+   "App Header" control. ── */
 
 const AI_PANEL_DEFAULT_WIDTH = 360;
 
@@ -326,7 +335,14 @@ function AgentNextGenTemplate({
   const [containerWidth,     setContainerWidth]     = useState(9999);
   const sidePanelTimer = useRef<ReturnType<typeof setTimeout>>();
 
-  // Track container width to force unpinned below 768px
+  // Track container width to force unpinned below 1024px — matches
+  // `AdminShell`'s own "container-width pin guard" (admin-shell.tsx)
+  // exactly. Previously 768px here vs. 1024px there — two different
+  // thresholds for what's meant to be the same responsiveness behavior
+  // (same pin-guard pattern, just different content/icons), per "the side
+  // panel components for admin and agent should functionally be the same
+  // ... from a responsiveness perspective they should not be different."
+  // Unified on 1024px.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -336,18 +352,29 @@ function AgentNextGenTemplate({
     return () => ro.disconnect();
   }, []);
 
-  const isNarrowContainer = containerWidth < 768;
+  const isNarrowContainer = containerWidth < 1024;
   // When narrow: force overlay mode and hide pin button
   const effectivePinned = isNarrowContainer ? false : sidePanelPinned;
 
-  // Close (and fully unpin) the Designer panel the moment the container
-  // drops below 768px. See agent-next-gen-v1's copy of this effect for the
-  // full rationale.
+  // Close the Designer panel the moment the container drops below 1024px,
+  // so an open-and-pinned panel doesn't instantly become an open-and-
+  // FLOATING overlay the moment `effectivePinned` above flips to `false`.
+  // Deliberately does NOT reset `sidePanelPinned` itself — only `sidePanelOpen`
+  // — so widening back out past 1024px naturally restores open-and-pinned
+  // from the untouched `sidePanelPinned`, rather than requiring the user to
+  // manually re-pin every time. Matches `admin-shell.tsx`'s own "Container-
+  // width pin guard" exactly (see its comment for the full rationale,
+  // including why a prior pass here that also reset `sidePanelPinned` was
+  // reversed) — see agent-next-gen-v1's copy of this effect too.
+  const skipFirstSidePanelNarrowRun = useRef(true);
   useEffect(() => {
+    if (skipFirstSidePanelNarrowRun.current) { skipFirstSidePanelNarrowRun.current = false; return; }
     if (isNarrowContainer) {
       setSidePanelOpen(false);
-      setSidePanelPinned(false);
+    } else {
+      setSidePanelOpen(sidePanelPinned);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNarrowContainer]);
 
   // The Designer panel belongs to the interaction it was opened from — its
@@ -1036,7 +1063,7 @@ function AgentNextGenTemplate({
                       just one channel open. See agent-next-gen-v1's own
                       copy of this block. */}
                   {showPageHeader && activeInteraction.channels.length > 0 && (
-                    <TabList className="px-6 bg-lyra-bg-surface-base shrink-0 lyra-channel-tab-list-wrap">
+                    <TabList className="px-6 bg-lyra-bg-surface-base shrink-0" overflowMenu>
                       {activeInteraction.channels.map((c) => {
                         const key = c.id ?? c.type;
                         return (

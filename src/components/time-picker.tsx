@@ -78,9 +78,10 @@ function TimeSelector({ hour, minute, ampm, onHourChange, onMinuteChange, onAmpm
 
 /* ── Input shell ── */
 
-const inputShell = (disabled?: boolean, readonly?: boolean) =>
+const inputShell = (disabled?: boolean, readonly?: boolean, size?: "sm" | "md") =>
   cn(
-    "relative flex h-9 w-full items-center rounded-lyra-sm border lyra-body-md transition-colors cursor-text",
+    "relative flex w-full items-center rounded-lyra-sm border lyra-body-md transition-colors cursor-text",
+    size === "sm" ? "h-8" : "h-9",
     "bg-lyra-bg-field text-lyra-fg-default",
     "border-lyra-border-strong hover:border-lyra-state-border-hover-neutral",
     "focus-within:border-lyra-border-active focus-within:ring-2 focus-within:ring-lyra-border-active/20",
@@ -124,6 +125,8 @@ export interface TimePickerProps {
   readonly?: boolean;
   className?: string;
   id?: string;
+  /** Field height. "md" (36px, default) or "sm" (32px) for dense contexts. */
+  size?: "sm" | "md";
 }
 
 const initState = (d?: Date) => {
@@ -135,7 +138,7 @@ const initState = (d?: Date) => {
 };
 
 const TimePicker = React.forwardRef<HTMLDivElement, TimePickerProps>(
-  ({ value, onChange, placeholder = "HH:MM AM", disabled, label, labelHelpText, required, readonly, className, id }, ref) => {
+  ({ value, onChange, placeholder = "HH:MM AM", disabled, label, labelHelpText, required, readonly, className, id, size = "md" }, ref) => {
     const autoId   = React.useId();
     const inputId  = id ?? autoId;
     const inputRef = React.useRef<HTMLInputElement>(null);
@@ -184,7 +187,7 @@ const TimePicker = React.forwardRef<HTMLDivElement, TimePickerProps>(
         )}
         <PopoverPrimitive.Root open={!disabled && !readonly && open} onOpenChange={setOpen}>
           <PopoverPrimitive.Anchor asChild>
-            <div className={inputShell(disabled, readonly)} onClick={() => !disabled && !readonly && setOpen(true)}>
+            <div className={inputShell(disabled, readonly, size)} onClick={() => !disabled && !readonly && setOpen(true)}>
               <input
                 ref={inputRef} id={inputId} type="text" value={text}
                 onChange={handleTextChange} placeholder={placeholder}
@@ -235,6 +238,8 @@ export interface TimeRangePickerProps {
   readonly?: boolean;
   className?: string;
   id?: string;
+  /** Field height. "md" (36px, default) or "sm" (32px) for dense contexts. */
+  size?: "sm" | "md";
 }
 
 function formatRange(v: TimeRangeValue | undefined): string {
@@ -248,7 +253,7 @@ function formatRange(v: TimeRangeValue | undefined): string {
 }
 
 const TimeRangePicker = React.forwardRef<HTMLDivElement, TimeRangePickerProps>(
-  ({ value, onChange, placeholder = "HH:MM AM – HH:MM AM", disabled, label, labelHelpText, required, readonly, className, id }, ref) => {
+  ({ value, onChange, placeholder = "HH:MM AM – HH:MM AM", disabled, label, labelHelpText, required, readonly, className, id, size = "md" }, ref) => {
     const autoId   = React.useId();
     const inputId  = id ?? autoId;
     const inputRef = React.useRef<HTMLInputElement>(null);
@@ -298,7 +303,7 @@ const TimeRangePicker = React.forwardRef<HTMLDivElement, TimeRangePickerProps>(
         )}
         <PopoverPrimitive.Root open={!disabled && !readonly && open} onOpenChange={setOpen}>
           <PopoverPrimitive.Anchor asChild>
-            <div className={inputShell(disabled, readonly)} onClick={() => !disabled && !readonly && setOpen(true)}>
+            <div className={inputShell(disabled, readonly, size)} onClick={() => !disabled && !readonly && setOpen(true)}>
               <input
                 ref={inputRef} id={inputId} type="text" value={text}
                 onChange={(e) => setText(e.target.value)}

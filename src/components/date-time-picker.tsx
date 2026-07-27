@@ -102,6 +102,8 @@ export interface DateTimePickerProps {
   defaultMonth?: Date;
   className?: string;
   id?: string;
+  /** Field height. "md" (36px, default) or "sm" (32px) for dense contexts. */
+  size?: "sm" | "md";
 }
 
 /* ── Popover panel ── */
@@ -125,7 +127,7 @@ function CalendarPanel({ children }: { children: React.ReactNode }) {
 /* ── DateTimePicker ── */
 
 const DateTimePicker = React.forwardRef<HTMLDivElement, DateTimePickerProps>(
-  ({ value, onChange, placeholder = DATETIME_FORMAT, disabled, label, labelHelpText, required, readonly, defaultMonth, className, id }, ref) => {
+  ({ value, onChange, placeholder = DATETIME_FORMAT, disabled, label, labelHelpText, required, readonly, defaultMonth, className, id, size = "md" }, ref) => {
     const autoId    = React.useId();
     const inputId   = id ?? autoId;
     const inputRef  = React.useRef<HTMLInputElement>(null);
@@ -193,7 +195,8 @@ const DateTimePicker = React.forwardRef<HTMLDivElement, DateTimePickerProps>(
     };
 
     const inputClass = cn(
-      "relative flex h-9 w-full items-center rounded-lyra-sm border lyra-body-md transition-colors cursor-text",
+      "relative flex w-full items-center rounded-lyra-sm border lyra-body-md transition-colors cursor-text",
+      size === "sm" ? "h-8" : "h-9",
       "bg-lyra-bg-field text-lyra-fg-default",
       "border-lyra-border-strong hover:border-lyra-state-border-hover-neutral",
       "focus-within:border-lyra-border-active focus-within:ring-2 focus-within:ring-lyra-border-active/20",
@@ -269,6 +272,8 @@ export interface DateRangeTimePickerProps {
   defaultMonth?: Date;
   className?: string;
   id?: string;
+  /** Field height. "md" (36px, default) or "sm" (32px) for dense contexts. */
+  size?: "sm" | "md";
 }
 
 function formatRangeTime(v: DateRangeTimeValue | undefined): string {
@@ -281,7 +286,7 @@ function formatRangeTime(v: DateRangeTimeValue | undefined): string {
 }
 
 const DateRangeTimePicker = React.forwardRef<HTMLDivElement, DateRangeTimePickerProps>(
-  ({ value, onChange, placeholder, disabled, label, labelHelpText, required, readonly, defaultMonth, className, id }, ref) => {
+  ({ value, onChange, placeholder, disabled, label, labelHelpText, required, readonly, defaultMonth, className, id, size = "md" }, ref) => {
     const autoId   = React.useId();
     const inputId  = id ?? autoId;
     const inputRef = React.useRef<HTMLInputElement>(null);
@@ -352,7 +357,8 @@ const DateRangeTimePicker = React.forwardRef<HTMLDivElement, DateRangeTimePicker
 
     const ph = placeholder ?? `MM/DD/YYYY, HH:MM AM – MM/DD/YYYY, HH:MM AM`;
     const inputClass = cn(
-      "relative flex h-9 w-full items-center rounded-lyra-sm border lyra-body-md transition-colors cursor-text",
+      "relative flex w-full items-center rounded-lyra-sm border lyra-body-md transition-colors cursor-text",
+      size === "sm" ? "h-8" : "h-9",
       "bg-lyra-bg-field text-lyra-fg-default",
       "border-lyra-border-strong hover:border-lyra-state-border-hover-neutral",
       "focus-within:border-lyra-border-active focus-within:ring-2 focus-within:ring-lyra-border-active/20",

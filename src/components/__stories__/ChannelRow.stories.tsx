@@ -185,19 +185,25 @@ export const ChannelTabNewOutbound: Story = {
 };
 
 export const ChannelTabResponsive: Story = {
-  name: "ChannelTab — Responsive Collapse (narrow container)",
+  name: "ChannelTab — Responsive Collapse (overflowMenu)",
   render: () => {
     const [active, setActive] = useState("sms:1");
+    // `ChannelTab` no longer has its own bespoke text-shedding collapse —
+    // it's a normal `Tab`, so its `TabList` just uses the standard
+    // `overflowMenu` prop like any other tab bar. Drag the dashed box's
+    // right edge narrower than 400px and the row collapses to the active
+    // tab + a "{n} More" dropdown listing the rest, in original order.
     return (
       <div className="flex flex-col gap-4">
         <p className="lyra-body-sm text-lyra-fg-secondary">
-          Drag the dashed box's right edge narrower — each tab sheds its
-          address first (≤480px), then its type label too (≤320px), down to
-          icon + kebab only. Hover any tab at any width — its Tooltip always
-          shows the full "Label address" plus message count/conversation id.
+          Drag the dashed box's right edge narrower than 400px — the row
+          collapses to the active tab plus a "{"{n}"} More" dropdown listing
+          every other channel, same as any other `TabList overflowMenu`.
+          Hover any tab at any width — its Tooltip always shows the full
+          "Label address" plus message count/conversation id.
         </p>
-        <div className="w-[420px] resize-x overflow-auto border border-dashed border-lyra-border-subtle p-2">
-          <TabList className="lyra-channel-tab-list-wrap">
+        <div className="w-[560px] resize-x overflow-auto border border-dashed border-lyra-border-subtle p-2">
+          <TabList overflowMenu>
             <ChannelTab
               type="sms"
               address="(456) 383-3329"
@@ -213,6 +219,20 @@ export const ChannelTabResponsive: Story = {
               interactionId="707535188611"
               active={active === "sms:2"}
               onClick={() => setActive("sms:2")}
+            />
+            <ChannelTab
+              type="voice"
+              interactionId="707535188720"
+              active={active === "sms:3"}
+              onClick={() => setActive("sms:3")}
+            />
+            <ChannelTab
+              type="email"
+              address="jamie.torres@example.com"
+              messageCount={2}
+              interactionId="707535188799"
+              active={active === "sms:4"}
+              onClick={() => setActive("sms:4")}
             />
           </TabList>
         </div>

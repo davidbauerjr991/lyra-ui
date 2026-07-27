@@ -14,13 +14,21 @@ const meta: Meta = {
 export default meta;
 type Story = StoryObj;
 
-export const Default: Story = {
+export const Default: StoryObj<{ size: "sm" | "md" }> = {
   name: "Default",
-  render: () => {
+  argTypes: {
+    /** "sm" (32px) is for dense contexts vs. the "md" (36px) default every
+     *  other field in the library uses. */
+    size: { control: "select", options: ["sm", "md"], name: "Size" },
+  },
+  args: {
+    size: "md",
+  },
+  render: (args) => {
     const [value, setValue] = useState("");
     return (
       <div className="w-80">
-        <PasswordInput label="Password" value={value} onChange={setValue} />
+        <PasswordInput label="Password" value={value} onChange={setValue} size={args.size} />
       </div>
     );
   },

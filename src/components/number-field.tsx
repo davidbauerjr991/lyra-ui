@@ -40,6 +40,8 @@ export interface NumberFieldProps {
   /** Additional className on the root */
   className?: string;
   id?: string;
+  /** Field height. "md" (36px, default) or "sm" (32px) for dense contexts. */
+  size?: "sm" | "md";
 }
 
 /* ── Component ── */
@@ -64,6 +66,7 @@ const NumberField = React.forwardRef<HTMLDivElement, NumberFieldProps>(
       placeholder,
       className,
       id,
+      size = "md",
     },
     ref
   ) => {
@@ -152,7 +155,8 @@ const NumberField = React.forwardRef<HTMLDivElement, NumberFieldProps>(
 
         <div
           className={cn(
-            "relative flex h-9 w-full items-stretch rounded-lyra-sm border lyra-body-md transition-colors overflow-hidden",
+            "relative flex w-full items-stretch rounded-lyra-sm border lyra-body-md transition-colors overflow-hidden",
+            size === "sm" ? "h-8" : "h-9",
             error
               ? "border-lyra-status-critical-strong bg-lyra-status-critical-subtle"
               : readonly

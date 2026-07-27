@@ -15,6 +15,11 @@ const meta: Meta<typeof Select> = {
   },
   argTypes: {
     required: { control: "boolean" },
+    /** "sm" (32px) is for dense contexts — a table toolbar's filter row is
+     *  the motivating case — vs. the "md" (36px) default every other field
+     *  in the library uses. Only the closed trigger shrinks; the open
+     *  dropdown's rows stay full-size. */
+    size: { control: "select", options: ["sm", "md"], name: "Size" },
     /* Story-only toggles below — not real `Select` props. Mirrors
        Input.stories.tsx's own Default playground (same names/behavior),
        minus that story's "Label only" and "Horizontal" — `Select` doesn't
@@ -47,8 +52,10 @@ const meta: Meta<typeof Select> = {
     showHelp: { control: "boolean", name: "Help" },
     showError: { control: "boolean", name: "Error" },
     /* Off (default): full width, matching every other story below now that
-       none of them hardcode a width anymore. On: caps it at 320px — the
-       same guide width this file used to wrap every demo in. */
+       none of them hardcode a width anymore. On: bounds it between a
+       240px min-width and a 320px max-width — the same range
+       Input.stories.tsx's own "Max width" control and Form Grid's "Static
+       Width" fields (Breakpoints.stories.tsx) use. */
     maxWidth: { control: "boolean", name: "Max width" },
   } as Meta<typeof Select>["argTypes"],
 };
@@ -75,6 +82,7 @@ export const Default: Story = {
   args: {
     label: "Input Label",
     required: false,
+    size: "md",
     showWithButtons: false,
     buttonsPosition: "left",
     buttonVariant: "ghost",
@@ -88,6 +96,7 @@ export const Default: Story = {
   render: (args: any) => {
     const {
       required,
+      size,
       showWithButtons,
       buttonsPosition,
       buttonVariant,
@@ -144,7 +153,7 @@ export const Default: Story = {
       // keeps the buttons level with the trigger itself regardless of
       // whether that error text is showing.
       return (
-        <div className={maxWidth ? "max-w-[320px]" : undefined}>
+        <div className={maxWidth ? "min-w-[240px] max-w-[320px]" : undefined}>
           <div className="flex flex-col gap-1.5">
             <Label label={label} required={required} labelHelpText={labelHelpText} />
             <div className="flex items-start gap-0.5">
@@ -152,6 +161,7 @@ export const Default: Story = {
               <Select
                 options={sampleOptions}
                 error={showError ? "Required" : undefined}
+                size={size}
                 className="flex-1"
               />
               {(buttonsPosition === "right" || buttonsPosition === "both") && renderButtons()}
@@ -162,11 +172,12 @@ export const Default: Story = {
     }
 
     return (
-      <div className={maxWidth ? "max-w-[320px]" : undefined}>
+      <div className={maxWidth ? "min-w-[240px] max-w-[320px]" : undefined}>
         <Select
           label={label}
           labelHelpText={labelHelpText}
           required={required}
+          size={size}
           options={sampleOptions}
           error={showError ? "Required" : undefined}
         />

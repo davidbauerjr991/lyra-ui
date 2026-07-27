@@ -448,7 +448,10 @@ interface ToolbarDemoProps {
 
 function ToolbarDemo({ showSearch, showFilters, showColumns, showActions, showTitle, toolbarPanelToggle }: ToolbarDemoProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterValues, setFilterValues] = useState<Record<string, string[]>>({ description: [], createdBy: [] });
+  // `createdBy` starts pre-selected (not empty) so the toolbar's "Clear"
+  // button is visible on load, without needing to click a filter chip
+  // first — otherwise this demo would look like "Clear" was never added.
+  const [filterValues, setFilterValues] = useState<Record<string, string[]>>({ description: [], createdBy: ["Jim Smith"] });
   const [visibleCols, setVisibleCols] = useState<Set<string>>(new Set(toolbarColumns.map((c) => c.key)));
 
   return (
@@ -457,7 +460,6 @@ function ToolbarDemo({ showSearch, showFilters, showColumns, showActions, showTi
         title={showTitle ? "Records" : undefined}
         searchQuery={showSearch ? searchQuery : undefined}
         onSearchChange={showSearch ? setSearchQuery : undefined}
-        searchPlaceholder="Quick Search"
         filterDefs={showFilters ? toolbarFilterDefs : undefined}
         filterValues={showFilters ? filterValues : undefined}
         onFilterChange={showFilters ? (key, vals) => setFilterValues((p) => ({ ...p, [key]: vals })) : undefined}
@@ -1030,6 +1032,16 @@ export const AdvancedSearch: Story = {
           onAdvancedSearchApply={() => setAppliedRoot(root)}
           onAdvancedSearchCancel={() => {/* just closes — filters preserved */}}
           onSaveSearch={(name) => { setSavedSearchName(name); setAppliedRoot(root); }}
+          // Top-level toolbar "Clear" button (shown once `advancedSearchApplied`
+          // is true — see table.tsx's `hasActiveFilters`) resets the whole
+          // built query, not just its applied state, so the query builder
+          // panel reopens empty next time rather than still showing the
+          // old criteria.
+          onFilterClear={() => {
+            setAppliedRoot(null);
+            setRoot({ id: "as-root", logicOperator: "and", chips: [], subGroups: [] });
+            setSavedSearchName(undefined);
+          }}
         />
       </div>
     );

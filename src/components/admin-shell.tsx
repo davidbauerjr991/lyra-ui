@@ -28,12 +28,54 @@ export interface AdminShellProps {
   navTitle: string;
   /** Left nav tree items. */
   navItems: TreeMenuItem[];
+  /**
+   * Forces the internal `TreeMenu` to fully remount when this value
+   * changes (passed straight through as its `key`) — needed whenever
+   * `navItems` can swap between entirely different datasets at the same
+   * page (e.g. Monitor's "Call Centers" vs. "Service Groups" view
+   * switcher, via `navHeaderBadge`). Without this, `TreeMenu`'s rows track
+   * their own open/closed state via `useState(item.defaultOpen ?? false)`
+   * initialized once per component instance — if the dataset changes but
+   * `TreeMenu` itself doesn't remount, React's index-based reconciliation
+   * reuses each row's existing instance (and its stale open state) for
+   * whatever new item now lands at that same index, even though the new
+   * item's own `defaultOpen` says otherwise. Omit when `navItems` is the
+   * one fixed dataset every other `AdminShell` page has.
+   */
+  navKey?: React.Key;
+  /**
+   * Rendered inline immediately after `navTitle` in the left panel's own
+   * header row (forwarded to `SidePanel`'s `headerTitleBadge`) — e.g. a
+   * view-switcher trigger (a bare chevron opening a small `Select` of view
+   * options) sitting right next to the nav title text, for a page whose
+   * left tree can show more than one dataset (Outbound-Campaigns' Monitor
+   * dashboard: "Call Centers" vs. "Service Groups"). Omit for the plain
+   * title-only header every other `AdminShell` page uses.
+   */
+  navHeaderBadge?: React.ReactNode;
+  /**
+   * Forwarded to the left panel's `TreeMenu` — makes selection exact (no
+   * parent-active cascade, any selected row at any depth gets the same
+   * background pill) instead of the default cascading-parent-active
+   * behavior every other `AdminShell` left nav uses. Off by default so
+   * existing consumers are unaffected; only turn this on for a tree meant
+   * to have exactly one selected row at a time, at any depth. See
+   * `TreeMenu`'s own `exactSelection` doc comment (tree-menu.tsx).
+   */
+  navExactSelection?: boolean;
   /** Pinned state to fall back to before the cookie is read. */
   defaultLeftPinned?: boolean;
 
   /** Renders the PageHeader row. Off for the bare "Shell" template. */
   showPageHeader?: boolean;
   pageTitle?: string;
+  /**
+   * Caption shown below `pageTitle` (forwarded to `PageHeader`'s
+   * `subtitle`) — e.g. the Monitor dashboard's "Call Centers"/"Service
+   * Groups" category label under its static "Monitor" title. Omit for a
+   * plain title with no caption, same as every other `AdminShell` page.
+   */
+  pageSubtitle?: string;
   pageBadge?: string;
   pageActions?: React.ReactNode;
   /**
@@ -67,7 +109,19 @@ export interface AdminShellProps {
  * AdminShell — shared page template for admin-style CRUD/config screens
  * (left nav-tree side panel, PageHeader, main content, interior detail
  * panel, right side panel). Extracted from the Outbound Engagement page;
- * also used by Agent Workspace Premium's Designer page.
+ * also used by Agent Workspace Premium's Designer page and (per an
+ * explicit "every new page should be in AdminShell" directive)
+ * Outbound-Campaigns' Monitor dashboard.
+ *
+ * Every new page in a consuming app should render this rather than
+ * hand-rolling its own root layout/side panel/page header — that already
+ * happened once (Monitor dashboard originally built its own `SidePanel` +
+ * `PageHeader` + pin/hover/narrow-container-guard wiring from scratch
+ * instead of reaching for this), duplicating everything `AdminShell`
+ * already owns. `navHeaderBadge`/`navExactSelection`/`pageSubtitle` exist
+ * specifically because that migration needed them — check whether an
+ * existing `AdminShellProps` field already covers what a new page needs
+ * before reaching for a one-off layout.
  *
  * See Storybook: "Templates/Admin UIs".
  */
@@ -75,9 +129,13 @@ export function AdminShell({
   storageKeyPrefix,
   navTitle,
   navItems,
+  navKey,
+  navHeaderBadge,
+  navExactSelection = false,
   defaultLeftPinned = false,
   showPageHeader = false,
   pageTitle,
+  pageSubtitle,
   pageBadge,
   pageActions,
   pageBreadcrumb,
@@ -169,6 +227,47 @@ export function AdminShell({
     setRightSidePanelPinned((prev) => { const next = !prev; setRightSidePanelOpen(next); return next; });
   }, []);
 
+  // `effectiveLeftPinned`/`effectiveRightPinned` above already force the
+  // rendered `pinned` prop to `false` below 1024px, but that alone isn't
+  // enough: `leftPanelOpen`/`rightSidePanelOpen` are untouched by it, so a
+  // panel that was open-and-pinned when the container crossed the
+  // threshold would instantly become an open-and-FLOATING overlay sitting
+  // on top of the content, rather than collapsing away and requiring a
+  // deliberate hover to reveal it again.
+  //
+  // Deliberately does NOT reset `leftPanelPinned`/`rightSidePanelPinned`
+  // themselves, though — only the rendered `open` state. `leftPanelPinned`
+  // stays exactly as the user left it, so the moment the container widens
+  // back out past 1024px, `effectiveLeftPinned` naturally reverts to it —
+  // the panel automatically returns to open-and-pinned, no re-pin click
+  // needed. Per "I wanted it to go behave like the storybook" — the
+  // Storybook demo's own `SidePanelPinGuardDemo` never touches its
+  // `pinned` state at all, only the derived-at-render `effectivePinned`,
+  // which is what let it auto-restore; a prior pass here mistakenly
+  // "fixed" this shell to instead PERMANENTLY clear the pin (matching what
+  // turned out to be undesired behavior in the Agent Next Gen template),
+  // which is now reversed.
+  //
+  // `skipFirstRun` guards the initial mount: `useEffect` fires once
+  // immediately after the first render too, and without this guard, a page
+  // that loads already wide with `leftPanelOpen` legitimately `false`
+  // (i.e. the user had previously collapsed the panel while still pinned —
+  // see `handleLeftToggle` above) would have that intentional collapsed
+  // state clobbered back open by the `else` branch below, on every fresh
+  // load. Only real narrow⇄wide TRANSITIONS after mount should touch it.
+  const skipFirstRun = useRef(true);
+  useEffect(() => {
+    if (skipFirstRun.current) { skipFirstRun.current = false; return; }
+    if (isNarrowContainer) {
+      setLeftPanelOpen(false);
+      setRightSidePanelOpen(false);
+    } else {
+      setLeftPanelOpen(leftPanelPinned);
+      setRightSidePanelOpen(rightSidePanelPinned);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNarrowContainer]);
+
   return (
     <main ref={mainRef} className={cn("flex flex-1 overflow-hidden bg-lyra-bg-surface-base relative animate-in fade-in-0 duration-500", className)}>
 
@@ -183,12 +282,13 @@ export function AdminShell({
         open={leftPanelOpen}
         pinned={effectiveLeftPinned}
         headerTitle={navTitle}
+        headerTitleBadge={navHeaderBadge}
         onPinToggle={isNarrowContainer ? undefined : handleLeftPinToggle}
         onMouseEnter={!effectiveLeftPinned ? handleLeftHoverStart : undefined}
         onMouseLeave={!effectiveLeftPinned ? handleLeftHoverEnd : undefined}
         className="z-[8]"
       >
-        <TreeMenu className="px-2" items={navItems} />
+        <TreeMenu key={navKey} className="px-2" items={navItems} exactSelection={navExactSelection} />
       </SidePanel>
 
       {/* ════ Main content column ════ */}
@@ -198,6 +298,7 @@ export function AdminShell({
         {showPageHeader && (
           <PageHeader
             title={pageTitle ?? ""}
+            subtitle={pageSubtitle}
             breadcrumb={pageBreadcrumb}
             panelToggle="left"
             badge={pageBadge}
@@ -214,7 +315,7 @@ export function AdminShell({
         {/* ════ Interior panels row ════
             `relative` here (not just on the outer `<main>`) matters:
             `InteriorPanel` switches to `position: absolute; top: 0; height:
-            100%` below 1050px of this row's width, and without a positioned
+            100%` below 1024px of this row's width, and without a positioned
             ancestor of its own it anchors to `<main>` instead — which
             starts at the same top edge as the PageHeader, so the panel
             renders over the header instead of below it. Scoping the

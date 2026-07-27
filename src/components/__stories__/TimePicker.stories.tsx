@@ -15,9 +15,17 @@ const meta: Meta = {
 export default meta;
 type Story = StoryObj;
 
-export const Default: Story = {
+export const Default: StoryObj<{ size: "sm" | "md" }> = {
   name: "Time Picker",
-  render: () => {
+  argTypes: {
+    /** "sm" (32px) is for dense contexts vs. the "md" (36px) default every
+     *  other field in the library uses. */
+    size: { control: "select", options: ["sm", "md"], name: "Size" },
+  },
+  args: {
+    size: "md",
+  },
+  render: (args) => {
     const [value, setValue] = useState<Date | undefined>();
     return (
       <div className="w-56">
@@ -25,6 +33,7 @@ export const Default: Story = {
           label="Time"
           value={value}
           onChange={setValue}
+          size={args.size}
         />
         {value && (
           <p className="lyra-body-sm text-lyra-fg-secondary mt-2">
@@ -66,9 +75,15 @@ export const States: Story = {
   ),
 };
 
-export const Range: Story = {
+export const Range: StoryObj<{ size: "sm" | "md" }> = {
   name: "Time Range Picker",
-  render: () => {
+  argTypes: {
+    size: { control: "select", options: ["sm", "md"], name: "Size" },
+  },
+  args: {
+    size: "md",
+  },
+  render: (args) => {
     const [value, setValue] = useState<{ from?: Date; to?: Date } | undefined>();
     return (
       <div className="w-72">
@@ -76,6 +91,7 @@ export const Range: Story = {
           label="Time range"
           value={value}
           onChange={setValue}
+          size={args.size}
         />
         {value?.from && value?.to && (
           <p className="lyra-body-sm text-lyra-fg-secondary mt-2">

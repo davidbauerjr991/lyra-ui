@@ -2,6 +2,8 @@ import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { ChevronRight } from "lucide-react";
 import { cn } from "../lib/utils";
+import { MenuItem } from "./menu-item";
+import { useScrollChevrons, ScrollChevronButton } from "./scroll-chevron";
 
 /* ── Types ── */
 
@@ -97,10 +99,19 @@ interface MenuProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const Menu = React.forwardRef<HTMLDivElement, MenuProps>(
   ({ className, items, menuRole = "menu", itemRole = "menuitem", bare = false, ...props }, ref) => {
-    const menuRef = React.useRef<HTMLDivElement>(null);
+    // `listRef` is the direct parent of the mapped items — same node the
+    // keyboard-nav query below has always searched relative to — now also
+    // doubling as the scrollable region for the hover-chevron affordance
+    // (see scroll-chevron.tsx). Previously this was also the component's
+    // own forwarded `ref` (a single div was both the outer surface and the
+    // scrollable/keyboard-nav root); splitting the surface into an outer
+    // wrapper + this inner scrollable div means the two refs are now
+    // properly distinct: `ref` is the whole surface, `listRef` is just the
+    // scrolling item list inside it.
+    const listRef = React.useRef<HTMLDivElement>(null);
 
     const handleKeyDown = React.useCallback((e: React.KeyboardEvent) => {
-      const menu = menuRef.current;
+      const menu = listRef.current;
       if (!menu) return;
 
       const menuItems = Array.from(
@@ -126,48 +137,68 @@ const Menu = React.forwardRef<HTMLDivElement, MenuProps>(
       }
     }, []);
 
+    // Same hover-chevron affordance as `MenuRadix`/`Select`'s multi-select
+    // listbox, instead of a native scrollbar — every scrollable dropdown
+    // in the library should look the same unless a consumer specifically
+    // wants a native scrollbar (flagged from a screenshot of `Autocomplete`
+    // showing a plain OS scrollbar where every other dropdown uses these
+    // chevrons). Only actually appears once a consumer's own `className`
+    // caps the height (e.g. `Autocomplete`'s `max-h-60`) enough to overflow
+    // — most `Menu` consumers render short, non-scrolling lists and never
+    // see these at all.
+    const { canScrollUp, canScrollDown, onScroll } = useScrollChevrons(listRef, [items]);
+    const scrollStep = (delta: number) => { listRef.current?.scrollBy({ top: delta }); };
+
     return (
       <div
-        ref={(node) => {
-          (menuRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
-          if (typeof ref === "function") ref(node);
-          else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
-        }}
-        role={menuRole}
-        onKeyDown={handleKeyDown}
+        ref={ref}
         className={cn(
-          "p-1 overflow-hidden",
+          "p-1 flex flex-col overflow-hidden",
           bare
             ? "w-full"
             : "min-w-[200px] rounded-lyra-lg bg-lyra-bg-surface-overlay border border-lyra-border-subtle shadow-lg",
           className
         )}
-        {...props}
       >
-        {items.map((entry, i) => {
-          if (entry === "separator") {
-            return (
-              <div
-                key={`sep-${i}`}
-                role="separator"
-                className="border-b border-lyra-border-subtle my-1.5"
-              />
-            );
-          }
+        {/* Chevrons are siblings of the scrollable div below, not children
+            of it — they must stay pinned at the top/bottom of the visible
+            surface regardless of scroll position (matching MenuRadix's
+            own structure/comment on this exact point). */}
+        {canScrollUp && <ScrollChevronButton direction="up" onStep={() => scrollStep(-6)} />}
+        <div
+          ref={listRef}
+          role={menuRole}
+          onKeyDown={handleKeyDown}
+          onScroll={onScroll}
+          className="flex-1 min-h-0 overflow-y-auto lyra-scrollbar-hide flex flex-col"
+          {...props}
+        >
+          {items.map((entry, i) => {
+            if (entry === "separator") {
+              return (
+                <div
+                  key={`sep-${i}`}
+                  role="separator"
+                  className="border-b border-lyra-border-subtle my-1.5"
+                />
+              );
+            }
 
-          if ("sectionLabel" in entry) {
-            return (
-              <div
-                key={`label-${i}`}
-                className="px-3 pt-2.5 pb-1 lyra-body-sm text-lyra-fg-secondary truncate"
-              >
-                {entry.sectionLabel}
-              </div>
-            );
-          }
+            if ("sectionLabel" in entry) {
+              return (
+                <div
+                  key={`label-${i}`}
+                  className="px-3 pt-2.5 pb-1 lyra-body-sm text-lyra-fg-secondary truncate"
+                >
+                  {entry.sectionLabel}
+                </div>
+              );
+            }
 
-          return <MenuItemRow key={entry.id} item={entry} itemRole={itemRole} />;
-        })}
+            return <MenuItemRow key={entry.id} item={entry} itemRole={itemRole} />;
+          })}
+        </div>
+        {canScrollDown && <ScrollChevronButton direction="down" onStep={() => scrollStep(6)} />}
       </div>
     );
   }
@@ -299,83 +330,32 @@ const MenuItemRow: React.FC<MenuItemRowProps> = ({ item, itemRole = "menuitem" }
       onMouseEnter={hasSubmenu ? openSubmenu : undefined}
       onMouseLeave={hasSubmenu ? closeSubmenu : undefined}
     >
-      <button
-        type="button"
-        role={itemRole}
+      <MenuItem
+        itemRole={itemRole}
         disabled={item.disabled}
         data-menu-item-id={item.id}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         aria-haspopup={hasSubmenu ? "menu" : undefined}
         aria-expanded={hasSubmenu ? submenuOpen : undefined}
-        aria-selected={itemRole === "option" ? !!item.active : undefined}
-        className={cn(
-          "group/item flex w-full items-center gap-2.5 px-3 py-2.5 lyra-body-md transition-colors text-left relative rounded-lyra-sm",
-          "focus:outline-none focus-visible:bg-lyra-state-hover",
-          isDestructive
-            ? "text-lyra-status-critical-strong hover:bg-lyra-status-critical-subtle active:bg-lyra-status-critical-medium"
-            : "text-lyra-fg-default hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
-          item.active && !isDestructive && "bg-lyra-bg-active-subtle text-lyra-fg-active-strong hover:bg-lyra-state-hover-active-subtle active:bg-lyra-state-pressed-active-subtle",
-          !item.active && hasSubmenu && submenuOpen && !isDestructive && "bg-lyra-state-hover",
-          item.disabled && "opacity-40 cursor-not-allowed hover:bg-transparent active:bg-transparent"
-        )}
-      >
-        {/* Left accent bar — persistently blue for the active/current item;
-            otherwise visible only on hover/press of this button (or while
-            its submenu flyout is open). */}
-        <span
-          aria-hidden="true"
-          className={cn(
-            "absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full opacity-0 transition-opacity",
-            isDestructive
-              ? "bg-lyra-status-critical-strong group-hover/item:opacity-100 group-active/item:opacity-100"
-              : item.active
-                ? "bg-lyra-fg-active-strong opacity-100"
-                : cn("bg-lyra-fg-default group-hover/item:opacity-100 group-active/item:opacity-100", hasSubmenu && submenuOpen && "opacity-100"),
-            item.disabled && "group-hover/item:opacity-0 group-active/item:opacity-0"
-          )}
-        />
-
-        {/* Leading icon */}
-        {item.icon && (
-          <span
-            aria-hidden="true"
-            className={cn(
-              "flex h-5 w-5 items-center justify-center flex-shrink-0",
-              item.description && "self-start mt-0.5",
-              isDestructive ? "text-lyra-status-critical-strong" : "text-lyra-fg-secondary"
-            )}
-          >
-            {item.icon}
-          </span>
-        )}
-
-        {/* Label + optional description */}
-        <span className="flex-1 min-w-0">
-          <span className="block truncate">{item.label}</span>
-          {item.description && (
-            <span className="block lyra-body-sm text-lyra-fg-secondary truncate">{item.description}</span>
-          )}
-        </span>
-
-        {/* Right element (custom) or shortcut */}
-        {item.rightElement
-          ? <span className="flex-shrink-0 ml-2">{item.rightElement}</span>
-          : item.shortcut && (
-            <span className="lyra-body-sm text-lyra-fg-secondary flex-shrink-0 ml-4">
-              {item.shortcut}
-            </span>
-          )}
-
-        {/* Submenu chevron */}
-        {hasSubmenu && (
-          <ChevronRight
-            className="h-4 w-4 text-lyra-fg-secondary flex-shrink-0"
-            strokeWidth={1.5}
-            aria-hidden="true"
-          />
-        )}
-      </button>
+        label={item.label}
+        description={item.description}
+        icon={item.icon}
+        shortcut={item.shortcut}
+        rightElement={item.rightElement}
+        active={item.active}
+        destructive={isDestructive}
+        highlighted={hasSubmenu && submenuOpen}
+        trailingIcon={
+          hasSubmenu && (
+            <ChevronRight
+              className="h-4 w-4 text-lyra-fg-secondary flex-shrink-0"
+              strokeWidth={1.5}
+              aria-hidden="true"
+            />
+          )
+        }
+      />
 
       {/* Submenu flyout — top-aligned with this row by default; flips to
           bottom-aligned (see the layout effect above) if that would push

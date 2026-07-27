@@ -735,7 +735,7 @@ interface TableToolbarProps extends React.HTMLAttributes<HTMLDivElement> {
   searchQuery?: string;
   /** Called when search value changes */
   onSearchChange?: (value: string) => void;
-  /** Search placeholder text (default: "Quick Search") */
+  /** Search placeholder text (default: "Search") */
   searchPlaceholder?: string;
   /** Total record count to display */
   recordCount?: number;
@@ -786,7 +786,7 @@ interface TableToolbarProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
-  ({ className, searchQuery, onSearchChange, searchPlaceholder = "Quick Search", recordCount, recordLabel = "Records", filters, filterDefs, filterValues, onFilterChange, onFilterClear, actions, actionDefs, title, toolbarPanelToggle, onLeftPanelToggle, onRightPanelToggle, showAdvancedSearch, advancedSearchContent, advancedSearchApplied, advancedSearchDescription, advancedSearchTitle, onAdvancedSearchApply, onAdvancedSearchCancel, onSaveSearch, ...props }, ref) => {
+  ({ className, searchQuery, onSearchChange, searchPlaceholder = "Search", recordCount, recordLabel = "Records", filters, filterDefs, filterValues, onFilterChange, onFilterClear, actions, actionDefs, title, toolbarPanelToggle, onLeftPanelToggle, onRightPanelToggle, showAdvancedSearch, advancedSearchContent, advancedSearchApplied, advancedSearchDescription, advancedSearchTitle, onAdvancedSearchApply, onAdvancedSearchCancel, onSaveSearch, ...props }, ref) => {
     const [advancedOpen, setAdvancedOpen] = useState(false);
     const [saveSearchOpen, setSaveSearchOpen] = useState(false);
     const [saveSearchName, setSaveSearchName] = useState("");
@@ -817,6 +817,14 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
     }, []);
 
     const isWide = containerWidth >= 991;
+    // Narrowest stage: below this, action buttons (whichever form `isWide`
+    // above has already put them in — inline icons or the collapsed "More"
+    // menu) no longer share a row with search/filters at all. Per "at 360px
+    // breakpoint, wrap the right action button below the search and
+    // filters and align them right" — they instead wrap onto their own row
+    // beneath search/filters, right-aligned, in both the title and
+    // no-title layouts.
+    const isNarrow = containerWidth <= 360;
 
     useEffect(() => {
       if (!moreOpen) return;
@@ -829,7 +837,14 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
       return () => document.removeEventListener("mousedown", onClickOutside);
     }, [moreOpen]);
 
-    const hasActiveFilters = filterDefs && filterValues && filterDefs.some((f) => (filterValues[f.key]?.length ?? 0) > 0);
+    // Also true once the Query Builder / Advanced Search popover has an
+    // applied query — not just when a `filterDefs` chip has a selected
+    // value — so the top-level "Clear" button shows up for either
+    // filtering mechanism, not only the `filterDefs`-driven one.
+    const hasActiveFilters = Boolean(
+      (filterDefs && filterValues && filterDefs.some((f) => (filterValues[f.key]?.length ?? 0) > 0)) ||
+      advancedSearchApplied
+    );
     const activeFilterCount = filterDefs && filterValues
       ? filterDefs.filter((f) => (filterValues[f.key]?.length ?? 0) > 0).length
       : 0;
@@ -897,12 +912,18 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
             onSelectionChange={(vals) => onFilterChange?.(f.key, vals)}
           />
         ))}
-        {hasActiveFilters && (
-          <Button variant="ghost" size="default" onClick={onFilterClear}>
-            Clear
-          </Button>
-        )}
       </>
+    ) : null;
+
+    // Sits at the far right of the whole filters group (after filterDefs'
+    // own chips, any custom `filters` node, and the Advanced Search
+    // button) — not folded into `filterChips` itself, since that only
+    // covers the filterDefs-driven chips and would otherwise land in the
+    // middle of the group instead of trailing all of it.
+    const clearFiltersButton = hasActiveFilters ? (
+      <Button variant="ghost" size="default" onClick={onFilterClear}>
+        Clear
+      </Button>
     ) : null;
 
     const hasSearch = onSearchChange !== undefined;
@@ -918,6 +939,13 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
         }}
         showArrow={false}
         maxHeight={`calc(100vh - 120px)`}
+        // advancedSearchContent is an arbitrary consumer-supplied slot (the
+        // filter-builder UI is defined by whoever renders TableToolbar, not
+        // by this component) that's always expected to own its own padding
+        // end to end (see AdvancedSearchContent in Table.stories.tsx, which
+        // already wraps itself in `p-4`) — Popover's default 20px body inset
+        // would double up on top of whatever padding that content supplies.
+        bodyPadding={false}
         content={advancedSearchContent}
         footer={
           <div className="flex items-center justify-end gap-2 px-4 pb-4 pt-2">
@@ -1114,12 +1142,25 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
           className={cn("flex flex-col gap-2 py-3", className)}
           {...props}
         >
-          {/* Row 1: title + action buttons */}
+          {/* Row 1: title + action buttons — action buttons move to their
+              own row below search/filters once ≤360px (`isNarrow` above),
+              rather than staying pinned next to the title where they'd
+              otherwise be forced to squeeze against it. */}
           <div className="flex items-center justify-between">
             <span className="lyra-body-md-emphasis text-lyra-fg-default">{title}</span>
-            {actionButtons}
+            {!isNarrow && actionButtons}
           </div>
-          {/* Row 2: search + filters always inline */}
+          {/* Row 2: search + filters — filters collapse into the same
+              dropdown-chip + Query Builder pairing the no-title layout
+              uses once the toolbar itself gets too narrow for everything
+              inline, rather than always rendering every filter chip
+              regardless of available width. Per "the filters do not go
+              responsive - they should always respond to the query
+              regardless of if they are inline with the action button or
+              not" — `isWide` is measured off the toolbar's own root
+              (`stableRef`/`containerWidth` above), not off row 1, so it
+              applies here exactly the same way it already did in the
+              no-title layout. */}
           {(hasSearch || hasFilters) && (
             <div className="flex items-center gap-2">
               {hasSearch && (
@@ -1127,18 +1168,36 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
                   placeholder={searchPlaceholder}
                   value={searchQuery ?? ""}
                   onValueChange={onSearchChange}
-                  className="w-[260px]"
+                  className="flex-1 min-w-[240px] max-w-[320px]"
                   aria-label={searchPlaceholder}
+                  size="sm"
                 />
               )}
               {hasFilters && (
-                <div className="flex items-center gap-2">
-                  {filterChips}
-                  {filters}
-                  {advancedSearchNode}
-                </div>
+                isWide ? (
+                  <div className="flex items-center gap-2">
+                    {filterChips}
+                    {filters}
+                    {advancedSearchNode}
+                    {clearFiltersButton}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">{collapsedFilterChip}{advancedSearchNode}</div>
+                )
               )}
             </div>
+          )}
+          {/* Custom `filters` node (distinct from the `filterDefs`-driven
+              chips above, which collapse into `collapsedFilterChip`) keeps
+              its own row once narrow — same placement the no-title layout
+              uses — rather than disappearing when the chips collapse. */}
+          {filters && !isWide && (
+            <div className="flex items-center gap-2">{filters}</div>
+          )}
+          {/* Action buttons wrap here, right-aligned, once ≤360px — see
+              `isNarrow` above. */}
+          {isNarrow && actionButtons && (
+            <div className="flex items-center justify-end">{actionButtons}</div>
           )}
         </div>
       );
@@ -1152,7 +1211,7 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
         {...props}
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
             {/* Left panel toggle — appears before search */}
             {(toolbarPanelToggle === "left" || toolbarPanelToggle === "both") && (
               <Button variant="icon" size="icon" title="Toggle left panel" onClick={onLeftPanelToggle}>
@@ -1164,15 +1223,16 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
                 placeholder={searchPlaceholder}
                 value={searchQuery ?? ""}
                 onValueChange={onSearchChange}
-                className="w-[260px]"
+                className="flex-1 min-w-[240px] max-w-[320px]"
                 aria-label={searchPlaceholder}
+                size="sm"
               />
             )}
             {/* Filters: inline when wide, collapsed chip when narrow */}
             {hasFilters && (!hasSearch ? (
               /* No search: filters + Query Builder inline */
               isWide ? (
-                <div className="flex items-center gap-2">{filterChips}{filters}{advancedSearchNode}</div>
+                <div className="flex items-center gap-2">{filterChips}{filters}{advancedSearchNode}{clearFiltersButton}</div>
               ) : (
                 <div className="flex items-center gap-2">{collapsedFilterChip}{advancedSearchNode}</div>
               )
@@ -1180,15 +1240,22 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
               /* Search present: wide shows everything inline;
                  narrow collapses filter chips + keeps QBuilder on the same row */
               isWide
-                ? <div className="flex items-center gap-2">{filterChips}{filters}{advancedSearchNode}</div>
+                ? <div className="flex items-center gap-2">{filterChips}{filters}{advancedSearchNode}{clearFiltersButton}</div>
                 : <div className="flex items-center gap-2">{collapsedFilterChip}{advancedSearchNode}</div>
             ))}
           </div>
-          {actionButtons}
+          {/* Action buttons move to their own row below search/filters
+              once ≤360px (`isNarrow` above) instead of squeezing onto
+              this row via `justify-between`. */}
+          {!isNarrow && actionButtons}
         </div>
         {/* Filter chips on second row in narrow mode when search is present */}
         {hasSearch && filters && !isWide && (
           <div className="flex items-center gap-2">{filters}</div>
+        )}
+        {/* Action buttons wrap here, right-aligned, once ≤360px. */}
+        {isNarrow && actionButtons && (
+          <div className="flex items-center justify-end">{actionButtons}</div>
         )}
       </div>
     );

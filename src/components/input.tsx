@@ -3,7 +3,7 @@ import { ErrorIcon } from "./icons/error-icon";
 import { cn } from "../lib/utils";
 import { Label } from "./label";
 
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> {
   /** Label text displayed above the input */
   label?: string;
   /** Help text shown in a tooltip on the label's info icon */
@@ -18,6 +18,14 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   startIcon?: React.ReactNode;
   /** Icon rendered at the end (right) of the input */
   endIcon?: React.ReactNode;
+  /**
+   * Field height. "md" (36px, default) matches every other field in the
+   * library; "sm" (32px) is for dense contexts — a table toolbar's quick
+   * search/filter row, a compact form — where the default height reads too
+   * tall next to 32px buttons/chips. Doesn't touch icon size/position or
+   * horizontal padding, only the field's own height.
+   */
+  size?: "sm" | "md";
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
@@ -33,6 +41,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       id,
       startIcon,
       endIcon,
+      size = "md",
       ...props
     },
     ref
@@ -66,7 +75,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             disabled={disabled}
             readOnly={readonly}
             className={cn(
-              "h-9 w-full rounded-lyra-sm border lyra-body-md transition-colors",
+              size === "sm" ? "h-8" : "h-9",
+              "w-full rounded-lyra-sm border lyra-body-md transition-colors",
               "placeholder:text-lyra-fg-disabled",
               "focus:outline-none",
               startIcon ? "pl-9" : "pl-3",

@@ -42,6 +42,12 @@ const meta: Meta<typeof Autocomplete> = {
     layout: "padded",
     backgrounds: { default: "lyra-shell" },
   },
+  argTypes: {
+    /** "sm" (32px) is for dense contexts vs. the "md" (36px) default every
+     *  other field in the library uses. Only the closed field shrinks —
+     *  the open dropdown's rows stay full-size. */
+    size: { control: "select", options: ["sm", "md"], name: "Size" },
+  },
 };
 
 export default meta;
@@ -49,7 +55,10 @@ type Story = StoryObj<typeof Autocomplete>;
 
 export const Default: Story = {
   name: "Default",
-  render: () => {
+  args: {
+    size: "md",
+  },
+  render: (args) => {
     const [value, setValue] = useState<string | undefined>();
     return (
       <div className="w-72">
@@ -59,6 +68,7 @@ export const Default: Story = {
           value={value}
           onChange={setValue}
           placeholder="Search countries…"
+          size={args.size}
         />
         {value && (
           <p className="lyra-body-sm text-lyra-fg-secondary mt-2">

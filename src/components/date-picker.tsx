@@ -45,8 +45,16 @@ function parseRange(s: string): DateRange | undefined {
 
 /* ── Shared input trigger styles ── */
 
+// Shared by `DatePicker` and `DateRangePicker` — a plain module-level
+// const, not a per-render function, same as the disabled/readonly states
+// above it use `data-[disabled=true]`/`data-[readonly=true]` selectors
+// instead of JS-computed classes. `size` follows the same pattern
+// (`data-size` on the wrapping div, read via `data-[size=sm]:h-8`) so this
+// can stay a static string rather than needing to become a function that
+// both components would otherwise have to call with their own `size` prop.
 const inputClass = cn(
   "relative flex h-9 w-full items-center rounded-lyra-sm border lyra-body-md transition-colors",
+  "data-[size=sm]:h-8",
   "bg-lyra-bg-field text-lyra-fg-default cursor-text",
   "border-lyra-border-strong hover:border-lyra-state-border-hover-neutral",
   "focus-within:border-lyra-border-active focus-within:ring-2 focus-within:ring-lyra-border-active/20",
@@ -101,10 +109,12 @@ export interface DatePickerProps {
   defaultMonth?: Date;
   className?: string;
   id?: string;
+  /** Field height. "md" (36px, default) or "sm" (32px) for dense contexts. */
+  size?: "sm" | "md";
 }
 
 const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
-  ({ value, onChange, placeholder = FORMAT, disabled, label, labelHelpText, required, readonly, defaultMonth, className, id }, ref) => {
+  ({ value, onChange, placeholder = FORMAT, disabled, label, labelHelpText, required, readonly, defaultMonth, className, id, size = "md" }, ref) => {
     const autoId = React.useId();
     const inputId = id ?? autoId;
     const inputRef = React.useRef<HTMLInputElement>(null);
@@ -145,7 +155,7 @@ const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
         )}
         <PopoverPrimitive.Root open={!disabled && !readonly && open} onOpenChange={setOpen}>
           <PopoverPrimitive.Anchor asChild>
-            <div data-disabled={disabled || undefined} data-readonly={readonly || undefined}
+            <div data-disabled={disabled || undefined} data-readonly={readonly || undefined} data-size={size}
               className={inputClass} onClick={() => !disabled && !readonly && setOpen(true)}>
               <input ref={inputRef} id={inputId} type="text" value={text}
                 onChange={handleTextChange} placeholder={placeholder}
@@ -187,10 +197,12 @@ export interface DateRangePickerProps {
   defaultMonth?: Date;
   className?: string;
   id?: string;
+  /** Field height. "md" (36px, default) or "sm" (32px) for dense contexts. */
+  size?: "sm" | "md";
 }
 
 const DateRangePicker = React.forwardRef<HTMLDivElement, DateRangePickerProps>(
-  ({ value, onChange, placeholder = `${FORMAT} – ${FORMAT}`, disabled, label, labelHelpText, required, readonly, defaultMonth, className, id }, ref) => {
+  ({ value, onChange, placeholder = `${FORMAT} – ${FORMAT}`, disabled, label, labelHelpText, required, readonly, defaultMonth, className, id, size = "md" }, ref) => {
     const autoId = React.useId();
     const inputId = id ?? autoId;
     const inputRef = React.useRef<HTMLInputElement>(null);
@@ -229,7 +241,7 @@ const DateRangePicker = React.forwardRef<HTMLDivElement, DateRangePickerProps>(
         )}
         <PopoverPrimitive.Root open={!disabled && !readonly && open} onOpenChange={setOpen}>
           <PopoverPrimitive.Anchor asChild>
-            <div data-disabled={disabled || undefined} data-readonly={readonly || undefined}
+            <div data-disabled={disabled || undefined} data-readonly={readonly || undefined} data-size={size}
               className={inputClass} onClick={() => !disabled && !readonly && setOpen(v => !v)}>
               <input ref={inputRef} id={inputId} type="text" value={text}
                 onChange={handleTextChange} placeholder={placeholder}

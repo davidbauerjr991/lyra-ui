@@ -16,11 +16,11 @@ import {
   Gauge,
   TrendingUp,
   Info,
-  ChevronDown,
   Clock,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "../lib/utils";
+import { DashboardTemplate } from "./dashboard-template";
 import { DashboardCard } from "./dashboard-card";
 import { DashboardQueue, type DashboardQueueItem } from "./dashboard-queue";
 import { Icon } from "./icon";
@@ -28,10 +28,7 @@ import { Tag } from "./tag";
 import { Button } from "./button";
 import { Separator } from "./separator";
 import { DonutChart } from "./donut-chart";
-import { Popover } from "./popover";
-import { RadioGroup, RadioGroupItem } from "./radio";
-import { DateRangePicker, type DateRangePickerProps } from "./date-picker";
-import { filterChipVariants } from "./filter-chip";
+import { DateRangeFilterChip, type DateRangeFilterValue } from "./date-range-filter-chip";
 import { Tooltip } from "./tooltip";
 
 /* ── AgentDashboard ──
@@ -48,6 +45,17 @@ import { Tooltip } from "./tooltip";
    every piece below is built from existing lyra-ui atoms (`DashboardCard`,
    `DashboardQueue`, `Tag`, `Icon`, `DonutChart`, `Separator`, `Popover` +
    `RadioGroup`), nothing hand-rolled.
+
+   This is NOT the reusable "dashboard template" — it's one specific,
+   fully-baked composition (this exact greeting, these exact queue widgets,
+   Contact History + Redial, this exact Performance/Productivity pair) for
+   one specific persona's Home tab. A new dashboard-style page with
+   different content should reach for `DashboardTemplate` (dashboard-
+   template.tsx) instead — the generic container/width/breakpoint shell
+   this component's own outer wrapper used to inline directly, now
+   extracted so any page can reuse it with its own cards. See that file's
+   doc comment, and PROJECT_SUMMARY.md's "AgentDashboard shouldn't be the
+   template" entry for the incident that prompted the extraction.
 
    All of the demo data (queue counts, contact history rows, performance/
    productivity numbers) is bundled in as sensible defaults — none of it is
@@ -184,61 +192,29 @@ export function AgentDashboardQueueDrilldown({ queueId }: { queueId: string }) {
 }
 
 /* ── Shared date-range filter chip ──
-   One control, reused by every card below (Contact History / Performance /
-   Productivity) — a single-select popover (RadioGroup, since only one
-   range applies at a time), styled as `filterChipVariants({ variant:
-   "default" })` so it reads as a neutral control rather than a permanently-
-   "active" filter. Picking "Custom" reveals a `DateRangePicker`. */
+   Reused by every card below (Contact History / Performance / Productivity)
+   — now `DateRangeFilterChip` (date-range-filter-chip.tsx), extracted out
+   of this file (it used to be an unexported local `DateFilterChip`
+   defined right here, duplicating nothing since this was its only
+   consumer at the time) once Outbound-Campaigns' Monitor dashboard needed
+   the exact same "Date: {label}" single-select radio-popover pattern for
+   its own cards. `AgentDashboardDateRange` stays as a type alias for
+   backward compatibility — nothing here needed to change beyond the
+   import. See PROJECT_SUMMARY.md's "Outbound-Campaigns' Monitor cards
+   reuse AgentDashboard's date filter" entry.
 
-export type AgentDashboardDateRange = "today" | "yesterday" | "last7" | "custom";
+   `AgentDashboardDateRange` deliberately excludes `"last30"`/`"last90"`
+   (added to the shared `DateRangeFilterValue` for Monitor's own toolbar-
+   level filter — see PROJECT_SUMMARY.md's "toolbar date filter" entry):
+   every card here still only ever offers the default four options
+   (Today/Yesterday/Last 7 days/Custom — `DATE_RANGE_FILTER_OPTIONS`,
+   unchanged), and this file's `Record<AgentDashboardDateRange, ...>`
+   per-range lookups (`PRODUCTIVITY_DATA_BY_RANGE`, etc.) are exhaustively
+   keyed on exactly those four — widening the alias to the full, wider
+   base type would force two more (unreachable, since `"last30"`/`"last90"`
+   are never actually offered here) entries into every one of them. */
 
-const DATE_FILTER_OPTIONS: { value: AgentDashboardDateRange; label: string }[] = [
-  { value: "today",     label: "Today" },
-  { value: "yesterday", label: "Yesterday" },
-  { value: "last7",     label: "Last 7 days" },
-  { value: "custom",    label: "Custom" },
-];
-
-function DateFilterChip({ onValueChange }: { onValueChange?: (value: AgentDashboardDateRange) => void }) {
-  const [open, setOpen] = React.useState(false);
-  const [value, setValue] = React.useState<AgentDashboardDateRange>("today");
-  const [customRange, setCustomRange] = React.useState<DateRangePickerProps["value"]>(undefined);
-
-  const selectedLabel = DATE_FILTER_OPTIONS.find((o) => o.value === value)?.label ?? "";
-
-  const handleValueChange = (v: AgentDashboardDateRange) => {
-    setValue(v);
-    onValueChange?.(v);
-  };
-
-  return (
-    <Popover
-      open={open}
-      onOpenChange={setOpen}
-      placement="bottom"
-      content={
-        <div className="flex flex-col gap-3 p-3 w-[260px]">
-          <RadioGroup value={value} onValueChange={(v) => handleValueChange(v as AgentDashboardDateRange)}>
-            {DATE_FILTER_OPTIONS.map((option) => (
-              <RadioGroupItem key={option.value} value={option.value} label={option.label} />
-            ))}
-          </RadioGroup>
-          {value === "custom" && (
-            <DateRangePicker value={customRange} onChange={setCustomRange} placeholder="Select date range" />
-          )}
-        </div>
-      }
-    >
-      <button type="button" className={cn(filterChipVariants({ variant: "default" }), "rounded-lyra-md")}>
-        <span className="inline-flex items-baseline gap-1">
-          <span className="lyra-body-md-emphasis whitespace-nowrap">Date:</span>
-          <span className="lyra-body-md truncate">{selectedLabel}</span>
-        </span>
-        <ChevronDown className={cn("h-3.5 w-3.5 flex-shrink-0 transition-transform", open && "rotate-180")} strokeWidth={1.5} aria-hidden="true" />
-      </button>
-    </Popover>
-  );
-}
+export type AgentDashboardDateRange = Exclude<DateRangeFilterValue, "last30" | "last90">;
 
 /* ── Productivity (agent state duration bars + ring chart) ── */
 
@@ -305,7 +281,7 @@ function PerformanceBreakdownCard() {
       variant="neutral-subtle"
       headerTitle="Productivity"
       headerIcon={<Icon icon={Gauge} size="md" background="info" shape="rounded" decorative />}
-      headerActions={<DateFilterChip onValueChange={setDateFilter} />}
+      headerActions={<DateRangeFilterChip onValueChange={(v) => setDateFilter(v as AgentDashboardDateRange)} />}
     >
       <div className="flex flex-col gap-4 px-4 pb-4">
         {PRODUCTIVITY_STATUS_META.map((meta) => {
@@ -440,7 +416,7 @@ function PerformanceSummaryCard() {
       variant="neutral-subtle"
       headerTitle="Performance"
       headerIcon={<Icon icon={TrendingUp} size="md" background="success" shape="rounded" decorative />}
-      headerActions={<DateFilterChip onValueChange={setDateFilter} />}
+      headerActions={<DateRangeFilterChip onValueChange={(v) => setDateFilter(v as AgentDashboardDateRange)} />}
     >
       <div className="flex flex-col gap-3 px-4 pb-4">
         <div className="flex items-center justify-between">
@@ -592,7 +568,7 @@ function ContactHistoryCard({ onRedial }: ContactHistoryCardProps) {
     <DashboardCard
       variant="neutral-subtle"
       headerTitle="Contact History"
-      headerActions={<DateFilterChip onValueChange={setDateFilter} />}
+      headerActions={<DateRangeFilterChip onValueChange={(v) => setDateFilter(v as AgentDashboardDateRange)} />}
     >
       {entries.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 px-4 py-10 text-center">
@@ -676,7 +652,7 @@ export function AgentDashboard({
   className,
 }: AgentDashboardProps) {
   return (
-    <div className={cn("w-full max-w-[1200px] mx-auto lyra-container-grid-wrap", className)}>
+    <DashboardTemplate className={className}>
       <h1 className="lyra-heading-2xl text-lyra-fg-default">
         Good {getGreetingPeriod()}, {agentFirstName}
       </h1>
@@ -697,6 +673,6 @@ export function AgentDashboard({
         <PerformanceSummaryCard />
         <PerformanceBreakdownCard />
       </div>
-    </div>
+    </DashboardTemplate>
   );
 }

@@ -31,6 +31,12 @@ export interface AutocompleteProps {
   emptyMessage?: string;
   className?: string;
   id?: string;
+  /**
+   * Field height. "md" (36px, default) or "sm" (32px) for dense contexts.
+   * Only the closed field shrinks — the open dropdown's rows stay
+   * full-size, same as `Select`'s trigger-only sizing.
+   */
+  size?: "sm" | "md";
 }
 
 /* ── Component ── */
@@ -50,6 +56,7 @@ const Autocomplete = React.forwardRef<HTMLDivElement, AutocompleteProps>(
     emptyMessage = "No Items Found",
     className,
     id,
+    size = "md",
   }, ref) => {
     const autoId   = React.useId();
     const inputId  = id ?? autoId;
@@ -140,7 +147,8 @@ const Autocomplete = React.forwardRef<HTMLDivElement, AutocompleteProps>(
     };
 
     const inputShell = cn(
-      "relative flex h-9 w-full items-center rounded-lyra-sm border lyra-body-md transition-colors",
+      "relative flex w-full items-center rounded-lyra-sm border lyra-body-md transition-colors",
+      size === "sm" ? "h-8" : "h-9",
       "bg-lyra-bg-field text-lyra-fg-default",
       "border-lyra-border-strong hover:border-lyra-state-border-hover-neutral",
       open && "border-lyra-border-active ring-2 ring-lyra-border-active/20",
@@ -234,7 +242,7 @@ const Autocomplete = React.forwardRef<HTMLDivElement, AutocompleteProps>(
                   aria-label={label ?? "Options"}
                   menuRole="listbox"
                   itemRole="option"
-                  className="max-h-60 overflow-y-auto"
+                  className="max-h-60"
                   items={filtered.map((option) => ({
                     id: option.value,
                     label: option.label,

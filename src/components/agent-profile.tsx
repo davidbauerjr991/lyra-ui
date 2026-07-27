@@ -334,6 +334,11 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
                    a search row above the list warrants one step above sm. */
                 "z-[10001] w-64"
               )}
+              // The search row and Menu below both already own their full
+              // padding end to end — Popover's default 16px body inset
+              // would double up on the search row and inset Menu's own
+              // edge-to-edge rows.
+              bodyPadding={false}
               content={
                 // Radix's avoidCollisions (on by default) only repositions
                 // the popover — it flips/shifts to whichever side has more

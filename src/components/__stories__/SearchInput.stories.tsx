@@ -10,6 +10,10 @@ const meta: Meta<typeof SearchInput> = {
   argTypes: {
     disabled: { control: "boolean" },
     placeholder: { control: "text" },
+    /** "sm" (32px) is for dense contexts — a table toolbar's quick search
+     *  row is the motivating case — vs. the "md" (36px) default every
+     *  other field in the library uses. */
+    size: { control: "select", options: ["sm", "md"], name: "Size" },
   },
 };
 
@@ -21,6 +25,7 @@ type Story = StoryObj<typeof SearchInput>;
 export const Default: Story = {
   args: {
     placeholder: "Search",
+    size: "md",
   },
   render: (args) => {
     const [value, setValue] = useState("");

@@ -22,6 +22,16 @@ import { cn } from "../lib/utils";
    two different jobs — keeps DonutChart reusable for any "ring + external
    legend/breakdown" layout, not just this one card's exact look.
 
+   `centerLabel`/`centerValue` render a headline caption/figure centered
+   inside the ring — the "counter donut" pattern (a queue count, a
+   callback total, an SLA percentage) rather than an external legend.
+   Both are a plain absolutely-positioned DOM overlay (`pointer-events-
+   none` so it never intercepts the ring's own hover/tooltip), not an
+   ECharts `graphic` element — real text picking up theme/typography CSS
+   for free beats re-deriving the canvas color-resolution dance below just
+   to draw two lines of centered text. Omit `centerValue` for a plain ring
+   with nothing inside it (the original, still-default behavior).
+
    **Canvas color gotcha:** ECharts renders to `<canvas>`, and the Canvas 2D
    API can't resolve CSS custom properties the way DOM/CSSOM styles can —
    `ctx.fillStyle = "var(--lyra-color-status-success-strong)"` is silently
@@ -54,10 +64,14 @@ export interface DonutChartProps extends React.HTMLAttributes<HTMLDivElement> {
   outerRadius?: string;
   /** Show the built-in hover tooltip. Set false when a consumer's own legend already surfaces every value. Default `true`. */
   showTooltip?: boolean;
+  /** Caption shown above `centerValue`, inside the ring (e.g. `"Positive"`, `"Callbacks"`). Ignored if `centerValue` is unset. */
+  centerLabel?: string;
+  /** Headline figure shown centered inside the ring (e.g. `"58%"`, `"13"`) — the "counter donut" / "big number in a ring" pattern (queue counts, SLA percentages, sentiment breakdowns). A plain DOM overlay, not an ECharts `graphic` element, so it's real text that inherits theme/typography CSS for free instead of needing its own canvas color resolution. Omit for a plain ring with no center content. */
+  centerValue?: string;
 }
 
 const DonutChart = React.forwardRef<HTMLDivElement, DonutChartProps>(
-  ({ data, innerRadius = "65%", outerRadius = "95%", showTooltip = true, className, ...props }, ref) => {
+  ({ data, innerRadius = "65%", outerRadius = "95%", showTooltip = true, centerLabel, centerValue, className, ...props }, ref) => {
     const themeVersion = useThemeVersion();
 
     const option: EChartsOption = React.useMemo(
@@ -98,8 +112,18 @@ const DonutChart = React.forwardRef<HTMLDivElement, DonutChartProps>(
     );
 
     return (
-      <div ref={ref} className={cn("h-full w-full", className)} {...props}>
+      <div ref={ref} className={cn("relative h-full w-full", className)} {...props}>
         <Chart option={option} />
+        {centerValue && (
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+            {centerLabel && (
+              <span className="lyra-body-sm-emphasis text-lyra-fg-secondary uppercase tracking-wide">
+                {centerLabel}
+              </span>
+            )}
+            <span className="lyra-heading-lg text-lyra-fg-default">{centerValue}</span>
+          </div>
+        )}
       </div>
     );
   }

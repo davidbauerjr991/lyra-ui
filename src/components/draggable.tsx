@@ -190,6 +190,15 @@ export interface DraggableProps {
   showHeaderControls?: boolean;
   /** Prevent the variant from being toggled via the header button */
   lockVariant?: boolean;
+  /**
+   * Show the docked-mode left-edge resize handle (default: true). Set to
+   * false when there's nothing docked beside this panel to resize into —
+   * e.g. it's taking over the full width of its container on its own —
+   * so there's no dead cursor-ew-resize strip implying a drag that
+   * wouldn't have anything to shrink/grow against. Docked mode only; float
+   * mode's corner resize is unaffected.
+   */
+  dockedResizable?: boolean;
   /** Called when width changes via resize */
   onWidthChange?: (width: number) => void;
   /** Called when resize drag starts/ends */
@@ -220,6 +229,7 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
     renderHeaderControls,
     showHeaderControls = true,
     lockVariant = false,
+    dockedResizable = true,
     onWidthChange,
     onResizeStateChange,
     onInteract,
@@ -235,6 +245,35 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
 
     // Sync when defaultHeight changes (e.g. viewport resize)
     React.useEffect(() => { setHeight(defaultHeight); }, [defaultHeight]);
+
+    // `BuiltInHeaderControls` below (the grip/dock overlay used when a
+    // consumer doesn't supply `renderHeaderControls`) needs to know the
+    // ACTUAL rendered height of whatever `children`'s first element is —
+    // `Draggable` doesn't own or render that header itself (`children` is
+    // generic `React.ReactNode`; convention only, not enforcement, decides
+    // that the first child acts as the header — see the `pl-7` comment
+    // below), so it can't just assume a fixed number matches it. A
+    // hardcoded height here previously went stale the moment
+    // `container-header.tsx`'s own padding changed elsewhere, silently
+    // drifting the overlay out of vertical alignment with the real header
+    // underneath it (see PROJECT_SUMMARY.md). Measuring the real element
+    // instead means this can't drift again regardless of what padding any
+    // given header component uses, or whether a consumer swaps in an
+    // entirely different header component altogether. Skipped entirely
+    // when `renderHeaderControls` is supplied — `BuiltInHeaderControls`
+    // never renders in that case, so there's nothing for this to drive.
+    const headerContentRef = React.useRef<HTMLDivElement>(null);
+    const [headerHeight, setHeaderHeight] = React.useState(60);
+    React.useLayoutEffect(() => {
+      if (renderHeaderControls) return;
+      const headerEl = headerContentRef.current?.firstElementChild as HTMLElement | null;
+      if (!headerEl) return;
+      const update = () => setHeaderHeight(headerEl.getBoundingClientRect().height);
+      update();
+      const ro = new ResizeObserver(update);
+      ro.observe(headerEl);
+      return () => ro.disconnect();
+    }, [children, renderHeaderControls]);
 
     const dragStart   = React.useRef<{ mx: number; my: number; ox: number; oy: number; baseLeft: number; baseTop: number } | null>(null);
     const resizeStart = React.useRef<{ mx: number; my: number; w: number; h: number; left: number; top: number } | null>(null);
@@ -256,6 +295,25 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
     const latestRef = React.useRef({ variant, offset, width, height, minWidth, maxWidth, minHeight, onWidthChange });
     latestRef.current = { variant, offset, width, height, minWidth, maxWidth, minHeight, onWidthChange };
 
+    // Shared by the window-resize handler right below AND the mount/
+    // variant-change effect further down — given the panel's CURRENT
+    // on-screen rect (whatever positioned it there: the drag offset, or a
+    // consumer's own fixed top/left wrapper), returns the offset needed to
+    // bring it back fully inside the viewport, or `null` if it already fits.
+    const clampOffsetIntoViewport = (offset: { x: number; y: number }, width: number, height: number) => {
+      const rect = rootRef.current?.getBoundingClientRect();
+      if (!rect) return null;
+      const baseLeft = rect.left - offset.x;
+      const baseTop  = rect.top  - offset.y;
+      const minX = -baseLeft;
+      const minY = -baseTop;
+      const maxX = window.innerWidth  - width  - baseLeft;
+      const maxY = window.innerHeight - height - baseTop;
+      const x = Math.max(minX, Math.min(maxX, offset.x));
+      const y = Math.max(minY, Math.min(maxY, offset.y));
+      return x !== offset.x || y !== offset.y ? { x, y } : null;
+    };
+
     // Window resize (no active drag) — see "Viewport Containment" above.
     React.useEffect(() => {
       const handleResize = () => {
@@ -272,15 +330,8 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
           const newW = Math.max(minWidth, Math.min(effectiveMaxWidth, width - overflow));
           if (newW !== width) { setWidth(newW); onWidthChange?.(newW); }
         } else {
-          const baseLeft = rect.left - offset.x;
-          const baseTop  = rect.top  - offset.y;
-          const minX = -baseLeft;
-          const minY = -baseTop;
-          const maxX = window.innerWidth  - width  - baseLeft;
-          const maxY = window.innerHeight - height - baseTop;
-          const x = Math.max(minX, Math.min(maxX, offset.x));
-          const y = Math.max(minY, Math.min(maxY, offset.y));
-          if (x !== offset.x || y !== offset.y) setOffset({ x, y });
+          const corrected = clampOffsetIntoViewport(offset, width, height);
+          if (corrected) setOffset(corrected);
           const newW = Math.min(width, window.innerWidth, effectiveMaxWidth);
           const newH = Math.min(height, window.innerHeight);
           if (newW !== width)  { setWidth(newW);  onWidthChange?.(newW); }
@@ -290,6 +341,40 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
       window.addEventListener("resize", handleResize);
       return () => window.removeEventListener("resize", handleResize);
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Float position containment on mount / on every transition into float
+    // — see "Viewport Containment" above. The window-resize handler just
+    // above only self-corrects in reaction to an actual `resize` event; it
+    // does nothing about a BAD starting position on an otherwise-static
+    // viewport. That can happen even though this component enforces its own
+    // containment during drags/resizes, because the very first on-screen
+    // spot for a float panel is still whatever fixed top/left position a
+    // CONSUMER'S wrapper computes (this component only adds a `transform`
+    // offset on top of it, starting at {x:0,y:0} on every dock/undock
+    // toggle). A consumer that anchors that wrapper by subtracting the
+    // panel's own `width` from its container's remaining space can get it
+    // badly wrong right after a resize-then-redock — the container is still
+    // measured while the (possibly now much wider) panel is still occupying
+    // layout space as "docked", so its own width gets subtracted out twice,
+    // landing the panel far off-screen the instant it floats again.
+    // Reported repro: "undock -> resize panel to max width -> redock ->
+    // undock again immediately -> the draggable container is off the
+    // screen" (not draggable back on-screen since the drag handle itself is
+    // off-screen too). Rather than relying on every consumer's float-anchor
+    // math to be correct, this component now clamps itself into the
+    // viewport on every transition into float mode (including first mount),
+    // using the exact same math as the resize handler above — matching this
+    // component's own documented promise that viewport containment "does
+    // NOT depend on how a consumer positions the float wrapper."
+    React.useLayoutEffect(() => {
+      if (variant !== "float") return;
+      const corrected = clampOffsetIntoViewport(offset, width, height);
+      if (corrected) setOffset(corrected);
+      // Deliberately keyed only on `variant` — offset/width/height changes
+      // during an active drag or resize are already clamped live by those
+      // handlers themselves and shouldn't re-trigger this.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [variant]);
 
     const toggleVariant = () => {
       if (lockVariant) return;
@@ -403,9 +488,20 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
     };
 
     /* ── Built-in overlay (used when renderHeaderControls is NOT provided) ── */
-    /* h-16 = 64px matches ContainerHeader (py-5 + heading-md line-height) */
+    /* Height comes from `headerHeight` (measured above via ResizeObserver
+       against `children`'s actual first element), not a hardcoded number —
+       a previous version of this hardcoded a fixed height matching
+       `ContainerHeader`'s OWN height at the time, which silently drifted
+       out of alignment once `container-header.tsx`'s padding changed
+       elsewhere without this constant following along (see
+       PROJECT_SUMMARY.md). Measuring the real element means this can't
+       drift again, and works for any header a consumer renders as
+       `children`'s first element, not just `ContainerHeader`. */
     const BuiltInHeaderControls = (
-      <div className="absolute inset-x-0 top-0 h-16 z-20 flex items-center justify-between px-2 pointer-events-none">
+      <div
+        className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-2 pointer-events-none"
+        style={{ height: headerHeight }}
+      >
         {/* Grip — float only */}
         {variant === "float" ? (
           <div
@@ -454,6 +550,41 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
 
     const useInlineControls = !!renderHeaderControls;
 
+    // Shared between BOTH branches below, each given an explicit `key` —
+    // required now that a consumer can keep the SAME `Draggable` instance
+    // mounted across a dock/undock toggle (see PROJECT_SUMMARY.md's
+    // "remount bug" fix: previously every real consumer's own float/docked
+    // wrapper structure caused a full remount on every toggle anyway, which
+    // masked this). Without a stable `key`, React reconciles a component's
+    // children by POSITION, not identity — and the docked branch's children
+    // (`[edgeResizeHandle, headerControls?, content]`) are a DIFFERENT
+    // shape (different element type at index 0, different array length)
+    // than the float branch's (`[headerControls?, content, cornerResizeHandle]`).
+    // So even though `Draggable` itself no longer remounts, switching which
+    // of these two branches renders still silently unmounted+remounted
+    // `headerContentRef`'s own div (and `BuiltInHeaderControls`) purely
+    // because they landed at a different index — visible as the built-in
+    // grip/dock overlay briefly rendering in the wrong place immediately
+    // after a dock/undock, reported as "the containerheader buttons are
+    // weirdly positioned ... They should not change positions." Giving
+    // `headerControls`/`content` (and the two resize-handle divs, for the
+    // same reason should either ever need to coexist) stable keys lets
+    // React match them by identity across the branch switch instead, so
+    // neither one is ever needlessly torn down.
+    const headerControlsNode = !useInlineControls && showHeaderControls ? (
+      <React.Fragment key="header-controls">{BuiltInHeaderControls}</React.Fragment>
+    ) : null;
+    const contentNode = (
+      <div
+        key="content"
+        ref={headerContentRef}
+        className={cn("flex flex-col flex-1 min-h-0", variant === "float" && !useInlineControls && "[&>*:first-child]:pl-7")}
+      >
+        {useInlineControls ? renderHeaderControls!(headerControlProps) : null}
+        {children}
+      </div>
+    );
+
     /* ── Docked ── */
     if (variant === "docked") {
       return (
@@ -463,20 +594,22 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
           className={cn("relative flex flex-col h-full overflow-hidden", className)}
           onMouseDown={() => onInteract?.()}
         >
-          {/* Left edge resize handle — expands left, right side stays fixed */}
-          <div
-            onMouseDown={onLeftEdgeResizeDown}
-            className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize z-10 group/edge"
-            aria-hidden="true"
-          >
-            <div className="absolute inset-y-0 left-0 w-px bg-lyra-border-subtle group-hover/edge:bg-lyra-border-active transition-colors" />
-          </div>
+          {/* Left edge resize handle — expands left, right side stays fixed.
+              Skipped entirely when `dockedResizable` is false (nothing
+              docked beside this panel to resize into). */}
+          {dockedResizable && (
+            <div
+              key="edge-resize"
+              onMouseDown={onLeftEdgeResizeDown}
+              className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize z-10 group/edge"
+              aria-hidden="true"
+            >
+              <div className="absolute inset-y-0 left-0 w-px bg-lyra-border-subtle group-hover/edge:bg-lyra-border-active transition-colors" />
+            </div>
+          )}
 
-          {!useInlineControls && showHeaderControls && BuiltInHeaderControls}
-          <div className="flex flex-col flex-1 min-h-0">
-            {useInlineControls ? renderHeaderControls!(headerControlProps) : null}
-            {children}
-          </div>
+          {headerControlsNode}
+          {contentNode}
         </div>
       );
     }
@@ -489,15 +622,13 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
         className={cn("relative flex flex-col overflow-hidden", className)}
         onMouseDown={() => onInteract?.()}
       >
-        {!useInlineControls && showHeaderControls && BuiltInHeaderControls}
-        {/* pl-7 gives the first child's header room for the grip icon — only when using built-in overlay */}
-        <div className={cn("flex flex-col flex-1 min-h-0", !useInlineControls && "[&>*:first-child]:pl-7")}>
-          {useInlineControls ? renderHeaderControls!(headerControlProps) : null}
-          {children}
-        </div>
+        {headerControlsNode}
+        {/* pl-7 gives the first child's header room for the grip icon — only when using built-in overlay (see contentNode's className above) */}
+        {contentNode}
 
         {/* Bottom-right corner resize handle */}
         <div
+          key="corner-resize"
           onMouseDown={onCornerResizeDown}
           className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize flex items-end justify-end pb-1 pr-1 group/resize z-10"
           aria-hidden="true"

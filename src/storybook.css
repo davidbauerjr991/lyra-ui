@@ -186,18 +186,32 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  /* A lone trailing card in an odd-count row spans both columns instead
+     of sitting half-width with an empty gap beside it. See
+     lyra-tokens.css for the full explanation. */
+  .lyra-container-grid > *:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
 }
-@container (max-width: 767px) {
+@container (max-width: 768px) {
   .lyra-container-grid {
     display: flex;
     flex-direction: column;
+  }
+  /* Resets the `flex: 1 1 0%` set on children above — that's needed to
+     evenly split the ROW's width in the wide stage, but left unchecked it
+     also governs each card's HEIGHT once flex-direction is column,
+     shrinking cards toward their minimum content size. See
+     lyra-tokens.css for the full explanation. */
+  .lyra-container-grid > * {
+    flex: none;
   }
 }
 
 /* ── Form grid (CSS container query) — kept in sync with lyra-tokens.css;
    see that file for the full explanation. Same pattern as
    `.lyra-container-grid` above but with its own, narrower thresholds
-   (≤768px 2-up, ≤550px single column) for `FormTemplate`. ── */
+   (≤768px 2-up, ≤480px single column) for `FormTemplate`. ── */
 .lyra-form-grid-wrap {
   container-type: inline-size;
 }
@@ -216,33 +230,15 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-@container (max-width: 550px) {
+@container (max-width: 480px) {
   .lyra-form-grid {
     display: flex;
     flex-direction: column;
   }
-}
-
-/* ── Metric card grid (CSS container query) — kept in sync with
-   lyra-tokens.css; see that file for the full explanation. For a 3-up grid
-   of independent cards (e.g. a dashboard's metric-card row), collapsing to
-   2-up then 1-up. ── */
-.lyra-metric-card-grid-wrap {
-  container-type: inline-size;
-}
-.lyra-metric-card-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-}
-@container (max-width: 900px) {
-  .lyra-metric-card-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-@container (max-width: 500px) {
-  .lyra-metric-card-grid {
-    grid-template-columns: 1fr;
+  /* Same fix as `.lyra-container-grid`'s own stage above — see
+     lyra-tokens.css for the full explanation. */
+  .lyra-form-grid > * {
+    flex: none;
   }
 }
 
@@ -265,6 +261,11 @@
   width: 12rem;
   flex-shrink: 0;
 }
+.lyra-card-split-chart {
+  flex: 1 1 0%;
+  min-width: 0;
+  height: 420px;
+}
 @container (max-width: 480px) {
   .lyra-card-split {
     flex-direction: column;
@@ -274,6 +275,11 @@
   }
   .lyra-card-split-fixed {
     width: 100%;
+  }
+  .lyra-card-split-chart {
+    flex: none;
+    width: 100%;
+    height: 340px;
   }
 }
 
@@ -317,7 +323,7 @@
 }
 
 /* Stage 1 — sparkline below the text; row arrangement unchanged. */
-@container (max-width: 760px) {
+@container (max-width: 768px) {
   .lyra-metric-content {
     flex-direction: column;
     align-items: stretch;
@@ -328,7 +334,7 @@
 }
 
 /* Stage 2 — 2-up grid; dividers give way to a real gap. */
-@container (max-width: 560px) {
+@container (max-width: 550px) {
   .lyra-metric-row {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -365,20 +371,10 @@
   }
 }
 
-/* ── Channel tab bar (CSS container query) — kept in sync with
-   lyra-tokens.css; see that file for the full explanation. ── */
-.lyra-channel-tab-list-wrap {
-  container-type: inline-size;
-}
-@container (max-width: 480px) {
-  .lyra-channel-tab-address {
-    display: none;
-  }
-}
-@container (max-width: 320px) {
-  .lyra-channel-tab-label {
-    display: none;
-  }
+/* Single-metric override — kept in sync with lyra-tokens.css; see that
+   file for the full explanation. */
+.lyra-metric-row--single > * {
+  grid-column: 1 / -1;
 }
 
 /* ── Tab overflow (CSS container query) — kept in sync with
@@ -394,7 +390,7 @@
 .lyra-tab-overflow-wrap .lyra-tab-overflow-collapsed {
   display: none;
 }
-@container (max-width: 991px) {
+@container (max-width: 400px) {
   .lyra-tab-overflow-wrap .lyra-tab-overflow-full {
     display: none;
   }

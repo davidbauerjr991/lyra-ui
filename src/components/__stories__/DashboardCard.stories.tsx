@@ -4,6 +4,7 @@ import { DashboardCard, type DashboardCardMetric } from "../dashboard-card";
 import { DonutChart } from "../donut-chart";
 import { Icon } from "../icon";
 import { Tag } from "../tag";
+import { Button } from "../button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, useAutoFitRows } from "../table";
 import { cn } from "../../lib/utils";
 
@@ -26,6 +27,7 @@ const meta = {
     headerActions: { table: { disable: true } },
     filterChipProps: { table: { disable: true } },
     kebabMenuItems: { table: { disable: true } },
+    footer: { table: { disable: true } },
     metricVariant: { control: "select", options: ["divided", "contained"] },
     showFilterChip: { control: "boolean" },
     showKebabMenu: { control: "boolean" },
@@ -35,6 +37,7 @@ const meta = {
     showHeaderText: { control: "boolean" },
     showContainer: { control: "boolean" },
     showTrend: { control: "boolean" },
+    showFooter: { control: "boolean" },
   },
 } satisfies Meta<typeof DashboardCard>;
 
@@ -275,10 +278,13 @@ export const TableCard: Story = {
   ),
 };
 
-/* ── Header Controls ──
+/* ── Card Controls ──
+   (Renamed from "Header Controls" — `showFooter`/`footer` below aren't
+   header pieces at all, so once this story covered the card's footer too,
+   the old name no longer described what it actually exercises.)
    `showFilterChip`/`showKebabMenu`/`showHeaderIcon`/`showHeaderSubhead`/
-   `showHeaderTag`/`showHeaderText`/`showContainer` as live Storybook
-   Controls — flip them in the Controls panel below to turn each header
+   `showHeaderTag`/`showHeaderText`/`showContainer`/`showFooter` as live
+   Storybook Controls — flip them in the Controls panel below to turn each
    piece on and off on this exact rendered card (not just a static prop
    table). `contentType` goes a step further: it swaps the card's entire
    body between the four real content shapes this file demonstrates (Chart
@@ -326,19 +332,26 @@ export const TableCard: Story = {
    `sparkline` fields, which *replace* the label subhead with an arrow (or
    em dash for "flat") + percent + "vs. last week," matching the reference
    screenshot's "+12.4% vs last week" line. `metricCount` slices whichever
-   of the two arrays is active, so both controls compose. */
+   of the two arrays is active, so both controls compose.
 
-type HeaderControlsContentType = "chart" | "data" | "table" | "metric";
+   `showFooter` — a real `DashboardCard` prop (`footer`, see
+   `dashboard-card.tsx`), not a synthetic toggle: renders a "View All"
+   ghost button in its own row below the body, separated by a top border.
+   Independent of every other control here — a footer can be on with the
+   header stripped down to nothing, or off on a card with every header
+   piece showing. */
 
-const CONTENT_TYPE_HEADER: Record<HeaderControlsContentType, { title: string; icon: LucideIcon; background: "active" | "info" | "neutral" }> = {
+type CardControlsContentType = "chart" | "data" | "table" | "metric";
+
+const CONTENT_TYPE_HEADER: Record<CardControlsContentType, { title: string; icon: LucideIcon; background: "active" | "info" | "neutral" }> = {
   chart:  { title: "Activity",     icon: Clock, background: "active" },
   data:   { title: "Productivity", icon: Gauge, background: "info" },
   table:  { title: "Campaigns",    icon: List,  background: "neutral" },
   metric: { title: "Metrics",      icon: Clock, background: "active" },
 };
 
-export const HeaderControls: Story = {
-  name: "Header Controls",
+export const CardControls: Story = {
+  name: "Card Controls",
   args: {
     showFilterChip: true,
     showKebabMenu: true,
@@ -348,6 +361,7 @@ export const HeaderControls: Story = {
     showHeaderText: true,
     showContainer: true,
     showTrend: false,
+    showFooter: false,
     metricVariant: "divided",
     contentType: "chart",
     metricCount: 4,
@@ -358,7 +372,7 @@ export const HeaderControls: Story = {
     metricCount: { control: "select", options: [1, 2, 3, 4] },
   },
   render: (args) => {
-    const contentType: HeaderControlsContentType = args.contentType ?? "chart";
+    const contentType: CardControlsContentType = args.contentType ?? "chart";
     const header = CONTENT_TYPE_HEADER[contentType];
     const metricCount = args.metricCount ?? 4;
     const metricSource = args.showTrend ? METRICS_WITH_TREND : METRICS;
@@ -379,6 +393,7 @@ export const HeaderControls: Story = {
           showFilterChip={args.showFilterChip}
           showKebabMenu={args.showKebabMenu}
           showContainer={args.showContainer ?? true}
+          footer={args.showFooter ? <Button variant="ghost" size="sm">View All</Button> : undefined}
           {...(contentType === "metric"
             ? { metrics: metricSource.slice(0, metricCount), metricVariant: args.metricVariant }
             : {})}
@@ -401,7 +416,7 @@ export const HeaderControls: Story = {
    70/10/58/2 as `METRICS`), but the subhead line where "Metric Name" used
    to sit is replaced entirely by an arrow (or em dash for "flat") +
    percent + "vs. last week," colored success/warning/critical, plus a
-   Sparkline alongside it colored to match — the same "Header Controls"
+   Sparkline alongside it colored to match — the same "Card Controls"
    `showTrend` toggle applies this, this is just the always-on dedicated
    example. The last example (`variant="neutral-subtle"`) shows the same
    divided metrics against a real `bg-lyra-bg-surface-container-subtle`

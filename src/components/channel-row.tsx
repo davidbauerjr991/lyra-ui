@@ -284,17 +284,21 @@ const CHANNEL_TYPE_META: Record<ChannelType, { icon: React.ReactNode; label: str
  * by the same piece of parent state (e.g. `ActiveInteraction.currentChannelId`)
  * so clicking a tab here and clicking a row on the card either update the
  * same thing. Not a full "tab list" wrapper — the consumer still renders its
- * own `<TabList>` around one `ChannelTab` per channel, same as it would for
- * any other set of `Tab`s — but that `<TabList>` should carry the
- * `lyra-channel-tab-list-wrap` class (see `lyra-tokens.css`'s "Channel tab
- * bar" section) so each tab can shed its own address/label text once the
- * bar's own available width gets tight, rather than wrapping/scrolling. A
- * `Tooltip` on every tab (icon-only or not) surfaces the full "Label
+ * own `<TabList>` around one `ChannelTab` per channel, same as any other set
+ * of `Tab`s, and that `<TabList>` should just turn on `overflowMenu` like any
+ * other tab bar (per its own standing default — see `tabs.tsx`) — no special
+ * wrapper class needed. This used to shed each tab's own address/label text
+ * at its own narrower 480px/320px breakpoints via a dedicated
+ * `.lyra-channel-tab-list-wrap` container query instead of collapsing into
+ * an overflow menu; that bespoke behavior was removed in favor of the
+ * standard "active tab + N More" pattern every other `TabList` already uses
+ * (see PROJECT_SUMMARY.md's "ChannelTab no longer has its own collapse
+ * strategy" entry). A `Tooltip` on every tab still surfaces the full "Label
  * address" text (no divider between the two — see `address`'s own doc
- * comment) regardless of which stage the bar has collapsed to, plus a
- * second, smaller line with this channel's message count and conversation
- * id (`messageCount`/`interactionId`) when either is on hand — info that
- * never appears on the tab face itself, only in the tooltip. */
+ * comment), plus a second, smaller line with this channel's message count
+ * and conversation id (`messageCount`/`interactionId`) when either is on
+ * hand — info that never appears on the tab face itself, only in the
+ * tooltip. */
 export interface ChannelTabProps {
   /** Determines this tab's icon, label, and default kebab menu items — same
    *  per-type choices as the matching `*ChannelRow`. */
@@ -385,12 +389,9 @@ const ChannelTab: React.FC<ChannelTabProps> = ({
         menuAriaLabel={`More options for ${meta.label}`}
         className={className}
       >
-        {/* Hidden first (icon-only) at the bar's narrowest container-query
-            stage — see the "Channel tab bar" section in `lyra-tokens.css`.
-            The `Tooltip` above still surfaces this text regardless. */}
-        <span className="lyra-channel-tab-label">{meta.label}</span>
+        <span>{meta.label}</span>
         {address && (
-          <span className="ml-1 font-normal text-lyra-fg-disabled lyra-channel-tab-address">{address}</span>
+          <span className="ml-1 font-normal text-lyra-fg-disabled">{address}</span>
         )}
       </Tab>
     </Tooltip>

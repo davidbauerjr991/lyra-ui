@@ -337,7 +337,12 @@
      1. (≤991px) 2-up grid — `display: grid; grid-template-columns:
         repeat(2, minmax(0, 1fr))`, wrapping a 3rd/4th card onto a second
         row instead of squeezing all of them into a still-too-narrow row.
-     2. (≤767px) Full single column — back to `display: flex;
+        If the total card count is odd, the trailing lone card (last
+        child, odd position — `:last-child:nth-child(odd)`, true for
+        exactly this case regardless of how many cards there are) spans
+        both columns (`grid-column: 1 / -1`) instead of sitting half-width
+        with an empty gap beside it.
+     2. (≤768px) Full single column — back to `display: flex;
         flex-direction: column`, since at this point the whole row
         genuinely needs to *become* a column (what `flex-direction` models
         directly), not just a track-count change.
@@ -381,11 +386,34 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  /* A lone trailing card in an odd-count row (last child AND at an odd
+     1-indexed position — the only way a child ends up alone in the final
+     row of a 2-column grid, regardless of the total count) spans both
+     columns instead of sitting half-width with an empty gap beside it. */
+  .lyra-container-grid > *:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
 }
-@container (max-width: 767px) {
+@container (max-width: 768px) {
   .lyra-container-grid {
     display: flex;
     flex-direction: column;
+  }
+  /* `.lyra-container-grid > *`'s own `flex: 1 1 0%` (above) exists so
+     cards evenly split the ROW's width in the wide, flex-row stage — but
+     that rule is otherwise unconditional, so without this override it
+     stays in effect here too. Once `flex-direction` flips to `column`,
+     the main axis becomes vertical, and `flex-basis: 0%` then governs
+     each card's HEIGHT instead: cards shrink toward their minimum content
+     height (ignoring whatever height they'd normally render at) rather
+     than keeping their natural size, because flex-basis on the main axis
+     always wins over a plain `height` property. `flex: none` resets
+     grow/shrink/basis back to their initial values for this stage only,
+     so a stacked card just uses its own intrinsic/explicit height again —
+     confirmed via the `Foundations/Breakpoints` page's `ContainerGrid`
+     demo, where cards visibly shrank at this stage before this fix. */
+  .lyra-container-grid > * {
+    flex: none;
   }
 }
 
@@ -395,11 +423,11 @@
    Same mechanism as `.lyra-container-grid` above (container-type boundary +
    a flex-row that collapses in two ordered stages), used by `FormTemplate`
    (form-template.tsx) — but with its own, narrower thresholds: ≤768px for
-   the 2-up grid stage (vs. `.lyra-container-grid`'s ≤991px) and ≤550px for
-   the single-column stage (vs. its ≤767px). Kept as its own separate class
-   rather than changing `.lyra-container-grid`'s thresholds directly so
-   `AgentDashboard`'s card rows (which want the original 991/767 thresholds)
-   are unaffected. */
+   the 2-up grid stage (vs. `.lyra-container-grid`'s ≤991px) and ≤480px for
+   the single-column stage (vs. `.lyra-container-grid`'s ≤768px). Kept as
+   its own separate class rather than changing `.lyra-container-grid`'s
+   thresholds directly so `AgentDashboard`'s card rows (which want the
+   original 991/768 thresholds) are unaffected. */
 .lyra-form-grid-wrap {
   container-type: inline-size;
 }
@@ -418,50 +446,19 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-@container (max-width: 550px) {
+@container (max-width: 480px) {
   .lyra-form-grid {
     display: flex;
     flex-direction: column;
   }
-}
-
-/* ════════════════════════════════════════════════════
-   Metric card grid (CSS container query)
-   ════════════════════════════════════════════════════
-   For a grid of independent cards (e.g. a dashboard's row of metric-card
-   widgets) meant to sit 3-up from the start — not a small fixed set of
-   summary cards that stay in one row until they don't fit (`.lyra-
-   container-grid` above). Reacts to the ACTUAL AVAILABLE WIDTH of the grid's
-   own container, not the browser window, same reasoning as every other
-   container-query class on this page.
-
-   Usage: `.lyra-metric-card-grid-wrap` on the wrapper, `.lyra-metric-card-
-   grid` on the grid itself (two different elements — a container can't
-   query its own size):
-     <div class="lyra-metric-card-grid-wrap">
-       <div class="lyra-metric-card-grid"> ...cards... </div>
-     </div>
-
-   Stays `display: grid` throughout (unlike `.lyra-container-grid`'s flex-row
-   → grid → flex-column toggle) — a 3-up card grid already wraps extra cards
-   onto additional rows at every stage, so there's no "everything fits in
-   one row" state to model separately; only the column count changes. */
-.lyra-metric-card-grid-wrap {
-  container-type: inline-size;
-}
-.lyra-metric-card-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-}
-@container (max-width: 900px) {
-  .lyra-metric-card-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-@container (max-width: 500px) {
-  .lyra-metric-card-grid {
-    grid-template-columns: 1fr;
+  /* Same fix as `.lyra-container-grid`'s own ≤768px stage above — see
+     that comment for the full explanation. `.lyra-form-grid > *`'s
+     `flex: 1 1 0%` (above) is only meant for the wide flex-row stage; left
+     unchecked here it also governs each field's HEIGHT once
+     flex-direction is column, shrinking it toward its minimum content
+     size instead of its natural height. */
+  .lyra-form-grid > * {
+    flex: none;
   }
 }
 
@@ -480,7 +477,7 @@
        <div class="lyra-card-split">
          <div>...stat blocks...</div>
          <Separator orientation="vertical" class="lyra-card-split-divider" />
-         <div>...chart/empty state...</div>
+         <div class="lyra-card-split-chart">...chart/empty state...</div>
        </div>
      </div> */
 .lyra-card-split-wrap {
@@ -503,6 +500,43 @@
   width: 12rem;
   flex-shrink: 0;
 }
+/* Optional — for a region that needs an explicit pixel height (e.g. a
+   `Chart`/`BarChart`, which needs a real height to render into — see
+   chart.tsx; `align-items: stretch` alone only stretches it to match
+   whatever its sibling's own height happens to be, which isn't
+   necessarily enough room for legible axes/legend).
+
+   Also owns `flex-grow`/`flex-basis` itself (not left to a `flex-1`
+   utility class on the consumer's own element) for a specific reason: in
+   the row state this needs `flex: 1 1 0%` so it fills the remaining row
+   *width* beside `.lyra-card-split-fixed` — but `flex-basis` is what
+   actually governs a flex item's size on the main axis, and once
+   `.lyra-card-split` stacks to a column, the main axis becomes vertical,
+   so a `flex-basis: 0%` left in place would override this class's own
+   explicit `height` right back down toward zero (the parent column has
+   no defined height to `flex-grow` into, since it's sized only by
+   summing its own children) — exactly what happened the first time this
+   was tried with `className="lyra-card-split-chart flex min-w-0 flex-1"`
+   on the consumer side: the chart rendered into a near-collapsed box
+   regardless of what height this class specified, all its categories
+   crammed into a few visible pixels. `flex: none` once stacked (below)
+   is what actually fixes that — the explicit `height` here is only ever
+   honored when nothing else is fighting it for the main axis.
+
+   420px in the row state; 340px once stacked — both checked against
+   `DashboardCard`'s own `max-h-[600px]` body cap (dashboard-card.tsx):
+   420px (row) is comfortably under it since it's the row's only
+   height-defining child; 340px (stacked) is checked against the *sum*
+   with `.lyra-card-split-fixed`'s own stat-block height (now sitting
+   above it, not beside it) plus this section's own gap/padding — the
+   incident this was added for (Outbound-Campaigns' Monitor "Outbound
+   Email" card) hit exactly that sum exceeding 600px once its chart was
+   hardcoded to a flat 420px in every state. */
+.lyra-card-split-chart {
+  flex: 1 1 0%;
+  min-width: 0;
+  height: 420px;
+}
 @container (max-width: 480px) {
   .lyra-card-split {
     flex-direction: column;
@@ -512,6 +546,11 @@
   }
   .lyra-card-split-fixed {
     width: 100%;
+  }
+  .lyra-card-split-chart {
+    flex: none;
+    width: 100%;
+    height: 340px;
   }
 }
 
@@ -527,12 +566,12 @@
    (explicitly requested in that order, not something to collapse into a
    single breakpoint):
 
-     1. (≤760px) The sparkline moves from beside each metric's value/trend
+     1. (≤768px) The sparkline moves from beside each metric's value/trend
         text to below it (`.lyra-metric-content` row → column). The row of
         metrics itself is untouched — still one flex row, however many
         metrics there are — this stage only reclaims the width a
         side-by-side sparkline was taking.
-     2. (≤560px) The row becomes a strict 2-column grid (`.lyra-metric-row`
+     2. (≤550px) The row becomes a strict 2-column grid (`.lyra-metric-row`
         flex → grid, `repeat(2, minmax(0,1fr))`), wrapping 3-4 metrics onto
         a second row. A flat `Separator` sibling can't represent "between
         column 1 and 2" *and* "between row 1 and 2" at once, so both
@@ -545,10 +584,11 @@
         back ("divided" only; "contained" metrics are already separated by
         their own border).
 
-   Reuses `.lyra-container-grid`'s 761px as this system's *widest*
-   threshold (rounded to 760px) for consistency — both are "collapse once
-   space gets tight" at heart — then adds two narrower thresholds of its
-   own for the extra stages a plain row-of-cards doesn't need.
+   Stage 1's 768px now matches `.lyra-container-grid`'s own single-column
+   threshold exactly (both are "collapse once space gets tight" at heart),
+   rather than an independently-rounded value — kept as its own separate
+   `@container` rule regardless, since this system layers two more,
+   narrower stages on top that a plain row-of-cards doesn't need.
 
    Usage: `.lyra-metric-row-wrap` goes on the metric row's own container
    boundary (`DashboardCard` puts it on the `Container` div itself when
@@ -607,7 +647,7 @@
 }
 
 /* Stage 1 — sparkline below the text; row arrangement unchanged. */
-@container (max-width: 760px) {
+@container (max-width: 768px) {
   .lyra-metric-content {
     flex-direction: column;
     align-items: stretch;
@@ -618,7 +658,7 @@
 }
 
 /* Stage 2 — 2-up grid; dividers give way to a real gap. */
-@container (max-width: 560px) {
+@container (max-width: 550px) {
   .lyra-metric-row {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -662,60 +702,31 @@
   }
 }
 
-/* ════════════════════════════════════════════════════
-   Channel tab bar (CSS container query)
-   ════════════════════════════════════════════════════
-   Same rationale as `.lyra-container-grid-wrap`/`.lyra-metric-row-wrap`
-   above, applied to the `ChannelTab` bar (`channel-row.tsx`,
-   `AgentNextGenTemplate.stories.tsx`'s `activeInteraction` block): the tab
-   bar can end up narrow for reasons that have nothing to do with the
-   browser window (the side panel opening, the LeftNav expanding), so each
-   tab needs to shed its own text before the bar starts wrapping/scrolling
-   — not react to the viewport. Two ordered stages as width shrinks:
-
-     1. (≤480px) Each tab's "| address" (`.lyra-channel-tab-address`,
-        the phone number/email address/WhatsApp handle after the type
-        label) hides. The type label and icon stay — a tab still reads as
-        "SMS", just without the number that made two same-type tabs
-        distinguishable. That distinguishing info moves to the tab's
-        `Tooltip` instead (see `ChannelTab`), which is unaffected by any of
-        this — it's rendered in a Radix `Portal`, outside this container's
-        DOM subtree entirely.
-     2. (≤320px) The type label itself (`.lyra-channel-tab-label`) also
-        hides, leaving icon + kebab only — the narrowest a tab can get
-        while still being clickable/distinguishable by icon+Tooltip alone.
-        `max-width: 320px` is narrower than stage 1's `480px`, so both
-        rules are simultaneously true here — no need to re-hide the
-        address, it's already gone.
-
-   Usage: `.lyra-channel-tab-list-wrap` goes on the `TabList` that wraps
-   the `ChannelTab`s (passed via its own `className` prop — `TabList`
-   doesn't need to know this class exists); `.lyra-channel-tab-label`/
-   `.lyra-channel-tab-address` go on the two text spans inside `ChannelTab`
-   itself, queried against that same `TabList` ancestor. */
-.lyra-channel-tab-list-wrap {
-  container-type: inline-size;
-}
-
-/* Stage 1 — address hides; icon + type label remain. */
-@container (max-width: 480px) {
-  .lyra-channel-tab-address {
-    display: none;
-  }
-}
-
-/* Stage 2 — type label also hides; icon (+ kebab) only. */
-@container (max-width: 320px) {
-  .lyra-channel-tab-label {
-    display: none;
-  }
+/* Single-metric override — a row of exactly one metric needs to always
+   fill the full row width, at every stage. Without this, Stage 2's
+   unconditional `grid-template-columns: repeat(2, minmax(0, 1fr))` (above)
+   still applies even with only one child in the row: default CSS Grid
+   auto-placement fills column 1 and simply leaves column 2 empty rather
+   than stretching a lone item across both — confirmed live via a 1-up
+   "contained" metric card rendering at roughly half width (with a
+   truncated subhead) well above the 360px Stage 3 threshold `--compact`
+   covers. No `@container` guard needed: `grid-column` is a no-op outside
+   grid mode, so this is harmless in the wide flex-row stage (where a lone
+   item already stretches via its own `flex: 1`) and only takes effect once
+   Stage 2 or 3 actually switches the row to `display: grid`. Set by
+   `MetricRow` when `metrics.length === 1` — coexists fine with
+   `--compact` (also true for a 1-item row, since `isCompact` is
+   `metrics.length <= 2`): whichever column count the row ends up with,
+   `1 / -1` always spans all of them. */
+.lyra-metric-row--single > * {
+  grid-column: 1 / -1;
 }
 
 /* ════════════════════════════════════════════════════
    Tab overflow (CSS container query)
    ════════════════════════════════════════════════════
    `TabList`'s native `overflowMenu` prop (`tabs.tsx`): once its own actual
-   available width drops to 991px or below, collapse the tab row down to
+   available width drops to 400px or below, collapse the tab row down to
    exactly two full-width slots — the active tab, and a "{n} More" dropdown
    holding every other tab in its original order (e.g. a record detail
    panel's Overview/Details/Tickets/Accounts/... tab bar). Same "react to
@@ -723,15 +734,19 @@
    `.lyra-container-grid-wrap`/`.lyra-metric-row-wrap`/`.lyra-channel-tab-
    list-wrap` above — a docked side panel, a narrow card, or any other
    layout squeeze can make this width small for reasons that have nothing
-   to do with the browser window.
+   to do with the browser window. (Originally 991px; lowered to 400px per
+   explicit request once `Tab`'s own shrink-disabling + `max-w-[22ch]` cap
+   — see tabs.tsx — gave the "wide" row's chevron/scroll state real room to
+   work below the old threshold instead of the row always collapsing
+   first.)
 
    `.lyra-tab-overflow-wrap` (the outer wrapper `TabList` renders only when
    `overflowMenu` is set) owns the container query boundary; the real
    `role="tablist"` row gets `.lyra-tab-overflow-full` (hidden below
-   991px — it stays in the DOM so its buttons can still be `.click()`ed
+   400px — it stays in the DOM so its buttons can still be `.click()`ed
    programmatically when a dropdown entry is chosen, same as this file's
    own arrow-key navigation does); the two-slot collapsed row gets
-   `.lyra-tab-overflow-collapsed` (the reverse — hidden above 991px, shown
+   `.lyra-tab-overflow-collapsed` (the reverse — hidden above 400px, shown
    as a flex row below it).
 
    Both rules are scoped with the `.lyra-tab-overflow-wrap` ancestor
@@ -754,7 +769,7 @@
 .lyra-tab-overflow-wrap .lyra-tab-overflow-collapsed {
   display: none;
 }
-@container (max-width: 991px) {
+@container (max-width: 400px) {
   .lyra-tab-overflow-wrap .lyra-tab-overflow-full {
     display: none;
   }

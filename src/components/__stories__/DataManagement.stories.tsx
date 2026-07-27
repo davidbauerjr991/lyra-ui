@@ -557,7 +557,6 @@ function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, sho
           title={showTitle ? "Title" : undefined}
           searchQuery={showQuickSearch ? searchQuery : undefined}
           onSearchChange={showQuickSearch ? setSearchQuery : undefined}
-          searchPlaceholder="Quick Search"
           actionDefs={[
             ...(showRefresh ? [{ key: "refresh", label: "Refresh", icon: <RefreshCw className="h-4 w-4" strokeWidth={1.5} /> }] : []),
             ...(showEdit ? [{ key: "edit", label: "Edit", icon: <Pencil className="h-4 w-4" strokeWidth={1.5} />, disabled: selectedRows.size === 0 }] : []),

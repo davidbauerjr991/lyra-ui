@@ -10,6 +10,11 @@ const meta: Meta<typeof EmailInput> = {
     layout: "padded",
     backgrounds: { default: "lyra-shell" },
   },
+  argTypes: {
+    /** "sm" (32px) is for dense contexts vs. the "md" (36px) default every
+     *  other field in the library uses. */
+    size: { control: "select", options: ["sm", "md"], name: "Size" },
+  },
 };
 
 export default meta;
@@ -17,11 +22,14 @@ type Story = StoryObj<typeof EmailInput>;
 
 export const Default: Story = {
   name: "Default",
-  render: () => {
+  args: {
+    size: "md",
+  },
+  render: (args) => {
     const [value, setValue] = useState("");
     return (
       <div className="w-80">
-        <EmailInput label="Email Address" value={value} onChange={setValue} />
+        <EmailInput label="Email Address" value={value} onChange={setValue} size={args.size} />
       </div>
     );
   },

@@ -186,6 +186,8 @@ export { DonutChart } from "./components/donut-chart";
 export type { DonutChartProps, DonutChartDatum } from "./components/donut-chart";
 export { Sparkline } from "./components/sparkline";
 export type { SparklineProps } from "./components/sparkline";
+export { BarChart } from "./components/bar-chart";
+export type { BarChartProps, BarChartSeries } from "./components/bar-chart";
 
 /* ── Dashboard Card ── */
 export { DashboardCard, Metric } from "./components/dashboard-card";
@@ -197,7 +199,20 @@ export type { EmptyStateProps } from "./components/empty-state";
 export { DashboardQueue } from "./components/dashboard-queue";
 export type { DashboardQueueProps, DashboardQueueItem, DashboardQueueVariant } from "./components/dashboard-queue";
 
-/* ── Agent Dashboard (the Agent Next Gen "Home" tab template) ── */
+/* ── Dashboard Template (the generic container/width/breakpoint shell —
+   NOT AgentDashboard, which is one specific persona's fully-baked content;
+   see dashboard-template.tsx's own doc comment) ── */
+export { DashboardTemplate } from "./components/dashboard-template";
+export type { DashboardTemplateProps } from "./components/dashboard-template";
+
+/* ── Date Range Filter Chip (a single-select, radio-popover date-range
+   filter styled as a FilterChip trigger — extracted out of AgentDashboard,
+   which used to define this locally; see date-range-filter-chip.tsx's own
+   doc comment) ── */
+export { DateRangeFilterChip, DATE_RANGE_FILTER_OPTIONS } from "./components/date-range-filter-chip";
+export type { DateRangeFilterChipProps, DateRangeFilterValue, DateRangeFilterOption } from "./components/date-range-filter-chip";
+
+/* ── Agent Dashboard (the Agent Next Gen "Home" tab's specific content, built on DashboardTemplate) ── */
 export {
   AgentDashboard,
   AgentDashboardQueueDrilldown,

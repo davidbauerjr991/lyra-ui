@@ -470,6 +470,9 @@ export const WidthScale: Story = {
           placement="bottom"
           align="start"
           showArrow={false}
+          // Menu's rows are edge-to-edge with their own p-1 inset — opt out
+          // of Popover's default 20px body padding.
+          bodyPadding={false}
           header={
             <div className="px-3 py-2.5 border-b border-lyra-border-subtle">
               <Input
@@ -506,6 +509,9 @@ export const WidthScale: Story = {
           align="start"
           showArrow={false}
           maxWidth="320px"
+          // Menu's rows are edge-to-edge with their own p-2 inset — opt out
+          // of Popover's default 20px body padding.
+          bodyPadding={false}
           header={
             <div className="flex items-center justify-between border-b border-lyra-border-subtle px-4 py-3">
               <span className="lyra-body-lg-emphasis text-lyra-fg-default">New Outbound</span>

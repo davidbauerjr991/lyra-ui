@@ -8,6 +8,7 @@ import { Button } from "../button";
 import { Separator } from "../separator";
 import { Switch } from "../switch";
 import { ErrorIcon } from "../icons/error-icon";
+import { cn } from "../../lib/utils";
 
 const meta: Meta<typeof Input> = {
   title: "Custom Primitives/Input",
@@ -19,6 +20,10 @@ const meta: Meta<typeof Input> = {
   },
   argTypes: {
     required: { control: "boolean" },
+    /** "sm" (32px) is for dense contexts — a table toolbar's quick search/
+     *  filter row is the motivating case — vs. the "md" (36px) default
+     *  every other field in the library uses. */
+    size: { control: "select", options: ["sm", "md"], name: "Size" },
     /* Story-only toggles below — not real `Input` props. Same pattern as
        Label.stories.tsx/ContainerHeader.stories.tsx's own Default: lets this
        story act as an interactive playground across every documented
@@ -75,10 +80,11 @@ const meta: Meta<typeof Input> = {
     showError:       { control: "boolean", name: "Error" },
     /* Off (default): the plain field is full width, same as every other
        `Input` state above (Default/Filled/Disabled/etc. — no width
-       constraint of their own). On: caps it at 320px — the same
-       `max-w-[320px]` `Select.stories.tsx` wraps every one of its own demos
-       in, reused here as the width guide rather than picking an arbitrary
-       new value. */
+       constraint of their own). On: bounds it between a 240px min-width
+       and a 320px max-width — the same range `Select.stories.tsx` wraps
+       every one of its own demos in (and Form Grid's "Static Width"
+       fields, Breakpoints.stories.tsx, use for the same reason), reused
+       here rather than picking an arbitrary new value. */
     maxWidth: { control: "boolean", name: "Max width" },
   } as Meta<typeof Input>["argTypes"],
 };
@@ -92,6 +98,7 @@ export const Default: Story = {
     label: "Input Label",
     placeholder: "Text",
     required: false,
+    size: "md",
     showLabelOnly: false,
     showWithButtons: false,
     buttonsPosition: "left",
@@ -262,14 +269,23 @@ export const Default: Story = {
       // No separate `errorMessage` here — `Input` already renders its own
       // error text below the field; adding the shared one too would show
       // "Required" twice.
+      // `maxWidth` was previously ignored entirely here — a hardcoded
+      // `w-72`/`w-48` regardless of the control, so toggling "Max width"
+      // off still left the field capped instead of going full width. Now
+      // matches the plain branch below: no cap by default (the wrapper is
+      // full width, and `Input`'s own `flex-1` grows to fill whatever
+      // room the buttons leave), `min-w-[240px] max-w-[320px]` on the
+      // wrapper when "Max width" is on — a 320px ceiling and 240px floor,
+      // same standard as the plain branch below and Form Grid's "Static
+      // Width" fields (Breakpoints.stories.tsx).
       return (
-        <div className="flex flex-col gap-1.5 w-72">
+        <div className={cn("flex flex-col gap-1.5", maxWidth ? "min-w-[240px] max-w-[320px]" : "w-full")}>
           <Label label={label} required={required} labelHelpText={labelHelpText} />
           <div className="flex items-start gap-0.5">
             {(buttonsPosition === "left" || buttonsPosition === "both") && renderButtons()}
             <Input
               {...rest}
-              className="w-48"
+              className="flex-1 min-w-0"
               error={showError ? "Required" : undefined}
             />
             {(buttonsPosition === "right" || buttonsPosition === "both") && renderButtons()}
@@ -285,7 +301,7 @@ export const Default: Story = {
         required={required}
         labelHelpText={labelHelpText}
         error={showError ? "Required" : undefined}
-        className={maxWidth ? "max-w-[320px]" : undefined}
+        className={maxWidth ? "min-w-[240px] max-w-[320px]" : undefined}
       />
     );
   },

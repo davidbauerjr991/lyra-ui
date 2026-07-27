@@ -4,17 +4,25 @@ import { cn } from "../lib/utils";
 import { ClearButton } from "./clear-button";
 
 interface SearchInputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type"> {
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type" | "size"> {
   /** Controlled value */
   value?: string;
   /** Called when the value changes */
   onValueChange?: (value: string) => void;
   /** Read-only: no hover, focus, or clear button */
   readonly?: boolean;
+  /**
+   * Field height. "md" (36px, default) matches every other field in the
+   * library; "sm" (32px) is for dense contexts — a table toolbar's quick
+   * search row is the motivating case. The search icon and clear button
+   * are already vertically centered independent of height, so neither
+   * needs repositioning for "sm".
+   */
+  size?: "sm" | "md";
 }
 
 const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
-  ({ className, value, onValueChange, onChange, readonly, ...props }, ref) => {
+  ({ className, value, onValueChange, onChange, readonly, size = "md", ...props }, ref) => {
     const hasValue = value != null && value.length > 0;
 
     const searchLabel = props["aria-label"] || "Search";
@@ -37,7 +45,8 @@ const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
           }}
           readOnly={readonly}
           className={cn(
-            "h-9 w-full rounded-lyra-sm border border-lyra-border-strong bg-lyra-bg-field pl-9 pr-9 lyra-body-md text-lyra-fg-default transition-colors",
+            size === "sm" ? "h-8" : "h-9",
+            "w-full rounded-lyra-sm border border-lyra-border-strong bg-lyra-bg-field pl-9 pr-9 lyra-body-md text-lyra-fg-default transition-colors",
             "[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none",
             "placeholder:text-lyra-fg-disabled",
             !readonly && "hover:border-lyra-state-border-hover-neutral",

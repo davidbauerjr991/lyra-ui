@@ -151,6 +151,13 @@ const AI_SUGGESTIONS: AiPanelSuggestion[] = [
  * the same docking/undocking + resize behavior as the Agent Next Gen
  * template (see AgentNextGenTemplate.stories.tsx) — draggable float mode by
  * default, dockable into the layout, resizable while docked.
+ *
+ * This demo only ever wires up ONE Draggable panel — for a demo with
+ * MULTIPLE Draggable panels sharing a single dock slot under an AppHeader
+ * (the same shape of problem as this file's AI panel + Agent Next Gen's
+ * Notifications panel, but in an isolated, controllable Storybook sandbox),
+ * see Draggable.stories.tsx's `MultiplePanelsSingleDock` story and its
+ * "App Header" control.
  */
 function AdminShellWithAiDemo({ children }: { children: (onAskAi: () => void) => React.ReactNode }) {
   const [navOpen, setNavOpen] = useState(false);
@@ -254,7 +261,23 @@ function AdminShellWithAiDemo({ children }: { children: (onAskAi: () => void) =>
             {children(() => setAiPanelOpen((v) => !v))}
           </Container>
 
-          {/* AI panel — float (fixed position, doesn't take layout space) */}
+          {/* AI panel — float (fixed position, doesn't take layout space).
+              No inner `pointerEvents:"auto"` wrapper div here: `Draggable`'s
+              own root already sets `pointer-events:auto` on itself and
+              moves with the drag's CSS `transform`, so an ancestor wrapper
+              gains nothing and is actively harmful — an ancestor's layout
+              box does NOT follow a descendant's transform, so after
+              dragging the panel away from its start position, a stray
+              wrapper like this is left behind as an invisible "ghost" hit
+              area at the panel's ORIGINAL position, silently swallowing
+              clicks meant for whatever real UI sits there instead (this
+              bug has recurred at least 3 times across consumer apps that
+              copied this story as a reference — see `draggable.tsx`'s own
+              `onInteract` prop doc comment, and lyra-form-generator's/
+              lyra-ux-templates'/Outbound-Campaigns' `App.tsx` fixes). This
+              div now exists purely to hold the fade/slide open-close
+              animation styles, with `pointerEvents:"none"` so it never
+              itself intercepts anything. */}
           {aiVariant === "float" && aiMounted && (
             <div
               style={{
@@ -268,7 +291,7 @@ function AdminShellWithAiDemo({ children }: { children: (onAskAi: () => void) =>
                   : "opacity 100ms ease, transform 100ms ease",
               }}
             >
-              <div style={{ pointerEvents: "auto" }}>{aiPanel}</div>
+              {aiPanel}
             </div>
           )}
         </ContentArea>

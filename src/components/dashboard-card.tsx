@@ -55,7 +55,14 @@ import { cn } from "../lib/utils";
    screenshot showed it landing flush against the header with no breathing
    room at all — too tight to read once there's no border separating them)
    so header/body spacing stays exactly as it is with the surface on. See
-   the "Header Controls" story.
+   the "Card Controls" story.
+
+   `footer` (default: none) renders a row below the body, separated by its
+   own top border — for a "View all" link, pagination, a last-updated
+   timestamp, or similar. Independent of `showContainer`: a footer still
+   gets its own top border even on a bare/surface-less card, since that
+   border is what separates the footer from the body, not the card's own
+   outer surface.
 
    The single value+label (+trend/sparkline) block each metric column
    renders is also exported on its own as `Metric` — for any spot that
@@ -158,6 +165,15 @@ export interface DashboardCardProps extends Omit<ContainerProps, "children"> {
    * over) this.
    */
   showContainer?: boolean;
+
+  /**
+   * Optional content rendered below the body, in its own row separated by
+   * a top border — a "View all" link, pagination, a last-updated
+   * timestamp, etc. Omit for no footer at all (default); the body's own
+   * bottom padding is unaffected either way, so a footer-less card looks
+   * exactly as it did before this prop existed.
+   */
+  footer?: React.ReactNode;
 }
 
 function HeaderFilterChip(props: Partial<FilterChipProps>) {
@@ -200,6 +216,7 @@ const DashboardCard = React.forwardRef<HTMLDivElement, DashboardCardProps>(
       showKebabMenu = false,
       kebabMenuItems,
       showContainer = true,
+      footer,
       className,
       headerClassName,
       ...containerProps
@@ -280,6 +297,11 @@ const DashboardCard = React.forwardRef<HTMLDivElement, DashboardCardProps>(
         <div className="max-h-[600px] overflow-y-auto">
           {metrics ? <MetricRow metrics={metrics.slice(0, 4)} variant={metricVariant} /> : children}
         </div>
+        {footer && (
+          <div className="border-t border-lyra-border-subtle px-4 py-3">
+            {footer}
+          </div>
+        )}
       </Container>
     );
   }
@@ -360,15 +382,35 @@ function MetricRow({ metrics, variant }: { metrics: DashboardCardMetric[]; varia
   // the way down instead of collapsing it to 1-up at the same 360px point
   // a 4-metric row would.
   const isCompact = metrics.length <= 2;
+  // A row of exactly one metric needs a *different* override than
+  // `--compact` above: at ≤550px (stage 2) `.lyra-metric-row` unconditionally
+  // becomes a 2-column grid regardless of item count — with only one child,
+  // default grid auto-placement fills column 1 and leaves column 2 empty
+  // rather than stretching that lone item across both, so the card renders
+  // at roughly half width instead of full width. Confirmed live: a 1-up
+  // "contained" metric card showing half-width with a truncated subhead
+  // well above the 360px stage-3 threshold `--compact` covers. `--single`
+  // makes that lone item span every column at every stage — see its own
+  // `grid-column: 1 / -1` rule in lyra-tokens.css.
+  const isSingle = metrics.length === 1;
 
   if (variant === "contained") {
     return (
-      <div className={cn("lyra-metric-row items-stretch gap-3 px-4 pb-4 pt-4", isCompact && "lyra-metric-row--compact")}>
+      <div className={cn("lyra-metric-row items-stretch gap-3 px-4 pb-4 pt-4", isCompact && "lyra-metric-row--compact", isSingle && "lyra-metric-row--single")}>
         {metrics.map((metric, i) => (
           <Container
             key={i}
             variant={metric.selected ? "info-strong" : "default"}
-            className="flex flex-1 p-4"
+            // min-w-0: without it, this flex-1 item defaults to
+            // min-width:auto and refuses to shrink below its own content's
+            // natural width (the value/trend text + a fixed-80px sparkline
+            // sitting beside it) — the row overflows its card instead of
+            // shrinking, confirmed live via a horizontal scrollbar on a
+            // 4-metric "divided" row. Same fix as `.lyra-container-grid`/
+            // `.lyra-form-grid`'s own children elsewhere in lyra-tokens.css,
+            // just applied here as a Tailwind utility since "contained"
+            // metrics have no dedicated CSS class of their own to hang it on.
+            className="flex flex-1 min-w-0 p-4"
           >
             <Metric metric={metric} />
           </Container>
@@ -378,7 +420,7 @@ function MetricRow({ metrics, variant }: { metrics: DashboardCardMetric[]; varia
   }
 
   return (
-    <div className={cn("lyra-metric-row lyra-metric-row--divided items-stretch px-4 pb-4 pt-4", isCompact && "lyra-metric-row--compact")}>
+    <div className={cn("lyra-metric-row lyra-metric-row--divided items-stretch px-4 pb-4 pt-4", isCompact && "lyra-metric-row--compact", isSingle && "lyra-metric-row--single")}>
       {metrics.map((metric, i) => (
         <React.Fragment key={i}>
           {/* lyra-metric-row-item (not Tailwind's first:pl-0/last:pr-0) —
@@ -387,7 +429,11 @@ function MetricRow({ metrics, variant }: { metrics: DashboardCardMetric[]; varia
               stack into a column: every stacked item needs the *same*
               left/right padding, not just the ones that were first/last in
               the (now nonexistent) row. */}
-          <div className="flex flex-1 lyra-metric-row-item">
+          {/* min-w-0: same overflow fix as the "contained" branch above —
+              without it this flex-1 item won't shrink below its content's
+              natural width (text + fixed-80px sparkline) and the row
+              overflows the card instead of shrinking. */}
+          <div className="flex flex-1 min-w-0 lyra-metric-row-item">
             <Metric metric={metric} />
           </div>
           {i < metrics.length - 1 && (

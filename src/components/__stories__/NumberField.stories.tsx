@@ -7,15 +7,23 @@ const meta: Meta<typeof NumberField> = {
   component: NumberField,
   tags: ["autodocs"],
   parameters: { layout: "centered", backgrounds: { default: "lyra-shell" } },
+  argTypes: {
+    /** "sm" (32px) is for dense contexts vs. the "md" (36px) default every
+     *  other field in the library uses. */
+    size: { control: "select", options: ["sm", "md"], name: "Size" },
+  },
 };
 
 export default meta;
 type Story = StoryObj<typeof NumberField>;
 
 export const Default: Story = {
-  render: () => {
+  args: {
+    size: "md",
+  },
+  render: (args) => {
     const [v, setV] = useState(0);
-    return <div className="w-40"><NumberField label="Quantity" value={v} onChange={setV} /></div>;
+    return <div className="w-40"><NumberField label="Quantity" value={v} onChange={setV} size={args.size} /></div>;
   },
 };
 

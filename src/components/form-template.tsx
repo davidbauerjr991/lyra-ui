@@ -29,7 +29,7 @@ import { Accordion } from "./accordion";
    the root; every multi-field row inside uses `.lyra-form-grid` so they
    all collapse together, in sync, off that same boundary: a wide flex-row
    layout (2-up/3-up/4-up per row's item count) at the full 1000px width,
-   stepping down to a 2-col grid at ≤768px, then a single column at ≤550px.
+   stepping down to a 2-col grid at ≤768px, then a single column at ≤480px.
    `.lyra-form-grid` is its own class (not `AgentDashboard`'s
    `.lyra-container-grid`) specifically so it can use these narrower
    thresholds — a form's 2-4-field rows collapse well before a wider card
