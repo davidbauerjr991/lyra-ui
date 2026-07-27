@@ -314,7 +314,12 @@
       row.style.cssText = "display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border-subtle);border-radius:8px;margin-bottom:6px;background:var(--surface);font-size:13px;";
       var open = document.createElement("a");
       open.textContent = p.name;
-      open.href = "Prototypes/" + p.file + ".html";
+      /* Prototypes/ is a SIBLING of the lyra-ui folder. This wizard file can
+         be opened from two places: the connected-folder root (next to
+         Prototypes/) or from inside the lyra-ui repo root — in the latter
+         case the link must go one level up. */
+      var protoDir = /\/lyra-ui\//.test(location.pathname) ? "../Prototypes/" : "Prototypes/";
+      open.href = protoDir + p.file + ".html";
       open.target = "_blank";
       open.style.cssText = "font-weight:600;color:var(--blue-active-text);text-decoration:none;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
       row.appendChild(open);
