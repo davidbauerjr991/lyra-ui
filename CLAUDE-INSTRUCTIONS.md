@@ -31,6 +31,13 @@ Wait for their answer before doing anything else. Never ask the user to run term
 - Before using any component, read its matching `.stories.tsx` in `src/components/__stories__/` for real prop combinations. Never invent props, variants, or markup.
 - Never hard-code colors, spacing, or typography — use Lyra tokens and components only.
 
+### Protected primitives (never modify — applies to EVERY scenario)
+Library components are read-only. The ONLY component source a user may change through you is their own `src/components/local/` folder. In particular, any component whose story `title` sits under **"Custom Primitives/"** or **"Headless Primitives/"** (check the `title:` in its `.stories.tsx` meta) is a protected primitive:
+- Never edit its source — not in your sandbox clone, not anywhere.
+- Never fork a copy of it into `src/components/local/` to work around this.
+- If the user asks to change one (e.g. "make Button's corners rounder"): first check whether the component's REAL API (props, documented variants) already supports the ask — if so, apply it at the usage site in their prototype or local component. If the API doesn't support it, tell the user plainly that this is a protected library primitive, don't apply any override, and suggest they request the change from the design-system maintainer.
+- Non-primitive shared library components (`UI/`, `Templates/`) are also read-only for users — the same "props at the usage site or ask the maintainer" rule applies; the difference is you may compose them freely inside local components and prototypes.
+
 ### Templates
 - **Admin** type → start from the `WithPageHeader` story in `src/components/__stories__/AdminShell.stories.tsx`.
 - **Agent** type → start from the `WithPageHeader` story in `src/components/__stories__/AgentNextGenTemplate.stories.tsx`.
@@ -58,6 +65,33 @@ Stories run inside Storybook, whose `preview.ts` decorator sets up the page envi
 
 ### Deliverable
 - One self-contained `.html` file, named from the prototype name (kebab-case), with all JS bundled and all styles compiled and inlined so it opens by double-click.
+- **Version stamp + update notice (required in every build):**
+  - Record the commit SHA of the lyra-ui clone you built from (`git rev-parse HEAD` in your sandbox clone) in the `<head>`: `<meta name="lyra-ui-commit" content="<full-sha>">`.
+  - Include this self-contained script so the prototype itself checks GitHub for newer library code and shows a dismissible notice (fails silently offline):
+
+    ```html
+    <script>
+    (function () {
+      var m = document.querySelector('meta[name="lyra-ui-commit"]');
+      if (!m) return;
+      fetch("https://api.github.com/repos/davidbauerjr991/lyra-ui/commits/main")
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (!d || !d.sha || d.sha === m.content) return;
+          var b = document.createElement("div");
+          b.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;background:#ecf5fe;border-bottom:1px solid #D3E6FD;color:#185ba4;font:13px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:8px 40px 8px 16px;text-align:center;";
+          b.textContent = "Lyra UI has been updated since this prototype was built. Ask Claude to rebuild it to pick up the latest components.";
+          var x = document.createElement("button");
+          x.textContent = "×";
+          x.style.cssText = "position:absolute;right:10px;top:4px;border:none;background:none;font-size:18px;cursor:pointer;color:inherit;";
+          x.onclick = function () { b.remove(); };
+          b.appendChild(x);
+          document.body.prepend(b);
+        })
+        .catch(function () {});
+    })();
+    </script>
+    ```
 - Save it to the user's connected folder, NOT the session outputs folder (that's buried in Claude's app-data and hard for users to find):
   - If no folder is connected, use your directory-access tool to ask the user to pick one BEFORE building.
   - Create a **`Prototypes`** folder in the connected folder if it doesn't exist, and save every prototype `.html` inside it.
@@ -67,6 +101,7 @@ Stories run inside Storybook, whose `preview.ts` decorator sets up the page envi
 
 ## Scenario C: The user asks for changes to an existing prototype (text or screenshots)
 
+- **Version check FIRST**: read the `lyra-ui-commit` meta tag from the prototype's html and compare it to the latest main (`git ls-remote https://github.com/davidbauerjr991/lyra-ui.git main`). If they differ, tell the user the library has changed since this prototype was built and ask: update to the latest lyra-ui as part of this change (recommended), or keep the version it was built with? If they keep it, clone/checkout that exact commit so the rebuild stays consistent. If the html has no stamp (an older build), say so and recommend rebuilding on latest.
 - Apply changes to the same prototype in your sandbox copy.
 - Re-check the relevant `.stories.tsx` files before introducing any new component.
 - Re-bundle and overwrite the same single `.html` file (same name, same location). Do NOT re-present the file — tell the user to refresh their browser (or close and re-open the file) to see the changes.
@@ -75,7 +110,15 @@ Stories run inside Storybook, whose `preview.ts` decorator sets up the page envi
 
 - Point them back to `create-lyra-prototype.html` (re-present it if needed): double-click it, run the wizard again, paste the new prompt.
 
-## Scenario E: The user wants to share/publish a prototype (Netlify)
+## Scenario E: The user pasted a component-gallery prompt ("Build me a Lyra UI component gallery")
+
+A Storybook-style viewer for the USER's own components (`lyra-ui/src/components/local/` in their connected folder). Same rules as prototypes (get lyra-ui per "Getting Lyra UI", sandbox-only builds, standalone environment, version stamp, save to `Prototypes`, present once), plus:
+
+- Copy the user's local components into your sandbox clone before building. No connected folder → ask them to pick one first. No custom components → tell them, and offer a gallery of the standard Lyra templates instead.
+- The gallery: left nav listing each component, canvas rendering each live, a few sensible prop variations where meaningful. Name it `my-component-gallery.html`.
+- **Component edits persist at the source**: when the user asks to change a component (text or screenshots), edit the component file in THEIR `lyra-ui/src/components/local/` (their machine), then rebuild and overwrite the gallery. Don't re-present it — tell them to refresh. The gallery is a view; the user's local folder is the source of truth.
+
+## Scenario F: The user wants to share/publish a prototype (Netlify)
 
 You CANNOT reach Netlify (or most of the web) from your sandbox — do not try to deploy via API or CLI, and never ask the user to run terminal commands. Instead:
 

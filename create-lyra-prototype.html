@@ -125,14 +125,48 @@
     </div>
   </div>
 
-  <!-- Step 2: Create prototype -->
+  <!-- Step 2: What would you like to do? -->
   <div class="card hidden" id="step2">
-    <h2>Create a prototype?</h2>
-    <p class="sub">You'll get a working, clickable screen built from real Lyra UI components, delivered as a single file that opens in your browser.</p>
+    <h2>What would you like to do?</h2>
+    <p class="sub">Pick how you want to build — everything stays no-terminal, no installs.</p>
+    <div class="choice-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+      <button class="choice" onclick="pickTarget('design')">
+        <p class="t">Open In Claude Design</p>
+        <p class="d">Build the prototype on Claude Design's visual canvas — iterate with inline comments and share via link.</p>
+      </button>
+      <button class="choice" onclick="pickTarget('cowork')">
+        <p class="t">Create a Prototype</p>
+        <p class="d">A working, clickable screen delivered as a single file that opens in your browser.</p>
+      </button>
+      <button class="choice" onclick="createGalleryPrompt()">
+        <p class="t">View Storybook</p>
+        <p class="d">A local gallery of your custom components — view them, then modify them by prompting Claude.</p>
+      </button>
+    </div>
     <div class="btn-row">
       <button class="btn" onclick="go(1)">Back</button>
+    </div>
+  </div>
+
+  <!-- Step 6: Gallery prompt out -->
+  <div class="card hidden" id="step6">
+    <h2>Your Storybook prompt is ready</h2>
+    <p class="sub">Copy it and paste it into your Claude Cowork chat.</p>
+    <textarea class="prompt-out" id="galleryPromptOut" readonly></textarea>
+    <div class="btn-row">
+      <button class="btn" onclick="go(2)">Back</button>
+      <button class="btn primary" onclick="copyGalleryPrompt()">Copy prompt</button>
+      <span class="copied" id="galleryCopiedMsg">Copied ✓</span>
       <span class="spacer"></span>
-      <button class="btn primary" onclick="go(3)">Yes, create a prototype</button>
+      <button class="btn" onclick="restart()">Start over</button>
+    </div>
+    <div class="note">
+      <strong>Next steps:</strong>
+      <ol class="next-steps">
+        <li>Paste the prompt into any Claude Cowork chat.</li>
+        <li>Claude builds a gallery <strong>.html</strong> of your custom components — double-click it to open.</li>
+        <li>Want to change a component? Describe it or paste a screenshot — Claude edits the component itself (your copy is saved permanently) and rebuilds the gallery.</li>
+      </ol>
     </div>
   </div>
 
@@ -188,7 +222,17 @@
       <span class="spacer"></span>
       <button class="btn" onclick="restart()">Start over</button>
     </div>
-    <div class="note">
+    <div class="note hidden" id="designSteps">
+      <strong>Next steps:</strong>
+      <ol class="next-steps">
+        <li>Open <strong>Claude Design</strong> at <strong>claude.ai</strong> (Anthropic Labs — included with Pro, Max, Team, and Enterprise plans) and start a new design.</li>
+        <li>Click <strong>Import</strong> → <strong>GitHub</strong> and connect <strong>davidbauerjr991/lyra-ui</strong> so Claude designs with the real components. (Importing a local folder works too — just don't include node_modules or .git.)</li>
+        <li>Paste the prompt and send it.</li>
+        <li>Iterate right on the canvas — inline comments, chat, or direct edits — and share the prototype with anyone via link.</li>
+        <li>Ready for engineering? Use <strong>Export → Hand off to Claude Code</strong>.</li>
+      </ol>
+    </div>
+    <div class="note" id="coworkSteps">
       <strong>Next steps:</strong>
       <ol class="next-steps">
         <li>Go to any Claude Cowork chat — new or existing. No attachments needed; Claude downloads the latest Lyra UI itself.</li>
@@ -203,7 +247,9 @@
 </div>
 
 <script>
-  var state = { step: 1, type: null, alreadyInstalled: false };
+  var state = { step: 1, type: null, alreadyInstalled: false, target: "cowork" };
+
+  function pickTarget(t) { state.target = t; go(3); }
 
   function doInstall() { state.alreadyInstalled = false; go(2); }
   function skipInstall() { state.alreadyInstalled = true; go(2); }
@@ -245,6 +291,31 @@
     var tpl = TEMPLATES[state.type];
     var fileName = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "prototype";
 
+    if (state.target === "design") {
+      var dPrompt =
+"Build me a Lyra UI prototype on this canvas. The lyra-ui design system codebase (https://github.com/davidbauerjr991/lyra-ui) is imported into this project.\n" +
+"\n" +
+"RULES\n" +
+"- Read CLAUDE.md and CONTRIBUTING.md in the imported repo IN FULL before designing — they are the binding design-system rules. Also follow CLAUDE-INSTRUCTIONS.md's Protected primitives rule.\n" +
+"- Use ONLY real Lyra UI components from src/components/. Before using any component, check its matching .stories.tsx in src/components/__stories__/ for real prop combinations — never invent props or hand-roll lookalike markup.\n" +
+"- Never hard-code colors, spacing, or typography — use Lyra tokens and components only.\n" +
+"- Library components are read-only — especially anything under \"Custom Primitives\" or \"Headless Primitives\" story titles. Vary them only through their real props.\n" +
+"\n" +
+"PROTOTYPE SPEC\n" +
+"- Prototype name: " + name + "\n" +
+"- Type: " + tpl.label + " — start from " + tpl.story + " and keep its layout structure.\n" +
+"- Product: " + product + " — set this exact text as the appName prop on the AppHeader component (the top-left app name, next to the logo).\n" +
+"\n" +
+"Start by building the template with my product name in the header — I'll iterate from there with comments and chat.";
+      document.getElementById("promptOut").value = dPrompt;
+      document.getElementById("coworkSteps").classList.add("hidden");
+      document.getElementById("designSteps").classList.remove("hidden");
+      go(5);
+      return;
+    }
+    document.getElementById("coworkSteps").classList.remove("hidden");
+    document.getElementById("designSteps").classList.add("hidden");
+
     var setupLine = state.alreadyInstalled
       ? "- Lyra UI is already set up in this chat — reuse the lyra-ui copy already in your sandbox workspace. If there is none, clone the latest from GitHub as below.\n"
       : "- Get the LATEST Lyra UI by cloning https://github.com/davidbauerjr991/lyra-ui.git (main branch) into your own sandbox workspace. Do this yourself — never ask me to run any command.\n";
@@ -270,17 +341,55 @@ fallbackLine +
 "\n" +
 "DELIVERABLE\n" +
 "- One self-contained HTML file named \"" + fileName + ".html\" with all JavaScript bundled and all styles compiled and inlined, so it opens by double-clicking with nothing installed.\n" +
+"- Stamp the build: a <meta name=\"lyra-ui-commit\"> tag with the clone's commit SHA, plus the update-notice script from CLAUDE-INSTRUCTIONS.md's Deliverable section, so the prototype can tell its user when the library has moved on.\n" +
 "- Dark mode must ACTUALLY WORK, not just relabel the menu item: include the full lyra token CSS — the :root light block AND every [data-theme=\"dark\"] block from src/styles/lyra-tokens.css — and give the page/body background var(--lyra-color-bg-surface-shell) so it flips with the theme. Before delivering, verify that toggling dark mode from the profile menu visibly changes the page.\n" +
 "- Save it to the folder I've connected to this chat, NOT to your session outputs folder — I want it somewhere I can easily find. Create a folder named \"Prototypes\" in the connected folder if it doesn't exist (as a sibling of the lyra-ui folder if lyra-ui is there, never inside it) and save the file into that Prototypes folder. If no folder is connected yet, use your directory-access tool to ask me to pick a folder BEFORE building. Then present the file to me.\n" +
 "\n" +
 "AFTER DELIVERY\n" +
 "- I will iterate by describing changes or pasting screenshots/mockups. Apply each change to this same prototype, re-check the story files before using any new component, and overwrite the same file in place. Do NOT re-present the file on updates — just tell me to refresh my browser (or close and re-open the file) to see the changes.\n" +
+"- Library components are read-only: if a change I ask for would mean editing a shared component's source — especially a \"Custom Primitives\" or \"Headless Primitives\" story-title component — don't do it; use its real props at the usage site, or tell me it needs the design-system maintainer (CLAUDE-INSTRUCTIONS.md, Protected primitives).\n" +
 "- If I ask to share or publish the prototype: create a zip named \"" + fileName + "-netlify.zip\" in the Prototypes folder containing the prototype renamed to index.html, present it, and give me the drag-and-drop steps for https://app.netlify.com/drop. You cannot deploy from your sandbox — never try, and never ask me to run commands.\n" +
 "\n" +
 "Start by confirming you've read the rulebooks, then build the starting template with my product name in the header.";
 
     document.getElementById("promptOut").value = prompt;
     go(5);
+  }
+
+  function createGalleryPrompt() {
+    var setup = state.alreadyInstalled
+      ? "- Lyra UI is already set up in this chat — reuse the lyra-ui copy already in your sandbox workspace. If there is none, clone the latest from https://github.com/davidbauerjr991/lyra-ui.git (main branch) yourself — never ask me to run any command.\n"
+      : "- Get the LATEST Lyra UI by cloning https://github.com/davidbauerjr991/lyra-ui.git (main branch) into your own sandbox workspace. Do this yourself — never ask me to run any command.\n";
+
+    var prompt =
+"Build me a Lyra UI component gallery (a local Storybook of my own components). Follow every instruction below exactly.\n" +
+"\n" +
+"SETUP\n" +
+setup +
+"- Read CLAUDE-INSTRUCTIONS.md at the repo root and follow its rules.\n" +
+"- My custom components live in lyra-ui/src/components/local/ in my connected folder — copy them into your sandbox clone. If no folder is connected, use your directory-access tool to ask me to pick one BEFORE building. If I have no custom components yet, tell me and ask whether I'd like a gallery of the standard Lyra templates instead.\n" +
+"- Do ALL installation and bundling inside your own sandbox only — never write node_modules or tooling to my computer.\n" +
+"\n" +
+"DELIVERABLE\n" +
+"- One self-contained HTML file named \"my-component-gallery.html\": a Storybook-style page with a left nav listing each of my components and a canvas rendering each one live, with a few sensible prop variations where meaningful.\n" +
+"- Same build rules as prototypes (see CLAUDE-INSTRUCTIONS.md): full light+dark token CSS with a WORKING dark mode, the lyra-ui-commit stamp and update-notice script, saved into the Prototypes folder in my connected folder. Present it once.\n" +
+"\n" +
+"AFTER DELIVERY\n" +
+"- When I ask for component changes (text or screenshots), edit the component SOURCE in my lyra-ui/src/components/local/ folder so the change persists, then rebuild and overwrite the same gallery file. Don't re-present it — just tell me to refresh my browser.\n" +
+"- ONLY my own components in src/components/local/ may be modified. Library components — especially anything under \"Custom Primitives\" or \"Headless Primitives\" in its story title — are read-only: never edit or fork them; use their real props, or tell me the change needs the design-system maintainer (see CLAUDE-INSTRUCTIONS.md's Protected primitives rule).";
+
+    document.getElementById("galleryPromptOut").value = prompt;
+    go(6);
+  }
+
+  function copyGalleryPrompt() {
+    var ta = document.getElementById("galleryPromptOut");
+    ta.select();
+    ta.setSelectionRange(0, 999999);
+    try { navigator.clipboard.writeText(ta.value); } catch (e) { document.execCommand("copy"); }
+    var msg = document.getElementById("galleryCopiedMsg");
+    msg.style.display = "inline";
+    setTimeout(function () { msg.style.display = "none"; }, 2500);
   }
 
   function copyPrompt() {
@@ -295,6 +404,7 @@ fallbackLine +
 
   function restart() {
     state.type = null;
+    state.target = "cowork";
     document.getElementById("type-admin").classList.remove("selected");
     document.getElementById("type-agent").classList.remove("selected");
     document.getElementById("next3").disabled = true;
