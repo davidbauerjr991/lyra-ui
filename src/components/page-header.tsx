@@ -25,6 +25,42 @@ interface PageHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
    */
   icon?: React.ReactNode;
   /**
+   * Arbitrary content rendered immediately after the title/subtitle block
+   * (before `actions`) — e.g. a compact `ChannelToggleGroup` distinguishing
+   * which of an interaction's several open channels is current, sitting
+   * directly right of the customer name. Was `titlePrefix` (rendered
+   * before the title instead) until an explicit request to flip the
+   * order — renamed along with the move since "prefix" would otherwise be
+   * actively wrong once it's rendering after. Unlike `icon`, this doesn't
+   * add its own divider or switch the header into the "record header"
+   * layout — it's just an extra flex item in the same left-side row, so it
+   * composes with any of the three title layouts (plain/`icon`/
+   * `breadcrumb`) rather than being mutually exclusive with them. Renders
+   * once regardless of which title layout is active. Add your own visual
+   * divider inside this slot's own content if you want one (see
+   * `agent-next-gen-v1`'s usage) — this prop doesn't render one itself,
+   * since not every consumer will want the same treatment.
+   */
+  titleSuffix?: React.ReactNode;
+  /**
+   * Lets `titleSuffix`'s own wrapper grow to fill whatever width is left in
+   * the header row (between the title block and `actions`), instead of its
+   * default `shrink-0` (content-sized, snug against the title). Off by
+   * default — a compact cluster like a `ChannelToggleGroup` should stay
+   * snug against the title rather than stretching away from it (see
+   * `titleSuffix`'s own doc comment for why `shrink-0` is the default in
+   * the first place). Turn this on when `titleSuffix` instead holds
+   * something built to size itself off its own available width, e.g. a
+   * `TabList` — `Tab`'s 48px-tall row/bottom-border design collapses into
+   * its 2-slot "active + N More" layout (or worse, visibly clips/squishes)
+   * almost immediately when confined to a `shrink-0` sliver next to the
+   * title, since `TabList`'s own internal `w-full` then has almost nothing
+   * real to fill. Confirmed via screenshot: a single-channel `ChannelTab`
+   * cluster in `titleSuffix` rendering as a disjointed icon + orphaned
+   * kebab + stray underline fragment instead of a real tab.
+   */
+  titleSuffixGrow?: boolean;
+  /**
    * Whether the `icon` slot's wrapper span is `aria-hidden` (default: true).
    * The wrapper is hidden from assistive tech by default because `icon` is
    * normally purely decorative — set this to `false` when `icon` itself is
@@ -87,6 +123,8 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
       className,
       title,
       icon,
+      titleSuffix,
+      titleSuffixGrow = false,
       iconAriaHidden = true,
       subtitle,
       actions,
@@ -143,6 +181,22 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
             <div className="h-5 w-px bg-lyra-border-subtle" />
           </>
         )}
+        {/* Each of the three branches below used to carry its own `flex-1`
+            (claiming the outer row's — this div's parent, `flex flex-1
+            min-w-0 items-center gap-3` — leftover space directly). Dropped
+            in favor of `min-w-0` alone once `titleSuffix` shipped: a
+            flex-1 title column with nothing else competing for space
+            stretches to fill the whole row regardless of how short the
+            title text actually is (text still just left-aligns inside
+            that oversized box), so `titleSuffix` rendered right after it
+            would sit wherever that box happened to end, not snug against
+            the text — confirmed from a screenshot of exactly that, the
+            toggle group floating at the row's far right next to `actions`
+            instead of directly after "Noah Bennett". A lone child of the
+            parent's own `flex-1` doesn't need its own flex-grow to reach
+            the same rendered width when `titleSuffix` is absent, and
+            default flex-shrink (with `min-w-0`) still lets each branch's
+            `truncate` work exactly as before. */}
         {icon ? (
           <>
             <span
@@ -152,7 +206,7 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
               {icon}
             </span>
             <div className="h-8 w-px bg-lyra-border-subtle shrink-0" />
-            <div className="flex flex-col justify-center min-w-0 flex-1">
+            <div className="flex flex-col justify-center min-w-0">
               <div className="flex items-center gap-2 min-w-0">
                 <h1 className="lyra-heading-lg text-lyra-fg-default leading-tight truncate min-w-0">{title}</h1>
                 {badge && <Badge color={badgeColor} variant={badgeVariant}>{badge}</Badge>}
@@ -170,7 +224,7 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
           // truncates on one line instead of the trail wrapping onto a
           // second one. Same DOM-swap technique TabList's `overflowMenu`
           // uses for `.lyra-tab-overflow-full`/`-collapsed`.
-          <div className="lyra-page-header-breadcrumb-wrap flex-1 min-w-0">
+          <div className="lyra-page-header-breadcrumb-wrap min-w-0">
             <Breadcrumb className="lyra-page-header-breadcrumb-full min-w-0">
               <BreadcrumbList className="flex-nowrap min-w-0">
                 {(Array.isArray(breadcrumb) ? breadcrumb : [breadcrumb]).map((crumb, i) => (
@@ -208,7 +262,7 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
             </Breadcrumb>
           </div>
         ) : (
-          <div className="flex flex-col justify-center min-w-0 flex-1">
+          <div className="flex flex-col justify-center min-w-0">
             <div className="flex items-center gap-2 min-w-0">
               <h1 className="lyra-heading-lg text-lyra-fg-default truncate min-w-0">{title}</h1>
               {badge && <Badge color={badgeColor} variant={badgeVariant}>{badge}</Badge>}
@@ -216,6 +270,7 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
             {subtitle && <span className="lyra-body-sm text-lyra-fg-secondary truncate">{subtitle}</span>}
           </div>
         )}
+        {titleSuffix && <span className={titleSuffixGrow ? "flex-1 min-w-0" : "shrink-0"}>{titleSuffix}</span>}
       </div>
       <div className="flex items-center gap-2">
         {actions}

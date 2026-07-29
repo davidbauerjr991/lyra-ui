@@ -23,7 +23,7 @@
 14. [Debugging: diagnose rendering before behavior](#14-debugging-diagnose-rendering-before-behavior)
 15. [Tooltip placement](#15-tooltip-placement)
 16. [Portals still bubble through the React tree](#16-portals-still-bubble-through-the-react-tree)
-17. [Field label casing](#17-field-label-casing)
+17. [Field label casing — type it correctly, never fake it with CSS](#17-field-label-casing--type-it-correctly-never-fake-it-with-css)
 18. [Match reference component behavior in prototypes](#18-match-reference-component-behavior-in-prototypes)
 
 ---
@@ -46,13 +46,18 @@ Outside of those two cases, treat a hard-coded value sitting next to a real comp
 - **Don't override a component's own computed defaults with a fixed string.** If a component already derives a sensible placeholder, label, or formatted value from its own state, passing a static override defeats the reason that logic exists.
 - **Don't hand-roll markup that duplicates an existing component.** A star icon + button + tooltip, a phone field, a dropdown, a tooltip-triggered flyout — if lyra-ui already has it, compose it (see §2, Composition over reimplementation, for how to find and reuse the right component).
 - **Don't reach for a raw Tailwind value, hex color, or one-off style** where an existing lyra token or component prop already covers it (see §10, Tailwind & theming).
+- **Don't restyle a component's output with CSS to match a screenshot — including `text-transform`.** This is the same bug as hard-coding a value, just aimed at *styling* instead of *content*: a screenshot showing something in ALL CAPS, a different weight, a different color, etc. is not license to bolt `uppercase`/`tracking-wide`/an arbitrary color class onto a shared component's label, title, or text node to force it to match. If a shared component's real rendered output doesn't match the picture, that's the same fork as any other mismatch (§17 covers the specific case of label casing) — fix the input (type the correct text, pass the right prop/variant) or treat it as a signal the design needs revisiting, never paper over it with hand-written CSS sitting on top of the real component.
 
 ### Recent incidents this rule would have prevented
 
 - `CreateNew`'s dial-pad field was given a hard-coded `placeholder="Enter phone number"`, which silently overrode `PhoneInput`'s own correct per-country example placeholder (`"(555) 555-5555"` for the US, `"76 123 45 67"` for Switzerland, etc.) — the real component already did the right thing; the override actively made it worse.
 - Several places (`ContactRow`'s favorite star, `AgentProfile`'s status-favorite toggle) hand-rolled their own `<button>` + `Star` icon + `Tooltip` combination instead of using the shared `FavoriteButton` atom that already existed for exactly this.
+- `agent-next-gen-v1`'s `CustomerInformationPanelBody` hand-styled a "Last Interaction" section label with `uppercase tracking-wide` to match a reference screenshot that happened to show it in all caps — instead of just typing `"Last Interaction"` (already correct Title Case per §17) and letting the real component's own typography render it. Caught only after the fact, from a screenshot of the *rendered result* next to a direct callout ("hand-styling is a massive no-no") — the fix wasn't a style tweak, it was routing the text through `Accordion`'s own `title` slot instead of a hand-built `<span>` with CSS bolted onto it.
+- Same panel's Overview tab needed its two `.lyra-card-split` children to split evenly — instead of adding a real modifier to that family in `lyra-tokens.css`, the first pass bolted `className="flex-1 min-w-0"` straight onto the two consumer elements. See §10's "CSS container-query pattern" callout for the full failure mode (a bare Tailwind utility can't see a family's other breakpoint stages) and the fix (`.lyra-card-split-even`).
+- `ContainerHeader`'s `tabs` prop (added this session) split what used to be one div into an outer `flex flex-col` wrapper plus an inner row carrying the actual `px-4 py-2.5` — but `className` stayed wired to the *outer* wrapper, which has no padding of its own to override. Every real consumer passing `className`/`headerClassName` to zero or resize that padding (`Popover`'s built-in `title` header, `DashboardCard`'s `metrics`-mode `pb-0`, `agent-next-gen-v1`'s "Add tag" popover header) silently stopped working — the override just sat inertly on the outer wrapper instead of reaching the row it was meant to resize, stacking as *extra* padding instead of replacing any. Caught from a screenshot of the "Add tag" header reading as visually centered (both edges pushed in by the stacked padding) instead of flush-left. Fixed by moving `className` to the inner row in `container-header.tsx` — see that div's own doc comment for the full mechanics. The lesson: when splitting a component's single root div into nested wrappers, audit every prop that forwards a `className`/style override to make sure it still lands on the element whose classes it's meant to resolve against — a passed-through prop can silently stop doing anything without ever throwing.
+- `TabList`'s `[&>[role='tab']]:flex-shrink-0` override — the fix that makes tabs hold their natural width instead of each individually shrinking+truncating — was gated to `isWideOverflow` only when it was added (see its own long-standing doc comment in `tabs.tsx`). When `overflowBreakpoint="compact"` shipped later for narrow, resizable hosts like `InteriorPanel` (200–425px), the same `tablistEl` renders as `isCompact`'s "not collapsed yet" row too — but the gate was never extended to cover it, so every `Tab` in a `compact`-mode bar was still free to flex-shrink. Caught from a screenshot of `agent-next-gen-v1`'s Customer Information panel (an `overflowBreakpoint="compact"` `TabList`) showing all 8 tabs simultaneously, each individually truncated to a few letters — a third state neither mode's design has room for (it should be either full natural width or the collapsed "active tab + N More" row, never a squeezed in-between). Fixed by extending the gate to `(isWideOverflow || isCompact)`. Same lesson as the `ContainerHeader` incident above, from the opposite direction: when adding a new mode/variant to an existing component, audit every fix and guard already scoped to the *old* modes to see whether the new one needs it too — a condition that's correct for mode A doesn't automatically stay correct once mode B exists alongside it.
 
-**When in doubt: trust the component, don't hard-code around it.**
+**When in doubt: trust the component, don't hard-code around it — and don't restyle around it either.**
 
 ---
 
@@ -102,6 +107,51 @@ resize/pin logic again.
 `Draggable`/`DraggablePanel` (float/dockable shells like the AI panel or
 notifications dropdown) are a **different, unrelated concept** — don't
 confuse either of them with `SidePanel`/`InteriorPanel`.
+
+#### Composing panel body content (tabs + cards)
+
+`PanelContent` (used internally by both `SidePanel` and `InteriorPanel`) is
+the single `flex-1 overflow-y-auto` scroll region — plain `children` renders
+as one block inside it, with nothing keeping any part of it fixed while the
+rest scrolls.
+
+- **Tabs belong in the header, not in `children`.** `SidePanel` and
+  `InteriorPanel` both take a **`headerTabs`** prop — a `TabList` forwarded
+  straight to `ContainerHeader`'s own `tabs` slot (container-header.tsx),
+  rendered below the title/subhead row but still *inside* the header, i.e.
+  outside `PanelContent` entirely. This is the only correct way to get a
+  fixed tab bar under a panel header — earlier attempts at a `sticky
+  top-0` `TabList` living inside `children` had two real, shipped bugs
+  that `headerTabs` doesn't have: the surrounding scroll container's own
+  scrollbar still ran alongside a merely-`sticky` row instead of a
+  genuinely fixed one, and `TabList`'s "N More" overflow dropdown silently
+  did nothing when a tab was selected from it once the row collapsed (a
+  separate bug in `tabs.tsx`'s `overflowBreakpoint="compact"` mode —
+  fixed there, but the sticky-in-children approach was still the wrong
+  place for tabs regardless). `ContainerHeader` automatically drops its
+  own bottom padding and border whenever `tabs` is set, so the tab row
+  sits flush against the header with no gap and no doubled-up border —
+  nothing to configure beyond passing `headerTabs`.
+- Everything else — the actual body content, including any card-like
+  block (a summary, a detail card, etc.) — is plain `children`, inside
+  `PanelContent`'s normal scrolling flow. It scrolls *under* the fixed
+  `headerTabs` row above it (which isn't part of that scroll region at
+  all) rather than needing any special positioning of its own.
+- Give card-like content blocks a neutral container —
+  `rounded-lyra-md bg-lyra-bg-control-subtle p-4` — rather than letting
+  them sit flush against the panel's own background with no visual
+  boundary from the rows around them.
+
+Worked examples: `ContainerHeader.stories.tsx`'s `WithTabs` story (the
+canonical reference for the `tabs` prop itself) and `InteriorPanel.stories
+.tsx`'s `WithTabs` story (the same thing composed through `headerTabs`),
+plus the real usage in `agent-next-gen-v1/src/components/AgentNextGenPage
+.tsx`: `CustomerInformationInteriorPanel` owns the `activeTab` state both
+the header's `TabList` (via `headerTabs`) and the scrolling body
+(`CustomerInformationPanelBody`, plain `children` — a field list, then a
+"Last Interaction" summary in a neutral container) need, since splitting
+tabs out of `children` means that state can no longer live inside the body
+component alone.
 
 ### Every menu/dropdown must be built on `Menu` — no exceptions
 
@@ -566,6 +616,10 @@ useLayoutEffect(() => {
 
 For a component whose "react to my own width" need is just "show/hide or restructure some CSS past a fixed breakpoint" (not "measure the exact pixel width in JS"), a plain CSS container query is simpler than `ResizeObserver` and needs no state at all: put `container-type: inline-size` on the wrapper, then `@container (max-width: Npx) { ... }` rules on the children. See `.lyra-container-grid-wrap`, `.lyra-metric-row-wrap`, `.lyra-tab-overflow-wrap`, and `.lyra-page-header-breadcrumb-wrap` in `lyra-tokens.css` for four examples of this. As with every CSS variable/class, add the rule to **both** `lyra-tokens.css` and `storybook.css` (the two must always be kept in sync with each other).
 
+> **NEVER patch a container-query family's cross-axis behavior (flex-basis, align-items, height, width) with a bare Tailwind utility class (`flex-1`, `min-w-0`, `items-start`, etc.) on a consumer's own element.** This is a §1 hard-coding violation, not a harmless shortcut: every existing family (`.lyra-container-grid`, `.lyra-form-grid`, `.lyra-card-split`, `.lyra-metric-row`, ...) restructures its own children differently at *each* breakpoint stage — a row at one width, a CSS grid or stacked column at another — and a plain Tailwind class applies unconditionally across all of them. `flex-1`'s `flex-basis: 0%` is exactly the trap: correct in a flex-row stage (splits width evenly), silently wrong once that same family flips to `flex-direction: column` at a narrower stage (it now governs *height* instead, collapsing the element toward its minimum content size — see `.lyra-container-grid > *`, `.lyra-form-grid > *`, and `.lyra-card-split-even`'s own doc comments in `lyra-tokens.css` for three worked examples of this exact failure and its fix). If a family doesn't yet have a modifier class for the cross-axis behavior you need (e.g. two children that should split evenly, not just one fixed + one flexible), **add one to the family in `lyra-tokens.css`** — with its own explicit reset at every narrower stage — the same way `.lyra-card-split-even` was added rather than reaching for `className="flex-1 min-w-0"` inline. A one-off Tailwind class on the consumer only ever accounts for the stage you're looking at right now; it can't see the family's other stages, and it will not get updated if that family's thresholds ever change.
+
+**Recent incident:** `agent-next-gen-v1`'s Customer Information Overview tab needed its field list and "Latest Interaction" card to split a `.lyra-card-split` row evenly instead of each taking its own natural content width. The first pass added `className="flex-1 min-w-0"` directly on both consumer elements — it looked correct in the wide/row stage, but `.lyra-card-split`'s own ≤480px stage flips to `flex-direction: column` without resetting those Tailwind classes (only its own `-fixed`/`-chart` modifiers get that reset), so the stacked stage would have silently collapsed both columns toward minimum content height instead of stacking full-width, the same bug already documented for `.lyra-container-grid`/`.lyra-form-grid`. Fixed by adding a real `.lyra-card-split-even` modifier to the family in `lyra-tokens.css` (row-stage `flex: 1 1 0%`, ≤480px reset to `flex: none; width: 100%`) and using that class instead — caught before shipping only because it was flagged directly, not because the first pass was reviewed against this rule.
+
 **`TabList`'s `overflowMenu` prop is the standing default for any new tab bar.** When adding a new `<TabList>` anywhere in this repo or a consuming app (`agent-next-gen-v1`, `lyra-ux-templates`), pass `overflowMenu` unless that specific tab bar has its own different, purpose-built collapse strategy. There is no current exception — `ChannelTab`'s record-header conversation bar (`channel-row.tsx`) used to have its own bespoke text-shedding collapse at 480px/320px, but that was removed in favor of the same `overflowMenu` pattern every other tab bar uses. Every tab bar — settings pages, record detail panels, conversation bars, anything using plain `Tab`s — should get `overflowMenu` by default, the same way a new modal defaults to `Container variant="modal"` rather than a hand-rolled div.
 
 ---
@@ -800,13 +854,21 @@ This is safe: Radix's own outside-click/focus-trap detection is implemented via 
 
 **`onClick` isn't always safe to leave alone.** Popover's own fix above deliberately skips `onClick` — Radix's composed click handler there only closes the tooltip, so letting it bubble is harmless. That's not a general rule, though: `menu-radix.tsx`'s `DropdownMenuPrimitive.Content`/`SubContent` (what `KebabMenuButton` renders under the hood) *do* stop `onClick` (`stopClickBubble`), because a dropdown is frequently nested inside another clickable element with real, stateful behavior — e.g. `ChannelRow`'s kebab lives inside its own clickable row (`onClick` selects that channel) inside `InteractionNavItem`'s clickable card (`onClick` selects/re-activates the interaction). Without stopping it, selecting "Unassign & Dismiss" removed the interaction from state and then the *same* click kept bubbling, re-firing both ancestor `onClick`s and re-selecting the just-removed card — since it no longer existed, the screen fell back to the dashboard even when other assignments were still open. This was a real, shipped bug (`agent-next-gen-v1`'s assignment-dismiss flow). Decide per portal: if an ancestor's `onClick` does something meaningful (select, navigate, toggle), stop it at the content root; only skip it, as Popover does, when you've confirmed the ancestor's `onClick` is inert or explicitly harmless to re-fire.
 
-## 17. Field label casing
+## 17. Field label casing — type it correctly, never fake it with CSS
 
-**Rule:** when building or updating a prototype (a consuming app's screens/flows — `agent-next-gen-v1`, `lyra-ux-templates`, `Outbound-Campaigns`, `Agent Nav Testing`, etc.), form field labels (`Input`/`Select`/`PhoneInput`/`EmailInput`/`Checkbox`/`Radio`/anything using `Label` or a `label` prop) should capitalize the first letter of each word — e.g. **"Email Address"**, not "Email address" — unless the user has explicitly specified different casing for that label. This is Title Case for the label text itself, not a restyling instruction (don't add `text-transform: capitalize`; type the label text correctly to begin with).
+**Rule:** when building or updating a prototype (a consuming app's screens/flows — `agent-next-gen-v1`, `lyra-ux-templates`, `Outbound-Campaigns`, `Agent Nav Testing`, etc.), form field labels (`Input`/`Select`/`PhoneInput`/`EmailInput`/`Checkbox`/`Radio`/anything using `Label` or a `label` prop) should capitalize the first letter of each word — e.g. **"Email Address"**, not "Email address" — unless the user has explicitly specified different casing for that label. This is Title Case for the label text itself, not a restyling instruction.
+
+**This means two different mistakes, not one — both banned:**
+
+1. **Typing the wrong casing** — `"Email address"` instead of `"Email Address"`.
+2. **Typing the right text, then fighting it with CSS** — `"Last Interaction"` typed correctly, then a hand-added `uppercase`/`tracking-wide`/`capitalize` `text-transform` bolted onto it to chase how a screenshot happened to render it. This is arguably the worse of the two: it's not just a casing slip, it's a whole extra layer of hand-written styling sitting on top of a shared component's own typography, fighting it instead of using it. **Never add `text-transform` (or any other ad-hoc restyling) to force a label/title's display casing — type the string correctly and let the component's real typography render it, full stop.** See §1's "Recent incidents" for a real example of exactly this.
 
 This does **not** apply to `aria-label` attributes (screen-reader-only strings, which stay natural sentence case — "Close dialog" is correct as an `aria-label`, not a visible label) or to lyra-ui's own internal Storybook demo labels (placeholder content like "Radio label" used purely to demonstrate a component in isolation, not real prototype copy).
 
-**Example of the bug this catches:** an `EmailInput` labeled `"Email address"` — grammatically fine as a sentence, but inconsistent with the rest of a form where every other label ("Phone Number", "Full Name") is Title Case. Caught via a screenshot of the rendered field, not by reading the source — casing bugs like this are easy to miss in code review since `"Email address"` isn't a typo, just the wrong convention.
+**Examples of the bugs this catches:**
+
+- An `EmailInput` labeled `"Email address"` — grammatically fine as a sentence, but inconsistent with the rest of a form where every other label ("Phone Number", "Full Name") is Title Case. Caught via a screenshot of the rendered field, not by reading the source — casing bugs like this are easy to miss in code review since `"Email address"` isn't a typo, just the wrong convention.
+- `agent-next-gen-v1`'s `CustomerInformationPanelBody` typed `"Last Interaction"` correctly, then still wrapped it in `className="uppercase tracking-wide"` to match a reference screenshot's all-caps section label — restyling correct text instead of trusting it. Fixed by deleting the CSS and routing the string through `Accordion`'s own `title` prop instead of a hand-built `<span>`.
 
 ---
 

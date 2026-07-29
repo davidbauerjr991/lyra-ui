@@ -79,6 +79,15 @@ export interface SidePanelProps extends React.HTMLAttributes<HTMLDivElement> {
    */
   headerTitleBadge?: React.ReactNode;
   headerActions?: React.ReactNode;
+  /**
+   * A `TabList` rendered inside the header itself, below the title/subhead
+   * row — forwarded to `PanelHeader`'s own `tabs` prop (see
+   * container-header.tsx and `InteriorPanel`'s matching `headerTabs`,
+   * which this mirrors for consistency between the two panel types). Keeps
+   * tabs outside `PanelContent`'s scroll region entirely rather than
+   * living in `children` with a hand-rolled `sticky` wrapper.
+   */
+  headerTabs?: React.ReactNode;
 
   footer?: React.ReactNode;
 }
@@ -102,6 +111,7 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
       headerIcon,
       headerTitleBadge,
       headerActions,
+      headerTabs,
       footer,
       children,
       ...props
@@ -155,6 +165,7 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
               icon={headerIcon}
               titleBadge={headerTitleBadge}
               actions={<>{headerActions}{pinButton}</>}
+              tabs={headerTabs}
               bordered={false}
             />
           )}

@@ -62,10 +62,14 @@ function ResizeBox({
 const REGISTRY = [
   { family: "Container Grid", wrap: ".lyra-container-grid-wrap", query: ".lyra-container-grid", thresholds: "991px, 768px", usedBy: "AgentDashboard, DashboardQueue" },
   { family: "Form Grid", wrap: ".lyra-form-grid-wrap", query: ".lyra-form-grid", thresholds: "768px, 480px", usedBy: "FormTemplate" },
-  { family: "Card Split", wrap: ".lyra-card-split-wrap", query: ".lyra-card-split", thresholds: "480px", usedBy: "DashboardCard children composition" },
+  { family: "Card Split", wrap: ".lyra-card-split-wrap", query: ".lyra-card-split", thresholds: "480px", usedBy: "DashboardCard children composition; agent-next-gen-v1's Customer Information Overview tab (fields list + Latest Interaction, via -even)" },
   { family: "Metric Row", wrap: ".lyra-metric-row-wrap", query: ".lyra-metric-row", thresholds: "768px, 550px, 360px", usedBy: "DashboardCard's metrics mode" },
   { family: "Tab Overflow", wrap: ".lyra-tab-overflow-wrap", query: ".lyra-tab-overflow-full / -collapsed", thresholds: "400px", usedBy: "TabList overflowMenu" },
   { family: "Breadcrumb Collapse", wrap: ".lyra-page-header-breadcrumb-wrap", query: "-full / -collapsed", thresholds: "480px", usedBy: "PageHeader" },
+  { family: "Container Header Actions Boundary", wrap: ".lyra-container-header-actions-wrap", query: "(boundary only — see the two families below)", thresholds: "480px", usedBy: "ContainerHeader actionsWrap prop" },
+  { family: "Container Header Filter Collapse", wrap: ".lyra-container-header-actions-wrap", query: "-filter-full / -filter-compact / -filter-trigger", thresholds: "480px (same boundary as Actions Boundary above)", usedBy: "agent-next-gen-v1's DateFilterChip / ContactHistoryDateFilterChip" },
+  { family: "Container Header Search Inline/Below", wrap: ".lyra-container-header-actions-wrap", query: "-search-inline / -search-below", thresholds: "480px (same boundary as Actions Boundary above)", usedBy: "agent-next-gen-v1's ContactHistoryCard (via ContainerHeader's tabs slot)" },
+  { family: "Transcript Avatar Collapse", wrap: ".lyra-transcript-wrap", query: ".lyra-transcript-avatar", thresholds: "400px", usedBy: "agent-next-gen-v1's InteractionTranscript message bubbles" },
 ];
 
 export const Overview: Story = {

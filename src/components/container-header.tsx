@@ -33,7 +33,10 @@ export interface ContainerHeaderProps extends React.HTMLAttributes<HTMLDivElemen
    * title's start.
    */
   topSlot?: React.ReactNode;
-  /** Show a bottom border (default: true) */
+  /** Show a bottom border (default: true) — ignored (no border rendered
+   *  here) whenever `tabs` is set, since the `TabList` passed there already
+   *  supplies its own `border-b` as the header's true bottom edge; a second
+   *  border directly above it would just double up. */
   bordered?: boolean;
   /**
    * Header background. `"subtle"` applies `bg-lyra-bg-control-subtle` (the
@@ -43,6 +46,54 @@ export interface ContainerHeaderProps extends React.HTMLAttributes<HTMLDivElemen
    * whatever surface it's placed on).
    */
   background?: "none" | "subtle";
+  /**
+   * A `TabList` (or similar) rendered directly below the title/subhead row,
+   * still inside this header — i.e. outside whatever scrolling body sits
+   * below the header (`PanelContent` in `SidePanel`/`InteriorPanel`, for
+   * instance). Exists specifically so a panel's tabs can stay genuinely
+   * fixed without a hand-rolled `sticky` wrapper inside the scrollable body
+   * (see CONTRIBUTING.md's "Composing panel body content") — that approach
+   * still scrolled with the surrounding container's own scrollbar and, in
+   * `agent-next-gen-v1`'s real usage, needed extra plumbing just to fake a
+   * fixed position. Passing `tabs` here is the real fix: the tab row simply
+   * isn't part of the scrolling region at all.
+   *
+   * When set, this header's own bottom padding is dropped (the tab row's
+   * own top edge sits flush against the title/subhead row above it) and
+   * `bordered` is ignored, since `TabList` already renders its own
+   * `border-b`. Pass the `TabList` element exactly as you would to any
+   * other consumer — including its own horizontal inset (`className="px-4"`
+   * to match this header's own `px-4`) — this prop doesn't wrap or restyle
+   * it.
+   */
+  tabs?: React.ReactNode;
+  /**
+   * Establishes a CSS container-query boundary (`.lyra-container-header-
+   * actions-wrap`, `container-type: inline-size`) around this whole header
+   * — below ~480px of the header's own available width, descendants opted
+   * into that family reflow: a chip-style trigger in `actions` (e.g.
+   * `DateFilterChip` in agent-next-gen-v1) can shrink to a compact icon via
+   * its own `-filter-full`/`-filter-compact` markup, and a `SearchInput`
+   * pair can swap which of two copies is visible via `-search-inline`/
+   * `-search-below` (one sitting in `actions`, the other passed through
+   * `tabs` so it renders on its own full-width row below the title) — see
+   * lyra-tokens.css's "Container header actions" families for the concrete
+   * classes. Default `false`: a header with a couple of plain icon buttons
+   * in `actions` doesn't need any of this.
+   *
+   * Does NOT wrap `actions` itself as a block (an earlier version of this
+   * prop did — `.lyra-container-header-actions-row`/`-actions` forcibly
+   * dropped the *whole* actions cluster to a new line, but that meant a
+   * lone filter chip with nothing else to make room for still got shoved
+   * onto its own row, and a `SearchInput` + `FilterChip` pair moved
+   * together as one unit even though only the search box actually needed
+   * to move — confirmed from a screenshot showing a lone `DateFilterChip`
+   * overlapping the title once forced onto its own full-width line for no
+   * reason). Prefer the per-element `-filter-*`/`-search-*` classes above
+   * instead: each piece of `actions` decides its own collapse behavior,
+   * nothing moves that doesn't need to.
+   */
+  actionsWrap?: boolean;
 }
 
 /* ── Component ── */
@@ -58,25 +109,52 @@ const ContainerHeader = React.forwardRef<HTMLDivElement, ContainerHeaderProps>(
     subhead,
     titleBadge,
     topSlot,
+    tabs,
     bordered = true,
     background = "none",
+    actionsWrap = false,
     ...props
   }, ref) => (
     <div
       ref={ref}
       className={cn(
-        // py-2.5 (10px), not py-3 (12px) — the title+subhead block below is
-        // a fixed-height overflow-hidden box (h-10, 40px, was h-9/36px); at
-        // 12px top/bottom padding the row read taller than that box needed,
-        // py-2.5 keeps the header snug around it now that it's sized to fit
-        // the subhead's descenders (see that div's own comment).
-        "flex items-center justify-between px-4 py-2.5 shrink-0",
-        bordered && "border-b border-lyra-border-subtle",
+        "flex flex-col shrink-0",
+        bordered && !tabs && "border-b border-lyra-border-subtle",
         background === "subtle" && "bg-lyra-bg-control-subtle",
-        className
+        actionsWrap && "lyra-container-header-actions-wrap"
       )}
       {...props}
     >
+      {/* Title/subhead/actions row — its own inner row now that `tabs` can
+          render below it in the same header. `py-2.5` (10px), not `py-3`
+          (12px) — the title+subhead block below is a fixed-height
+          overflow-hidden box (h-10, 40px, was h-9/36px); at 12px top/bottom
+          padding the row read taller than that box needed, py-2.5 keeps
+          the header snug around it now that it's sized to fit the
+          subhead's descenders (see that div's own comment). When `tabs` is
+          set, bottom padding drops to 0 so the tab row sits flush right
+          below this one — no gap for the tabs' own `border-b` to visually
+          detach from.
+
+          `className` lands HERE, not on the outer wrapper above — every
+          real consumer that passes it (`Popover`'s built-in `title` header,
+          `DashboardCard`'s `headerClassName` in `metrics` mode,
+          `agent-next-gen-v1`'s "Add tag" popover header) is overriding
+          THIS row's own `px-4`/`py-2.5` (e.g. `pb-0` to zero the bottom
+          gap, `px-5` to line up with a wider body inset) — before the
+          outer flex-col wrapper existed (added for `tabs`), this row and
+          the outer element were the same div, so `className` reaching it
+          was automatic; splitting them without moving `className` too
+          silently broke every one of those overrides (twMerge had nothing
+          of this row's classes to resolve against, so e.g. `pb-0` just sat
+          inertly on the outer wrapper, which has no padding of its own to
+          cancel) — caught from a screenshot of `agent-next-gen-v1`'s "Add
+          tag" popover header reading as visually centered instead of
+          flush-left: its `className="px-5 pb-0"` was stacking as *extra*
+          padding on the outer wrapper on top of this row's own unchanged
+          `px-4`, insetting the title+close cluster from both edges by
+          36px combined instead of cleanly swapping to 20px. */}
+      <div className={cn("flex items-center justify-between px-4", tabs ? "pt-2.5" : "py-2.5", className)}>
       {/* Left: optional top slot, above icon + title + optional subhead.
           `flex-1` (instead of relying on default flex-basis:auto shrinking)
           + `min-w-0` at every level down to the title/subhead text is what
@@ -164,6 +242,8 @@ const ContainerHeader = React.forwardRef<HTMLDivElement, ContainerHeaderProps>(
           </Tooltip>
         )}
       </div>
+      </div>
+      {tabs}
     </div>
   )
 );

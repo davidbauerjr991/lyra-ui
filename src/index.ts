@@ -74,8 +74,10 @@ export {
   VoiceChannelRow,
   CHANNEL_TYPE_META,
   ChannelTab,
+  ChannelToggle,
+  ChannelToggleGroup,
 } from "./components/channel-row";
-export type { ChannelRowInstanceProps, ChannelTabProps } from "./components/channel-row";
+export type { ChannelRowInstanceProps, ChannelTabProps, ChannelToggleProps, ChannelToggleGroupProps } from "./components/channel-row";
 export { ActionIconButton, ActionAvatarButton } from "./components/actions";
 export type { ActionIconButtonProps, ActionAvatarButtonProps } from "./components/actions";
 export { ShellIconButton, ShellAvatarButton } from "./components/shell-button";

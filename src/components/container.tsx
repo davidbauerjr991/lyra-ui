@@ -89,6 +89,10 @@ interface ContainerProps
   headerTitleClassName?: string;
   /** Additional className merged onto the header's own wrapper div — e.g. to zero its padding (`"px-0 py-0"`) when a consumer is rendering a chromeless/bare card. */
   headerClassName?: string;
+  /** Forwarded to `ContainerHeader`'s `actionsWrap` — see that prop's own doc comment (container-header.tsx) for when a header's `headerActions` needs this. */
+  headerActionsWrap?: boolean;
+  /** Forwarded to `ContainerHeader`'s `tabs` — a `TabList` (or similar, e.g. a second `SearchInput` copy — see that prop's own doc comment) rendered on its own full-width row below the title, outside `children`. */
+  headerTabs?: React.ReactNode;
 }
 
 const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
@@ -96,7 +100,7 @@ const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
     className, variant,
     headerTitle, headerIcon, headerActions,
     headerTitleBadge, headerTopSlot, headerSubhead, headerBordered = false,
-    headerTitleClassName, headerClassName,
+    headerTitleClassName, headerClassName, headerActionsWrap, headerTabs,
     children, ...props
   }, ref) => {
     // Render the header whenever *any* header-related prop is present, not
@@ -105,7 +109,7 @@ const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
     // needs the row to render so the icon/subhead/topSlot aren't silently
     // dropped along with the title.
     const hasHeader = Boolean(
-      headerTitle || headerIcon || headerActions || headerTitleBadge || headerTopSlot || headerSubhead
+      headerTitle || headerIcon || headerActions || headerTitleBadge || headerTopSlot || headerSubhead || headerTabs
     );
 
     return (
@@ -124,6 +128,8 @@ const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
             subhead={headerSubhead}
             bordered={headerBordered}
             className={headerClassName}
+            actionsWrap={headerActionsWrap}
+            tabs={headerTabs}
             {...(headerTitleClassName ? { titleClassName: headerTitleClassName } : {})}
           />
         )}

@@ -537,6 +537,21 @@
   min-width: 0;
   height: 420px;
 }
+/* Optional — for two (or more) plain flexible regions that should split
+   the row EVENLY rather than each taking its own natural content width
+   (`.lyra-card-split`'s own default when neither `-fixed` nor `-chart` is
+   used, since its usual pairing is one fixed column beside one flexible
+   one — see the file-level comment above). Added for agent-next-gen-v1's
+   Customer Information Overview tab: a compact field list beside the
+   "Latest Interaction" card rendered visibly unequal widths (the card's
+   own padding + longer text naturally wanting more room) before this
+   existed. Same `flex: 1 1 0%; min-width: 0;` `.lyra-container-grid > *`/
+   `.lyra-form-grid > *` already bake in by default — `.lyra-card-split`
+   doesn't, so this is the equivalent opt-in for it. */
+.lyra-card-split-even {
+  flex: 1 1 0%;
+  min-width: 0;
+}
 @container (max-width: 480px) {
   .lyra-card-split {
     flex-direction: column;
@@ -551,6 +566,16 @@
     flex: none;
     width: 100%;
     height: 340px;
+  }
+  /* Same fix as `.lyra-container-grid > *`/`.lyra-form-grid > *`'s own
+     stacked-stage reset — see either's comment for the full explanation.
+     Left unchecked, `flex-basis: 0%` (from the row-stage rule above)
+     would govern each column's HEIGHT once `.lyra-card-split` stacks to a
+     column, shrinking it toward its minimum content height instead of its
+     natural size. */
+  .lyra-card-split-even {
+    flex: none;
+    width: 100%;
   }
 }
 
@@ -854,5 +879,144 @@
   }
   .lyra-page-header-breadcrumb-wrap .lyra-page-header-breadcrumb-collapsed {
     display: flex;
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   Container header actions (CSS container query)
+   ════════════════════════════════════════════════════
+   `ContainerHeader`'s title/actions row (container-header.tsx) is a single
+   non-wrapping flex row by default — the title truncates via its own
+   min-w-0/truncate chain, but `actions` never gives up any width; it's
+   `shrink-0`. Fine for a couple of icon buttons, but breaks down for an
+   actions slot that itself needs real room — e.g. `ContactHistoryCard`'s
+   header (agent-next-gen-v1), which packs a `SearchInput` (240px+ before
+   it's unreadable) plus a date `FilterChip` into that same slot.
+
+   `.lyra-container-header-actions-wrap` (opt-in via `ContainerHeader`'s
+   `actionsWrap` prop) just establishes the container-query boundary
+   (`container-type: inline-size`) around the whole header — on its own it
+   changes nothing. Everything else below is a family of PER-ELEMENT
+   collapse behaviors that react to that same boundary, so each piece of
+   `actions` decides its own fate instead of the whole cluster moving as
+   one block.
+
+   (An earlier version of this made `actionsWrap` itself force the *entire*
+   `actions` block onto a new full-width row below the title. Retired: a
+   header whose `actions` was just a single `DateFilterChip` — no
+   `SearchInput` needing that room — still got shoved onto its own line for
+   no reason, overlapping the title above it; confirmed from a screenshot.
+   The per-element classes below replace it — see "Filter chip icon
+   collapse" and "Search inline/below" further down.) */
+.lyra-container-header-actions-wrap {
+  container-type: inline-size;
+}
+
+/* ── Filter chip icon collapse — same family, same 480px threshold ──
+   A chip-style trigger (e.g. `DateFilterChip`/`ContactHistoryDateFilterChip`
+   in agent-next-gen-v1 — app-level components, not in lyra-ui itself, but
+   built on this shared family) sitting in a `ContainerHeader`'s `actions`
+   (with `actionsWrap` on) can shrink to a compact icon-only trigger below
+   480px instead of getting crushed — this keeps it pinned in its normal
+   spot, top-right beside the title, rather than moving anywhere.
+   Deliberately reuses `.lyra-container-header-actions-wrap`'s own
+   container-type boundary and 480px threshold rather than declaring a
+   second one — same header, same "is there room" question, one answer.
+
+   Same "both real nodes always in the DOM, CSS toggles which one shows"
+   convention as `.lyra-tab-overflow-wrap`/`.lyra-page-header-breadcrumb-
+   wrap` above (not a JS media-query check) — a chip's trigger is a single
+   `<button>` (required: it's a Radix `Popover` trigger via `asChild`, which
+   can only clone one child, so this can't be two sibling buttons swapped
+   in — the full/compact content lives *inside* the one trigger button
+   instead). `-filter-trigger` goes on that button itself (drops its
+   horizontal chip padding down to a square icon-button footprint once
+   collapsed); `-filter-full` wraps the label+value+chevron content;
+   `-filter-compact` wraps a single icon (`MoreVertical`/kebab, matching
+   `KebabMenuButton`'s own default glyph — this doesn't reuse that
+   component, since a `Popover` trigger can't also be `KebabMenuButton`'s
+   own `MenuRadix` trigger, but reuses its icon so a collapsed filter chip
+   reads the same as any other "more" affordance in the app). */
+.lyra-container-header-actions-wrap .lyra-container-header-filter-compact {
+  display: none;
+}
+@container (max-width: 480px) {
+  .lyra-container-header-actions-wrap .lyra-container-header-filter-full {
+    display: none;
+  }
+  .lyra-container-header-actions-wrap .lyra-container-header-filter-compact {
+    display: inline-flex;
+  }
+  .lyra-container-header-actions-wrap .lyra-container-header-filter-trigger {
+    width: 2rem;
+    padding-left: 0;
+    padding-right: 0;
+    justify-content: center;
+  }
+}
+
+/* ── Search inline/below — same family, same 480px threshold ──
+   The other half of the "filter stays put, search is what actually needs
+   to move" split above: a `SearchInput` in `actions` (e.g.
+   `ContactHistoryCard`'s "Search contact history" box, agent-next-gen-v1)
+   is the one control that genuinely can't shrink below a readable width —
+   below 480px it's what needs to give up its spot next to the title, not
+   the filter chip beside it. Rather than forcing the whole `actions`
+   cluster down (the retired approach above), only the search box moves:
+   a second real `SearchInput`, controlled by the same value/onValueChange
+   state as the one in `actions`, is passed through `ContainerHeader`'s own
+   `tabs` slot (renders on its own full-width row below the title,
+   regardless of what's actually inside it — "a `TabList` (or similar)",
+   per that prop's own doc comment) and CSS-toggled against this one
+   `-full`/`-below` pair.
+
+   Two real, separately-controlled `<input>` elements, not one node moved
+   around — same "duplicate node, CSS shows/hides" convention as
+   `.lyra-tab-overflow-wrap` and the filter chip collapse above (a plain
+   DOM node can't jump between two different flex containers — `actions`
+   vs. `tabs` — via CSS alone). The hidden copy is `display: none`, which
+   also drops it from the tab order, so there's no duplicate stop for
+   keyboard/screen-reader users. */
+.lyra-container-header-actions-wrap .lyra-container-header-search-below {
+  display: none;
+}
+@container (max-width: 480px) {
+  .lyra-container-header-actions-wrap .lyra-container-header-search-inline {
+    display: none;
+  }
+  .lyra-container-header-actions-wrap .lyra-container-header-search-below {
+    display: block;
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   Transcript avatar collapse (CSS container query)
+   ════════════════════════════════════════════════════
+   agent-next-gen-v1's `InteractionTranscript` (conversation message list):
+   below 400px of its own available width, the 28px sender avatar next to
+   each message bubble is dropped — at that width it's competing directly
+   with the bubble text for room the avatar doesn't earn back (name/
+   timestamp/tags already identify the sender without it), same "react to
+   this component's own width, not the viewport" rationale as every other
+   family in this file (a docked side panel open next to the transcript, or
+   a narrow browser window, can each squeeze this width for unrelated
+   reasons). 400px reused rather than a new one-off threshold — matches
+   `.lyra-tab-overflow-wrap`'s own breakpoint above, both being "this is
+   genuinely cramped" thresholds for a content column, not something tuned
+   per-family.
+
+   `.lyra-transcript-wrap` goes on the transcript's own scrolling content
+   column (the ancestor whose width should be queried); `.lyra-transcript-
+   avatar` on each message's avatar `<span>`. Plain `display: none` (not a
+   width/opacity animation) — the avatar disappearing should read as "not
+   part of this layout below this width," the same one-step collapse
+   `.lyra-tab-overflow-wrap`'s two rows swap with, not something that
+   should visibly animate in/out as the container is resized. */
+.lyra-transcript-wrap {
+  container-type: inline-size;
+}
+@container (max-width: 400px) {
+  .lyra-transcript-wrap .lyra-transcript-avatar {
+    display: none;
   }
 }

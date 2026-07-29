@@ -6,6 +6,7 @@ import { Badge } from "../badge";
 import { Settings, Maximize2, Minimize2 } from "lucide-react";
 import { InfoIcon } from "../icons/info-icon";
 import { Tooltip } from "../tooltip";
+import { TabList, Tab } from "../tabs";
 
 const meta: Meta<typeof ContainerHeader> = {
   title: "UI/ContainerHeader",
@@ -179,6 +180,37 @@ export const WithButtons: Story = {
       onClose={() => {}}
     />
   ),
+};
+
+export const WithTabs: Story = {
+  name: "With tabs",
+  render: () => {
+    const [activeTab, setActiveTab] = useState(0);
+    const tabs = ["Overview", "Detail", "History"];
+    return (
+      <ContainerHeader
+        title="Customer Information"
+        subhead="Noah Bennett · CST-10296"
+        onClose={() => {}}
+        // `tabs` renders below the title/subhead row, inside this same
+        // header — see `tabs`'s own doc comment in container-header.tsx
+        // for why (keeps a panel's tabs outside its scrolling body
+        // entirely, rather than a `sticky` row living inside it). Bottom
+        // padding and `bordered`'s border are both dropped automatically
+        // whenever `tabs` is set, so the tab row sits flush with no gap
+        // and no doubled-up border above its own `border-b`.
+        tabs={
+          <TabList className="px-4">
+            {tabs.map((label, i) => (
+              <Tab key={label} active={activeTab === i} onClick={() => setActiveTab(i)}>
+                {label}
+              </Tab>
+            ))}
+          </TabList>
+        }
+      />
+    );
+  },
 };
 
 export const AllVariants: Story = {

@@ -130,6 +130,15 @@ A Storybook-style viewer for the USER's own components (`lyra-ui/src/components/
 - The gallery: left nav listing each component, canvas rendering each live, a few sensible prop variations where meaningful. Name it `my-component-gallery.html`.
 - **Component edits persist at the source**: when the user asks to change a component (text or screenshots), edit the component file in THEIR `lyra-ui/src/components/local/` (their machine), then rebuild and overwrite the gallery. Don't re-present it — tell them to refresh. The gallery is a view; the user's local folder is the source of truth.
 
+## Scenario G: The user pasted a duplication prompt ("Duplicate an existing Lyra UI prototype" / "Duplicate a repo as an html-only Lyra UI prototype")
+
+Both follow ALL the standard rules (Getting Lyra UI, fast path, strict write policy, standalone environment, version stamp, deliverable into `Prototypes/`). The duplication-specific rules:
+
+- **Exactness is the contract.** The duplicate must match the source's screens, layout, content, and behavior. Report anything you couldn't preserve and why — never silently approximate.
+- **Drift check BEFORE building, and STOP on drift.** Prototype source: compare its `lyra-ui-commit` meta stamp to latest main. Repo source: compare the lyra-ui version it was built against (package.json/lockfile/vendored copy) to latest main. If they differ, ask the user — update to latest components (recommended) or keep as-is — and WAIT for the answer.
+- **Prototype duplication with no drift (or "keep as-is")**: just copy the file under the new name and update its `<title>` — no rebuild.
+- **Repo duplication**: the source repo is READ-ONLY (never modify it, never push). Rebuild its UI with real, current lyra-ui components — don't transplant its code verbatim. If it has many screens, list them and confirm scope with the user first; multiple screens go behind in-prototype navigation.
+
 ## Scenario F: The user wants to share/publish a prototype (Vercel or Netlify)
 
 You CANNOT reach Vercel/Netlify (or most of the web) from your sandbox — do not try to deploy via API or CLI, and never ask the user to run terminal commands. Instead:

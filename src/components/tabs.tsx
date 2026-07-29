@@ -289,7 +289,26 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
           // directly with no wrapper, so it really is `tablistEl`'s direct
           // `[role="tab"]` child this selector targets, same as the
           // existing `[&>[role='tab']]:px-5` above.
-          isWideOverflow && "[&>[role='tab']]:flex-shrink-0",
+          //
+          // Also applied in `"compact"` mode (`isCompact`), not just
+          // `isWideOverflow` — this same `tablistEl` is what `isCompact`'s
+          // own branch renders as its "not collapsed yet" row (see
+          // `compactCollapsed`'s conditional `hidden` class below), and
+          // without this it has exactly the same hole: every `Tab` free to
+          // individually flex-shrink+truncate instead of holding its real
+          // width. The hidden measurement clone that decides
+          // `compactCollapsed` is immune to this on its own (it's
+          // `position: absolute` with no imposed width, so nothing forces
+          // it to shrink regardless of this class), but the *visible* row
+          // isn't — confirmed from a screenshot of `agent-next-gen-v1`'s
+          // Customer Information panel (an `overflowBreakpoint="compact"`
+          // consumer) showing all 8 tabs simultaneously, each individually
+          // truncated to a few letters ("Overvi...", "Det...", "Directo..."),
+          // instead of either its full natural width or the collapsed
+          // "active tab + N More" row `isCompact` is supposed to produce —
+          // there's no third, partially-shrunk state in either mode's
+          // design.
+          (isWideOverflow || isCompact) && "[&>[role='tab']]:flex-shrink-0",
           // Consumer's `className` (e.g. a horizontal inset like `px-4`/
           // `px-6`) merges onto THIS SAME element as `border-b` above —
           // that's deliberate, not incidental. `border` sits outside
@@ -460,7 +479,23 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
           >
             {children}
           </div>
-          {compactCollapsed ? collapsedRowEl : tablistEl}
+          {/* Real tab row — stays mounted even once collapsed, just
+              visually hidden (`hidden`), rather than being swapped out
+              entirely. This used to be a straight `compactCollapsed ?
+              collapsedRowEl : tablistEl` ternary — unmounting `tablistEl`
+              also tore out its `[role="tab"]` buttons, which is what the
+              "N More" overflow menu's own entries actually click (see
+              `overflowEntries` above — `listRef.current?.querySelectorAll
+              ('[role="tab"]')[originalIndex]?.click()`, chosen specifically
+              so a menu selection fires the exact same handlers a real
+              click would). With `tablistEl` gone, `listRef.current` had
+              nothing left to query, so every "N More" selection silently
+              did nothing — a real, shipped bug, not a one-off edge case.
+              "Wide" mode never had this problem because it always keeps
+              the full row mounted (`.lyra-tab-overflow-full` just hides it
+              with CSS at ≤400px); "compact" mode now does the same. */}
+          <div className={cn(compactCollapsed && "hidden")}>{tablistEl}</div>
+          {compactCollapsed && collapsedRowEl}
           {portalEl}
         </div>
       );

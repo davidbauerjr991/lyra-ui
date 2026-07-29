@@ -129,7 +129,7 @@
   <div class="card hidden" id="step2">
     <h2>What would you like to do?</h2>
     <p class="sub">Pick how you want to build — everything stays no-terminal, no installs.</p>
-    <div class="choice-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+    <div class="choice-grid">
       <button class="choice" onclick="pickTarget('design')">
         <p class="t">Use Claude Design</p>
         <p class="d">Build the prototype on Claude Design's visual canvas — iterate with inline comments and share via link.</p>
@@ -142,9 +142,33 @@
         <p class="t">View Storybook</p>
         <p class="d">A local gallery of your custom components — view them, then modify them by prompting Claude.</p>
       </button>
+      <button class="choice" onclick="go(7)">
+        <p class="t">Duplicate a Repo</p>
+        <p class="d">Recreate a local or public GitHub repo's UI as an html-only prototype on the latest Lyra UI.</p>
+      </button>
     </div>
     <div class="btn-row">
       <button class="btn" onclick="go(1)">Back</button>
+    </div>
+  </div>
+
+  <!-- Step 7: Duplicate a repo -->
+  <div class="card hidden" id="step7">
+    <h2>Duplicate a Repo</h2>
+    <p class="sub">Claude recreates the repo's UI exactly — same screens, layout, and flows — as a single html prototype built on the latest Lyra UI components.</p>
+    <label for="dupRepoSrc">Repo to duplicate</label>
+    <div style="display:flex;gap:8px;">
+      <input type="text" id="dupRepoSrc" style="flex:1;" placeholder="Folder name (e.g. lyra-ux-templates) or a public GitHub URL" oninput="validate7()" />
+      <button type="button" class="btn" style="flex-shrink:0;" onclick="pickRepoFolder()">Select a Folder…</button>
+    </div>
+    <input type="file" id="dupRepoFolderInput" webkitdirectory style="display:none;" onchange="folderInputChanged(this)" />
+    <p class="hint">Pick a folder on your computer, or paste any public GitHub repository URL.</p>
+    <label for="dupRepoName">New prototype name</label>
+    <input type="text" id="dupRepoName" placeholder="e.g. Templates App Duplicate" oninput="validate7()" />
+    <div class="btn-row">
+      <button class="btn" onclick="go(2)">Back</button>
+      <span class="spacer"></span>
+      <button class="btn primary" id="dupRepoBtn" disabled onclick="createRepoDupPrompt()">Create</button>
     </div>
   </div>
 
@@ -323,6 +347,11 @@
       open.target = "_blank";
       open.style.cssText = "font-weight:600;color:var(--blue-active-text);text-decoration:none;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
       row.appendChild(open);
+      var dup = document.createElement("button");
+      dup.textContent = "Duplicate";
+      dup.onclick = function () { duplicateProto(p.name, p.file); };
+      dup.style.cssText = "font-size:11.5px;font-weight:600;color:var(--blue-active-text);background:var(--blue-subtle);border:1px solid var(--blue-moderate);padding:3px 8px;border-radius:999px;cursor:pointer;flex-shrink:0;";
+      row.appendChild(dup);
       var badge = document.createElement(p.url ? "a" : "button");
       if (p.url) {
         badge.textContent = "Published ↗";
@@ -424,6 +453,114 @@ fallbackLine +
 "Start by confirming you've read the rulebooks, then build the starting template with my product name in the header.";
 
     document.getElementById("promptOut").value = prompt;
+    go(5);
+  }
+
+  /* ── Shared blocks for duplication prompts ── */
+  function setupBlock() {
+    var setup = state.alreadyInstalled
+      ? "- Lyra UI is already set up in this chat — reuse the lyra-ui copy already in your sandbox workspace. If there is none, clone the latest from https://github.com/davidbauerjr991/lyra-ui.git (main branch) yourself — never ask me to run any command.\n"
+      : "- Get the LATEST Lyra UI by cloning https://github.com/davidbauerjr991/lyra-ui.git (main branch) into your own sandbox workspace. Do this yourself — never ask me to run any command.\n";
+    return setup +
+"- Read prototype-kit/README-FIRST.md and CLAUDE-INSTRUCTIONS.md at the repo root and follow their rules (fast path, strict write policy, protected primitives).\n" +
+"- If my connected folder has lyra-ui/src/components/local/ with components in it, copy them into your sandbox clone and treat them as part of the library.\n" +
+"- Do ALL work in your own sandbox. The ONLY files you may create or modify in my connected folder are the deliverable in Prototypes/ and (on request) components in lyra-ui/src/components/local/.\n";
+  }
+  function deliverableBlock(fileName) {
+    return "- One self-contained HTML file named \"" + fileName + ".html\" in the Prototypes folder in my connected folder (sibling of lyra-ui, never inside it), with the lyra-ui-commit stamp, the update-notice script, and PROGRAMMATICALLY VERIFIED working dark mode, per CLAUDE-INSTRUCTIONS.md. Present it once; on later changes overwrite in place and just tell me to refresh.\n";
+  }
+
+  function duplicateProto(srcName, srcFile) {
+    var newName = window.prompt("Name for the duplicate:", srcName + " Copy");
+    if (!newName) return;
+    newName = newName.trim();
+    var newFile = newName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "prototype-copy";
+
+    var prompt =
+"Duplicate an existing Lyra UI prototype. Follow every instruction below exactly.\n" +
+"\n" +
+"SETUP\n" + setupBlock() +
+"\n" +
+"SOURCE\n" +
+"- The source prototype is Prototypes/" + srcFile + ".html in my connected folder. If no folder is connected, use your directory-access tool to ask me to pick one BEFORE doing anything. If the file isn't there, ask me where it is.\n" +
+"\n" +
+"DUPLICATION (must be EXACT)\n" +
+"- New prototype name: " + newName + "\n" +
+"- The duplicate must match the source exactly — same screens, layout, content, and behavior. Only the name/title changes.\n" +
+"- DRIFT CHECK FIRST: read the source's <meta name=\"lyra-ui-commit\"> stamp and compare it to the latest main commit of lyra-ui. If they differ, STOP and ask me: (a) rebuild the duplicate on the LATEST components (recommended), or (b) keep it exactly as-is for now. If I pick (b) — or if there is no drift — just copy the file under the new name and retitle it; do not rebuild anything.\n" +
+"- If rebuilding on latest: recreate the same UI per prototype-kit and the source file's content, re-verify, and tell me about anything you could not preserve exactly.\n" +
+"\n" +
+"DELIVERABLE\n" + deliverableBlock(newFile);
+
+    document.getElementById("promptOut").value = prompt;
+    document.getElementById("coworkSteps").classList.remove("hidden");
+    document.getElementById("designSteps").classList.add("hidden");
+    recordProto(newName, newFile);
+    go(5);
+  }
+
+  function validate7() {
+    document.getElementById("dupRepoBtn").disabled =
+      document.getElementById("dupRepoSrc").value.trim().length === 0 ||
+      document.getElementById("dupRepoName").value.trim().length === 0;
+  }
+
+  /* Native folder picker. Browsers never expose the absolute path to a web
+     page — only the folder's NAME, which is all the generated prompt needs
+     (Claude asks to connect that folder in Cowork). Prefer the File System
+     Access API (instant, no file enumeration); fall back to a hidden
+     webkitdirectory input elsewhere. */
+  function pickRepoFolder() {
+    if (window.showDirectoryPicker) {
+      window.showDirectoryPicker({ mode: "read" }).then(function (h) {
+        document.getElementById("dupRepoSrc").value = h.name;
+        validate7();
+      }).catch(function () { /* user cancelled */ });
+    } else {
+      document.getElementById("dupRepoFolderInput").click();
+    }
+  }
+  function folderInputChanged(input) {
+    if (input.files && input.files.length) {
+      var rel = input.files[0].webkitRelativePath || "";
+      var folder = rel.split("/")[0] || "";
+      if (folder) {
+        document.getElementById("dupRepoSrc").value = folder;
+        validate7();
+      }
+    }
+    input.value = "";
+  }
+
+  function createRepoDupPrompt() {
+    var src = document.getElementById("dupRepoSrc").value.trim();
+    var name = document.getElementById("dupRepoName").value.trim();
+    var fileName = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "repo-duplicate";
+    var isUrl = /^https?:\/\//i.test(src);
+
+    var prompt =
+"Duplicate a repo as an html-only Lyra UI prototype. Follow every instruction below exactly.\n" +
+"\n" +
+"SETUP\n" + setupBlock() +
+"\n" +
+"SOURCE REPO\n" +
+(isUrl
+  ? "- Clone the public repo " + src + " into your sandbox (read-only — never modify it or push to it).\n"
+  : "- The source repo is the folder \"" + src + "\" on my computer. If it isn't in my connected folder, use your directory-access tool to ask me to connect it. Treat it as READ-ONLY.\n") +
+"\n" +
+"DUPLICATION (must be EXACT, html-only)\n" +
+"- New prototype name: " + name + "\n" +
+"- Recreate the source repo's UI exactly — same screens, layout, content, navigation, and flows — as ONE self-contained html prototype. Do not copy the repo's code verbatim; rebuild its UI with real, CURRENT lyra-ui components (your fresh clone plus my local components), following the library rulebook for anything custom.\n" +
+"- DRIFT CHECK FIRST: determine which lyra-ui version the source repo was built against (its package.json/lockfile or vendored copies) and compare to the latest main. If they differ, STOP and ask me: (a) build the duplicate on the LATEST components (recommended — the point of this duplication), or (b) match the source's older component versions as-is for now. Wait for my answer.\n" +
+"- If the repo has many screens, list them and confirm scope with me before building; put multiple screens behind the prototype's own navigation.\n" +
+"- Tell me about anything you could not reproduce exactly and why.\n" +
+"\n" +
+"DELIVERABLE\n" + deliverableBlock(fileName);
+
+    document.getElementById("promptOut").value = prompt;
+    document.getElementById("coworkSteps").classList.remove("hidden");
+    document.getElementById("designSteps").classList.add("hidden");
+    recordProto(name, fileName);
     go(5);
   }
 

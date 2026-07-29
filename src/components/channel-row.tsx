@@ -460,6 +460,145 @@ const ChannelTab: React.FC<ChannelTabProps> = ({
   );
 };
 
+/* ── ChannelToggle / ChannelToggleGroup ──
+ * A toggle-button rendering of the same "one open channel" concept
+ * `ChannelTab` represents — same per-type icon/label/address/tooltip/kebab
+ * behavior (built on the exact same `CHANNEL_TYPE_META`/`buildDigitalMenu
+ * Items`/`buildVoiceMenuItems`/`KebabMenuButton`/`Tooltip` pieces `ChannelTab`
+ * itself uses, not a re-derivation of any of it), just styled as a
+ * `ToggleGroup`-style segmented pill instead of a `Tab`'s underline —
+ * requested specifically for `PageHeader`'s `titlePrefix` slot (a compact
+ * cluster to the left of the title, where an underlined tab strip reads
+ * oddly against a single-line header row the way it doesn't in a full
+ * `TabList` beneath one).
+ *
+ * Not built on `ToggleGroup` itself: that component's generic `items`
+ * array renders each item's `label` inside the one real `<button>` it
+ * owns, and a channel toggle's kebab is itself an interactive control —
+ * nesting it in there would be a button-inside-a-button, the same reason
+ * `Tab`'s own `menuItems` slot renders `KebabMenuButton` with `as="span"`
+ * instead of letting it default to a real nested `<button>` (see that
+ * prop's own doc comment in kebab-menu-button.tsx). `ChannelToggle` reuses
+ * `ToggleGroup`'s exact visual classes by hand (selected/unselected pill
+ * treatment, `role="radio"`/`aria-checked`) so the two read as the same
+ * design-system control, and `ChannelToggleGroup` reuses its outer shell
+ * classes (`role="radiogroup"`, rounded bordered strip, dividers between
+ * items) the same way `TabList` is the shell `ChannelTab` needs but never
+ * duplicates itself. */
+
+export interface ChannelToggleProps extends ChannelTabProps {
+  /** This toggle's position in its `ChannelToggleGroup` — only used to
+   *  decide whether the divider immediately before it should render (first
+   *  item never gets one). Set automatically by `ChannelToggleGroup`. */
+  isFirst?: boolean;
+}
+
+const ChannelToggle: React.FC<ChannelToggleProps> = ({
+  type,
+  address,
+  messageCount,
+  interactionId,
+  active,
+  onClick,
+  onDismiss,
+  menuItems,
+  showMenu = true,
+  className,
+  isFirst,
+}) => {
+  const meta = CHANNEL_TYPE_META[type];
+  const defaultMenuItems = type === "voice" ? buildVoiceMenuItems(onDismiss) : buildDigitalMenuItems(onDismiss);
+  // Same tooltip-vs-kebab-dropdown coordination `ChannelTab` needs — see
+  // that component's own `menuOpen` comment for the full explanation.
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const metaLine = [
+    messageCount !== undefined ? `${messageCount} Message${messageCount === 1 ? "" : "s"}` : undefined,
+    interactionId ? `#${interactionId}` : undefined,
+  ]
+    .filter(Boolean)
+    .join(" | ");
+  const tooltipContent = (
+    <div className="flex flex-col gap-0.5">
+      <span>{address ? `${meta.label} ${address}` : meta.label}</span>
+      {metaLine && <span className="lyra-body-sm text-lyra-fg-secondary">{metaLine}</span>}
+    </div>
+  );
+
+  return (
+    <>
+      {/* Divider — same "always in the DOM, invisible next to the active
+          pill" trick `ToggleGroup` itself uses, so adding/removing a
+          channel never shifts neighboring dividers' widths. */}
+      {!isFirst && (
+        <span aria-hidden="true" className={cn("w-px h-4 bg-lyra-border-subtle flex-shrink-0", active && "opacity-0")} />
+      )}
+      <Tooltip content={tooltipContent} placement="bottom" disabled={menuOpen}>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={active}
+          onClick={onClick}
+          className={cn(
+            "relative inline-flex items-center gap-1.5 px-3 py-1.5 lyra-body-md rounded-lyra-sm transition-colors select-none",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-1",
+            active
+              ? "bg-lyra-bg-active-subtle border border-lyra-border-active text-lyra-fg-active-strong hover:bg-lyra-state-hover-active-subtle active:bg-lyra-state-pressed-active-subtle"
+              : "text-lyra-fg-default border border-transparent hover:bg-lyra-bg-surface-shell hover:border-lyra-border-default active:bg-lyra-bg-disabled active:border-lyra-border-default",
+            className
+          )}
+        >
+          <span className={cn("shrink-0", active ? "text-lyra-fg-active-strong" : "text-lyra-fg-secondary")} aria-hidden="true">
+            {meta.icon}
+          </span>
+          {/* `address` is deliberately NOT shown on the pill face here —
+              unlike `ChannelTab` (a full-width row with real room for
+              "Email noah.bennett@example.com"), this toggle sits in a
+              compact strip next to the page title, where the full address
+              would dominate the pill and crowd the customer name beside
+              it. It's still surfaced in full in the `Tooltip` above (see
+              `tooltipContent`) — just icon + type label on the pill
+              itself, per explicit request. */}
+          <span>{meta.label}</span>
+          {showMenu && (
+            <KebabMenuButton
+              as="span"
+              items={menuItems ?? defaultMenuItems}
+              ariaLabel={`More options for ${meta.label}`}
+              onOpenChange={setMenuOpen}
+            />
+          )}
+        </button>
+      </Tooltip>
+    </>
+  );
+};
+
+export interface ChannelToggleGroupProps {
+  children: React.ReactElement<ChannelToggleProps>[] | React.ReactElement<ChannelToggleProps>;
+  className?: string;
+}
+
+/** Outer pill-strip shell for one or more `ChannelToggle`s — same
+ *  `role="radiogroup"` + bordered/rounded/padded container `ToggleGroup`
+ *  itself renders (see that component's root `className`), reused
+ *  verbatim rather than re-guessed so the two controls are visually
+ *  identical. Sets each child's `isFirst` automatically — consumers just
+ *  `.map()` their channels into `ChannelToggle`s like any other list. */
+const ChannelToggleGroup: React.FC<ChannelToggleGroupProps> = ({ children, className }) => {
+  const items = React.Children.toArray(children) as React.ReactElement<ChannelToggleProps>[];
+  return (
+    <div
+      role="radiogroup"
+      className={cn(
+        "inline-flex items-center rounded-lyra-md border border-lyra-border-subtle bg-lyra-bg-surface-base p-0.5 gap-0",
+        className
+      )}
+    >
+      {items.map((child, i) => React.cloneElement(child, { isFirst: i === 0 }))}
+    </div>
+  );
+};
+
 export {
   ChannelRow,
   ChatChannelRow,
@@ -470,5 +609,7 @@ export {
   CHANNEL_ROW_COMPONENTS,
   CHANNEL_TYPE_META,
   ChannelTab,
+  ChannelToggle,
+  ChannelToggleGroup,
   WhatsAppIcon,
 };

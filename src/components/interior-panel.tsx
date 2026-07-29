@@ -1,8 +1,10 @@
 import * as React from "react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Maximize2, Minimize2 } from "lucide-react";
 import { PanelHeader } from "./panel-header";
 import { PanelContent } from "./panel-content";
 import { PanelFooter } from "./panel-footer";
+import { Tooltip } from "./tooltip";
 import { usePanelDragResize } from "./use-panel-drag-resize";
 import { cn } from "../lib/utils";
 
@@ -91,6 +93,42 @@ export interface InteriorPanelProps extends React.HTMLAttributes<HTMLDivElement>
   headerSubhead?: string;
   headerIcon?: React.ReactNode;
   headerActions?: React.ReactNode;
+  /**
+   * A `TabList` rendered inside the header itself, below the title/subhead
+   * row — forwarded straight to `PanelHeader`'s own `tabs` prop (see
+   * container-header.tsx). This keeps the tabs genuinely fixed: they sit
+   * outside `PanelContent` (the `flex-1 overflow-y-auto` scroll region
+   * `children` renders into), not inside it with a hand-rolled `sticky`
+   * wrapper — see CONTRIBUTING.md's "Composing panel body content" for why
+   * that used to be the only option and what was wrong with it (the
+   * surrounding scroll container's own scrollbar still ran alongside a
+   * merely-`sticky` tab row, and selecting from a collapsed "N More"
+   * overflow menu had its own separate bug on top of that). Pass the same
+   * `TabList` you'd otherwise have put at the top of `children` — nothing
+   * else about how you build it changes.
+   */
+  headerTabs?: React.ReactNode;
+
+  /**
+   * Adds a full-screen toggle button to the header (a `Maximize2`/
+   * `Minimize2` icon, matching `ContainerHeader.stories.tsx`'s own
+   * fullscreen-toggle reference) that expands the panel to the full width
+   * of its container — same overlay mechanism the panel already uses below
+   * 1024px of its parent's width (`isNarrow`, see the class doc comment
+   * above), just user-triggered instead of width-triggered, so it needs no
+   * extra cooperation from whatever main-content column sits next to this
+   * panel: the panel simply covers it, rather than requiring that sibling
+   * to shrink out of the way itself. Default `false` — every existing
+   * panel is unaffected; opt in per usage for whichever ones actually
+   * benefit from more room on demand (e.g. a wide table or transcript
+   * inside the panel). Self-contained open/closed state (not controlled
+   * from outside) — same "the component owns this interaction, not the
+   * consumer" status as the resize drag state already has. Resizing
+   * (`resizable`) is disabled while full-screen, since dragging a width
+   * that's currently `100%` doesn't mean anything; it resumes at whatever
+   * width was active before entering full-screen once toggled back off.
+   */
+  allowFullScreen?: boolean;
 
   footer?: React.ReactNode;
 }
@@ -113,6 +151,8 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       headerSubhead,
       headerIcon,
       headerActions,
+      headerTabs,
+      allowFullScreen = false,
       footer,
       children,
       ...props
@@ -160,6 +200,31 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       return () => clearTimeout(closeTimerRef.current);
     }, [open]);
 
+    // Full-screen toggle (see `allowFullScreen`'s own doc comment above) —
+    // self-contained, not controlled from outside. Deliberately NOT reset
+    // when the panel closes: closing while full-screen and reopening later
+    // should come back full-screen, the same way a resized width is
+    // remembered across a close/reopen (just per-mount rather than via a
+    // `storageKey` cookie) — confirmed as the wanted behavior over
+    // "always reopens at the pre-full-screen size."
+    const [isFullScreen, setIsFullScreen] = useState(false);
+    const fullScreenToggle = allowFullScreen ? (
+      <Tooltip content={isFullScreen ? "Exit full screen" : "Full screen"} placement="bottom" asLabel>
+        <button
+          type="button"
+          aria-label={isFullScreen ? "Exit full screen" : "Full screen"}
+          onClick={() => setIsFullScreen((v) => !v)}
+          className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-action hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+        >
+          {isFullScreen ? (
+            <Minimize2 className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+          ) : (
+            <Maximize2 className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+          )}
+        </button>
+      </Tooltip>
+    ) : null;
+
     /* ── Go absolute/overlay when the parent container is < 1024px, instead
        of squeezing the main content column further — matches SidePanel's
        own pin-guard threshold (admin-shell.tsx / AgentNextGenTemplate),
@@ -184,7 +249,10 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       return () => ro.disconnect();
     }, []);
 
-    const dragHandle = resizable && open ? (
+    // Dragging a width that's currently forced to 100% doesn't mean
+    // anything, so the handle disappears while full-screen — it comes back
+    // at whatever width was active before, once toggled back off.
+    const dragHandle = resizable && open && !isFullScreen ? (
       <div
         onMouseDown={onMouseDown}
         className="absolute top-0 bottom-0 z-10 flex items-center justify-center group"
@@ -195,10 +263,20 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       </div>
     ) : null;
 
+    // `currentWidth` (px, from drag-resize state) everywhere below, except
+    // while full-screen — then the panel's actual on-screen size is "100%
+    // of its container" instead, and every place that otherwise sizes off
+    // `currentWidth` needs to say so too, not just the outermost shell
+    // (`inner`'s own width, and the left-side absolute-positioning wrapper
+    // further down, would otherwise still cap content at the pre-full-
+    // screen px width inside an outer shell that's already gone full width,
+    // leaving empty space instead of actually filling it).
+    const displayWidth: number | string = isFullScreen ? "100%" : currentWidth;
+
     const inner = (
       <div
         className="relative flex flex-col h-full"
-        style={{ width: currentWidth, minWidth: currentWidth }}
+        style={{ width: displayWidth, minWidth: displayWidth }}
       >
         {dragHandle}
         {/* Snap content invisible on close (no squish); fade in on open */}
@@ -215,7 +293,8 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
               title={headerTitle}
               subhead={headerSubhead}
               icon={headerIcon}
-              actions={headerActions}
+              actions={<>{headerActions}{fullScreenToggle}</>}
+              tabs={headerTabs}
               onClose={onClose}
               bordered={false}
             />
@@ -230,11 +309,18 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
     const border = (open || isClosing)
       ? (side === "right" ? "border-l border-lyra-border-subtle" : "border-r border-lyra-border-subtle")
       : "";
-    const interiorWidth = open ? currentWidth : 0;
+    const interiorWidth: number | string = open ? displayWidth : 0;
     const pos = side === "right" ? "right-0" : "left-0";
 
-    // Narrow: overlay like an unpinned side panel instead of pushing content full-width
-    if (isNarrow) {
+    // Overlay instead of pushing the main content column: either the
+    // parent container is genuinely too narrow to squeeze further
+    // (`isNarrow`), or the panel is explicitly full-screen — same
+    // mechanism either way (`position: absolute`, covering whatever's
+    // beside it rather than requiring that sibling to shrink out of the
+    // way), just a different trigger. See `allowFullScreen`'s own doc
+    // comment for why full-screen deliberately reuses this instead of
+    // needing its own separate layout branch.
+    if (isNarrow || isFullScreen) {
       return (
         <div
           ref={stableOuterRef}
@@ -261,7 +347,7 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       >
         {/* Left-side interior: align content to right edge during animation */}
         {side === "left"
-          ? <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: currentWidth, minWidth: currentWidth }}>{inner}</div>
+          ? <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: displayWidth, minWidth: displayWidth }}>{inner}</div>
           : inner
         }
       </div>
