@@ -175,10 +175,14 @@ Use `active` (not a hand-rolled `selected` boolean) to mark the current/chosen i
 
 **Known, intentional exception:** `AppMenu` (the app-launcher tile grid) does *not* compose `Menu` — its items are large icon tiles with their own sizing and no submenu/shortcut/description affordances, a genuinely different visual pattern rather than a plain option list. If you're building anything that's fundamentally a vertical list of rows, it isn't this exception; it should use `Menu`.
 
-**Shadow clipping rule:** never place `overflow-y-auto` / `overflow-hidden` on a *parent* of `Menu` — it will clip `Menu`'s `shadow-lg`. Apply `overflow-y-auto max-h-[Npx]` directly to `Menu` via its `className` prop so the element controls its own overflow without cutting its own shadow:
+**Shadow clipping & scrolling rule:** never place `overflow-y-auto` / `overflow-hidden` on a *parent* of `Menu` — it will clip `Menu`'s `shadow-lg`. And do NOT add `overflow-y-auto` to `Menu`'s own `className` either: `Menu` owns its scrolling internally (its root is split into an outer surface wrapper — the element your `className` styles — and an inner scrollable item list using the shared hover-chevron affordance from `scroll-chevron.tsx`; see CLAUDE.md's "`Menu` gains the shared hover-chevron scroll affordance" bullet). To cap height, pass only a `max-h-*` class:
 
 ```tsx
-// ✅ overflow on Menu itself — shadow is safe
+// ✅ height cap only — Menu scrolls internally, with hover chevrons
+<Menu className="max-h-60" ... />
+
+// ❌ overflow on Menu's className — creates a plain OS scrollbar,
+//    bypassing the shared chevron affordance Menu provides
 <Menu className="max-h-60 overflow-y-auto" ... />
 
 // ❌ overflow on a parent — clips Menu's shadow
@@ -326,6 +330,7 @@ All overlapping layers in Lyra UI follow a fixed z-index scale. **Never use an a
 | Base content | `0` – `49` | Normal document flow, sticky headers |
 | Overlays & dropdowns | `9999` | Portal wrappers (e.g. `NotificationsBell` panel portal) |
 | Tooltips | `10000` | `Tooltip` (`TooltipPrimitive.Content`) |
+| Floating `Draggable` panels | `9999` (all) / `10000` (single front-most) | `AiPanel`/`DraggablePanel`/`Draggable` in float mode, per draggable.tsx's documented multi-panel contract (`topPanel` state + `onInteract`). The front-most panel intentionally shares `10000` with tooltips: tooltips are transient hover layers that render later in the DOM, so they still appear above the panel they originate from — do not raise panels higher. |
 | Priority menus | `10001` | `AgentProfile` status menu — always the topmost interactive layer |
 | Tooltips nested inside a priority menu | `10002` | `AgentProfile`'s favorite-star, agent-leg, and connected-apps-badge tooltips — must clear their own `z-[10001]` parent panel |
 | Popovers nested inside another popover | `10003` | `CreateNew`'s per-row channel flyout (Outbound picker); `PhoneInput`'s country dropdown when used inside `CreateNew` (dialpad group and drill-down screen 1, via its `dropdownClassName` prop) — both must clear their own `z-[9999]` parent panel |
@@ -335,7 +340,7 @@ All overlapping layers in Lyra UI follow a fixed z-index scale. **Never use an a
 
 - **Portal wrappers** that use `ReactDOM.createPortal` or `position: fixed` must use `z-index: 9999` (Tailwind: `z-[9999]`).
 - **Tooltips** must use `z-[10000]` so they always clear portal wrappers. The Lyra `Tooltip` component already enforces this — do not override it lower.
-- **The agent status menu** uses `z-[10001]` and must remain the highest interactive layer. Never add a new component at `z-[10001]` or above without updating this table.
+- **The agent status menu** uses `z-[10001]` and must remain the highest persistent interactive layer. Never add a new component at `z-[10001]` or above without updating this table. (Floating `Draggable` panels top out at `10000` — see the table row above.)
 - **A tooltip nested inside the agent status menu is a special case:** the default `z-[10000]` tooltip stacking level sits *below* the menu's own `z-[10001]` panel, so a tooltip triggered by something inside that menu (e.g. hovering the favorite-star button) renders behind its own parent and is invisible even though it's technically open. Pass `className="z-[10002]"` to `<Tooltip>` for any tooltip that lives inside the agent status menu (or any future `z-[10001]`-level component) so it clears its own container. Do not raise the shared `Tooltip` component's own default — override per-instance via `className` only where the tooltip's trigger genuinely lives inside a `z-[10001]` layer.
 - **The same problem applies to a `Popover` nested inside another `Popover`** — e.g. a per-row hover flyout inside an already-open picker panel. The default `Popover` z-index (`z-50`, see below) sits well below its own parent's `z-[9999]`, so pass `className="z-[10003]"` to the nested instance. General rule: whenever you nest one overlay-ish component inside another, check this table and give the nested one the next unused integer above its own parent's tier — don't assume defaults compose correctly just because each component works fine in isolation.
 - **This isn't limited to components literally named `Popover`.** Anything with its own internal Radix Popover/Popper (a searchable dropdown, a country selector, a color picker, etc.) has the exact same failure mode when it's nested inside something else's `z-[9999]` panel — `PhoneInput`'s country dropdown is a concrete example: it hardcodes `z-50` internally for its normal-flow case, so it needed a dedicated `dropdownClassName` prop (not just `className`, which targets the field shell instead) so a consumer like `CreateNew` can raise it to `z-[10003]` when nesting it. When adding a new overlay-ish component, ask "can this be nested inside another popover/menu?" — if yes, expose a way to override its overlay's z-index rather than assuming it'll only ever be used at the top level.
@@ -522,6 +527,8 @@ const chipVariants = cva(
 
 ### Button / icon-button size scale (canonical reference)
 
+Text buttons (`Button` `size`):
+
 | Size | Height | Padding | Use |
 |---|---|---|---|
 | `sm` | 24 px (`h-6`) | `px-2.5` | Compact / dense UIs |
@@ -529,7 +536,19 @@ const chipVariants = cva(
 | `lg` | 36 px (`h-9`) | `px-4` | **Default size** |
 | `xl` | 40 px (`h-10`) | `px-5` | Primary CTAs |
 
+Icon buttons (`Button` `size="icon-*"`, square):
+
+| Size | Box | Use |
+|---|---|---|
+| `icon-sm` | 24 px (`h-6 w-6`) | Dense rows |
+| `icon` / `icon-md` | 32 px (`h-8 w-8`) | Default icon button |
+| `icon-lg` | 36 px (`h-9 w-9`) | Matches `lg` text buttons (e.g. side-rail buttons) |
+| `icon-xl` | 40 px (`h-10 w-10`) | Matches `xl` text buttons |
+| `icon-2xl` | 44 px (`h-11 w-11`) | **AppHeader tier only** — composed by `ActionIconButton size="xl"` |
+
 `defaultVariants.size` is `"lg"`. Do not change this without a design review.
+
+**Name-collision warning:** `ActionIconButton`'s own `size` prop is a different axis from `Button`'s — `ActionIconButton size="xl"` maps to `Button`'s `icon-2xl` (44 px, the AppHeader standard; see `actions.tsx`), NOT to `Button`'s `xl` (40 px text button). When docs or designs say "xl", check which component they mean.
 
 ---
 
@@ -773,6 +792,11 @@ Work through this list top-to-bottom before marking a component done.
 [ ] If debugging "doesn't appear/show up," ruled out rendering causes (§14) before touching event/state logic
 [ ] Any new Tooltip usage has its placement checked against the component's actual layout context, not left at a reflexive default (§15)
 [ ] Any new portal-rendering component (Popover-like, custom flyout, etc.) stops pointer/focus events from bubbling past its own content root, so it can't be wrapped by a Tooltip or similar hover-triggered wrapper without misfiring it (§16)
+[ ] Any new TabList has overflowMenu enabled (overflowBreakpoint="compact" in narrow/resizable containers) unless it has its own purpose-built collapse strategy (CLAUDE.md)
+[ ] Card/grid responsiveness is container-query-based (.lyra-container-grid etc.), never a Tailwind sm:/md:/lg: viewport prefix (CLAUDE.md)
+[ ] Any new text-entry/select-style component has the size?: "sm" | "md" prop (with "size" added to the Omit<> list where props extend InputHTMLAttributes) (CLAUDE.md)
+[ ] Any control that can sit in a card's headerActions (or another clickable slot) calls e.stopPropagation() on its own trigger (CLAUDE.md)
+[ ] After editing any multi-line /* ... */ doc comment, verified with a direct esbuild bundle of the touched file in addition to tsc --noEmit (CLAUDE.md)
 ```
 
 ---
@@ -876,7 +900,7 @@ This does **not** apply to `aria-label` attributes (screen-reader-only strings, 
 
 **Rule:** when a prototype (`agent-next-gen-v1`, `lyra-ux-templates`, `Outbound-Campaigns`, `Agent Nav Testing`, etc.) wires up a lyra-ui component with its own state/handlers, that glue code must faithfully reproduce the component's real, documented behavior contract — not just import the right component and then invent divergent open/close/pin/hover/focus semantics around it — unless the user has explicitly asked for that specific prototype to behave differently.
 
-Using the correct component (rule 3, "Composition over reimplementation") is necessary but not sufficient. A prototype can import `SidePanel` correctly and still drift from what `SidePanel` actually means, purely in the surrounding `useState`/handler code the prototype writes to drive it. That drift is easy to miss because the component itself never changed — only the call site's logic did — so a diff of the component file shows nothing wrong, and the bug only shows up as an inconsistent *interaction*, not a visibly different render.
+Using the correct component (§2, "Composition over reimplementation") is necessary but not sufficient. A prototype can import `SidePanel` correctly and still drift from what `SidePanel` actually means, purely in the surrounding `useState`/handler code the prototype writes to drive it. That drift is easy to miss because the component itself never changed — only the call site's logic did — so a diff of the component file shows nothing wrong, and the bug only shows up as an inconsistent *interaction*, not a visibly different render.
 
 **Before wiring open/close/pin/hover/select/etc. state around a component, find its real reference usage first** — the component's own Storybook story (e.g. `Panel.stories.tsx`'s "Side Panel" story) and/or its most established real consumer (e.g. `admin-shell.tsx`'s `SidePanel` usage) — and copy that behavior contract exactly: which state transitions are allowed, which are guarded, and under what conditions. Don't infer the contract from what "seems reasonable" for the new prototype in isolation.
 

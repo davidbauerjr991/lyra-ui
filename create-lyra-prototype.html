@@ -265,7 +265,7 @@
   <!-- Step 5: Prompt out -->
   <div class="card hidden" id="step5">
     <h2>Your prompt is ready</h2>
-    <p class="sub">Copy it and paste it into your Claude Cowork chat.</p>
+    <p class="sub" id="step5sub">Copy it and paste it into your Claude Cowork chat.</p>
     <textarea class="prompt-out" id="promptOut" readonly></textarea>
     <div class="btn-row">
       <button class="btn" onclick="go(4)">Back</button>
@@ -277,8 +277,9 @@
     <div class="note hidden" id="designSteps">
       <strong>Next steps:</strong>
       <ol class="next-steps">
-        <li>Open <strong>Claude Design</strong> at <strong>claude.ai</strong> (Anthropic Labs — included with Pro, Max, Team, and Enterprise plans) and start a new design.</li>
+        <li>Open <strong>Claude Design</strong> at <strong>claude.ai/design</strong> (Anthropic Labs — included with Pro, Max, Team, and Enterprise plans) and start a new design.</li>
         <li>Click <strong>Import</strong> → <strong>GitHub</strong> and connect <strong>davidbauerjr991/lyra-ui</strong> so Claude designs with the real components. (Importing a local folder works too — just don't include node_modules or .git.)</li>
+        <li id="designImportSource" class="hidden">Also click <strong>Import</strong> again and add the <strong>source</strong> named in your prompt (your Prototypes folder, or the repo you're duplicating) — Claude Design needs it as the reference to recreate.</li>
         <li>Paste the prompt and send it.</li>
         <li>Iterate right on the canvas — inline comments, chat, or direct edits — and share the prototype with anyone via link.</li>
         <li>Ready for engineering? Use <strong>Export → Hand off to Claude Code</strong>.</li>
@@ -302,6 +303,23 @@
   var state = { step: 1, type: null, alreadyInstalled: false, target: "cowork" };
 
   function pickTarget(t) { state.target = t; go(3); }
+
+  /* Every Claude-Design prompt starts with this guard: if it lands in the
+     wrong app (Cowork/Code), Claude must stop instead of burning tokens
+     trying to emulate a canvas. Also sets the step-5 paste instructions. */
+  var DESIGN_GUARD =
+"THIS PROMPT IS FOR CLAUDE DESIGN — the visual canvas at claude.ai/design — NOT for Claude Cowork or Claude Code. If you are reading this anywhere other than Claude Design: STOP NOW. Do not build anything, connect folders, scaffold projects, or analyze files. Reply only: \"This prompt is for Claude Design — open claude.ai/design, use Import to add the sources listed below, and paste this prompt there.\"\n\n";
+  function showDesignSteps(withSource) {
+    document.getElementById("coworkSteps").classList.add("hidden");
+    document.getElementById("designSteps").classList.remove("hidden");
+    document.getElementById("designImportSource").classList.toggle("hidden", !withSource);
+    document.getElementById("step5sub").textContent = "Copy it, open Claude Design at claude.ai/design, and paste it THERE — not into a Cowork chat.";
+  }
+  function showCoworkSteps() {
+    document.getElementById("coworkSteps").classList.remove("hidden");
+    document.getElementById("designSteps").classList.add("hidden");
+    document.getElementById("step5sub").textContent = "Copy it and paste it into your Claude Cowork chat.";
+  }
 
   /* One click, two things: record the install choice AND (if not already
      granted) ask Chrome for read access to the user's work folder, so the
@@ -440,7 +458,7 @@
     var fileName = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "prototype";
 
     if (state.target === "design") {
-      var dPrompt =
+      var dPrompt = DESIGN_GUARD +
 "Build me a Lyra UI prototype on this canvas. The lyra-ui design system codebase (https://github.com/davidbauerjr991/lyra-ui) is imported into this project.\n" +
 "\n" +
 "RULES\n" +
@@ -456,13 +474,11 @@
 "\n" +
 "Start by building the template with my product name in the header — I'll iterate from there with comments and chat.";
       document.getElementById("promptOut").value = dPrompt;
-      document.getElementById("coworkSteps").classList.add("hidden");
-      document.getElementById("designSteps").classList.remove("hidden");
+      showDesignSteps(false);
       go(5);
       return;
     }
-    document.getElementById("coworkSteps").classList.remove("hidden");
-    document.getElementById("designSteps").classList.add("hidden");
+    showCoworkSteps();
     recordProto(name, fileName);
 
     var setupLine = state.alreadyInstalled
@@ -528,6 +544,29 @@ fallbackLine +
     newName = newName.trim();
     var newFile = newName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "prototype-copy";
 
+    if (state.target === "design") {
+      var dPrompt = DESIGN_GUARD +
+"Recreate an existing Lyra UI prototype on this canvas. Two things are imported into this project: the lyra-ui design system codebase (https://github.com/davidbauerjr991/lyra-ui) and my Prototypes folder.\n" +
+"\n" +
+"SOURCE\n" +
+"- The source is Prototypes/" + srcFile + ".html — a self-contained compiled build. Treat it as the exact visual and behavioral reference.\n" +
+"\n" +
+"RULES\n" +
+"- Read CLAUDE.md and CONTRIBUTING.md in the imported lyra-ui repo IN FULL before designing — they are the binding design-system rules.\n" +
+"- Rebuild the UI with real, CURRENT lyra-ui components from src/components/ (check each component's .stories.tsx for real props) — do not transplant the compiled code.\n" +
+"- Library components are read-only — especially \"Custom Primitives\" and \"Headless Primitives\" story-title components. Vary them only through their real props.\n" +
+"\n" +
+"GOAL\n" +
+"- Name: " + newName + "\n" +
+"- Recreate the source's screens, layout, content, and flows exactly on this canvas. Tell me about anything you cannot reproduce exactly and why.\n" +
+"\n" +
+"Start by listing the screens/states you can identify in the source, confirm scope with me, then build.";
+      document.getElementById("promptOut").value = dPrompt;
+      showDesignSteps(true);
+      go(5);
+      return;
+    }
+
     var prompt =
 "Duplicate an existing Lyra UI prototype. Follow every instruction below exactly.\n" +
 "\n" +
@@ -545,8 +584,7 @@ fallbackLine +
 "DELIVERABLE\n" + deliverableBlock(newFile);
 
     document.getElementById("promptOut").value = prompt;
-    document.getElementById("coworkSteps").classList.remove("hidden");
-    document.getElementById("designSteps").classList.add("hidden");
+    showCoworkSteps();
     recordProto(newName, newFile);
     go(5);
   }
@@ -590,6 +628,24 @@ fallbackLine +
     var fileName = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "repo-duplicate";
     var isUrl = /^https?:\/\//i.test(src);
 
+    if (state.target === "design") {
+      var dPrompt = DESIGN_GUARD +
+"Recreate a repo's UI on this canvas using Lyra UI. Imported into this project: the lyra-ui design system codebase (https://github.com/davidbauerjr991/lyra-ui) and the source repo" + (isUrl ? " (" + src + ", also imported from GitHub)" : " (my local folder \"" + src + "\")") + ".\n" +
+"\n" +
+"RULES\n" +
+"- Read CLAUDE.md and CONTRIBUTING.md in the imported lyra-ui repo IN FULL before designing — they are the binding design-system rules.\n" +
+"- Rebuild the source's UI with real, CURRENT lyra-ui components from src/components/ (check each component's .stories.tsx for real props) — do not transplant the source's code.\n" +
+"- Library components are read-only — especially \"Custom Primitives\" and \"Headless Primitives\" story-title components. Vary them only through their real props.\n" +
+"\n" +
+"GOAL\n" +
+"- Name: " + name + "\n" +
+"- Recreate the source repo's screens, layout, content, navigation, and flows exactly. If it has multiple screens, list them and confirm scope with me before building. Tell me about anything you cannot reproduce exactly and why.";
+      document.getElementById("promptOut").value = dPrompt;
+      showDesignSteps(true);
+      go(5);
+      return;
+    }
+
     var prompt =
 "Duplicate a repo as an html-only Lyra UI prototype. Follow every instruction below exactly.\n" +
 "\n" +
@@ -611,8 +667,7 @@ fallbackLine +
 "DELIVERABLE\n" + deliverableBlock(fileName);
 
     document.getElementById("promptOut").value = prompt;
-    document.getElementById("coworkSteps").classList.remove("hidden");
-    document.getElementById("designSteps").classList.add("hidden");
+    showCoworkSteps();
     recordProto(name, fileName);
     go(5);
   }

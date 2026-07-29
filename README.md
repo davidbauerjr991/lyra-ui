@@ -1,21 +1,18 @@
 # @nicecxone/lyra-ui
 
-React component library built on the **Lyra Foundations (Beta)** design system from NICE CXone.
+React component library built on the **Lyra Foundations (Beta)** design system from NICE CXone — ~95 components spanning primitives, UI, charts, and full page templates.
+
+## Start here (routing)
+
+- **Browse every component live**: https://davidbauerjr991.github.io/lyra-ui/ (the deployed Storybook — always current with `main`)
+- **Build a prototype without code**: open `create-lyra-prototype.html` (repo root) — a wizard that generates a Claude Cowork or Claude Design prompt. No terminal needed.
+- **You are Claude, building a prototype**: read `CLAUDE-INSTRUCTIONS.md` (scenario playbook) and `prototype-kit/README-FIRST.md` (fast-path build pipeline).
+- **You are Claude, modifying library components**: `CLAUDE.md` + `CONTRIBUTING.md` are the binding rulebooks.
+- **Your own components** (not in the library): `src/components/local/` — gitignored, survives pulls; see its README.
 
 ## Components
 
-- **Button** — Primary, destructive, outline, ghost, and icon variants
-- **Checkbox** — Radix-based with checked, unchecked, indeterminate, and error states
-- **Table** — Flex-based table with sticky headers, row selection, and scroll
-- **Tabs** — TabList, Tab, and TabPanel with active/hover underline states
-- **AppName** — Shell bar app name with icon and dropdown chevron
-- **AppHeader** — Full header with AppName (left) and Actions (right) slots
-- **AppMenu** — Application switcher dropdown with grouped items and logo footer
-- **ActionIconButton** — Icon button with optional badge count
-- **ActionAvatarButton** — Avatar circle with initials and dropdown chevron
-- **SearchInput** — Search field with icon and clear button
-- **LeftNav** — Collapsible sidebar navigation with tree menu
-- **CXoneLogo** — NICE CXone wordmark logo
+The full, current component catalog lives in the [live Storybook](https://davidbauerjr991.github.io/lyra-ui/) and `src/index.ts` — a hand-maintained list here would go stale (and did). Categories: Custom Primitives, Headless Primitives, UI, Charts, and Templates (Admin UIs, Agent Next Gen, Data Management, Dashboards, Forms).
 
 ## Installation
 
