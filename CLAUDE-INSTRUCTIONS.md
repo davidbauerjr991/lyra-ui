@@ -57,14 +57,17 @@ Library components are read-only. The ONLY component source a user may change th
 ### User-local components (`src/components/local/`)
 This folder in the user's own lyra-ui copy holds their personal components. It is gitignored — never overwritten by pulls, never pushed. Rules:
 - After cloning the latest lyra-ui into your sandbox, check whether the user's connected folder has `lyra-ui/src/components/local/` with any `.tsx` files — if so, copy them into your sandbox clone's same path before building, so prototypes can use them.
-- Before creating any new component, check this folder too — the user may already have what's needed.
+- **Never create duplicates.** Before creating ANY new component, list this folder and check whether an existing local component already does the job (even under a different name) — if so, reuse or UPDATE that one in place. Never mint a `-2`/`-copy`/`-new` variant of an existing local component unless the user explicitly asks for a separate variant.
+- **Deleting on request is allowed.** When the user asks to remove a local component ("delete my status-pill"), delete both its `.tsx` and its `.stories.tsx` from their `src/components/local/` — confirm the exact component name first, and warn them if any of their prototypes' source you know of still uses it. This is the one sanctioned delete in the user's folder.
 - When the user asks for a component that doesn't exist in the library, create it in the USER's `lyra-ui/src/components/local/` (on their machine, via the connected folder) so it persists for future sessions — follow CONTRIBUTING.md's authoring rules there too. If the user has no local lyra-ui copy, keep the component inside the prototype and tell them it won't persist without one.
 
 ### Strict write policy (the #1 trust rule)
 Users lose confidence the moment stray files appear in their folders — even briefly. The ONLY paths you may ever create or modify in the user's connected folder are:
-1. `Prototypes/<name>.html` (the deliverable) and `Prototypes/<name>-publish.zip` (on a share request)
-2. `lyra-ui/src/components/local/<component>.tsx` (only when the user asks for a new/changed component)
+1. `Prototypes/<name>.html` (the deliverable), `Prototypes/<name>/` (a subfolder of html files when a multi-screen deliverable was agreed with the user), and `Prototypes/*-publish.zip` (on a share request)
+2. `lyra-ui/src/components/local/*` — component files AND their co-located `<name>.stories.tsx` (only when the user asks for a new/changed component; always create the story alongside a new component — it powers their gallery and makes the component contribution-ready)
+2b. `Contributions/<component>-contribution.zip` (only during a component-submission request)
 3. `create-lyra-prototype.html` at the connected-folder root (sibling of `Prototypes/`) — on FIRST delivery only, copy it there from the repo root if not already present, so the wizard's one-click launch links and re-runs work
+4. `Prototypes/my-component-gallery.html` — on FIRST delivery only, if not already present, seed it by copying `prototype-kit/empty-gallery.html` from the repo (a ready-made empty-state page; no build needed). The wizard's component clicks always have a target this way; real gallery builds later overwrite it.
 
 Everything else — entry files, configs, CSS output, bundles, temp files, node_modules — is created in YOUR sandbox only. Before every file write, check the target path. Creating a file in the user's folder and then deleting it is still a violation, not a fix.
 
@@ -74,6 +77,7 @@ Stories run inside Storybook, whose `preview.ts` decorator sets up the page envi
 - Set `data-theme="light"` on `<html>` initially.
 - Set the page/body background to `var(--lyra-color-bg-surface-shell)` (the var reference, never a baked literal color) so it flips with the theme.
 - **Verify programmatically in the FINAL html before delivering** (no browser needed): exactly one `:root` block declares `--lyra-color-bg-surface-shell`; exactly one `[data-theme="dark"]` block re-declares it; the dark block's position in the file is AFTER that `:root` block; and utility classes reference `var(--lyra-...)`, not literal hex. If any check fails, fix the CSS assembly — do not deliver and ask the user to "eyeball it".
+- **Render verification: NEVER attempt to install Chromium/Playwright/system libraries in the sandbox** — there's no root, it always fails, and it wastes minutes and tokens. The supported render check is `node prototype-kit/smoke-test.mjs --file <built.html> --expect "<visible text>"` (jsdom-based: asserts the app mounts, zero runtime errors, expected text renders). Run it on every deliverable and after every change; its exit code is authoritative.
 
 ### Deliverable
 - One self-contained `.html` file, named from the prototype name (kebab-case), with all JS bundled and all styles compiled and inlined so it opens by double-click.
@@ -124,10 +128,13 @@ Stories run inside Storybook, whose `preview.ts` decorator sets up the page envi
 
 ## Scenario E: The user pasted a component-gallery prompt ("Build me a Lyra UI component gallery")
 
-A Storybook-style viewer for the USER's own components (`lyra-ui/src/components/local/` in their connected folder). Same rules as prototypes (get lyra-ui per "Getting Lyra UI", sandbox-only builds, standalone environment, version stamp, save to `Prototypes`, present once), plus:
+A Storybook-style viewer for the USER's own components ONLY (`lyra-ui/src/components/local/` in their connected folder). For browsing the standard library, always point users to the live Storybook instead — https://davidbauerjr991.github.io/lyra-ui/ — never build a gallery of library components. Same rules as prototypes (get lyra-ui per "Getting Lyra UI", sandbox-only builds, standalone environment, version stamp, save to `Prototypes`, present once, smoke test), plus:
 
-- Copy the user's local components into your sandbox clone before building. No connected folder → ask them to pick one first. No custom components → tell them, and offer a gallery of the standard Lyra templates instead.
+- This is a FAST-PATH build: use prototype-kit's pipeline conventions; do NOT read the full rulebooks just to render a gallery.
+- Copy the user's local components into your sandbox clone before building. No connected folder → ask them to pick one first. No custom components → say so and give them the live Storybook link.
+- Render each component from its co-located `local/<name>.stories.tsx` (via composeStories) — create a simple story next to any component missing one (allowed write; it also makes the component contribution-ready).
 - The gallery: left nav listing each component, canvas rendering each live, a few sensible prop variations where meaningful. Name it `my-component-gallery.html`.
+- Deep links are required: opening the gallery with `#<component-file-name>` in the URL must auto-select and scroll to that component (the wizard's component list links this way).
 - **Component edits persist at the source**: when the user asks to change a component (text or screenshots), edit the component file in THEIR `lyra-ui/src/components/local/` (their machine), then rebuild and overwrite the gallery. Don't re-present it — tell them to refresh. The gallery is a view; the user's local folder is the source of truth.
 
 ## Scenario G: The user pasted a duplication prompt ("Duplicate an existing Lyra UI prototype" / "Duplicate a repo as an html-only Lyra UI prototype")
@@ -137,7 +144,24 @@ Both follow ALL the standard rules (Getting Lyra UI, fast path, strict write pol
 - **Exactness is the contract.** The duplicate must match the source's screens, layout, content, and behavior. Report anything you couldn't preserve and why — never silently approximate.
 - **Drift check BEFORE building, and STOP on drift.** Prototype source: compare its `lyra-ui-commit` meta stamp to latest main. Repo source: compare the lyra-ui version it was built against (package.json/lockfile/vendored copy) to latest main. If they differ, ask the user — update to latest components (recommended) or keep as-is — and WAIT for the answer.
 - **Prototype duplication with no drift (or "keep as-is")**: just copy the file under the new name and update its `<title>` — no rebuild.
-- **Repo duplication**: the source repo is READ-ONLY (never modify it, never push). Rebuild its UI with real, current lyra-ui components — don't transplant its code verbatim. If it has many screens, list them and confirm scope with the user first; multiple screens go behind in-prototype navigation.
+- **Repo duplication**: the source repo is READ-ONLY (never modify it, never push). Rebuild its UI with real, current lyra-ui components — don't transplant its code verbatim.
+- **Multi-screen deliverable — ask, don't assume.** If the source has multiple screens/variants, list them and, in the SAME question, ask both scope (which screens) and packaging: (a) one html with in-prototype navigation, or (b) a subfolder `Prototypes/<name>/` with one standalone html per screen (the right choice for A/B or blind comparison tests, where screens must not reveal each other). Wait for the answer before building.
+- **Component-drift audit — MANDATORY whenever building an older reference on newer components** (i.e. the user chose "update to latest" after a drift warning). Known incident: `Popover` gained a `bodyPadding` prop defaulting to `true` between a source's pinned commit and main — identical JSX rendered 40px narrower and truncated a menu, caught only by the user. Before delivering: for EVERY lyra-ui component you use, run `git diff <source-sha>..HEAD -- src/components/<component>.tsx` in your clone, scan for new or changed **defaulted props and default styles**, and check each against your usage. Fix mismatches with the component's documented escape hatches (real props only). Do this proactively — not after the user reports visual breakage.
+
+## Scenario I: The user wants a real, hosted Storybook (e.g. "host my storybook", "run storybook for me")
+
+You cannot run a dev server the user can reach (your sandbox has no bridge to their browser), and Storybook's static build does not work over `file://` — never deliver `storybook-static` as a double-click file, and never ask the user to run `npm run storybook`. The supported path:
+
+1. In your sandbox clone (latest lyra-ui + the user's `local/` components and stories copied in), run `npx storybook build` (output: `storybook-static/`).
+2. Zip it as `Prototypes/my-storybook-publish.zip` (contents at the zip root, `index.html` included) and present it.
+3. User drags the zip onto **https://vercel.com/drop** (or Netlify Drop) — they get a live personal Storybook URL with the full Storybook UI, including their own components alongside the library.
+4. For browsing the library only, skip all of this and give the live link: https://davidbauerjr991.github.io/lyra-ui/
+
+## Scenario H: Component contribution (both sides of the zip handoff)
+
+**User side — "Submit one of my custom Lyra UI components to the library owner"**: this flow REQUIRES the full rulebooks (the opposite of the fast path). Read `CLAUDE.md` + `CONTRIBUTING.md` in full; validate the component (naming/location, tokens only, composition over reimplementation, controlled-component conventions, size prop, z-index, new-component checklist); ensure a co-located story file; fix violations in the user's local folder and report them; verify with tsc + esbuild; package `Contributions/<name>-contribution.zip` (component + story + CONTRIBUTION.md with props, validated-against commit, results). The user sends the zip to the library owner. Never push or touch the shared library.
+
+**Owner side — the library owner attaches a `*-contribution.zip` and asks for a review**: read the full rulebooks, re-validate everything yourself (trust nothing from CONTRIBUTION.md without checking), then if it passes: move the component into `src/components/` and its story into `src/components/__stories__/` (following the repo's file conventions), record it in `PROJECT_SUMMARY.md` per the promotion checklist, and verify with tsc + esbuild. Report what you changed and flag judgment calls. Leave commit/push to the owner unless they ask.
 
 ## Scenario F: The user wants to share/publish a prototype (Vercel or Netlify)
 

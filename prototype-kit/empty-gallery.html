@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Components — Lyra UI</title>
+<style>
+  :root {
+    --blue-strong: #166cca; --blue-active-text: #185ba4; --blue-subtle: #ecf5fe;
+    --border-subtle: rgba(0,0,0,0.10); --text-default: #1f2328;
+    --text-secondary: #57606a; --surface: #ffffff; --shell: #f3f5f6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--shell); color: var(--text-default); line-height: 1.5;
+    display: flex; align-items: center; justify-content: center; min-height: 100vh;
+  }
+  .card {
+    background: var(--surface); border: 1px solid var(--border-subtle); border-radius: 12px;
+    padding: 40px; max-width: 520px; margin: 20px; text-align: center;
+  }
+  .mark {
+    width: 44px; height: 44px; border-radius: 11px; background: var(--blue-strong);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700; font-size: 20px; margin: 0 auto 16px;
+  }
+  h1 { font-size: 19px; margin: 0 0 8px; }
+  p { font-size: 14px; color: var(--text-secondary); margin: 0 0 10px; }
+  a { color: var(--blue-active-text); font-weight: 600; text-decoration: none; }
+  .steps { text-align: left; background: var(--blue-subtle); border-radius: 8px; padding: 14px 18px; font-size: 13.5px; margin-top: 18px; }
+  .steps ol { margin: 6px 0 0; padding-left: 18px; } .steps li { margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="mark">L</div>
+  <h1>No custom components yet</h1>
+  <p id="hashNote" style="display:none;"></p>
+  <p>This gallery will show your own Lyra UI components once you create some. It rebuilds automatically whenever Claude adds or changes one.</p>
+  <p>Browsing the standard library? Use the <a href="https://davidbauerjr991.github.io/lyra-ui/" target="_blank">live Lyra UI Storybook ↗</a></p>
+  <div class="steps">
+    <strong>To create your first component:</strong>
+    <ol>
+      <li>In a Claude Cowork chat, describe what you need — e.g. "create a status pill component that shows call sentiment".</li>
+      <li>Claude builds it into your lyra-ui's <code>src/components/local/</code> folder (it persists on your machine).</li>
+      <li>Ask Claude to rebuild this gallery — or use the wizard's <strong>My Components</strong> step.</li>
+    </ol>
+  </div>
+</div>
+<script>
+  /* Deep links (#component-name) land here before the first real build. */
+  (function () {
+    var h = decodeURIComponent((location.hash || "").slice(1));
+    if (h) {
+      var n = document.getElementById("hashNote");
+      n.style.display = "block";
+      n.innerHTML = "<strong>“" + h.replace(/</g, "&lt;") + "”</strong> isn’t in the gallery yet — it needs a rebuild.";
+    }
+  })();
+</script>
+</body>
+</html>

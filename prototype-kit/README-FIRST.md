@@ -16,7 +16,13 @@ node prototype-kit/build-prototype.mjs \
   --out /path/to/sandbox/<kebab-name>.html
 ```
 
-Then copy the single output file to the user's `Prototypes/` folder. Done. Do not re-verify with a browser; the script's checks are the acceptance test (it exits non-zero on any failure — never deliver in that case).
+Then run the render smoke test and copy the output to the user's `Prototypes/` folder:
+
+```
+node prototype-kit/smoke-test.mjs --file <built.html> --expect "<the product name>" --expect "<a known page title>"
+```
+
+Done. Both scripts' exit codes are the acceptance test — never deliver on failure. **Never attempt to install Chromium/Playwright/system libraries for verification** — the sandbox has no root, it always fails, and smoke-test.mjs is the supported render check (jsdom: mounts the app, fails on runtime errors or missing text).
 
 What the script does: injects the product name into the template story (sandbox copy only), bundles with esbuild, compiles `src/storybook.css` with Tailwind (which already inlines the FULL lyra tokens — light and dark — via `@import`; never add a second tokens copy), assembles one self-contained html (data-theme, commit stamp, update-notice script, shell-token body background), and verifies dark-mode integrity programmatically.
 

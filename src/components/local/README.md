@@ -9,8 +9,10 @@ Everything here (except this README) is **gitignored**: `git pull` will never ov
 ## Rules
 
 - One component per file, kebab-case file names (`my-widget.tsx`), same as the main library — see `CONTRIBUTING.md` for authoring rules. Compose real Lyra components and tokens; the library rulebook applies here too.
+- Every component gets a co-located story file (`my-widget.stories.tsx`, right here in this folder) — it powers your local component gallery and makes the component ready to submit to the library.
 - Import from siblings with relative paths (e.g. `import { Button } from "../button";`).
-- If a local component proves broadly useful, promote it: move it to `src/components/`, add stories, and commit it so everyone gets it.
+- To remove a component: ask Claude ("delete my status-pill component") and it removes the component and its story file — or just delete the two files yourself in Finder. Claude also checks this folder before creating anything new, so existing components get reused/updated instead of duplicated.
+- To submit a component to the shared library: use the wizard's **My Components → Submit to the Library** flow. Claude validates it against the full rulebook and packages a `Contributions/<name>-contribution.zip` you send to the library owner, whose Claude reviews and promotes it.
 
 ## How Claude uses this folder
 
