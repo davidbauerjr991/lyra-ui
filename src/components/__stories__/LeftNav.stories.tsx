@@ -412,13 +412,23 @@ export const AgentNextGen: Story = {
     // stories.tsx, agent-next-gen-v1's AgentNextGenPage.tsx) wants the exact
     // same "+" behavior on each InteractionNavItem card — look up that
     // interaction's underlying outbound contact, scope the flyout to
-    // whatever channels it actually supports (falling back to the full
-    // unfiltered list for quick-dialed numbers/fixed demo cards with no
-    // matching contact record), and deep-link a picked channel into
-    // CreateNew's `launchRequest`. That's `useOutboundAddButton` (create-
-    // new.tsx) — a single shared implementation instead of three hand-
-    // copied ones that could (and did) quietly drift out of sync.
-    const { launchRequest, onLaunchRequestHandled, getHeaderAction } = useOutboundAddButton(outboundConfig);
+    // whatever channels it actually supports, and render a fully
+    // self-contained popover (channel picker + detail form) right where the
+    // "+" was clicked. That's `useOutboundAddButton` (create-new.tsx) — a
+    // single shared implementation instead of three hand-copied ones that
+    // could (and did) quietly drift out of sync. `OutboundAddButton` no
+    // longer hands off to a separate, remotely-anchored `CreateNew`
+    // instance via `launchRequest`, so there's nothing to destructure here
+    // beyond `getHeaderAction`.
+    // `onStartCall: handleStartCall` override is required — `outboundConfig`
+    // itself still carries whatever placeholder `onStartCall` it was built
+    // with (see its own `useMemo` above), not this story's real
+    // `handleStartCall`, so the bare `outboundConfig` here would silently
+    // no-op "Start Interaction" instead of opening a card (same bug fixed
+    // in agent-next-gen-v1/AgentNextGenPage.tsx and
+    // AgentNextGenTemplate.stories.tsx — see either one's own comment on
+    // this line).
+    const { getHeaderAction } = useOutboundAddButton({ ...outboundConfig, onStartCall: handleStartCall });
 
     // "Desk" is this page itself (see AgentDashboard/`Templates/Dashboards`'
     // PageHeader title) — active by default, and the only item here with no
@@ -466,8 +476,6 @@ export const AgentNextGen: Story = {
               ...outboundConfig,
               onStartCall: handleStartCall,
               onQuickDial: handleQuickDial,
-              launchRequest,
-              onLaunchRequestHandled,
             }}
             expanded={open}
           />

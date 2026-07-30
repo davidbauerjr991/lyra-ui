@@ -156,12 +156,12 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
         // toggle button, positioned via a hardcoded `top` offset — see its
         // doc comment). Kept as a min-height, not a fixed height, so a
         // future taller `actions` element can still grow the row.
-        "flex min-h-[68px] items-center justify-between border-b border-lyra-border-subtle px-6 py-4",
+        "lyra-page-header-suffix-wrap flex min-h-[68px] items-center justify-between border-b border-lyra-border-subtle px-6 py-4",
         className
       )}
       {...props}
     >
-      <div className="flex flex-1 min-w-0 items-center gap-3">
+      <div className="lyra-page-header-left flex flex-1 min-w-0 items-center gap-3">
         {(panelToggle === "left" || panelToggle === "both") && (
           <>
             <div
@@ -270,9 +270,13 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
             {subtitle && <span className="lyra-body-sm text-lyra-fg-secondary truncate">{subtitle}</span>}
           </div>
         )}
-        {titleSuffix && <span className={titleSuffixGrow ? "flex-1 min-w-0" : "shrink-0"}>{titleSuffix}</span>}
+        {titleSuffix && (
+          <span className={cn("lyra-page-header-suffix", titleSuffixGrow ? "flex-1 min-w-0" : "shrink-0")}>
+            {titleSuffix}
+          </span>
+        )}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="lyra-page-header-actions flex items-center gap-2">
         {actions}
         {(panelToggle === "right" || panelToggle === "both") && (
           <>

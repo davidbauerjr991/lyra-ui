@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Plus, X, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Menu } from "./menu";
@@ -7,6 +7,7 @@ import { Input } from "./input";
 import { Popover, PopoverClose } from "./popover";
 import { Tooltip } from "./tooltip";
 import { Select, type SelectOption } from "./select";
+import { RadioButtonGroup } from "./radio-button-group";
 import { Button } from "./button";
 import { TableFooter } from "./table";
 import { FavoriteButton } from "./favorite-button";
@@ -132,6 +133,34 @@ export interface CreateNewOutboundContact extends CreateNewContact {
    *  addresses/numbers for the same channel (e.g. a third, unused outbound
    *  phone line) stay selectable. */
   openChannelAddresses?: Partial<Record<ChannelType, string[]>>;
+  /** Which channel *types* this contact currently has at least one live
+   *  interaction open on, regardless of whether that channel has a
+   *  recorded address at all — e.g. `["voice", "email"]`. Deliberately
+   *  separate from `openChannelAddresses` above: that map only ever
+   *  contains channels whose specific address is known (some voice
+   *  channels genuinely have none on record, e.g. a "Redial" from contact
+   *  history with no stored number — see `TrackedChannel.value`'s own
+   *  callers), so it can't answer "is this contact in a voice call at
+   *  all" on its own, only "is *this exact number* in use." Used to
+   *  disable "Select Channel"'s Voice option once a voice channel is
+   *  already open for this contact (`isChannelBlockedForContact` below) —
+   *  unlike SMS/WhatsApp/Email, where a second address is a genuinely
+   *  separate conversation, Voice has no per-address concept: an agent
+   *  can't have two simultaneous calls with the same customer regardless
+   *  of whether either one has a number on record. */
+  openChannelTypes?: ChannelType[];
+  /** This contact's own primary phone number — e.g. the "Home" entry a
+   *  customer-info/directory surface shows for them — as opposed to
+   *  `phoneOptions` (`CreateNewOutboundConfig`/`OutboundAddButtonProps`),
+   *  which is a flat, contact-agnostic list (originally shaped for the
+   *  agent's own outbound caller-ID lines). When set, "Select Phone" (the
+   *  detail form's Voice/SMS address field) lists this first and defaults
+   *  to it instead of falling back to `phoneOptions[0]` — a real customer
+   *  should default to *their own* number, not an arbitrary shared one.
+   *  Optional: agent/team/skill records with no such directory concept
+   *  keep defaulting to `phoneOptions[0]` exactly as before by simply
+   *  omitting this. See `resolveOutboundDetailField`. */
+  primaryPhone?: { value: string; label: string };
 }
 
 export interface CreateNewOutboundGroup {
@@ -450,47 +479,232 @@ function OutboundContactRow({
   );
 }
 
+/** Whether `channel` should be disabled in the outbound detail form's
+ *  "Select Channel" field for `contact` — only ever true for Voice, and
+ *  only once this contact already has a voice channel open. Unlike SMS/
+ *  WhatsApp/Email, where each address is its own independent thread (so a
+ *  second SMS number is a genuinely separate conversation, not a
+ *  duplicate), a phone call has no per-address concept here at all — an
+ *  agent can't have two simultaneous voice conversations with the same
+ *  customer regardless of which outbound number either one used, so once
+ *  one is open, Voice itself (not just one specific number) is off the
+ *  table until it ends.
+ *
+ *  Checks `openChannelTypes`, NOT `openChannelAddresses.voice` — the
+ *  latter only ever contains channels with a *known* address (see its own
+ *  doc comment), so a voice channel with no recorded number (e.g. a
+ *  contact-history "Redial," which has no stored phone number at all)
+ *  would never show up there even though it's genuinely open. That was a
+ *  real, shipped bug: confirmed via screenshot that redialing, then
+ *  opening "Add Channel" on that same card, showed Voice as selectable —
+ *  the address-keyed map had nothing to disable it with, even though a
+ *  voice channel was plainly already active right next to it in the
+ *  toggle row. */
+function isChannelBlockedForContact(contact: CreateNewOutboundContact, channel: ChannelType): boolean {
+  return channel === "voice" && !!contact.openChannelTypes?.includes("voice");
+}
+
+/** First channel in `channelOptions` that isn't blocked for `contact` (see
+ *  `isChannelBlockedForContact` above) — used to pick "Select Channel"'s
+ *  opening default so it never lands on a channel that's about to render
+ *  disabled (falls back to `channelOptions[0]` when every channel happens
+ *  to be blocked, same "nothing better to default to" case
+ *  `resolveOutboundDetailField` itself falls back to `""` for). */
+function firstAvailableChannel(
+  channelOptions: CreateNewChannelOption[],
+  contact: CreateNewOutboundContact
+): ChannelType | null {
+  return (
+    channelOptions.find((c) => !isChannelBlockedForContact(contact, c.id))?.id ??
+    channelOptions[0]?.id ??
+    null
+  );
+}
+
+/** Default value + selectable options for the outbound detail form's second
+ *  field ("Select Phone"/"Select Email Address"/"Select WhatsApp Handle") —
+ *  shared by `CreateNew`'s own "detail" screen (`defaultDetailValueFor`/
+ *  `detailFieldMeta` below) AND `OutboundAddButton`'s self-contained detail
+ *  form (below), so both agree on the exact same synthesized-address/
+ *  already-open-address logic. Previously only `CreateNew` had this;
+ *  hand-copying it for `OutboundAddButton` would be exactly the kind of
+ *  three-copies drift `useOutboundAddButton`'s own doc comment describes
+ *  fixing for the rest of this file. Email/WhatsApp: one synthesized
+ *  address, dropped from `options` (not just disabled) if it's already open
+ *  elsewhere for this contact. Phone: `contact.primaryPhone` first (see its
+ *  own doc comment) followed by every `phoneOptions` entry, minus whichever
+ *  of those is already open — defaulting to whichever ends up first, so a
+ *  contact with a directory-listed number defaults to *that* one rather
+ *  than an arbitrary shared line. */
+function resolveOutboundDetailField(
+  contact: CreateNewOutboundContact,
+  channel: ChannelType,
+  phoneOptions: { value: string; label: string }[]
+): { label: string; options: SelectOption[]; defaultValue: string } {
+  const openAddresses = contact.openChannelAddresses?.[channel] ?? [];
+  const withoutOpen = (options: SelectOption[]): SelectOption[] =>
+    openAddresses.length > 0 ? options.filter((o) => !openAddresses.includes(o.value)) : options;
+  if (channel === "email") {
+    const value = `${contact.name.toLowerCase().replace(/\s+/g, ".")}@example.com`;
+    const defaultValue = openAddresses.includes(value) ? "" : value;
+    return { label: "Select Email Address", options: withoutOpen(defaultValue ? [{ value: defaultValue, label: defaultValue }] : []), defaultValue };
+  }
+  if (channel === "whatsapp") {
+    const value = `@${contact.name}`;
+    const defaultValue = openAddresses.includes(value) ? "" : value;
+    return { label: "Select WhatsApp Handle", options: withoutOpen(defaultValue ? [{ value: defaultValue, label: defaultValue }] : []), defaultValue };
+  }
+  const options = withoutOpen(
+    contact.primaryPhone
+      ? [contact.primaryPhone, ...phoneOptions.filter((o) => o.value !== contact.primaryPhone!.value)]
+      : phoneOptions
+  );
+  return { label: "Select Phone", options, defaultValue: options[0]?.value ?? "" };
+}
+
 /* ── Outbound "add" button (internal to the flyout, exported) ──
-   Small standalone "+" trigger + click-to-open flyout listing the given
-   channels — the same Menu-based flyout `OutboundContactRow` above uses for
-   its own per-row hover trigger, factored out so other surfaces can offer
-   the same channel choice without re-implementing it (composition over
+   Small standalone "+" trigger for adding another channel to a contact who
+   already has a live interaction open — factored out so other surfaces can
+   offer the same flow without re-implementing it (composition over
    reimplementation, CONTRIBUTING.md §3). Built for `InteractionNavItem`'s
-   own "Add Outbound" button (see its `headerAction` prop): an agent who
-   already has a live interaction with a contact can start another channel
-   with them directly from that card, without re-picking the same contact
-   from this component's own Outbound picker list — see
-   `CreateNewOutboundConfig.launchRequest`, which is how a channel picked
-   here actually reaches this component's own call-setup screen.
-   Unlike `OutboundContactRow`'s hover-triggered flyout (hover makes sense
-   for a big clickable row), this opens on click, matching a plain icon
-   button's normal interaction model. Uses the `z-[10003]` "popover nested
-   inside another popover" tier (CONTRIBUTING.md §5), same as
-   `OutboundContactRow`'s own flyout — not because this button's usual home
-   (an `InteractionNavItem` card sitting directly in the nav rail) is nested
-   in anything, but because `InteractionNavItem`'s compact-mode hover
-   popover (see its own `headerAction` doc comment) also renders this exact
-   button, and does so *nested inside* that popover. A fixed z-index can't
-   tell which context it's in, and there's nothing else in this codebase
-   that needs to sit between this tier and the nested tier above it, so
-   using the higher, nesting-safe tier unconditionally is correct (if
-   slightly conservative) in both places. */
+   own "Add Outbound" button and the interaction record header's own
+   "+" (see each one's `headerAction`/`titleSuffix` usage).
+
+   Self-contained end to end, and a single screen: opening the popover goes
+   straight to the detail form (Select Channel/Select Address/Outbound
+   Skill/Start Interaction) — no separate channel-picker step first. An
+   earlier version opened to a channel-icon `Menu` and only swapped to the
+   detail form after a channel was picked there; removed by explicit
+   request, since "Select Channel" is already one of the detail form's own
+   fields — the extra tap picked the same thing twice for no benefit.
+   Defaults to the contact's first available channel (`channelOptions[0]`)
+   on open; the agent can still change it via the same "Select Channel"
+   field the old first screen offered, it's just not a gate anymore.
+   `onStartCall` fires directly from here. This used to hand off to a
+   separate `CreateNew` instance elsewhere on the page via
+   `CreateNewOutboundConfig.launchRequest` — confirmed via screenshot that
+   this was a real, confusing bug: clicking "+" in the interaction record
+   header's toggle row popped the detail form up next to the LeftNav's own
+   "New Outbound" trigger instead of anywhere near the button the agent
+   actually clicked. Every consumer goes through `useOutboundAddButton`
+   below now, not `launchRequest` — that prop still exists on
+   `CreateNewOutboundConfig` for other, unrelated integrations, but nothing
+   in this file wires it to this button anymore.
+
+   Uses the `z-[10003]` "popover nested inside another popover" tier
+   (CONTRIBUTING.md §5), same as `OutboundContactRow`'s own flyout — not
+   because this button's usual home (an `InteractionNavItem` card sitting
+   directly in the nav rail) is nested in anything, but because
+   `InteractionNavItem`'s compact-mode hover popover (see its own
+   `headerAction` doc comment) also renders this exact button, and does so
+   *nested inside* that popover. A fixed z-index can't tell which context
+   it's in, and there's nothing else in this codebase that needs to sit
+   between this tier and the nested tier above it, so using the higher,
+   nesting-safe tier unconditionally is correct (if slightly conservative)
+   in both places. */
 export interface OutboundAddButtonProps {
+  /** The contact this button adds another channel for — needed both to
+   *  resolve the detail form's address field (`resolveOutboundDetailField`)
+   *  and to hand back to `onStartCall`. */
+  contact: CreateNewOutboundContact;
   /** Channel definitions (icon + label) to offer — already filtered down to
-   *  whichever channels the underlying contact/agent actually supports,
-   *  e.g. `outbound.channelOptions.filter((c) =>
-   *  contact.channels.includes(c.id))`. */
+   *  whichever channels `contact` actually supports, e.g.
+   *  `outbound.channelOptions.filter((c) => contact.channels.includes(c.id))`. */
   channelOptions: CreateNewChannelOption[];
-  /** Called with the chosen channel; the flyout closes itself first. */
-  onSelect: (channel: ChannelType) => void;
+  /** Options for the detail form's "Select Phone" field. */
+  phoneOptions: { value: string; label: string }[];
+  /** Options for the detail form's "Outbound Skill" field. */
+  skillOptions: { value: string; label: string }[];
+  /** Fired when "Start Interaction" is pressed in the detail form — same
+   *  shape as `CreateNewOutboundConfig.onStartCall`. The flyout closes
+   *  itself first. */
+  onStartCall: (selection: { contact: CreateNewOutboundContact; channel: ChannelType; phone: string; skillId: string }) => void;
   /** Tooltip text and button `aria-label` (default: "Add Outbound"). */
   label?: string;
   className?: string;
 }
 
 const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonProps>(
-  ({ channelOptions, onSelect, label = "Add Outbound", className }, ref) => {
+  ({ contact, channelOptions, phoneOptions, skillOptions, onStartCall, label = "Add Outbound", className }, ref) => {
     const [open, setOpen] = useState(false);
+    // No more `null` "not picked yet" state — the popover is a single
+    // screen now (see this component's own doc comment above), so this
+    // always holds a real channel as long as the contact has at least one
+    // available (`channelOptions[0]` as the opening default), and only
+    // stays `null` in the true edge case of an empty `channelOptions`
+    // (nothing to default to — the "No channels available" branch below
+    // handles that). Kept local to this button, not routed through any
+    // shared "detail screen" state.
+    const [detailChannel, setDetailChannel] = useState<ChannelType | null>(
+      firstAvailableChannel(channelOptions, contact)
+    );
+    const [detailPhone, setDetailPhone] = useState("");
+    const [detailSkill, setDetailSkill] = useState("");
+
+    const selectChannel = (channel: ChannelType) => {
+      setDetailChannel(channel);
+      setDetailPhone(resolveOutboundDetailField(contact, channel, phoneOptions).defaultValue);
+      // `detailSkill` is deliberately left alone — `skillOptions` isn't
+      // channel-specific (the same Outbound Skill list applies to every
+      // channel), so a skill already picked before switching channels is
+      // still a valid choice after, and clearing it back to "" here just
+      // forced a re-pick for no reason: it disabled "Start Interaction"
+      // (`disabled={!detailSkill}` below) even though the agent had already
+      // made a valid selection.
+    };
+
+    // Reset back to the default channel (not `null` — see above) once the
+    // popover has actually finished closing — deferred past the exit
+    // animation for the same reason `CreateNew`'s own screen-stack reset is
+    // (see its effect's own doc comment): resetting synchronously would
+    // swap the still-fading-out detail form's fields back to blank mid-
+    // close, visible as a flash of the wrong content.
+    useEffect(() => {
+      if (open) return;
+      const t = setTimeout(() => {
+        setDetailChannel(firstAvailableChannel(channelOptions, contact));
+        setDetailPhone("");
+        setDetailSkill("");
+      }, 200);
+      return () => clearTimeout(t);
+    }, [open, channelOptions, contact]);
+
+    // "Select Channel" stays editable once on the detail form (matching
+    // `CreateNew`'s own detail screen) — if the agent switches channel here,
+    // the address field needs to swap from a phone number to a synthesized
+    // email/handle (or back) too.
+    //
+    // `open` is in the dependency array alongside `detailChannel`, not just
+    // `detailChannel` alone — this was a real, shipped bug: the popover
+    // resets `detailChannel` back to `channelOptions[0]?.id` on every close
+    // (see the effect above), which is the exact same value it already was
+    // for every close after the first (the default channel never changes
+    // between opens). React's `useState` setter bails out of re-rendering
+    // when the new value is `Object.is`-equal to the current one, so
+    // `setDetailChannel` calling itself back to an unchanged value doesn't
+    // actually change `detailChannel` from React's perspective — meaning
+    // this effect, keyed on `[detailChannel]` alone, only ever ran once, on
+    // first mount. Every later open reused that first mount's now-stale
+    // (or, for the very first open before this effect had run at all,
+    // simply never-set) `detailPhone`/`""` with nothing to refresh it,
+    // which is why "Select Phone" showed blank on the second and every
+    // later open despite working the first time. Re-deriving whenever
+    // `open` flips true — regardless of whether `detailChannel` itself
+    // "changed" — fixes it without touching the reset effect above.
+    useEffect(() => {
+      if (!open || !detailChannel) return;
+      setDetailPhone(resolveOutboundDetailField(contact, detailChannel, phoneOptions).defaultValue);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, detailChannel]);
+
+    const fieldMeta = detailChannel ? resolveOutboundDetailField(contact, detailChannel, phoneOptions) : null;
+
+    const handleStartCall = () => {
+      if (!detailChannel || !detailSkill) return;
+      onStartCall({ contact, channel: detailChannel, phone: detailPhone, skillId: detailSkill });
+      setOpen(false);
+    };
+
     return (
       <Tooltip content={label} placement="top" disabled={open}>
         {/* Wrap the whole Popover (not just its trigger) in a plain span —
@@ -508,41 +722,64 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
             sideOffset={4}
             showArrow={false}
             onOpenAutoFocus={(e) => e.preventDefault()}
-            // Radix's FocusScope schedules a delayed (exit-animation +
-            // setTimeout(0)) refocus of whatever had focus before this
-            // popover opened — i.e. this trigger button — when its Content
-            // unmounts. That refocus fires as a real document `focusin`
-            // event *after* selecting a channel has already opened
-            // CreateNew's own Popover via `launchRequest`, and lands on an
-            // element outside CreateNew's Content. CreateNew's own
-            // DismissableLayer sees that as an outside-focus and immediately
-            // dismisses itself — the reported "flashes open then closes"
-            // bug. This button's flow always hands off to a different
-            // surface (CreateNew) on selection, so returning focus here
-            // serves no purpose; suppress it.
-            onCloseAutoFocus={(e) => e.preventDefault()}
             // z-[10003], not the top-level z-[9999] — see this component's
             // own doc comment above for why.
-            className="z-[10003] w-48 p-1"
-            // Row list, edge-to-edge within its own `p-1` box (see className
-            // above) — Popover's default 16px body inset would double up here.
+            className="z-[10003] w-64"
+            // The detail form supplies its own `p-3`/row padding below,
+            // matching the channel-picker Menu's own edge-to-edge `p-1` box
+            // — Popover's default 16px body inset would double up either way.
             bodyPadding={false}
             content={
-              channelOptions.length > 0 ? (
-                <Menu
-                  items={channelOptions.map((c) => ({
-                    id: c.id,
-                    label: c.label,
-                    icon: c.icon,
-                    onClick: () => {
-                      setOpen(false);
-                      onSelect(c.id);
-                    },
-                  }))}
-                  className="min-w-0 rounded-none border-0 bg-transparent p-0 shadow-none"
-                />
+              detailChannel && fieldMeta ? (
+                <div className="w-64 p-3 space-y-3">
+                  <RadioButtonGroup
+                    label="Select Channel"
+                    options={channelOptions.map((c) => ({
+                      value: c.id,
+                      label: c.selectLabel ?? c.label,
+                      disabled: isChannelBlockedForContact(contact, c.id),
+                    }))}
+                    value={detailChannel}
+                    onValueChange={(v) => selectChannel(v as ChannelType)}
+                  />
+                  {/* `dropdownClassName="z-[10005]"` on both remaining
+                      `Select`s: each one's dropdown portals to
+                      document.body at its own default z-[9999] (the base
+                      "portal wrapper" tier, see CONTRIBUTING.md §4), which
+                      is *lower* than this popover's own z-[10003] "nested
+                      inside another popover" panel — without the override,
+                      an open dropdown paints underneath this panel instead
+                      of over it (invisible, or only visible past this
+                      panel's own edges, depending on where it happens to
+                      land). 10005 is the next free tier in that table: one
+                      level deeper than PhoneInput's z-[10003] override for
+                      the same reason inside CreateNew's own detail screen
+                      below. */}
+                  <Select
+                    label={fieldMeta.label}
+                    value={detailPhone || undefined}
+                    onValueChange={setDetailPhone}
+                    options={fieldMeta.options}
+                    dropdownClassName="z-[10005]"
+                  />
+                  <Select
+                    label="Outbound Skill"
+                    placeholder="Select Outbound Skill"
+                    value={detailSkill || undefined}
+                    onValueChange={setDetailSkill}
+                    options={skillOptions}
+                    dropdownClassName="z-[10005]"
+                  />
+                  <Button variant="default" size="lg" className="w-full" disabled={!detailSkill} onClick={handleStartCall}>
+                    Start Interaction
+                  </Button>
+                </div>
               ) : (
-                <p className="px-3 py-2 lyra-body-sm text-lyra-fg-secondary">No channels available</p>
+                // Only reachable when `channelOptions` is empty — there's no
+                // channel to default `detailChannel` to at all, so there's
+                // no detail form to show (see `detailChannel`'s own state
+                // comment above).
+                <p className="w-64 px-3 py-2 lyra-body-sm text-lyra-fg-secondary">No channels available</p>
               )
             }
           >
@@ -576,31 +813,38 @@ OutboundAddButton.displayName = "OutboundAddButton";
 /* ── useOutboundAddButton ──
    Every "Agent Next Gen" consumer (agent-next-gen-v1/AgentNextGenPage.tsx,
    AgentNextGenTemplate.stories.tsx, LeftNav.stories.tsx's "Agent Next Gen
-   Left Nav" story) renders a live list of `InteractionNavItem` cards and
-   wants the exact same "+" behavior on each one: look up that interaction's
-   underlying outbound contact, build an `OutboundAddButton` scoped to
-   whatever channels that contact actually supports (falling back to the
-   full unfiltered list when there's no matching contact — e.g. a
-   quick-dialed number or a fixed demo card), and route a picked channel
-   into `CreateNew`'s `launchRequest` deep link. Before this hook existed,
-   each of those three files had its own hand-copied version of this exact
-   logic — three independent copies of the same ~15 lines meant to stay
-   identical forever, which is exactly the kind of thing that quietly drifts
-   (one file's copy fell out of date describing behavior the others no
-   longer had). Extracting it here means there's only one implementation to
-   get right, and every consumer calling it is structurally guaranteed to
-   match the others — nothing to keep "in sync" by hand anymore. */
+   Left Nav" story, InteractionNavItem.stories.tsx) renders a live list of
+   `InteractionNavItem` cards and wants the exact same "+" behavior on each
+   one: look up that interaction's underlying outbound contact, and build an
+   `OutboundAddButton` scoped to whatever channels that contact actually
+   supports. Before this hook existed, each of those files had its own
+   hand-copied version of this exact logic — copies of the same ~15 lines
+   meant to stay identical forever, which is exactly the kind of thing that
+   quietly drifts. Extracting it here means there's only one implementation
+   to get right, and every consumer calling it is structurally guaranteed to
+   match the others — nothing to keep "in sync" by hand anymore.
+
+   No `launchRequest`/`onLaunchRequestHandled` anymore (this hook used to
+   return both, for consumers to wire into their own separate `CreateNew`
+   instance) — `OutboundAddButton` is fully self-contained now (see its own
+   doc comment in this file), so there's no other surface for a picked
+   channel to hand off to. `CreateNewOutboundConfig.launchRequest` itself is
+   untouched for any other integration that still wants it; this hook just
+   doesn't use it anymore. */
 export interface UseOutboundAddButtonResult {
-  /** Pass straight through to `CreateNewOutboundConfig.launchRequest`. */
-  launchRequest: { contactId: string; channel: ChannelType } | null;
-  /** Pass straight through to `CreateNewOutboundConfig.onLaunchRequestHandled`. */
-  onLaunchRequestHandled: () => void;
   /** Build the `headerAction` for one `InteractionNavItem` card, keyed by
    *  that interaction's id. Looks up the id in `outboundConfig.groups`;
-   *  when found, scopes the flyout to that contact's own `channels`, and
-   *  when not (quick-dialed numbers, fixed demo cards with no backing
-   *  contact record), offers the full unfiltered `channelOptions` instead
-   *  of omitting the button — every card gets a "+", per design.
+   *  returns `null` when there's no matching contact (a quick-dialed number,
+   *  or a fixed demo card with no backing record) — `OutboundAddButton`
+   *  needs a real `CreateNewOutboundContact` to resolve its detail form's
+   *  address field and to hand back to `onStartCall`, so there's nothing
+   *  for it to add a channel through in that case. Previously rendered a
+   *  button anyway (unfiltered channel list, "every card gets a +, per
+   *  design"), but picking a channel from it silently did nothing once it
+   *  reached `CreateNew`'s own contact lookup — the same shipped bug
+   *  `handleRedial`'s own doc comment (agent-next-gen-v1) describes fixing
+   *  for its id. Omitting the button here is the honest version of that
+   *  fix: no dead-end control instead of one that quietly no-ops.
    *
    *  `className` overrides `OutboundAddButton`'s own default small/ghost
    *  look (its `className` merges last inside that component's own `cn()`
@@ -614,10 +858,8 @@ export interface UseOutboundAddButtonResult {
 }
 
 export function useOutboundAddButton(
-  outboundConfig: Pick<CreateNewOutboundConfig, "groups" | "channelOptions">
+  outboundConfig: Pick<CreateNewOutboundConfig, "groups" | "channelOptions" | "phoneOptions" | "skillOptions" | "onStartCall">
 ): UseOutboundAddButtonResult {
-  const [launchRequest, setLaunchRequest] = useState<{ contactId: string; channel: ChannelType } | null>(null);
-
   const contactsById = useMemo(
     () => new Map(outboundConfig.groups.flatMap((g) => g.contacts ?? []).map((c) => [c.id, c])),
     [outboundConfig]
@@ -626,25 +868,23 @@ export function useOutboundAddButton(
   const getHeaderAction = useCallback(
     (interactionId: string, className?: string) => {
       const contact = contactsById.get(interactionId);
-      const channelOptions = contact
-        ? outboundConfig.channelOptions.filter((c) => contact.channels.includes(c.id))
-        : outboundConfig.channelOptions;
+      if (!contact) return null;
+      const channelOptions = outboundConfig.channelOptions.filter((c) => contact.channels.includes(c.id));
       return (
         <OutboundAddButton
+          contact={contact}
           channelOptions={channelOptions}
-          onSelect={(channel) => setLaunchRequest({ contactId: interactionId, channel })}
+          phoneOptions={outboundConfig.phoneOptions ?? []}
+          skillOptions={outboundConfig.skillOptions ?? []}
+          onStartCall={(selection) => outboundConfig.onStartCall?.(selection)}
           className={className}
         />
       );
     },
-    [contactsById, outboundConfig.channelOptions]
+    [contactsById, outboundConfig]
   );
 
-  return {
-    launchRequest,
-    onLaunchRequestHandled: useCallback(() => setLaunchRequest(null), []),
-    getHeaderAction,
-  };
+  return { getHeaderAction };
 }
 
 /* ── CreateNew ── */
@@ -795,18 +1035,8 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     // ever have the one derived option, so that's the only way they can run
     // out; phone falls back to "" only once every one of
     // `outbound.phoneOptions` is open).
-    const defaultDetailValueFor = (contact: CreateNewOutboundContact, channel: ChannelType): string => {
-      const openAddresses = contact.openChannelAddresses?.[channel] ?? [];
-      if (channel === "email") {
-        const value = `${contact.name.toLowerCase().replace(/\s+/g, ".")}@example.com`;
-        return openAddresses.includes(value) ? "" : value;
-      }
-      if (channel === "whatsapp") {
-        const value = `@${contact.name}`;
-        return openAddresses.includes(value) ? "" : value;
-      }
-      return (outbound?.phoneOptions ?? []).find((o) => !openAddresses.includes(o.value))?.value ?? "";
-    };
+    const defaultDetailValueFor = (contact: CreateNewOutboundContact, channel: ChannelType): string =>
+      resolveOutboundDetailField(contact, channel, outbound?.phoneOptions ?? []).defaultValue;
 
     const goToDetail = (groupId: string, contact: CreateNewOutboundContact, channel: ChannelType) => {
       setDetailChannel(channel);
@@ -868,14 +1098,6 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     const availableChannelsForContact = (outbound?.channelOptions ?? []).filter((c) =>
       activeOutboundContact ? activeOutboundContact.channels.includes(c.id) : true
     );
-    // The address(es) already in use for the currently selected channel, if
-    // any — drives which option(s) get disabled in the detail screen's
-    // second field below (see CreateNewOutboundContact.openChannelAddresses'
-    // own doc comment for why only those specific options are disabled
-    // rather than the whole field or the channel itself).
-    const activeAddressesForChannel: string[] =
-      (detailChannel && activeOutboundContact?.openChannelAddresses?.[detailChannel]) || [];
-
     // goToDetail seeds the right default the moment screen 2 is entered, but
     // "Select Channel" stays editable once there (see its own comment) — if
     // the user switches channel on-screen, the second field needs to swap
@@ -933,33 +1155,19 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     }, [outbound?.launchRequest]);
 
     // Label + options for screen 2's second field, matching whichever
-    // channel is currently selected — see defaultDetailValueFor above for
-    // why email/whatsapp are single synthesized options rather than a list.
-    // Any option whose value appears in `activeAddressesForChannel` — an
-    // address already in use for an open interaction with this contact
-    // (there can be more than one, e.g. two open SMS threads on different
-    // numbers) — is dropped from the list entirely rather than shown
-    // disabled: an address that can't be picked shouldn't appear as a
-    // choice (or, worse, sit there pre-selected — see
-    // `defaultDetailValueFor` above) in the first place. When that leaves
-    // no options at all (e.g. email/WhatsApp's one derived address is
-    // already open), the field just renders empty — no value, no
-    // placeholder — rather than falling back to the unavailable address.
-    const detailFieldMeta = (() => {
-      const withoutActive = (options: SelectOption[]): SelectOption[] =>
-        activeAddressesForChannel.length > 0
-          ? options.filter((o) => !activeAddressesForChannel.includes(o.value))
-          : options;
-      if (detailChannel === "email") {
-        const value = activeOutboundContact ? defaultDetailValueFor(activeOutboundContact, "email") : "";
-        return { label: "Select Email Address", options: withoutActive(value ? [{ value, label: value }] : []) };
-      }
-      if (detailChannel === "whatsapp") {
-        const value = activeOutboundContact ? defaultDetailValueFor(activeOutboundContact, "whatsapp") : "";
-        return { label: "Select WhatsApp Handle", options: withoutActive(value ? [{ value, label: value }] : []) };
-      }
-      return { label: "Select Phone", options: withoutActive(outbound?.phoneOptions ?? []) };
-    })();
+    // channel is currently selected — delegates to the same
+    // `resolveOutboundDetailField` `OutboundAddButton` uses (see that
+    // function's own doc comment): any address already in use for an open
+    // interaction with this contact (there can be more than one, e.g. two
+    // open SMS threads on different numbers) is dropped from the list
+    // entirely rather than shown disabled, so it can't sit there
+    // pre-selected either. When that leaves no options at all (e.g.
+    // email/WhatsApp's one derived address is already open), the field just
+    // renders empty — no value, no placeholder.
+    const detailFieldMeta =
+      activeOutboundContact && detailChannel
+        ? resolveOutboundDetailField(activeOutboundContact, detailChannel, outbound?.phoneOptions ?? [])
+        : { label: "Select Phone", options: outbound?.phoneOptions ?? [] };
 
     const handleStartCall = () => {
       if (!outbound || !activeOutboundContact || !detailChannel || !detailSkill) return;
@@ -1358,14 +1566,15 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
 
                 {screen.kind === "detail" && activeOutboundContact && (
                   <div className="p-4 space-y-4">
-                    <Select
+                    <RadioButtonGroup
                       label="Select Channel"
-                      value={detailChannel || undefined}
-                      onValueChange={(v) => setDetailChannel(v as ChannelType)}
                       options={availableChannelsForContact.map((c) => ({
                         value: c.id,
                         label: c.selectLabel ?? c.label,
+                        disabled: isChannelBlockedForContact(activeOutboundContact, c.id),
                       }))}
+                      value={detailChannel || undefined}
+                      onValueChange={(v) => setDetailChannel(v as ChannelType)}
                     />
                     <Select
                       label={detailFieldMeta.label}

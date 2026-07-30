@@ -138,6 +138,25 @@ interface SelectProps {
    */
   portalDropdown?: boolean;
 
+  /**
+   * Extra classes merged onto the dropdown's portaled content (the Radix
+   * `Select.Content` in single-select mode, `Popover`'s content in
+   * multi-select mode) — an escape hatch for the z-index, not styling.
+   * The dropdown defaults to `z-[9999]` (single) / `z-50` (multi, via
+   * `Popover`'s own default), the base "portal wrapper" tier in
+   * CONTRIBUTING.md §4. That's wrong when this `Select` itself renders
+   * inside a *higher* tier — e.g. `OutboundAddButton`'s own `z-[10003]`
+   * "popover nested inside another popover" panel (create-new.tsx): the
+   * dropdown would portal to `document.body` same as always, but at a
+   * *lower* z-index than its own ancestor panel, so it paints underneath
+   * it — invisible (or only visible where it happens to poke out past the
+   * ancestor panel's edges) rather than not rendering at all. Same
+   * escape-hatch shape as `PhoneInput`'s `dropdownClassName` — pass the
+   * next-higher z-index tier from that table (e.g. `"z-[10005]"`), do not
+   * invent an arbitrary number.
+   */
+  dropdownClassName?: string;
+
   /** Additional class on the root */
   className?: string;
 
@@ -178,6 +197,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
       onOpenChange,
       dropdownAlign = "left",
       portalDropdown = true,
+      dropdownClassName,
       className,
       id,
       size = "md",
@@ -340,7 +360,10 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
             // convention) — Popover's default 16px body inset would push
             // every row in by another 16px on each side, so this opts out.
             bodyPadding={false}
-            className={trigger ? "w-[240px]" : "w-[var(--radix-popover-trigger-width)]"}
+            className={cn(
+              trigger ? "w-[240px]" : "w-[var(--radix-popover-trigger-width)]",
+              dropdownClassName
+            )}
             header={
               (searchable || (maxSelection !== undefined) || showSelectAll) ? (
                 <div className="flex flex-col">
@@ -632,7 +655,8 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                 "rounded-lyra-lg bg-lyra-bg-surface-overlay border border-lyra-border-subtle shadow-lg",
                 "overflow-hidden flex flex-col",
                 "data-[state=open]:animate-in data-[state=open]:fade-in-0",
-                "data-[state=closed]:animate-out data-[state=closed]:fade-out-0"
+                "data-[state=closed]:animate-out data-[state=closed]:fade-out-0",
+                dropdownClassName
               )}
             >
               {searchable && (

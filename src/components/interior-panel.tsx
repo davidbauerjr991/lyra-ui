@@ -200,31 +200,6 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       return () => clearTimeout(closeTimerRef.current);
     }, [open]);
 
-    // Full-screen toggle (see `allowFullScreen`'s own doc comment above) —
-    // self-contained, not controlled from outside. Deliberately NOT reset
-    // when the panel closes: closing while full-screen and reopening later
-    // should come back full-screen, the same way a resized width is
-    // remembered across a close/reopen (just per-mount rather than via a
-    // `storageKey` cookie) — confirmed as the wanted behavior over
-    // "always reopens at the pre-full-screen size."
-    const [isFullScreen, setIsFullScreen] = useState(false);
-    const fullScreenToggle = allowFullScreen ? (
-      <Tooltip content={isFullScreen ? "Exit full screen" : "Full screen"} placement="bottom" asLabel>
-        <button
-          type="button"
-          aria-label={isFullScreen ? "Exit full screen" : "Full screen"}
-          onClick={() => setIsFullScreen((v) => !v)}
-          className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-action hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
-        >
-          {isFullScreen ? (
-            <Minimize2 className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
-          ) : (
-            <Maximize2 className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
-          )}
-        </button>
-      </Tooltip>
-    ) : null;
-
     /* ── Go absolute/overlay when the parent container is < 1024px, instead
        of squeezing the main content column further — matches SidePanel's
        own pin-guard threshold (admin-shell.tsx / AgentNextGenTemplate),
@@ -232,6 +207,22 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
     const outerRef = useRef<HTMLDivElement>(null);
     const [parentWidth, setParentWidth] = useState(9999);
     const isNarrow = parentWidth < 1024;
+
+    /* Auto full-screen below 768px of the parent container's own width — a
+       dedicated, tighter breakpoint than `isNarrow`'s 1024px above (which
+       only switches to an absolute overlay, still at the panel's normal
+       ~350-425px width). Below 768px there simply isn't room for both the
+       panel and whatever sits beside it at ANY width, so the panel takes
+       over entirely — same visual result as the user clicking
+       `allowFullScreen`'s own toggle (`displayWidth`/the overlay branch
+       below both key off this too, alongside `isFullScreen`), just
+       automatic. The toggle itself hides at this width (`fullScreenToggle`
+       below) — there's nothing to "exit" to below 768px, so a control
+       that can't do anything would just be confusing chrome. Independent
+       of `allowFullScreen`: this breakpoint applies to every `InteriorPanel`
+       regardless of whether that panel opts into the user-triggered
+       toggle. */
+    const isAutoFullScreen = parentWidth < 768;
 
     const stableOuterRef = useCallback((el: HTMLDivElement | null) => {
       (outerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
@@ -249,10 +240,37 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       return () => ro.disconnect();
     }, []);
 
+    // Full-screen toggle (see `allowFullScreen`'s own doc comment above) —
+    // self-contained, not controlled from outside. Deliberately NOT reset
+    // when the panel closes: closing while full-screen and reopening later
+    // should come back full-screen, the same way a resized width is
+    // remembered across a close/reopen (just per-mount rather than via a
+    // `storageKey` cookie) — confirmed as the wanted behavior over
+    // "always reopens at the pre-full-screen size." Hidden entirely below
+    // 768px (`isAutoFullScreen`) — see that flag's own doc comment above.
+    const [isFullScreen, setIsFullScreen] = useState(false);
+    const fullScreenToggle = allowFullScreen && !isAutoFullScreen ? (
+      <Tooltip content={isFullScreen ? "Exit full screen" : "Full screen"} placement="bottom" asLabel>
+        <button
+          type="button"
+          aria-label={isFullScreen ? "Exit full screen" : "Full screen"}
+          onClick={() => setIsFullScreen((v) => !v)}
+          className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-action hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+        >
+          {isFullScreen ? (
+            <Minimize2 className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+          ) : (
+            <Maximize2 className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+          )}
+        </button>
+      </Tooltip>
+    ) : null;
+
     // Dragging a width that's currently forced to 100% doesn't mean
-    // anything, so the handle disappears while full-screen — it comes back
-    // at whatever width was active before, once toggled back off.
-    const dragHandle = resizable && open && !isFullScreen ? (
+    // anything, so the handle disappears while full-screen (user-triggered
+    // OR the automatic 768px breakpoint) — it comes back at whatever width
+    // was active before, once above 768px and toggled back off.
+    const dragHandle = resizable && open && !isFullScreen && !isAutoFullScreen ? (
       <div
         onMouseDown={onMouseDown}
         className="absolute top-0 bottom-0 z-10 flex items-center justify-center group"
@@ -264,14 +282,15 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
     ) : null;
 
     // `currentWidth` (px, from drag-resize state) everywhere below, except
-    // while full-screen — then the panel's actual on-screen size is "100%
-    // of its container" instead, and every place that otherwise sizes off
-    // `currentWidth` needs to say so too, not just the outermost shell
-    // (`inner`'s own width, and the left-side absolute-positioning wrapper
-    // further down, would otherwise still cap content at the pre-full-
-    // screen px width inside an outer shell that's already gone full width,
-    // leaving empty space instead of actually filling it).
-    const displayWidth: number | string = isFullScreen ? "100%" : currentWidth;
+    // while full-screen (user-triggered OR the automatic 768px breakpoint)
+    // — then the panel's actual on-screen size is "100% of its container"
+    // instead, and every place that otherwise sizes off `currentWidth`
+    // needs to say so too, not just the outermost shell (`inner`'s own
+    // width, and the left-side absolute-positioning wrapper further down,
+    // would otherwise still cap content at the pre-full-screen px width
+    // inside an outer shell that's already gone full width, leaving empty
+    // space instead of actually filling it).
+    const displayWidth: number | string = (isFullScreen || isAutoFullScreen) ? "100%" : currentWidth;
 
     const inner = (
       <div
@@ -312,15 +331,19 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
     const interiorWidth: number | string = open ? displayWidth : 0;
     const pos = side === "right" ? "right-0" : "left-0";
 
-    // Overlay instead of pushing the main content column: either the
-    // parent container is genuinely too narrow to squeeze further
-    // (`isNarrow`), or the panel is explicitly full-screen — same
+    // Overlay instead of pushing the main content column: the parent
+    // container is genuinely too narrow to squeeze further (`isNarrow`,
+    // <1024px), or the panel is full-screen — user-triggered
+    // (`isFullScreen`) or automatic (`isAutoFullScreen`, <768px) — same
     // mechanism either way (`position: absolute`, covering whatever's
     // beside it rather than requiring that sibling to shrink out of the
-    // way), just a different trigger. See `allowFullScreen`'s own doc
-    // comment for why full-screen deliberately reuses this instead of
-    // needing its own separate layout branch.
-    if (isNarrow || isFullScreen) {
+    // way), just a different trigger. `isAutoFullScreen` is already
+    // narrower than `isNarrow`'s own threshold (so it never actually adds
+    // a case today), listed anyway so this stays correct on its own if
+    // either threshold ever changes independently. See `allowFullScreen`'s
+    // own doc comment for why full-screen deliberately reuses this instead
+    // of needing its own separate layout branch.
+    if (isNarrow || isFullScreen || isAutoFullScreen) {
       return (
         <div
           ref={stableOuterRef}

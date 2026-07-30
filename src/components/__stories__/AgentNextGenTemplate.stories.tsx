@@ -669,15 +669,23 @@ function AgentNextGenTemplate({
 
   // Every "Agent Next Gen" consumer (this story, agent-next-gen-v1's
   // AgentNextGenPage.tsx, LeftNav.stories.tsx's "Agent Next Gen Left Nav"
-  // story) wants the exact same "+" behavior on each InteractionNavItem
-  // card — look up that interaction's underlying outbound contact, scope
-  // the flyout to whatever channels it actually supports (falling back to
-  // the full unfiltered list for quick-dialed numbers with no matching
-  // contact record), and deep-link a picked channel into CreateNew's
-  // `launchRequest`. That's `useOutboundAddButton` (create-new.tsx) — a
-  // single shared implementation instead of three hand-copied ones that
-  // could (and did) quietly drift out of sync.
-  const { launchRequest: outboundLaunchRequest, onLaunchRequestHandled, getHeaderAction } = useOutboundAddButton(outboundConfig);
+  // story, InteractionNavItem.stories.tsx) wants the exact same "+" behavior
+  // on each InteractionNavItem card — look up that interaction's underlying
+  // outbound contact and scope the flyout to whatever channels it actually
+  // supports. That's `useOutboundAddButton` (create-new.tsx) — a single
+  // shared implementation instead of hand-copied ones that could (and did)
+  // quietly drift out of sync. `OutboundAddButton` is fully self-contained
+  // now (no more `launchRequest`/`onLaunchRequestHandled` — see its own doc
+  // comment in create-new.tsx), so there's nothing to wire into this story's
+  // own `CreateNew` instance anymore.
+  // `onStartCall: handleStartCall` override is required — `outboundConfig`
+  // itself still carries whatever placeholder `onStartCall` it was built
+  // with (see its own `useMemo` above), not this story's real
+  // `handleStartCall`, so the bare `outboundConfig` here would silently
+  // no-op "Start Interaction" instead of opening a card (same bug fixed in
+  // agent-next-gen-v1/AgentNextGenPage.tsx and LeftNav.stories.tsx — see
+  // either one's own comment on this line).
+  const { getHeaderAction } = useOutboundAddButton({ ...outboundConfig, onStartCall: handleStartCall });
 
   /* AI panel show/hide */
   useEffect(() => {
@@ -936,8 +944,6 @@ function AgentNextGenTemplate({
                 ...outboundConfig,
                 onStartCall: handleStartCall,
                 onQuickDial: handleQuickDial,
-                launchRequest: outboundLaunchRequest,
-                onLaunchRequestHandled,
               }}
               expanded={navOpen}
             />

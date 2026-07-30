@@ -357,28 +357,27 @@ export const ExpandedStack: Story = {
 
 /* ── Header (headerAction slot) ──
    `headerAction` is a generic `React.ReactNode` slot in the card's header
-   row (see interaction-nav-item.tsx), and the "Add Outbound" flow it's
-   demonstrating here is a two-step handoff: clicking the "+" opens
-   `OutboundAddButton`'s own small channel-picker flyout, and picking a
-   channel there is supposed to hand off into `CreateNew`'s own "Select
-   Channel / Select Phone / Outbound Skill → Start Interaction" screen —
-   the same screen a real click from `CreateNew`'s own "New Outbound"
-   button lands on. An earlier version of this story only wired the first
-   step (`onSelect` just logged to the console) on the theory that there
-   was "no outbound flow to hand off to" in a standalone story — which
-   made the second screen look broken/missing when it was actually just
-   never wired up. Fixed by giving this story its own small, self-contained
-   `CreateNewOutboundConfig` (below) and using the real `useOutboundAddButton`
-   hook (create-new.tsx) — the exact same hook every production consumer
-   (AgentNextGenPage.tsx, AgentNextGenTemplate.stories.tsx, LeftNav.stories.tsx)
-   uses — so selecting a channel here now opens the real second screen, not
-   a stand-in. `CreateNew` itself is rendered (its "New Outbound" trigger
-   button included, same as every real consumer) purely so there's
-   somewhere for that popover to mount; `getHeaderAction` doesn't need the
-   trigger to be clicked to open it. See "Compact — Hover Popover" further
-   below for the same `headerAction` rendered in compact mode instead —
-   there's no header row on the compact tile itself, but hovering it opens
-   a popover previewing the full expanded card, header row included. */
+   row (see interaction-nav-item.tsx). The "Add Outbound" flow it's
+   demonstrating here is `OutboundAddButton` (create-new.tsx) — a fully
+   self-contained popover. Clicking the "+" opens a small channel-picker
+   flyout, and picking a channel swaps that same popover to the "Select
+   Channel / Select Phone / Outbound Skill → Start Interaction" detail
+   form, right where the "+" was clicked. There's no hand-off to a
+   separate, remotely-anchored `CreateNew` instance — an earlier version
+   of `OutboundAddButton` routed a picked channel through `CreateNew`'s
+   `launchRequest` prop into the LeftNav's own "New Outbound" popover,
+   which visually opened in the wrong place. This story uses its own
+   small, self-contained `CreateNewOutboundConfig` (below) and the real
+   `useOutboundAddButton` hook — the exact same hook every production
+   consumer (AgentNextGenPage.tsx, AgentNextGenTemplate.stories.tsx,
+   LeftNav.stories.tsx) uses. `CreateNew` itself is still rendered here
+   (its own "New Outbound" trigger button included, same as every real
+   consumer) so the story reflects a real page layout, but it's otherwise
+   unrelated to what `getHeaderAction`'s popover does. See "Compact — Hover
+   Popover" further below for the same `headerAction` rendered in compact
+   mode instead — there's no header row on the compact tile itself, but
+   hovering it opens a popover previewing the full expanded card, header
+   row included. */
 
 const NAV_ITEM_HEADER_OUTBOUND_CONFIG: CreateNewOutboundConfig = {
   outboundTitle: "New Outbound",
@@ -404,14 +403,12 @@ const NAV_ITEM_HEADER_OUTBOUND_CONFIG: CreateNewOutboundConfig = {
 export const NavItemHeader: Story = {
   name: "Header — Add Outbound Button",
   render: () => {
-    const { launchRequest, onLaunchRequestHandled, getHeaderAction } = useOutboundAddButton(
-      NAV_ITEM_HEADER_OUTBOUND_CONFIG
-    );
+    const { getHeaderAction } = useOutboundAddButton(NAV_ITEM_HEADER_OUTBOUND_CONFIG);
     return (
       <div className="flex w-[320px] flex-col gap-2 rounded-lyra-lg bg-lyra-bg-surface-shell p-3">
         <CreateNew
           title="New Outbound"
-          outbound={{ ...NAV_ITEM_HEADER_OUTBOUND_CONFIG, launchRequest, onLaunchRequestHandled }}
+          outbound={NAV_ITEM_HEADER_OUTBOUND_CONFIG}
           // Every card below renders in expanded mode (full header row,
           // name + headerAction) — CreateNew's own trigger needs the same
           // `expanded` flag or it falls back to its default collapsed,
@@ -438,8 +435,11 @@ export const NavItemHeader: Story = {
           headerAction={getHeaderAction("ray-torres")}
         />
         {/* No matching contact for this one (same as a quick-dialed number
-            in the real app) — demonstrates getHeaderAction's fallback to
-            the full unfiltered channel list instead of hiding the button. */}
+            in the real app) — demonstrates that getHeaderAction returns
+            `null` rather than rendering a "+" button with no contact to
+            back it (a button that would open but whose selection could
+            never actually resolve an address). No headerAction renders
+            here at all. */}
         <InteractionNavItem
           elapsed="02:05"
           expanded
@@ -469,15 +469,10 @@ export const NavItemHeader: Story = {
 export const CompactHoverCard: Story = {
   name: "Compact — Hover Popover",
   render: () => {
-    const { launchRequest, onLaunchRequestHandled, getHeaderAction } = useOutboundAddButton(
-      NAV_ITEM_HEADER_OUTBOUND_CONFIG
-    );
+    const { getHeaderAction } = useOutboundAddButton(NAV_ITEM_HEADER_OUTBOUND_CONFIG);
     return (
       <div className="flex flex-col items-center gap-1 rounded-lyra-lg bg-lyra-bg-surface-shell p-2">
-        <CreateNew
-          title="New Outbound"
-          outbound={{ ...NAV_ITEM_HEADER_OUTBOUND_CONFIG, launchRequest, onLaunchRequestHandled }}
-        />
+        <CreateNew title="New Outbound" outbound={NAV_ITEM_HEADER_OUTBOUND_CONFIG} />
         <InteractionNavItem
           customerName="Sofia Martinez"
           active

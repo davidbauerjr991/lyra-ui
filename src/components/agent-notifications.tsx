@@ -1,5 +1,5 @@
 import * as React from "react";
-import { UserPlus, MessageSquare, AlertTriangle, PhoneMissed, Bell, Trash2, GripVertical, MoreHorizontal } from "lucide-react";
+import { UserPlus, MessageSquare, Users, AlertTriangle, PhoneMissed, Bell, Trash2, GripVertical, MoreHorizontal } from "lucide-react";
 import { cn } from "../lib/utils";
 import { MenuItem } from "./menu-item";
 import { Badge } from "./badge";
@@ -10,7 +10,12 @@ import { MenuRadix } from "./menu-radix";
 
 /* ── Types ── */
 
-export type NotificationType = "new-case" | "new-chat" | "escalation" | "missed-call" | "custom";
+// "new-agent-chat" is a request from another AGENT (a colleague), not a
+// customer — visually distinct from "new-chat" (see `typeConfig` below: a
+// different icon/color pairing) per explicit request that the two read as
+// different categories of notification, not just different label text on
+// the same look.
+export type NotificationType = "new-case" | "new-chat" | "new-agent-chat" | "escalation" | "missed-call" | "custom";
 
 export interface AgentNotification {
   id: string;
@@ -61,6 +66,19 @@ const typeConfig: Record<NotificationType, { icon: React.ReactNode; bg: string; 
     icon: <MessageSquare className="h-4 w-4" strokeWidth={1.5} />,
     bg: "bg-lyra-status-success-subtle",
     color: "text-lyra-status-success-strong",
+  },
+  "new-agent-chat": {
+    // `Users` (two people), not `MessageSquare` — a customer chat's speech
+    // bubble reads as "a conversation," which is exactly what this ISN'T
+    // meant to look like at a glance; a colleague-to-colleague request
+    // reads more like "another agent," hence a person-pair glyph instead.
+    // Purple, not `new-chat`'s green — the one notification-type color not
+    // already claimed by another type here (blue/green/yellow/red above),
+    // so the two chat-shaped types can't be confused for the same category
+    // even in a quick glance at the icon alone.
+    icon: <Users className="h-4 w-4" strokeWidth={1.5} />,
+    bg: "bg-lyra-accent-purple-soft",
+    color: "text-lyra-accent-purple-strong",
   },
   escalation: {
     icon: <AlertTriangle className="h-4 w-4" strokeWidth={1.5} />,

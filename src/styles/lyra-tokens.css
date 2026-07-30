@@ -883,6 +883,73 @@
 }
 
 /* ════════════════════════════════════════════════════
+   Page header title-suffix wrap (CSS container query)
+   ════════════════════════════════════════════════════
+   PageHeader's title row (page-header.tsx) — icon/title/subtitle plus
+   `titleSuffix` (e.g. a `ChannelToggleGroup` distinguishing an
+   interaction's open channels) — is a single non-wrapping flex row by
+   default. Fine most of the time, but once this header's own available
+   width gets tight (the interaction record header, once a docked
+   Customer Information panel or app panel eats into it), that row
+   squeezes the customer name/ID down to an unreadable sliver ("La...",
+   "CS-63...") just to keep the channel toggles on the same line —
+   confirmed from a screenshot.
+
+   Below 768px of the header's own width, `titleSuffix` instead drops to
+   its own full-width row directly under the title/subtitle block, so the
+   name/ID get the row's full width back and only the toggles below need
+   to make room for themselves. `container-type: inline-size` always on
+   (not opt-in) — `titleSuffix` has exactly one real consumer today
+   (agent-next-gen-v1's interaction record header) and wrapping below the
+   title is the only sane fallback for ANY content in that slot once space
+   actually runs out; nothing existing wants "truncate the title instead"
+   behavior. The `flex-wrap`/`flex-basis` rules themselves stay scoped
+   inside the `@container` query (not a permanent base rule) so layout
+   above 768px is byte-for-byte unchanged — only single-line-too-tight
+   triggers the wrap, never organic wrapping a little early.
+
+   `.lyra-page-header-actions` (the right-side actions/panel-toggle
+   column) gets `align-self: flex-start` in the same query — the outer
+   row's `items-center` (unchanged, still correct for the normal single-
+   line case) otherwise centers `actions` against the row's FULL height,
+   which once the left side wraps to two lines is no longer just the
+   title's own line — it's the title-plus-wrapped-toggles block combined,
+   so `actions` visually sinks down toward the middle of that taller
+   block instead of staying pinned beside the title itself (confirmed via
+   screenshot: the Customer Information toggle button drifting down
+   between the name and the wrapped channel row instead of staying
+   top-right). `align-self` on just this one flex item overrides the
+   parent's `items-center` without touching how the rest of the row
+   aligns.
+
+   `.lyra-page-header-suffix-divider` is an OPT-IN class (unlike the two
+   above, it's not applied automatically by `PageHeader` itself — a
+   consumer's own `titleSuffix` content opts in, e.g. agent-next-gen-v1's
+   interaction record header, which puts a plain vertical-bar `<div>`
+   before its `ChannelToggleGroup` to separate it from the title while
+   both share one line). Hidden in the same query: once `titleSuffix`
+   wraps to its own row, that divider has nothing left to actually divide
+   — a lone vertical bar floating above the wrapped content read as a
+   rendering glitch rather than a separator (confirmed via screenshot). */
+.lyra-page-header-suffix-wrap {
+  container-type: inline-size;
+}
+@container (max-width: 768px) {
+  .lyra-page-header-suffix-wrap .lyra-page-header-left {
+    flex-wrap: wrap;
+  }
+  .lyra-page-header-suffix-wrap .lyra-page-header-suffix {
+    flex-basis: 100%;
+  }
+  .lyra-page-header-suffix-wrap .lyra-page-header-actions {
+    align-self: flex-start;
+  }
+  .lyra-page-header-suffix-wrap .lyra-page-header-suffix-divider {
+    display: none;
+  }
+}
+
+/* ════════════════════════════════════════════════════
    Container header actions (CSS container query)
    ════════════════════════════════════════════════════
    `ContainerHeader`'s title/actions row (container-header.tsx) is a single
