@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState, useRef, useEffect } from "react";
-import { GripVertical, LayoutGrid, Move, X } from "lucide-react";
-import { Draggable, type DraggableVariant } from "../draggable";
+import { GripVertical, LayoutGrid, Move, X, MessageSquare, CalendarDays, Bell } from "lucide-react";
+import { Draggable, type DraggableVariant, type EmbeddablePanelContent } from "../draggable";
 import { ContainerHeader } from "../container-header";
 import { PageHeader } from "../page-header";
 import { Button } from "../button";
@@ -9,6 +9,9 @@ import { Tooltip } from "../tooltip";
 import { AppHeader } from "../app-header";
 import { AppName } from "../app-name";
 import { ActionIconButton } from "../actions";
+import { useAiPanelContent } from "../ai-panel";
+import { useAgentNotificationsContent, type AgentNotification } from "../agent-notifications";
+import { AiSparkleIcon } from "../icons/ai-sparkle-icon";
 
 const meta: Meta<typeof Draggable> = {
   title: "Custom Primitives/Draggable",
@@ -1191,4 +1194,273 @@ export const Interactive: Story = {
       </div>
     );
   },
+};
+
+/**
+ * `MultiplePanelsSingleDock`'s "Multiple Containers" control OFF demonstrates
+ * the single-container idea, but only with placeholder "Panel {letter}
+ * content" bodies — good enough to prove the container itself never
+ * resizes/repositions/re-animates when switching which button is active,
+ * but not proof the idea survives real, non-interchangeable panel content.
+ * This story is that proof: Ask AI and Notifications are each a single
+ * `AiPanel`/`AgentNotifications` component that bakes its own header AND
+ * its own `Draggable` wrapper together — there's no way to pull out just
+ * their body content to drop into someone else's shared header/box. Fixing
+ * that required extracting each one's content into its own hook
+ * (`useAiPanelContent` in ai-panel.tsx, `useAgentNotificationsContent` in
+ * agent-notifications.tsx) returning one `EmbeddablePanelContent` shape —
+ * `AiPanel`/`AgentNotifications` themselves now call these hooks
+ * internally too (see those files), so this isn't a second, drifting copy
+ * of their content, just a second CALLER of the same hook. This demo
+ * combines that real Ask AI/Notifications content with two blank generic
+ * panels (Conversations/Schedule) behind ONE shared `Draggable` — exactly
+ * `AgentNextGenPage.tsx`'s own single-container app header panel (which
+ * has a 5th button, Screen Pop, omitted here only to keep this demo
+ * shorter). Always single-container — unlike `MultiplePanelsSingleDock`
+ * above, there's no "Multiple Containers" toggle here, since real content
+ * only ever makes sense embedded this one way.
+ */
+function SingleContainerRealContentDemo() {
+  type Key = "ai" | "notif" | "conversations" | "schedule";
+  type PanelState = "closed" | "open" | "closing";
+
+  const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [state, setState] = useState<PanelState>("closed");
+  const [activeKey, setActiveKey] = useState<Key | null>(null);
+  const [variant, setVariant] = useState<DraggableVariant>("docked");
+  const [width, setWidth] = useState(380);
+  const [resizing, setResizing] = useState(false);
+  const floatLeft = useRef<number | null>(null);
+  const floatTop = useRef<number | null>(null);
+  const animTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  // Fixed 4 button refs (Rules of Hooks — same reason `usePanelSlot` above
+  // is called a fixed 5 times regardless of `panelCount`).
+  const aiButtonRef = useRef<HTMLButtonElement>(null);
+  const notifButtonRef = useRef<HTMLButtonElement>(null);
+  const convButtonRef = useRef<HTMLButtonElement>(null);
+  const schedButtonRef = useRef<HTMLButtonElement>(null);
+  const buttonRefs: Record<Key, React.RefObject<HTMLButtonElement>> = {
+    ai: aiButtonRef, notif: notifButtonRef, conversations: convButtonRef, schedule: schedButtonRef,
+  };
+
+  // Open/close animation state machine — same shape as `usePanelSlot` above,
+  // just for ONE shared slot instead of N independent ones.
+  useEffect(() => {
+    clearTimeout(animTimer.current);
+    if (open) {
+      setMounted(true);
+      setState("open");
+    } else {
+      setState("closing");
+      animTimer.current = setTimeout(() => setState("closed"), 150);
+    }
+    return () => clearTimeout(animTimer.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // Real content — called unconditionally every render (Rules of Hooks),
+  // same reasoning as calling all 5 `usePanelSlot`s above regardless of
+  // `panelCount`: a hook can't be called conditionally just because its
+  // panel isn't the currently-active one.
+  const aiContent = useAiPanelContent({
+    userName: "Jordan",
+    suggestions: [
+      { id: "1", label: "Summarise this contact's history" },
+      { id: "2", label: "Suggest a response to the customer" },
+      { id: "3", label: "What changed since yesterday?" },
+    ],
+  });
+  const [notifications, setNotifications] = useState<AgentNotification[]>([
+    { id: "1", type: "new-case", title: "New Case", subtitle: "Noah Patel", timestamp: "2m ago" },
+    { id: "2", type: "escalation", title: "Escalation", subtitle: "Priya Shah", timestamp: "8m ago" },
+    { id: "3", type: "missed-call", title: "Missed call", timestamp: "20m ago", read: true },
+  ]);
+  const notifContent = useAgentNotificationsContent({
+    notifications,
+    onMarkAllRead: () => setNotifications((prev) => prev.map((n) => ({ ...n, read: true }))),
+    onClearAll: () => setNotifications([]),
+    onDismiss: (id) => setNotifications((prev) => prev.filter((n) => n.id !== id)),
+  });
+  // Conversations/Schedule have no bespoke component (same as
+  // `DraggablePanel`'s own blank empty-state default) — a plain
+  // `EmbeddablePanelContent` literal is all either one needs.
+  const blankContent = (title: string): EmbeddablePanelContent => ({
+    title,
+    body: (
+      <div className="flex-1 flex items-center justify-center p-4">
+        <p className="lyra-body-md text-lyra-fg-disabled text-center">Nothing here yet.</p>
+      </div>
+    ),
+  });
+  const contentByKey: Record<Key, EmbeddablePanelContent> = {
+    ai: aiContent,
+    notif: notifContent,
+    conversations: blankContent("Conversations"),
+    schedule: blankContent("Schedule"),
+  };
+  const content = activeKey ? contentByKey[activeKey] : null;
+
+  // Clicking a button: re-clicking the CURRENTLY showing one closes the
+  // shared container outright. Otherwise, if it's closed, anchor its float
+  // position below THIS button and open it; if it's already open showing a
+  // DIFFERENT key, only `activeKey` changes — the container itself never
+  // resizes, repositions, or re-animates open+close, only its title/body
+  // content does (the entire point of "Multiple Containers: false").
+  const handleToggle = (key: Key) => (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (open && activeKey === key) {
+      setOpen(false);
+      return;
+    }
+    if (!open) {
+      if (floatLeft.current === null) {
+        const rect = e.currentTarget.getBoundingClientRect();
+        floatLeft.current = rect.left;
+        floatTop.current = rect.bottom + 8;
+      }
+      setOpen(true);
+    }
+    setActiveKey(key);
+  };
+
+  const selectedClass = "bg-lyra-bg-active-moderate text-lyra-fg-active-strong hover:bg-lyra-bg-active-moderate";
+  const isSelected = (key: Key) => open && activeKey === key;
+
+  const panel = mounted && content ? (
+    <Draggable
+      variant={variant}
+      defaultWidth={width}
+      defaultHeight={560}
+      minWidth={320}
+      minHeight={400}
+      onVariantChange={setVariant}
+      onWidthChange={setWidth}
+      onResizeStateChange={setResizing}
+      className={[
+        "rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-base",
+        variant === "float" ? "shadow-lg" : "h-full",
+      ].join(" ")}
+      renderHeaderControls={({ gripProps, dockButtonProps, dockIcon, variant: dVariant }) => (
+        <>
+          <ContainerHeader
+            title={content.title}
+            titleBadge={content.titleBadge}
+            titleClassName={content.titleClassName}
+            icon={
+              dVariant === "float"
+                ? <div {...gripProps}><GripVertical className="h-4 w-4" strokeWidth={1.5} /></div>
+                : content.dockedIcon
+            }
+            bordered={!content.headerContent}
+            actions={
+              <>
+                {content.headerActions}
+                <Tooltip content={dockButtonProps["aria-label"]} placement="bottom" asLabel>
+                  <button
+                    {...dockButtonProps}
+                    className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
+                  >
+                    {dockIcon}
+                  </button>
+                </Tooltip>
+              </>
+            }
+            onClose={() => setOpen(false)}
+          />
+          {content.headerContent && (
+            <div className="shrink-0 px-4 pb-3 border-b border-lyra-border-subtle">{content.headerContent}</div>
+          )}
+        </>
+      )}
+    >
+      {content.body}
+    </Draggable>
+  ) : null;
+
+  const getFloatStyle = (): React.CSSProperties => ({
+    position: "fixed",
+    top: floatTop.current ?? 80,
+    left: floatLeft.current ?? 80,
+    zIndex: 9999,
+  });
+
+  return (
+    <div className="flex flex-col h-screen overflow-hidden bg-lyra-bg-surface-shell">
+      <AppHeader
+        appName={<AppName icon={<LayoutGrid className="h-6 w-6" strokeWidth={1.5} />} name="Demo App" />}
+        actions={
+          <>
+            <ActionIconButton ref={buttonRefs.conversations} size="xl" title="Conversations" aria-pressed={isSelected("conversations")} onClick={handleToggle("conversations")} className={isSelected("conversations") ? selectedClass : undefined}>
+              <MessageSquare className="h-5 w-5" strokeWidth={1.5} />
+            </ActionIconButton>
+            <ActionIconButton ref={buttonRefs.schedule} size="xl" title="Schedule" aria-pressed={isSelected("schedule")} onClick={handleToggle("schedule")} className={isSelected("schedule") ? selectedClass : undefined}>
+              <CalendarDays className="h-5 w-5" strokeWidth={1.5} />
+            </ActionIconButton>
+            <ActionIconButton ref={buttonRefs.notif} size="xl" title="Notifications" aria-pressed={isSelected("notif")} onClick={handleToggle("notif")} className={isSelected("notif") ? selectedClass : undefined}>
+              <Bell className="h-5 w-5" strokeWidth={1.5} />
+            </ActionIconButton>
+            <ActionIconButton ref={buttonRefs.ai} size="xl" title="Ask AI" aria-pressed={isSelected("ai")} onClick={handleToggle("ai")} className={isSelected("ai") ? selectedClass : undefined}>
+              <AiSparkleIcon />
+            </ActionIconButton>
+          </>
+        }
+      />
+
+      <div className="flex flex-1 min-h-0 overflow-hidden px-4 pb-4">
+        <div className="relative flex flex-1 min-w-0 overflow-hidden">
+          <div className="flex flex-col flex-1 rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-base overflow-hidden">
+            <PageHeader title="Page Title" />
+          </div>
+        </div>
+
+        {/* Single always-mounted wrapper (once opened) — same "never
+            remount Draggable across float↔docked or open↔closed" reasoning
+            as `MultiplePanelsSingleDockDemo`'s own per-slot wrapper above,
+            just for the one shared slot instead of N. */}
+        <div
+          className={variant === "docked" ? "flex h-full" : undefined}
+          style={
+            variant === "docked"
+              ? {
+                  width: state === "open" ? width + 16 : 0,
+                  height: "100%",
+                  overflow: "hidden",
+                  flexShrink: 0,
+                  transition: resizing ? "none" : "width 250ms cubic-bezier(0.4, 0, 0.2, 1)",
+                }
+              : { width: 0, overflow: "visible", flexShrink: 0 }
+          }
+        >
+          <div
+            className={variant === "docked" ? "flex flex-col h-full pl-4" : undefined}
+            style={
+              variant === "docked"
+                ? { width: width + 16, height: "100%", display: state === "open" ? "flex" : "none" }
+                : {
+                    ...getFloatStyle(),
+                    pointerEvents: "none",
+                    visibility: state === "closed" ? "hidden" : "visible",
+                    opacity: state === "open" ? 1 : 0,
+                    transform: state === "open" ? "translateY(0)" : "translateY(-8px)",
+                    transition: state === "open"
+                      ? "opacity 150ms ease, transform 150ms ease"
+                      : "opacity 100ms ease, transform 100ms ease",
+                  }
+            }
+          >
+            <div style={variant === "float" ? { pointerEvents: "auto" } : undefined}>
+              {panel}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export const SingleContainerRealContent: Story = {
+  name: "Single Container - Real Content",
+  parameters: { layout: "fullscreen" },
+  render: () => <SingleContainerRealContentDemo />,
 };

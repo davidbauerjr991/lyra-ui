@@ -5,8 +5,26 @@
 
 ---
 
+## 0. Never hand-roll a button — compose Button/ActionIconButton, always
+
+**This is the first rule in this document, ahead of the numbered list below, because it is the single most common way a component quietly drifts out of spec — and it just happened again.** Before writing a single `<button>` anywhere, in this library or any consuming app, stop and check: does `Button`, `ActionIconButton`, or an existing purpose-built atom (`FavoriteButton`, `PanelPinButton`, `KebabMenuButton`, `OutboundAddButton`, an `Accordion`/`Tab` trigger, etc.) already cover this shape? If yes, compose it — full stop, no exceptions without explicit team approval, no matter how small or "obviously simple" the target looks (a plain icon button, a colored pill, a 24px toggle). If a genuinely new shape is needed that none of those support, its classes must come from `buttonVariants` (button.tsx's exported CVA function) or another real shared token source — never hand-copied or approximated by re-typing color/radius/typography class names from memory.
+
+**Why a hand-copied button is worse than it looks:** it renders correctly on the day it's written, then silently drifts the moment the real `Button` changes, because nothing about a hand-rolled copy points back to the source of truth — there's no `tsc` error, no visual diff tool, nothing that flags it. It just quietly stops matching.
+
+**This already happened, twice, in ways that were easy to miss in review:**
+
+- `CreateNew`'s "New Outbound" trigger (`create-new.tsx`) needed a bespoke collapse/expand width animation `Button` doesn't support, so it was hand-rolled — its own doc comment even says *"Same tokens as Button's 'default' variant... reused directly rather than guessed."* The background/text/hover colors were copied correctly. The label's typography wasn't: it used `lyra-body-md` (400 weight) instead of `lyra-label` (500 weight — what every real `Button` actually gets via `buttonVariants`'s base class). The two classes are both 14px/20px and differ *only* in font-weight, so the mismatch read as "close enough" in source and shipped, rendering visibly lighter than every other button next to it, until it was caught from a screenshot and someone asked why it looked different from the rest.
+- Several places (`ContactRow`'s favorite star, `AgentProfile`'s status-favorite toggle) hand-rolled their own `<button>` + `Star` + `Tooltip` combination before `FavoriteButton` existed to cover it (see §1's "Recent incidents").
+
+**The one legitimate exception** is a purpose-built lyra-ui atom's *own* internal trigger — `FavoriteButton`, `PanelPinButton`, `KebabMenuButton`, and `OutboundAddButton` all render a real `<button>` at their root because `Button` genuinely doesn't support their specific behavior (a rotating pin, a Radix-menu-owning trigger, a popover-launching "+"). That is not license to hand-roll a *new* one-off for anything resembling those shapes — it's exactly why those atoms exist: reuse them (§2's composition table) instead of writing a fifth variant of the same idea. Any of *those* atoms' own internal styling still has to come from real lyra tokens, never guessed values.
+
+See §2 ("Composition over reimplementation," especially its icon-button row) for the full component-selection reference, and §1's "Recent incidents" for more of this same class of bug applied to other components.
+
+---
+
 ## Table of Contents
 
+0. [Never hand-roll a button — compose Button/ActionIconButton, always](#0-never-hand-roll-a-button--compose-buttonactioniconbutton-always)
 1. [Use Lyra components as designed — never hard-code](#1-use-lyra-components-as-designed--never-hard-code)
 2. [Composition over reimplementation](#2-composition-over-reimplementation)
 3. [Controlled components](#3-controlled-components)
@@ -152,6 +170,10 @@ the header's `TabList` (via `headerTabs`) and the scrolling body
 "Last Interaction" summary in a neutral container) need, since splitting
 tabs out of `children` means that state can no longer live inside the body
 component alone.
+
+### Every button must be built on `Button`/`ActionIconButton` — no exceptions
+
+**This is Rule 0 at the very top of this document, restated here because it's a composition rule like the two below it:** any button, icon button, or button-shaped clickable control — in this library or a consuming app — must be `Button`, `ActionIconButton`, or an existing purpose-built button atom (`FavoriteButton`, `PanelPinButton`, `KebabMenuButton`, `OutboundAddButton`). Never hand-copy `Button`'s colors/radius/typography classes into a new one-off `<button>`, even when the target shape looks trivial. See Rule 0 above for the full incident history and the one legitimate exception (an atom's own internal trigger).
 
 ### Every menu/dropdown must be built on `Menu` — no exceptions
 
@@ -767,6 +789,7 @@ Add new exports in the most logical existing section, or create a new section wi
 Work through this list top-to-bottom before marking a component done.
 
 ```
+[ ] Every button-shaped element is Button/ActionIconButton or an existing button atom — no hand-copied button styling (Rule 0)
 [ ] Checked src/index.ts and Storybook — no existing component covers this use case
 [ ] No hard-coded value overrides a real component's own correct behavior just to match a mockup (§1)
 [ ] File named kebab-case.tsx in src/components/

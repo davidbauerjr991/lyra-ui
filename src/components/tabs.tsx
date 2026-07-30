@@ -94,7 +94,7 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
   ) => {
     const listRef = useRef<HTMLDivElement>(null);
     const [overflowOpen, setOverflowOpen] = useState(false);
-    const [overflowPosition, setOverflowPosition] = useState<{ top: number; left: number; width: number } | null>(null);
+    const [overflowPosition, setOverflowPosition] = useState<{ top: number; left: number; width: number; maxHeight?: number } | null>(null);
     const overflowTriggerRef = useRef<HTMLButtonElement>(null);
     const overflowMenuRef = useRef<HTMLDivElement>(null);
 
@@ -227,6 +227,82 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
         document.removeEventListener("keydown", handleEscape);
       };
     }, [overflowOpen]);
+
+    // Keep the overflow dropdown on-screen. `openOverflowMenu` below only
+    // knows the TRIGGER's position when it fires (before the menu itself
+    // has ever rendered, so its real height isn't knowable yet) and always
+    // guesses "open downward, full height" — fine when there's room, but
+    // with a long tab list (or a trigger sitting low in a docked panel) that
+    // guess routinely runs the dropdown past the bottom of the viewport
+    // (confirmed via screenshot: the last couple of rows rendered off the
+    // bottom edge with nothing to catch them). This runs once the guessed
+    // position has actually put the menu in the DOM (`overflowMenuRef` is
+    // only non-null after that commit), measures its real rendered size,
+    // and corrects course:
+    //   - Fits below as guessed → keep it, just cap `maxHeight` to the real
+    //     available space defensively (matches `menu-radix.tsx`'s own
+    //     `max-h-[var(--radix-dropdown-menu-content-available-height)]`
+    //     convention — an internal scroll, via `Menu`'s own built-in
+    //     scroll-chevron affordance, rather than a hard clip).
+    //   - Doesn't fit below, but there's more room above the trigger →
+    //     flip to open upward instead, capped to whichever space it landed
+    //     in — the same "flip when the preferred side doesn't fit" behavior
+    //     Radix's own Popper primitive gives `MenuRadix`/`KebabMenuButton`
+    //     for free; this hand-rolled portal has to do it manually.
+    //   - Doesn't fit below and flipping doesn't meaningfully help either →
+    //     stay below (matches the original position most people expect) and
+    //     let it scroll internally instead of overflowing the viewport.
+    // Also reruns whenever the entry count changes (a consumer's `children`
+    // can change while open) so resizing the actual content re-measures
+    // instead of leaving a stale position/cap from before the change.
+    useLayoutEffect(() => {
+      if (!overflowOpen) return;
+      const menuEl = overflowMenuRef.current;
+      const triggerEl = overflowTriggerRef.current;
+      if (!menuEl || !triggerEl) return;
+
+      const VIEWPORT_PADDING = 8;
+      const GAP = 4;
+      const triggerRect = triggerEl.getBoundingClientRect();
+      const menuRect = menuEl.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - triggerRect.bottom - GAP - VIEWPORT_PADDING;
+      const spaceAbove = triggerRect.top - GAP - VIEWPORT_PADDING;
+
+      let top: number;
+      let maxHeight: number;
+      if (menuRect.height <= spaceBelow) {
+        top = triggerRect.bottom + GAP;
+        maxHeight = spaceBelow;
+      } else if (spaceAbove > spaceBelow) {
+        maxHeight = spaceAbove;
+        top = Math.max(VIEWPORT_PADDING, triggerRect.top - GAP - Math.min(menuRect.height, spaceAbove));
+      } else {
+        top = triggerRect.bottom + GAP;
+        maxHeight = Math.max(spaceBelow, 100);
+      }
+
+      // Same idea horizontally — a menu wider than its trigger (or a
+      // trigger sitting near the right edge of a narrow docked panel)
+      // could otherwise render partway off the right side of the screen.
+      let left = triggerRect.left;
+      if (left + menuRect.width > window.innerWidth - VIEWPORT_PADDING) {
+        left = Math.max(VIEWPORT_PADDING, window.innerWidth - menuRect.width - VIEWPORT_PADDING);
+      }
+
+      setOverflowPosition((prev) =>
+        prev && prev.top === top && prev.left === left && prev.maxHeight === maxHeight
+          ? prev
+          : { top, left, width: prev?.width ?? triggerRect.width, maxHeight }
+      );
+      // `React.Children.count(children)`, not `overflowEntries.length` — this
+      // effect has to sit above the `if (!overflowMenu) return tablistEl;`
+      // early return below (every Hook must run unconditionally on every
+      // render), and `overflowEntries` isn't computed until after that
+      // return, so it isn't in scope here yet. Counting `children` directly
+      // gives the same "re-measure if the tab set changes size" signal
+      // without needing that later value.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [overflowOpen, React.Children.count(children)]);
 
     const tablistEl = (
       <div
@@ -440,7 +516,18 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
           zIndex: 9999,
         }}
       >
-        <Menu items={overflowEntries} aria-label="More tabs" />
+        {/* `maxHeight` (set by the collision-correction effect above, once
+            it's measured this menu's real rendered size against the
+            viewport) caps `Menu`'s own inner scrollable list — the same
+            "consumer-supplied max height overflows internally" pattern
+            `Autocomplete`'s `max-h-60` already relies on (see menu.tsx's own
+            doc comment) — rather than letting the dropdown just keep
+            growing past the edge of the screen. `undefined` on the very
+            first paint (before that effect has measured anything yet), so
+            it renders at its natural size for one frame — corrected before
+            that frame is actually painted, since the effect is a
+            `useLayoutEffect`. */}
+        <Menu items={overflowEntries} aria-label="More tabs" style={{ maxHeight: overflowPosition.maxHeight }} />
       </div>,
       document.body
     );

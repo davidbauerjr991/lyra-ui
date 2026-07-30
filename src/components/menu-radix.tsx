@@ -83,7 +83,17 @@ export interface MenuRadixProps {
 const stopClickBubble = (e: React.SyntheticEvent) => e.stopPropagation();
 
 const surfaceClassName = cn(
-  "z-[9999] min-w-[200px] max-h-[300px] rounded-lyra-lg bg-lyra-bg-surface-overlay",
+  // `max-h-[300px]` used to be a fixed cap regardless of how much room the
+  // viewport actually had — a short menu on a tall screen still got the
+  // hand-rolled scroll-chevron affordance (see "View All Apps", 9 short
+  // rows, cut off + scrollable on a full-height desktop viewport). Radix's
+  // Popper positioning already exposes exactly how much space is actually
+  // available in the direction the content opened
+  // (`--radix-dropdown-menu-content-available-height`, kept live as the
+  // trigger scrolls/the window resizes) — using that as the cap instead
+  // means the surface grows to fit its content up to that real limit, and
+  // only the small/overflow case still gets the inner scroll + chevrons.
+  "z-[9999] min-w-[200px] max-h-[var(--radix-dropdown-menu-content-available-height)] rounded-lyra-lg bg-lyra-bg-surface-overlay",
   "border border-lyra-border-subtle shadow-lg p-1 flex flex-col outline-none overflow-hidden",
   "data-[state=open]:animate-in data-[state=open]:fade-in-0",
   "data-[state=closed]:animate-out data-[state=closed]:fade-out-0"
@@ -141,7 +151,13 @@ function MenuRadixItem({ item }: { item: MenuItemDef }) {
       : "text-lyra-fg-default data-[highlighted]:bg-lyra-state-hover",
     item.active && !isDestructive &&
       "bg-lyra-bg-active-subtle text-lyra-fg-active-strong data-[highlighted]:bg-lyra-state-hover-active-subtle",
-    "data-[disabled]:opacity-40 data-[disabled]:cursor-not-allowed data-[disabled]:data-[highlighted]:bg-transparent"
+    "data-[disabled]:opacity-40 data-[disabled]:cursor-not-allowed data-[disabled]:data-[highlighted]:bg-transparent",
+    // Drag-to-reorder affordance/feedback — `dragOver` is the same "another
+    // row is being dragged over this one" highlight `SortableTableHead` uses
+    // (`bg-lyra-bg-active-moderate`), driven entirely by whatever hook the
+    // caller wires up (e.g. `useColumnReorder`), not local state here.
+    item.draggable && "cursor-grab active:cursor-grabbing",
+    item.dragOver && "bg-lyra-bg-active-moderate"
   );
 
   // `reactToSubmenuOpen` is only passed for SubTrigger rows. Radix sets
@@ -233,6 +249,12 @@ function MenuRadixItem({ item }: { item: MenuItemDef }) {
   return (
     <DropdownMenuPrimitive.Item
       disabled={item.disabled}
+      draggable={item.draggable}
+      onDragStart={item.onDragStart}
+      onDragOver={item.onDragOver}
+      onDrop={item.onDrop}
+      onDragEnd={item.onDragEnd}
+      onDragLeave={item.onDragLeave}
       onSelect={(e) => {
         // Radix closes the menu on select by default, unlike bare Menu
         // (which has no concept of closing itself at all). closeOnSelect

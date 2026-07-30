@@ -62,6 +62,29 @@ interface MenuItemDef {
    * immediately. Defaults to `true` (Radix's own default behavior).
    */
   closeOnSelect?: boolean;
+  /**
+   * MenuRadix only (like `closeOnSelect` above) — has no effect on the
+   * hand-rolled `Menu`, which doesn't render its own item root at all in a
+   * way drag events could attach to. Enables native HTML5 drag-and-drop
+   * reordering on this row: pass the same `onDragStart`/`onDragOver`/
+   * `onDrop`/`onDragEnd`/`onDragLeave` handlers to every item in the list —
+   * typically all five sourced from one shared `useColumnReorder`-style
+   * hook (see table.tsx), so dropping one row onto another reorders the
+   * whole array in one place rather than each row owning a fragment of the
+   * logic. See `AgentNextGenPage.tsx`'s app-header "View All Apps" menu,
+   * whose rows are reorderable in lockstep with the header's own icon
+   * buttons (same shared order state, same hook instance, driving both).
+   */
+  draggable?: boolean;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void;
+  onDragEnd?: (e: React.DragEvent) => void;
+  onDragLeave?: (e: React.DragEvent) => void;
+  /** True while another row is being dragged over this one — adds a drop-
+   *  target highlight (`bg-lyra-bg-active-moderate`, the same class
+   *  `SortableTableHead`'s own `isDragOver` state uses). */
+  dragOver?: boolean;
 }
 
 /** Non-interactive section header rendered inline within the list (e.g.

@@ -43,7 +43,13 @@ export interface TagProps extends React.HTMLAttributes<HTMLSpanElement> {
 /* ── CVA definitions ── */
 
 const tagVariants = cva(
-  "inline-flex items-center border transition-colors px-1.5 py-0.5 lyra-body-sm gap-0.5",
+  // `transition-[color,background-color,border-color,filter]`, not the
+  // narrower `transition-colors` this used to be — every Tag now gets a
+  // hover-brightness reaction by default (`hover:brightness-95`/
+  // `dark:hover:brightness-125`, added in the component below rather than
+  // here so `disabled` can suppress it), and `filter` needs its own listed
+  // property to animate smoothly alongside the existing color transitions.
+  "inline-flex items-center border transition-[color,background-color,border-color,filter] px-1.5 py-0.5 lyra-body-sm gap-0.5",
   {
     variants: {
       /* Note: border colors use a CSS color-mix() Tailwind arbitrary value
@@ -119,6 +125,18 @@ const Tag = React.forwardRef<HTMLSpanElement, TagProps>(
         ref={ref}
         className={cn(
           tagVariants({ variant, shape, className }),
+          // Every Tag reacts to hover by default — the tag's own color
+          // darkens slightly in light mode (`brightness-95`) or lightens
+          // slightly in dark mode (`brightness-125`, since a dark surface
+          // needs to get *lighter* to read as "brighter"), rather than a
+          // gray background appearing behind it (which would clash with
+          // the tag's own tint). Originally only applied inside
+          // `TagPicker`'s clickable rows (tag-picker.tsx) via `group-hover:`
+          // on a wrapping `<button>`; promoted to Tag's own real `:hover`
+          // here so every Tag gets it without a consumer having to opt in.
+          // Suppressed when `disabled`, since a disabled tag isn't
+          // interactive and shouldn't visually react as if it were.
+          !disabled && "hover:brightness-95 dark:hover:brightness-125",
           disabled && "bg-lyra-bg-disabled text-lyra-fg-disabled border-lyra-border-disabled opacity-60"
         )}
         {...props}

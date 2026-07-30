@@ -73,6 +73,21 @@ interface LeftNavProps extends React.HTMLAttributes<HTMLElement> {
    * auto-injects it based on hover state.
    */
   header?: React.ReactNode;
+  /**
+   * Renders `items` (the icon+label nav rail — Home/Settings and friends)
+   * ABOVE `header` instead of below it, and switches the nav list's own
+   * sticky edge from the bottom of the scroll region to the top —
+   * "always visible, everything else scrolls past it" now anchors at the
+   * top since the rail is first in flow, rather than at the bottom (its
+   * position when it's last, the default). Off by default — every existing
+   * consumer (AdminShell, the Agent Next Gen template, this component's own
+   * stories) already relies on `header`'s "cards above the rail" order and
+   * the rail sticking to the bottom of a long card list; this only opts a
+   * caller into the opposite arrangement (e.g. a "Home"/"Settings" rail
+   * with a section caption + list of cards *below* it, rather than above)
+   * without changing anyone else's layout.
+   */
+  itemsFirst?: boolean;
 }
 
 /**
@@ -125,6 +140,7 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
       footer,
       pinnedHeader,
       header,
+      itemsFirst = false,
       ...props
     },
     ref
@@ -281,15 +297,52 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
               <div className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden lyra-scrollbar-hide min-h-0">
                 {/* No `gap` here — `header` (InteractionNavItem cards) supplies its own
                     bottom margin per item (see InteractionNavItem), so spacing only
-                    appears when there's a real card to space out. */}
+                    appears when there's a real card to space out. Order (and which edge
+                    the rail sticks to) flips with `itemsFirst` — see its own doc comment. */}
+                {itemsFirst && (
+                  <div
+                    className={cn(
+                      "flex flex-shrink-0 flex-col bg-lyra-bg-surface-shell px-2 sticky top-0",
+                      hoverOpen ? "items-stretch" : "items-center",
+                      !header && "pb-3",
+                      // 4px, not the usual 12px (`pt-3`) — just enough gap
+                      // under `pinnedHeader` (e.g. the "New Outbound"
+                      // trigger) to read as a separate row, per an explicit
+                      // request to match this exact spacing. Only applies
+                      // when `itemsFirst` puts the rail directly under
+                      // `pinnedHeader` — the default (rail last) arrangement
+                      // never sits next to `pinnedHeader`, so its own
+                      // spacing there is untouched.
+                      "pt-1"
+                    )}
+                  >
+                    {hoverOpen ? <TreeMenu items={treeItems} /> : iconOnlyNav}
+                  </div>
+                )}
                 {header && (
-                  <div className={cn("flex flex-shrink-0 flex-col px-2 pt-3", hoverOpen ? "items-stretch" : "items-center")}>
+                  <div
+                    className={cn(
+                      "flex flex-shrink-0 flex-col px-2",
+                      hoverOpen ? "items-stretch" : "items-center",
+                      // No top padding when `itemsFirst` — `header`'s first
+                      // child there is `AssignmentsSectionCaption`'s own
+                      // separator, which should sit flush under the rail
+                      // above it, not offset by this row's usual top inset
+                      // (kept for the default "cards first" arrangement,
+                      // where `header` is the very first thing in the
+                      // scroll region and still needs its own top inset).
+                      !itemsFirst && "pt-3",
+                      itemsFirst && "pb-3"
+                    )}
+                  >
                     {injectExpanded(header, hoverOpen)}
                   </div>
                 )}
-                <div className={cn("sticky bottom-0 flex flex-shrink-0 flex-col bg-lyra-bg-surface-shell px-2 pb-3", !header && "pt-3")}>
-                  {hoverOpen ? <TreeMenu items={treeItems} /> : iconOnlyNav}
-                </div>
+                {!itemsFirst && (
+                  <div className={cn("sticky bottom-0 flex flex-shrink-0 flex-col bg-lyra-bg-surface-shell px-2 pb-3", !header && "pt-3")}>
+                    {hoverOpen ? <TreeMenu items={treeItems} /> : iconOnlyNav}
+                  </div>
+                )}
               </div>
             </div>
             {footer && (
@@ -346,15 +399,47 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
             {/* No `gap` here — `header`'s items (InteractionNavItem cards) carry their own
                 bottom margin, so an empty-but-truthy `header` (e.g. a Fragment wrapping a
                 zero-length `.map()`) contributes zero visible space instead of a phantom gap
-                before the nav list below. */}
+                before the nav list below. Order (and which edge the rail sticks to) flips
+                with `itemsFirst` — see its own doc comment. */}
+            {itemsFirst && (
+              <div
+                className={cn(
+                  // 4px, not the usual 12px (`pt-3`) — just enough gap under
+                  // `pinnedHeader` (e.g. the "New Outbound" trigger) to read
+                  // as a separate row, per an explicit request to match this
+                  // exact spacing. Only applies when `itemsFirst` puts the
+                  // rail directly under `pinnedHeader`.
+                  "flex flex-shrink-0 flex-col bg-lyra-bg-surface-shell px-2 sticky top-0 pt-1",
+                  open ? "items-stretch" : "items-center",
+                  !header && "pb-3"
+                )}
+              >
+                {open ? <TreeMenu items={treeItems} /> : iconOnlyNav}
+              </div>
+            )}
             {header && (
-              <div className={cn("flex flex-shrink-0 flex-col px-2 pt-3", open ? "items-stretch" : "items-center")}>
+              <div
+                className={cn(
+                  "flex flex-shrink-0 flex-col px-2",
+                  open ? "items-stretch" : "items-center",
+                  // No top padding when `itemsFirst` — `header`'s first
+                  // child there is `AssignmentsSectionCaption`'s own
+                  // separator, which should sit flush under the rail above
+                  // it (kept for the default "cards first" arrangement,
+                  // where this row is the very first thing in the scroll
+                  // region and still needs its own top inset).
+                  !itemsFirst && "pt-3",
+                  itemsFirst && "pb-3"
+                )}
+              >
                 {header}
               </div>
             )}
-            <div className={cn("sticky bottom-0 flex flex-shrink-0 flex-col bg-lyra-bg-surface-shell px-2 pb-3", !header && "pt-3")}>
-              {open ? <TreeMenu items={treeItems} /> : iconOnlyNav}
-            </div>
+            {!itemsFirst && (
+              <div className={cn("sticky bottom-0 flex flex-shrink-0 flex-col bg-lyra-bg-surface-shell px-2 pb-3", !header && "pt-3")}>
+                {open ? <TreeMenu items={treeItems} /> : iconOnlyNav}
+              </div>
+            )}
           </div>
         </div>
         {footer && (

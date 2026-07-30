@@ -4,7 +4,7 @@ import { ContainerHeader } from "./container-header";
 import { cn } from "../lib/utils";
 import { AIInput, type AIInputProps } from "./ai-input";
 import { Tooltip } from "./tooltip";
-import { Draggable, type DraggableVariant } from "./draggable";
+import { Draggable, type DraggableVariant, type EmbeddablePanelContent } from "./draggable";
 
 /* ── AI Indicator SVG ── */
 
@@ -74,6 +74,137 @@ function SuggestionChip({ label, onClick }: { label: string; onClick?: () => voi
 export interface AiPanelSuggestion {
   id: string;
   label: string;
+}
+
+/** Content-only subset of `AiPanelProps` — everything `useAiPanelContent`
+ *  needs, i.e. everything EXCEPT the `Draggable`-wrapper concerns
+ *  (`draggable`/`draggableVariant`/`onVariantChange`/sizing/`onClose`/
+ *  `className`) that only make sense when `AiPanel` owns its own shell. */
+export interface AiPanelContentProps {
+  /** Panel title (default: "AI Assistant") */
+  title?: string;
+  /** User's first name for the greeting */
+  userName?: string;
+  /** Greeting line (default: "How can I help?") */
+  greeting?: string;
+  /** Suggestion chips shown in empty state */
+  suggestions?: AiPanelSuggestion[];
+  /** Called when a suggestion is clicked */
+  onSuggestion?: (suggestion: AiPanelSuggestion) => void;
+  /** Called when new conversation button is clicked */
+  onNewConversation?: () => void;
+  /** History content — shown when user clicks the history icon */
+  historyContent?: React.ReactNode;
+  /** The conversation/message content — replaces empty state when provided */
+  children?: React.ReactNode;
+  /** Props forwarded to AIInput */
+  inputProps?: Partial<AIInputProps>;
+  /** Hide the AIInput footer (e.g. for history view) */
+  showInput?: boolean;
+  /** Start in history view (default: false) */
+  defaultView?: "home" | "history";
+}
+
+/**
+ * Everything `AiPanel` shows that ISN'T the `Draggable` shell around it —
+ * the "New conversation"/history toggle actions, the AI sparkle icon shown
+ * when docked, and the greeting/suggestions/history/input body — as one
+ * `EmbeddablePanelContent`. `AiPanel` itself calls this internally (see
+ * below) so its own rendered output is unchanged; exported so a consumer
+ * that wants Ask AI's real content inside some OTHER shared `Draggable`
+ * shell (see `AgentNextGenPage.tsx`'s single-container app header panel,
+ * and lyra-ui's own "Single Container" `Draggable.stories.tsx` demo) can
+ * get it without reimplementing it a second time. Owns `showHistory` as
+ * local state exactly like `AiPanel` used to inline it — a consumer
+ * embedding this needs no history-view state of its own to pass in. */
+function useAiPanelContent({
+  title = "AI Assistant",
+  userName,
+  greeting = "How can I help?",
+  suggestions = [],
+  onSuggestion,
+  onNewConversation,
+  historyContent,
+  children,
+  inputProps,
+  showInput = true,
+  defaultView = "home",
+}: AiPanelContentProps): EmbeddablePanelContent {
+  const [showHistory, setShowHistory] = React.useState(defaultView === "history");
+  const isEmpty = !children && !showHistory;
+
+  /* ── Shared action buttons (new conversation + history toggle) ── */
+  const headerActions = (
+    <>
+      <Tooltip content="New conversation" placement="bottom">
+        <button
+          type="button"
+          onClick={onNewConversation}
+          aria-label="New conversation"
+          className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
+        >
+          <MessageCirclePlus className="h-4 w-4" strokeWidth={1.5} />
+        </button>
+      </Tooltip>
+      <Tooltip content={showHistory ? "Back to home" : "History"} placement="bottom">
+        <button
+          type="button"
+          onClick={() => setShowHistory((v) => !v)}
+          aria-label={showHistory ? "Back to home" : "History"}
+          className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
+        >
+          {showHistory
+            ? <Home    className="h-4 w-4" strokeWidth={1.5} />
+            : <History className="h-4 w-4" strokeWidth={1.5} />}
+        </button>
+      </Tooltip>
+    </>
+  );
+
+  /* ── Scrollable body + input ── */
+  const body = (
+    <>
+      <div className="flex-1 overflow-y-auto min-h-0 px-4">
+        {showHistory ? (
+          <div className="flex flex-col gap-1 py-4">
+            {historyContent ?? (
+              <p className="lyra-body-sm text-lyra-fg-disabled px-3">No conversation history.</p>
+            )}
+          </div>
+        ) : isEmpty ? (
+          <div className="flex flex-col items-center justify-center h-full gap-6 py-8">
+            <AiIndicatorLarge />
+            <div className="text-center">
+              {userName && (
+                <p className="lyra-body-md text-lyra-fg-default">Hi {userName},</p>
+              )}
+              <p className="lyra-heading-lg text-lyra-fg-default">{greeting}</p>
+            </div>
+            {suggestions.length > 0 && (
+              <div className="flex flex-col gap-2 w-full">
+                {suggestions.map((s) => (
+                  <SuggestionChip
+                    key={s.id}
+                    label={s.label}
+                    onClick={() => onSuggestion?.(s)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-6 py-4">{children}</div>
+        )}
+      </div>
+      {showInput && !showHistory && (
+        <div className="px-4 pb-4 pt-2 shrink-0">
+          <AIInput {...inputProps} />
+        </div>
+      )}
+    </>
+  );
+
+  return { title, dockedIcon: <AiIndicatorSmall />, headerActions, body };
 }
 
 export interface AiPanelProps {
@@ -149,84 +280,22 @@ const AiPanel = React.forwardRef<HTMLDivElement, AiPanelProps>(
     defaultView = "home",
     className,
   }, ref) => {
-    const [showHistory, setShowHistory] = React.useState(defaultView === "history");
     const [draggableVariant, setDraggableVariant] = React.useState<DraggableVariant>(draggableVariantProp);
 
     // Sync when parent forces a variant change (single-dock rule)
     React.useEffect(() => { setDraggableVariant(draggableVariantProp); }, [draggableVariantProp]);
 
-    const isEmpty = !children && !showHistory;
-
-    /* ── Shared action buttons (new conversation + history toggle) ── */
-    const sharedActions = (
-      <>
-        <Tooltip content="New conversation" placement="bottom">
-          <button
-            type="button"
-            onClick={onNewConversation}
-            aria-label="New conversation"
-            className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
-          >
-            <MessageCirclePlus className="h-4 w-4" strokeWidth={1.5} />
-          </button>
-        </Tooltip>
-        <Tooltip content={showHistory ? "Back to home" : "History"} placement="bottom">
-          <button
-            type="button"
-            onClick={() => setShowHistory((v) => !v)}
-            aria-label={showHistory ? "Back to home" : "History"}
-            className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
-          >
-            {showHistory
-              ? <Home    className="h-4 w-4" strokeWidth={1.5} />
-              : <History className="h-4 w-4" strokeWidth={1.5} />}
-          </button>
-        </Tooltip>
-      </>
-    );
-
-    /* ── Scrollable body + input (shared between both paths) ── */
-    const body = (
-      <>
-        <div className="flex-1 overflow-y-auto min-h-0 px-4">
-          {showHistory ? (
-            <div className="flex flex-col gap-1 py-4">
-              {historyContent ?? (
-                <p className="lyra-body-sm text-lyra-fg-disabled px-3">No conversation history.</p>
-              )}
-            </div>
-          ) : isEmpty ? (
-            <div className="flex flex-col items-center justify-center h-full gap-6 py-8">
-              <AiIndicatorLarge />
-              <div className="text-center">
-                {userName && (
-                  <p className="lyra-body-md text-lyra-fg-default">Hi {userName},</p>
-                )}
-                <p className="lyra-heading-lg text-lyra-fg-default">{greeting}</p>
-              </div>
-              {suggestions.length > 0 && (
-                <div className="flex flex-col gap-2 w-full">
-                  {suggestions.map((s) => (
-                    <SuggestionChip
-                      key={s.id}
-                      label={s.label}
-                      onClick={() => onSuggestion?.(s)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-6 py-4">{children}</div>
-          )}
-        </div>
-        {showInput && !showHistory && (
-          <div className="px-4 pb-4 pt-2 shrink-0">
-            <AIInput {...inputProps} />
-          </div>
-        )}
-      </>
-    );
+    // Everything content-specific (greeting/suggestions/history/input body,
+    // the "New conversation"/history header actions, the docked AI sparkle
+    // icon) now lives in `useAiPanelContent`, shared with any OTHER shell
+    // that wants this same content embedded (see that hook's own doc
+    // comment) — `AiPanel` itself is just one caller of it, using
+    // `headerActions`/`dockedIcon`/`body` below exactly where its own
+    // inline versions of those used to be.
+    const { dockedIcon, headerActions, body } = useAiPanelContent({
+      title, userName, greeting, suggestions, onSuggestion, onNewConversation,
+      historyContent, children, inputProps, showInput, defaultView,
+    });
 
     /* ── Draggable path — uses renderHeaderControls to integrate grip + dock ── */
     if (isDraggable) {
@@ -261,13 +330,13 @@ const AiPanel = React.forwardRef<HTMLDivElement, AiPanelProps>(
                     <GripVertical className="h-4 w-4" strokeWidth={1.5} />
                   </div>
                 ) : (
-                  <AiIndicatorSmall />
+                  dockedIcon
                 )
               }
               bordered={false}
               actions={
                 <>
-                  {sharedActions}
+                  {headerActions}
                   <Tooltip content={dockButtonProps["aria-label"]} placement="bottom" asLabel>
                     <button
                       {...dockButtonProps}
@@ -301,9 +370,9 @@ const AiPanel = React.forwardRef<HTMLDivElement, AiPanelProps>(
       >
         <ContainerHeader
           title={title}
-          icon={<AiIndicatorSmall />}
+          icon={dockedIcon}
           bordered={false}
-          actions={sharedActions}
+          actions={headerActions}
           onClose={onClose}
         />
         {body}
@@ -314,4 +383,4 @@ const AiPanel = React.forwardRef<HTMLDivElement, AiPanelProps>(
 
 AiPanel.displayName = "AiPanel";
 
-export { AiPanel, AiIndicatorSmall, AiIndicatorLarge };
+export { AiPanel, AiIndicatorSmall, AiIndicatorLarge, useAiPanelContent };

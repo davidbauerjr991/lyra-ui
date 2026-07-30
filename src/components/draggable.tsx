@@ -147,6 +147,38 @@ function getResponsiveMaxWidth(maxWidth: number): number {
 
 export type DraggableVariant = "float" | "docked";
 
+/**
+ * Common shape returned by a panel's own "content" hook (see
+ * `useAiPanelContent` in ai-panel.tsx, `useAgentNotificationsContent` in
+ * agent-notifications.tsx) — everything specific to what a panel shows,
+ * decoupled from the `Draggable` shell (grip/dock button/close button/
+ * resize) every panel wraps itself in. Exists so a single shared
+ * `Draggable` instance can swap between several panels' worth of content
+ * (title/icon/actions/body) without swapping which physical container is
+ * mounted — see lyra-ui's "Single Container" Storybook demos (`Draggable.
+ * stories.tsx`) and `AgentNextGenPage.tsx`'s own single-container app
+ * header panel for two different consumers of the same shape.
+ */
+export interface EmbeddablePanelContent {
+  /** Header title */
+  title: React.ReactNode;
+  /** Optional badge rendered right after the title (e.g. an unread count) */
+  titleBadge?: React.ReactNode;
+  /** Extra className merged onto `ContainerHeader`'s own title element */
+  titleClassName?: string;
+  /** Icon shown in the header when DOCKED only — float mode always shows
+   *  the shared drag grip instead, same convention every real panel
+   *  (`DraggablePanel`, `AiPanel`, `AgentNotifications`) already follows. */
+  dockedIcon?: React.ReactNode;
+  /** Extra actions rendered before the shell's own shared dock button */
+  headerActions?: React.ReactNode;
+  /** Fixed content between the title row and the scrollable body (e.g. a
+   *  Select that should stay put rather than scroll away with `body`) */
+  headerContent?: React.ReactNode;
+  /** Scrollable panel body */
+  body: React.ReactNode;
+}
+
 /** Props passed to renderHeaderControls so the consumer can inline grip + dock. */
 export interface DraggableHeaderControls {
   /** Spread onto a draggable handle element (float mode only — noop in docked). */

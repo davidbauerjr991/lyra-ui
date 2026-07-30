@@ -600,8 +600,17 @@ export interface UseOutboundAddButtonResult {
    *  when found, scopes the flyout to that contact's own `channels`, and
    *  when not (quick-dialed numbers, fixed demo cards with no backing
    *  contact record), offers the full unfiltered `channelOptions` instead
-   *  of omitting the button — every card gets a "+", per design. */
-  getHeaderAction: (interactionId: string) => React.ReactNode;
+   *  of omitting the button — every card gets a "+", per design.
+   *
+   *  `className` overrides `OutboundAddButton`'s own default small/ghost
+   *  look (its `className` merges last inside that component's own `cn()`
+   *  call, so twMerge resolves conflicting utilities in favor of this) —
+   *  e.g. the interaction record page header's own "+" sits next to a row
+   *  of `ChannelToggle` pills and wants to match their height/outline
+   *  treatment, rather than the compact `h-6 w-6` ghost icon every
+   *  `InteractionNavItem` card uses this same button for. Omit it (every
+   *  other call site) to keep that original default untouched. */
+  getHeaderAction: (interactionId: string, className?: string) => React.ReactNode;
 }
 
 export function useOutboundAddButton(
@@ -615,7 +624,7 @@ export function useOutboundAddButton(
   );
 
   const getHeaderAction = useCallback(
-    (interactionId: string) => {
+    (interactionId: string, className?: string) => {
       const contact = contactsById.get(interactionId);
       const channelOptions = contact
         ? outboundConfig.channelOptions.filter((c) => contact.channels.includes(c.id))
@@ -624,6 +633,7 @@ export function useOutboundAddButton(
         <OutboundAddButton
           channelOptions={channelOptions}
           onSelect={(channel) => setLaunchRequest({ contactId: interactionId, channel })}
+          className={className}
         />
       );
     },
@@ -1046,7 +1056,13 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
         <span
           aria-hidden={!expanded}
           className={cn(
-            "lyra-body-md overflow-hidden whitespace-nowrap transition-all duration-200",
+            // `lyra-label` (500 weight), not `lyra-body-md` (400,
+            // lyra-tokens.css) — this is a button's own label, and every
+            // other button in the system gets its text weight from
+            // `lyra-label` via `buttonVariants`'s base class (button.tsx).
+            // `lyra-body-md` here was rendering this one button's label
+            // visibly lighter than every other button next to it.
+            "lyra-label overflow-hidden whitespace-nowrap transition-all duration-200",
             expanded ? "max-w-[200px] ml-2 opacity-100" : "max-w-0 ml-0 opacity-0"
           )}
         >

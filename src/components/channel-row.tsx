@@ -575,6 +575,19 @@ const ChannelToggle: React.FC<ChannelToggleProps> = ({
 
 export interface ChannelToggleGroupProps {
   children: React.ReactElement<ChannelToggleProps>[] | React.ReactElement<ChannelToggleProps>;
+  /**
+   * Trailing content rendered inside this same bordered/rounded shell,
+   * after the last toggle (e.g. an "Add Channel" `+` button). Passed
+   * through as plain `React.ReactNode`, NOT cloned with `isFirst`/
+   * `role="radio"` the way `children` are — this is a one-off action living
+   * in the group's shell, not another selectable channel, so it shouldn't
+   * pick up toggle/pill styling or radiogroup semantics. No automatic
+   * divider before it (tried that first; a screenshot of the actual target
+   * look showed plain whitespace, not a rule line) — the caller supplies its
+   * own left spacing on `action` itself if it wants separation from the
+   * last toggle (e.g. a small `ml-*`).
+   */
+  action?: React.ReactNode;
   className?: string;
 }
 
@@ -584,7 +597,7 @@ export interface ChannelToggleGroupProps {
  *  verbatim rather than re-guessed so the two controls are visually
  *  identical. Sets each child's `isFirst` automatically — consumers just
  *  `.map()` their channels into `ChannelToggle`s like any other list. */
-const ChannelToggleGroup: React.FC<ChannelToggleGroupProps> = ({ children, className }) => {
+const ChannelToggleGroup: React.FC<ChannelToggleGroupProps> = ({ children, action, className }) => {
   const items = React.Children.toArray(children) as React.ReactElement<ChannelToggleProps>[];
   return (
     <div
@@ -595,6 +608,7 @@ const ChannelToggleGroup: React.FC<ChannelToggleGroupProps> = ({ children, class
       )}
     >
       {items.map((child, i) => React.cloneElement(child, { isFirst: i === 0 }))}
+      {action}
     </div>
   );
 };

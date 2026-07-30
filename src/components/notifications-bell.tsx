@@ -103,7 +103,14 @@ const NotificationsBell = React.forwardRef<HTMLDivElement, NotificationsBellProp
           aria-expanded={open}
           badge={count}
           onClick={handleToggle}
-          className={open ? "bg-lyra-state-hover" : undefined}
+          // "Selected" treatment matching every other AppHeader toggle
+          // icon-button (Screen Pop/Conversations/Schedule/Ask AI in
+          // `AgentNextGenPage.tsx`, the "Multiple Containers" Storybook
+          // demos in `Draggable.stories.tsx`) — same `bg-lyra-bg-active-
+          // moderate`/`text-lyra-fg-active-strong` "active" idiom
+          // `PanelPinButton`/`LeftNav`/`Tabs` already use elsewhere in the
+          // design system, not a plain hover tint.
+          className={open ? "bg-lyra-bg-active-moderate text-lyra-fg-active-strong hover:bg-lyra-bg-active-moderate" : undefined}
         >
           <Bell className="h-5 w-5" strokeWidth={1.5} />
         </ActionIconButton>

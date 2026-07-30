@@ -33,10 +33,21 @@ export interface PanelPinButtonProps {
   /** Tooltip/aria-label text when unpinned (default: "Pin panel") */
   unpinnedLabel?: string;
   className?: string;
+  /**
+   * Renders the button (still showing its current pinned/unpinned icon and
+   * tooltip) but blocks toggling it — native `<button disabled>` semantics,
+   * not just an `onToggle` no-op, so it's also unreachable via keyboard/
+   * screen reader activation. For a panel that must always stay pinned
+   * (e.g. agent-next-gen-v1's Notifications row in its "View All Apps"
+   * menu) — pass a `pinnedLabel` explaining why (e.g. "Notifications can't
+   * be unpinned") rather than leaving the default "Unpin panel" copy
+   * describing an action this instance won't actually perform.
+   */
+  disabled?: boolean;
 }
 
 const PanelPinButton = React.forwardRef<HTMLButtonElement, PanelPinButtonProps>(
-  ({ pinned, onToggle, icon, pinnedLabel = "Unpin panel", unpinnedLabel = "Pin panel", className }, ref) => {
+  ({ pinned, onToggle, icon, pinnedLabel = "Unpin panel", unpinnedLabel = "Pin panel", className, disabled = false }, ref) => {
     const label = pinned ? pinnedLabel : unpinnedLabel;
     return (
       <Tooltip content={label} placement="bottom" asLabel>
@@ -44,13 +55,26 @@ const PanelPinButton = React.forwardRef<HTMLButtonElement, PanelPinButtonProps>(
           ref={ref}
           type="button"
           onClick={onToggle}
+          disabled={disabled}
           aria-label={label}
           aria-pressed={pinned}
           className={cn(
             "flex h-7 w-7 items-center justify-center rounded-lyra-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
-            icon && pinned
-              ? "bg-lyra-bg-active-moderate text-lyra-fg-active-strong hover:bg-lyra-bg-active-moderate"
-              : "text-lyra-fg-secondary hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
+            // Ghost icon buttons never carry a persistent background when
+            // disabled — even the "currently pinned" selected-background
+            // treatment below (`bg-lyra-bg-active-moderate`) is a resting-
+            // state highlight, not a hover effect, so disabling it needs to
+            // suppress that branch outright rather than just dimming it
+            // (dimmed opacity over a colored bg would still read as "this
+            // control has a background," just faded). Matches the ghost
+            // icon buttons in table.tsx's pagination controls — muted icon
+            // color (`disabled:text-lyra-fg-disabled`), no background at
+            // all, `disabled:pointer-events-none` so hover can never fire.
+            disabled
+              ? "text-lyra-fg-disabled pointer-events-none cursor-not-allowed"
+              : icon && pinned
+                ? "bg-lyra-bg-active-moderate text-lyra-fg-active-strong hover:bg-lyra-bg-active-moderate"
+                : "text-lyra-fg-secondary hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
             className
           )}
         >
