@@ -161,6 +161,13 @@ export interface CreateNewOutboundContact extends CreateNewContact {
    *  keep defaulting to `phoneOptions[0]` exactly as before by simply
    *  omitting this. See `resolveOutboundDetailField`. */
   primaryPhone?: { value: string; label: string };
+  /** This contact's own email address — purely a search-matching field
+   *  today (Favorites' "Enter phone, email or search term" search checks
+   *  it, see `contactMatchesSearch`), not yet wired into "Select Channel"/
+   *  "Select Email Address" the way `primaryPhone` is. Optional: records
+   *  with no email on file (or no email concept at all, e.g. a team) just
+   *  never match a search on this field. */
+  email?: string;
 }
 
 export interface CreateNewOutboundGroup {
@@ -235,6 +242,26 @@ export interface CreateNewOutboundConfig {
    *  component can't clear its own prop, so the consumer should use this to
    *  reset whatever state produced it back to `null`. */
   onLaunchRequestHandled?: () => void;
+  /**
+   * Temporary escape hatch, per explicit request: suppresses the full
+   * unfiltered browse list for every "contacts"-kind group (Agents/Teams/
+   * Skills/Customers, etc.) when there's no search text yet — instead of
+   * every contact in that group, the idle state shows only that group's
+   * OWN favorited contacts (mirroring what a "favorites"-kind group
+   * already does, just scoped to one group instead of across all of
+   * them). The MOMENT a search query is typed, the real, full match
+   * list (favorited or not) takes over as normal — this only ever
+   * affects the idle/no-search state, never search results. Does NOT
+   * affect "dialpad" or "empty" kind groups, which have no contact list
+   * to begin with, and does nothing extra to "favorites"-kind groups,
+   * which already behave this way unconditionally. Default `false` —
+   * every existing consumer (including the Storybook stories
+   * demonstrating the full unfiltered list) is unaffected; opt in only
+   * where showing every contact by default isn't wanted yet. Remove this
+   * prop once every group's full browse list is wanted by default
+   * instead of leaving it permanently toggled on.
+   */
+  hideContactList?: boolean;
 }
 
 export interface CreateNewProps
@@ -479,6 +506,59 @@ function OutboundContactRow({
   );
 }
 
+/** Loose "does this look like a real email address" check for the "Continue
+ *  with" ad-hoc flow below — deliberately simple (no RFC 5322 edge cases)
+ *  since this only ever gates a UI affordance, not actual delivery. */
+const EMAIL_LOOKS_VALID_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function looksLikeEmail(value: string): boolean {
+  return EMAIL_LOOKS_VALID_PATTERN.test(value);
+}
+
+/** Loose "does this look like a real phone number" check for the "Continue
+ *  with" ad-hoc flow below. Unlike the dialpad's own `PhoneInput` (which
+ *  validates a `{countryCode, number}` pair via `isPhoneNumberComplete`),
+ *  the search field here is a single plain-text `Input` with no country
+ *  context at all, so this just checks the string is mostly digits/phone
+ *  punctuation (`+`, spaces, parens, dashes, dots) and has a plausible
+ *  digit count (7–15, the E.164 range) — good enough to gate a "Continue
+ *  with" button, not meant to be a real phone-validation library. */
+const PHONE_LOOKS_VALID_SHAPE_PATTERN = /^\+?[\d\s().-]+$/;
+function looksLikePhoneNumber(value: string): boolean {
+  if (!PHONE_LOOKS_VALID_SHAPE_PATTERN.test(value)) return false;
+  const digitCount = value.replace(/\D/g, "").length;
+  return digitCount >= 7 && digitCount <= 15;
+}
+
+/** Builds the throwaway `CreateNewOutboundContact` for the "Continue with"
+ *  ad-hoc flow (see `looksLikeEmail`/`looksLikePhoneNumber` above and the
+ *  "Continue with" `Button` in the outbound flow's empty-search-results
+ *  branch) — a search query that matched no real directory record, but
+ *  looks like a genuine email or phone number, so the agent can start an
+ *  interaction with that raw address directly rather than being stuck with
+ *  no path forward. `name` is the typed value itself (there's no real name
+ *  to show), which is also what makes the "detail" screen's header title
+ *  read as the address rather than "New Outbound" — see `headerTitle`'s own
+ *  `activeOutboundContact?.name` fallback further down. `id` is namespaced
+ *  `adhoc:` so it can never collide with a real contact's id. */
+function buildAdHocSearchContact(query: string): { contact: CreateNewOutboundContact; channel: ChannelType } {
+  if (looksLikeEmail(query)) {
+    return {
+      contact: { id: `adhoc:${query}`, name: query, initials: "@", channels: ["email"], email: query },
+      channel: "email",
+    };
+  }
+  return {
+    contact: {
+      id: `adhoc:${query}`,
+      name: query,
+      initials: "#",
+      channels: ["voice", "sms"],
+      primaryPhone: { value: query, label: query },
+    },
+    channel: "voice",
+  };
+}
+
 /** Whether `channel` should be disabled in the outbound detail form's
  *  "Select Channel" field for `contact` — only ever true for Voice, and
  *  only once this contact already has a voice channel open. Unlike SMS/
@@ -529,13 +609,21 @@ function firstAvailableChannel(
  *  already-open-address logic. Previously only `CreateNew` had this;
  *  hand-copying it for `OutboundAddButton` would be exactly the kind of
  *  three-copies drift `useOutboundAddButton`'s own doc comment describes
- *  fixing for the rest of this file. Email/WhatsApp: one synthesized
- *  address, dropped from `options` (not just disabled) if it's already open
- *  elsewhere for this contact. Phone: `contact.primaryPhone` first (see its
- *  own doc comment) followed by every `phoneOptions` entry, minus whichever
- *  of those is already open — defaulting to whichever ends up first, so a
- *  contact with a directory-listed number defaults to *that* one rather
- *  than an arbitrary shared line. */
+ *  fixing for the rest of this file. Email: `contact.email` first (mirrors
+ *  `primaryPhone` below), falling back to a synthesized `name`-based
+ *  address only when the contact has no real email on file — added
+ *  alongside the "Continue with" ad-hoc flow (`buildAdHocSearchContact`),
+ *  whose synthetic contact's `name` IS the typed email address; without
+ *  this, the old unconditional synthesis would have doubled it up into
+ *  garbage like "jane@example.com@example.com". WhatsApp: still one
+ *  synthesized address (no `whatsappHandle`-style field exists to prefer
+ *  yet). Both email and WhatsApp are dropped from `options` (not just
+ *  disabled) if already open elsewhere for this contact. Phone:
+ *  `contact.primaryPhone` first (see its own doc comment) followed by
+ *  every `phoneOptions` entry, minus whichever of those is already open —
+ *  defaulting to whichever ends up first, so a contact with a directory-
+ *  listed number defaults to *that* one rather than an arbitrary shared
+ *  line. */
 function resolveOutboundDetailField(
   contact: CreateNewOutboundContact,
   channel: ChannelType,
@@ -545,7 +633,7 @@ function resolveOutboundDetailField(
   const withoutOpen = (options: SelectOption[]): SelectOption[] =>
     openAddresses.length > 0 ? options.filter((o) => !openAddresses.includes(o.value)) : options;
   if (channel === "email") {
-    const value = `${contact.name.toLowerCase().replace(/\s+/g, ".")}@example.com`;
+    const value = contact.email ?? `${contact.name.toLowerCase().replace(/\s+/g, ".")}@example.com`;
     const defaultValue = openAddresses.includes(value) ? "" : value;
     return { label: "Select Email Address", options: withoutOpen(defaultValue ? [{ value: defaultValue, label: defaultValue }] : []), defaultValue };
   }
@@ -955,6 +1043,17 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     // wouldn't be much of a favorites list.
     const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
 
+    // The most recent "Continue with" ad-hoc contact (see
+    // `buildAdHocSearchContact`) — kept in its own bit of state, separate
+    // from every real contact record, because it doesn't live in any
+    // `outbound.groups[].contacts` list at all (it's a throwaway record
+    // built from a raw search query, not looked up from a directory). Read
+    // by `activeOutboundContact` below alongside `allOutboundContacts`, so
+    // the "detail" screen can find it by id the same way it finds a real
+    // contact. Only one at a time needs to exist — a new "Continue with"
+    // click simply replaces whatever was here before.
+    const [adHocContact, setAdHocContact] = useState<CreateNewOutboundContact | null>(null);
+
     const isDrillDown = !isOutboundFlow && !!categories && categories.length > 0;
     const screen = stack[stack.length - 1];
 
@@ -1016,9 +1115,15 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     };
     // Switching the group dropdown swaps screen 1's content in place rather
     // than growing the back-stack — the Select is the control for "which
-    // group", not a navigation action in its own right.
+    // group", not a navigation action in its own right. Deliberately does
+    // NOT clear `search` (unlike `pushScreen`/`popScreen` below, which are
+    // real navigation) — per explicit request, changing the filter should
+    // just re-filter whatever's already typed against the newly-selected
+    // group's contacts, not discard it. `setPage(1)` still happens on its
+    // own via the effect above (keyed on both `search` and the group id),
+    // so switching groups mid-search can't strand you on a page number
+    // that doesn't exist in the new, re-filtered result set.
     const setActiveGroup = (groupId: string) => {
-      setSearch("");
       setStack((prev) => [...prev.slice(0, -1), { kind: "group", groupId }]);
     };
     // Screen 2's second field means something different per channel: an
@@ -1043,6 +1148,22 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
       setDetailPhone(defaultDetailValueFor(contact, channel));
       setDetailSkill("");
       pushScreen({ kind: "detail", groupId, contactId: contact.id, channel });
+    };
+
+    // "Continue with" ad-hoc flow (see the empty-search-results `Button`
+    // below, and `buildAdHocSearchContact`'s own doc comment) — builds the
+    // throwaway contact from whatever's currently typed, stashes it in
+    // `adHocContact` so `activeOutboundContact` can find it by id, and
+    // goes straight to the detail screen for it, same as clicking a real
+    // contact row would. `groupId` is whichever group's Select is
+    // currently active — `goToDetail` needs SOME group id to stamp onto
+    // the `"detail"` screen (for its back button to return to), and
+    // there's no more natural choice than "whichever filter the agent was
+    // searching from."
+    const handleContinueWithSearch = (query: string, groupId: string) => {
+      const { contact, channel } = buildAdHocSearchContact(query);
+      setAdHocContact(contact);
+      goToDetail(groupId, contact, channel);
     };
 
     const activeCategory =
@@ -1077,15 +1198,55 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     );
     const activeGroupContacts =
       activeGroup?.kind === "favorites"
-        ? allOutboundContacts.filter((c) => favoriteIds.has(c.id))
-        : activeGroup?.contacts ?? [];
+        ? search.trim()
+          // Searching from Favorites checks every contact across every
+          // group (the same pool `allOutboundContacts` already builds for
+          // this kind), not just the ones already starred — per explicit
+          // request, typing a name/number/email here should be able to
+          // surface (and let the agent favorite) any matching contact,
+          // not only ones already in Favorites. With no search text,
+          // Favorites still only shows what's actually starred.
+          ? allOutboundContacts
+          : allOutboundContacts.filter((c) => favoriteIds.has(c.id))
+        : outbound?.hideContactList && !search.trim()
+          // Per explicit request: filtering by Agents/Teams/Skills/
+          // Customers should show that group's OWN favorited contacts
+          // when idle (mirroring what the favorites-kind "All" group
+          // always did), not an empty body — `hideContactList` still
+          // means "don't show the full unfiltered browse list," it just
+          // no longer means "show nothing at all." Scoped to
+          // `activeGroup.contacts` (not `allOutboundContacts`), unlike
+          // the favorites-kind branch above — a favorited AGENT should
+          // show up under Agents, not under Teams too.
+          ? (activeGroup?.contacts ?? []).filter((c) => favoriteIds.has(c.id))
+          : activeGroup?.contacts ?? [];
+    // Matches on name, id/subtitle, primary phone (value or formatted
+    // label), and email — "a name, number, email" per explicit request.
+    // `primaryPhone`/`email` are both optional (see their own doc comments
+    // on `CreateNewOutboundContact`), so records without one (e.g. a team
+    // or skill) just never match on that field, same as `subtitle` already
+    // being optional.
+    const contactMatchesSearch = (c: CreateNewOutboundContact, query: string) => {
+      const q = query.toLowerCase();
+      return (
+        c.name.toLowerCase().includes(q) ||
+        !!c.subtitle?.toLowerCase().includes(q) ||
+        !!c.email?.toLowerCase().includes(q) ||
+        !!c.primaryPhone?.value.toLowerCase().includes(q) ||
+        !!c.primaryPhone?.label.toLowerCase().includes(q)
+      );
+    };
     const filteredGroupContacts = search.trim()
-      ? activeGroupContacts.filter(
-          (c) =>
-            c.name.toLowerCase().includes(search.trim().toLowerCase()) ||
-            c.subtitle?.toLowerCase().includes(search.trim().toLowerCase())
-        )
+      ? activeGroupContacts.filter((c) => contactMatchesSearch(c, search.trim()))
       : activeGroupContacts;
+    // Feeds the "Continue with" ad-hoc-contact button (see the empty-
+    // search-results branch below and `buildAdHocSearchContact`) — a
+    // typed query that looks like a real email or phone number gets an
+    // escape hatch to proceed even when it matched no real directory
+    // record.
+    const trimmedSearchQuery = search.trim();
+    const searchQueryIsEmail = looksLikeEmail(trimmedSearchQuery);
+    const searchQueryIsPhone = !searchQueryIsEmail && looksLikePhoneNumber(trimmedSearchQuery);
     const totalGroupPages = Math.max(1, Math.ceil(filteredGroupContacts.length / pageSize));
     const safePage = Math.min(page, totalGroupPages);
     const pagedGroupContacts = filteredGroupContacts.slice(
@@ -1093,8 +1254,35 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
       safePage * pageSize
     );
 
+    // Looked up from `allOutboundContacts` (every contact across every
+    // group), NOT `activeGroupContacts` (the currently-VISIBLE, filtered
+    // list) — this was a real, shipped bug. `activeGroupContacts` for a
+    // `"favorites"`-kind group only ever contains starred contacts once
+    // `search` is empty, and `pushScreen`/`goToDetail` (which navigate here
+    // when a row is clicked) unconditionally clear `search` — so clicking
+    // a NON-favorited contact found via search, then landing on this
+    // detail screen with `search` reset to "", made that same contact
+    // vanish from `activeGroupContacts` a render later, and this lookup
+    // came back `undefined`. With nothing to render for, the whole detail
+    // screen (name/"Select Channel"/"Select Phone"/"Outbound Skill") fell
+    // through to showing NOTHING but the footer's "Start Interaction"
+    // button. The detail screen should always be able to find whichever
+    // contact it's showing, regardless of that contact's favorite status,
+    // the current search text, or which group is selected in the dropdown
+    // — `allOutboundContacts` is unaffected by any of those, so it fixes
+    // this outright rather than papering over one of the several ways
+    // `activeGroupContacts` could exclude the very contact being viewed.
+    // Checks `adHocContact` first — a "Continue with" ad-hoc contact (see
+    // its own doc comment and `buildAdHocSearchContact`) lives in that
+    // dedicated bit of state, not in any `outbound.groups[].contacts`
+    // list, so it would never turn up in `allOutboundContacts` no matter
+    // what. Falls back to the real lookup for every other contact.
     const activeOutboundContact =
-      screen.kind === "detail" ? activeGroupContacts.find((c) => c.id === screen.contactId) : undefined;
+      screen.kind === "detail"
+        ? adHocContact?.id === screen.contactId
+          ? adHocContact
+          : allOutboundContacts.find((c) => c.id === screen.contactId)
+        : undefined;
     const availableChannelsForContact = (outbound?.channelOptions ?? []).filter((c) =>
       activeOutboundContact ? activeOutboundContact.channels.includes(c.id) : true
     );
@@ -1323,13 +1511,13 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
 
         {isOutboundFlow && screen.kind === "group" && activeGroup && (
           <div className="border-b border-lyra-border-subtle px-4 py-3 space-y-3">
-            <Select
-              aria-label="Choose group"
-              value={activeGroup.id}
-              onValueChange={setActiveGroup}
-              options={(outbound?.groups ?? []).map((g) => ({ value: g.id, label: g.label }))}
-              portalDropdown
-            />
+            {/* Search above the group filter, per explicit request — a
+                typed query now survives a filter change (`setActiveGroup`
+                no longer clears `search`, see its own doc comment above),
+                so this reads top-to-bottom as "what you're looking for"
+                then "narrowed to which group," rather than the filter
+                looking like the primary control with search as an
+                afterthought below it. */}
             {((activeGroup.kind ?? "contacts") === "contacts" || activeGroup.kind === "favorites") && (
               <div className="relative">
                 <Input
@@ -1351,6 +1539,13 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                 )}
               </div>
             )}
+            <Select
+              aria-label="Choose group"
+              value={activeGroup.id}
+              onValueChange={setActiveGroup}
+              options={(outbound?.groups ?? []).map((g) => ({ value: g.id, label: g.label }))}
+              portalDropdown
+            />
           </div>
         )}
 
@@ -1445,7 +1640,40 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                 Start Interaction
               </Button>
             </div>
-          ) : screen.kind === "group" && (activeGroup?.kind ?? "contacts") === "contacts" ? (
+          ) : screen.kind === "group" && ((activeGroup?.kind ?? "contacts") === "contacts" || activeGroup?.kind === "favorites") && !!search.trim() && filteredGroupContacts.length > 0 ? (
+            // `!!search.trim()` — per explicit request, no pagination
+            // footer at all in the idle/no-search state (whether that
+            // idle state is blank, per-group favorited contacts, or "All"'s
+            // cross-group favorited contacts — see `activeGroupContacts`'s
+            // own doc comment), only once actively searching. A short
+            // idle list of favorites doesn't need paging chrome sitting
+            // under it; a real search result set might, which is why this
+            // still needs to cover BOTH kinds once there IS a query — see
+            // the note below on why `"favorites"` specifically must be
+            // included here, not just `"contacts"`.
+            //
+            // `filteredGroupContacts.length > 0` — also per explicit
+            // request: a search with zero matches ("No matches found",
+            // below) shouldn't still show a "Displaying 0-0 of 0"/"Page 1
+            // of 1" footer underneath it — there's nothing to page through
+            // either way, and showing paging chrome around an empty result
+            // just as it stopped mattering for the idle case above.
+            //
+            // `activeGroup?.kind === "favorites"` is included here per a
+            // real, shipped bug: the favorites/"All" group used to be
+            // excluded from ever showing this footer (back when it only
+            // ever listed a handful of already-starred contacts, small
+            // enough that pagination seemed unnecessary) — but once
+            // searching from "All" started matching across every group's
+            // ENTIRE contact list (rule in CLAUDE.md), that assumption
+            // broke: a search could match far more than one page's worth,
+            // and with no footer to page forward, `pagedGroupContacts`
+            // silently truncated to just the first `pageSize` results
+            // (in whatever order `allOutboundContacts` happens to
+            // concatenate groups, e.g. Agents before Teams/Skills/
+            // Customers) — reading as "All only searches Agents" even
+            // though `filteredGroupContacts` had already matched
+            // everything correctly underneath.
             <TableFooter
               currentPage={safePage}
               totalPages={totalGroupPages}
@@ -1532,6 +1760,16 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                       {activeGroup.emptyMessage ?? `No ${activeGroup.label.toLowerCase()} yet`}
                     </p>
                   ) : (
+                    // No separate `hideContactList` blank-body branch here
+                    // anymore — `activeGroupContacts`/`filteredGroupContacts`
+                    // (see their own doc comments above) already resolve to
+                    // the right list for every state (that group's own
+                    // favorited contacts when idle with `hideContactList`
+                    // on, the full match list once searching, or the full
+                    // list outright when `hideContactList` is off), so this
+                    // one render branch just shows whatever that is —
+                    // there's no longer a distinct "nothing to show" idle
+                    // case to special-case around.
                     <div className="p-2">
                       {pagedGroupContacts.length > 0 ? (
                         pagedGroupContacts.map((contact) => (
@@ -1552,13 +1790,65 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                           />
                         ))
                       ) : (
-                        <p className="px-3 py-6 text-center lyra-body-sm text-lyra-fg-secondary">
-                          {activeGroupContacts.length === 0
-                            ? activeGroup.kind === "favorites"
-                              ? activeGroup.emptyMessage ?? "No favorites yet"
-                              : `No ${activeGroup.label.toLowerCase()} available`
-                            : `No matching ${activeGroup.label.toLowerCase()}`}
-                        </p>
+                        <div className="px-3 py-6 text-center">
+                          <p className="lyra-body-sm text-lyra-fg-secondary">
+                            {activeGroupContacts.length === 0
+                              ? activeGroup.kind === "favorites"
+                                ? activeGroup.emptyMessage ?? "No favorites yet"
+                                : outbound?.hideContactList && !search.trim()
+                                  // Distinct from the "browse mode" message
+                                  // below — an empty `activeGroupContacts`
+                                  // here means "nothing favorited in this
+                                  // group yet" (see its own doc comment),
+                                  // NOT "this group has no contacts at all,"
+                                  // which `No {label} available` would
+                                  // wrongly imply.
+                                  ? `No favorited ${activeGroup.label.toLowerCase()} yet`
+                                  : `No ${activeGroup.label.toLowerCase()} available`
+                              // Generic "No matches found" per explicit
+                              // request — not `No matching {label}` (e.g.
+                              // "No matching all", which read oddly since
+                              // "All" isn't really a noun a result set can
+                              // "match"). Search misses read the same way
+                              // regardless of which group is selected.
+                              : "No matches found"}
+                          </p>
+                          {/* "Continue with" ad-hoc contact — only in the
+                              genuine "No matches found" case (implied by
+                              `activeGroupContacts.length > 0`; see that
+                              branch's own comment above), and only when
+                              the typed query itself looks like a real
+                              email or phone number (`looksLikeEmail`/
+                              `looksLikePhoneNumber`) — a plain name that
+                              didn't match anything isn't something this
+                              flow can do anything useful with. Per
+                              explicit request: lets the agent proceed
+                              straight to the call-setup detail screen for
+                              a raw address that isn't in the directory,
+                              rather than being stuck with no path
+                              forward. */}
+                          {activeGroupContacts.length > 0 &&
+                            (searchQueryIsEmail || searchQueryIsPhone) && (
+                              <Button
+                                variant="outline"
+                                size="lg"
+                                // `wrap` (button.tsx) — a long typed email
+                                // easily overflows a 320px-wide popover on
+                                // the single line every button otherwise
+                                // renders on; this lets it wrap and grow
+                                // instead of clipping or forcing the
+                                // popover wider. `w-full` matches this
+                                // popover's other full-width footer buttons
+                                // (Start Interaction/Dial Number) instead of
+                                // sizing to content like a normal button.
+                                wrap
+                                className="mt-3 w-full"
+                                onClick={() => handleContinueWithSearch(trimmedSearchQuery, activeGroup.id)}
+                              >
+                                Continue with &quot;{trimmedSearchQuery}&quot;
+                              </Button>
+                            )}
+                        </div>
                       )}
                     </div>
                   )

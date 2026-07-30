@@ -48,10 +48,34 @@ const buttonVariants = cva(
            truth for that shape. */
         "icon-2xl": "h-11 w-11",
       },
+      /** Lets the label wrap across multiple lines and grow the button's
+       *  height to fit, instead of the default single-line behavior every
+       *  button otherwise has (`whitespace-nowrap` in the base classes
+       *  above) — for a label whose content length isn't fixed/
+       *  predictable (e.g. echoing back arbitrary typed text, a long
+       *  customer name, etc.), where `nowrap` would silently overflow its
+       *  container on one line instead of wrapping. `h-auto` here
+       *  overrides `size`'s own fixed height (e.g. `lg`'s `h-9`) — safe
+       *  regardless of declaration order, since `cn()`'s `tailwind-merge`
+       *  resolves conflicting height utilities by keeping the last one
+       *  in the final class string, not whichever was declared first.
+       *  `text-center` matters once wrapped: the button's own
+       *  `justify-center` only centers the text block as a whole flex
+       *  item, not each individual wrapped line within it. Default
+       *  `false` — every existing button (fixed single-line height, no
+       *  wrap) is unaffected; opt in per-button with `wrap`. First added
+       *  for the outbound picker's "Continue with {typed search}" button
+       *  (create-new.tsx), where the wrapped text is an arbitrary,
+       *  unbounded-length user-typed value. */
+      wrap: {
+        true: "h-auto whitespace-normal break-words text-center py-2",
+        false: "",
+      },
     },
     defaultVariants: {
       variant: "default",
       size: "lg",
+      wrap: false,
     },
   }
 );
@@ -74,7 +98,7 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, title, badge, children, ...props }, ref) => {
+  ({ className, variant, size, wrap, asChild = false, title, badge, children, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
     const isIconVariant = variant === "icon" || ICON_SIZES.includes(size as (typeof ICON_SIZES)[number]);
 
@@ -93,7 +117,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const button = (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(buttonVariants({ variant, size, wrap, className }))}
         ref={ref}
         title={isIconVariant ? undefined : title}
         aria-label={isIconVariant ? title : undefined}

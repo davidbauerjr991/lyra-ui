@@ -129,6 +129,23 @@ export interface InteriorPanelProps extends React.HTMLAttributes<HTMLDivElement>
    * width was active before entering full-screen once toggled back off.
    */
   allowFullScreen?: boolean;
+  /**
+   * Bump this (e.g. an ever-incrementing counter) to force the panel OUT
+   * of full-screen mode from outside — for a case like "a new assignment
+   * just opened behind this panel while it happened to be full-screen,
+   * and the newly-opened content needs to actually be visible again."
+   * `isFullScreen` is otherwise deliberately self-contained/uncontrolled
+   * (see that state's own doc comment below) — this is a narrow one-way
+   * escape hatch, not a switch to a fully controlled `fullScreen`/
+   * `onFullScreenChange` pair: the consumer can force it closed, but can't
+   * read or fully drive the value. Compared via reference equality against
+   * the previous render inside a `useEffect`, so any distinct value works
+   * (a counter, a timestamp, the id of whatever triggered the exit) as
+   * long as it changes each time an exit should happen; passing the exact
+   * same value twice in a row (including leaving this `undefined`, the
+   * default) is a no-op both times. No effect if the panel isn't currently
+   * full-screen. */
+  exitFullScreenSignal?: number | string;
 
   footer?: React.ReactNode;
 }
@@ -153,6 +170,7 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       headerActions,
       headerTabs,
       allowFullScreen = false,
+      exitFullScreenSignal,
       footer,
       children,
       ...props
@@ -249,6 +267,24 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
     // "always reopens at the pre-full-screen size." Hidden entirely below
     // 768px (`isAutoFullScreen`) — see that flag's own doc comment above.
     const [isFullScreen, setIsFullScreen] = useState(false);
+
+    // `exitFullScreenSignal` escape hatch (see its own doc comment above) —
+    // skips the very first render (a `ref` instead of state/`useEffect`'s
+    // dependency-array-only comparison, so passing an initial non-
+    // `undefined` value doesn't itself force an exit before the panel has
+    // ever been toggled into full-screen) and calls `setIsFullScreen(false)`
+    // whenever the value actually changes afterward. Harmless no-op when
+    // the panel isn't currently full-screen (`setIsFullScreen(false)` when
+    // it's already `false` is a bailed-out no-render, same "unchanged
+    // value" React behavior any other `useState` setter has).
+    const prevExitFullScreenSignalRef = useRef(exitFullScreenSignal);
+    useEffect(() => {
+      if (exitFullScreenSignal !== prevExitFullScreenSignalRef.current) {
+        setIsFullScreen(false);
+      }
+      prevExitFullScreenSignalRef.current = exitFullScreenSignal;
+    }, [exitFullScreenSignal]);
+
     const fullScreenToggle = allowFullScreen && !isAutoFullScreen ? (
       <Tooltip content={isFullScreen ? "Exit full screen" : "Full screen"} placement="bottom" asLabel>
         <button
