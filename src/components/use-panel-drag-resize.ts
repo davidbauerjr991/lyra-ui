@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * Shared drag-to-resize plumbing for `SidePanel` and `InteriorPanel`.
@@ -18,6 +18,21 @@ export function usePanelDragResize(
   onWidthChange?: (width: number) => void
 ) {
   const [dragWidth, setDragWidth] = useState<number | null>(null);
+  // Once a drag has happened, `dragWidth` would otherwise permanently win
+  // over `initialWidth` in the `?? ` below (see the returned `width`),
+  // silently ignoring any FUTURE external change to the caller's own
+  // `width` prop (e.g. a consumer programmatically setting a new width to
+  // animate a full-screen toggle) even though this is meant to be a
+  // controlled value. Resetting it back to `null` here whenever
+  // `initialWidth` itself changes keeps `dragWidth` scoped to only the
+  // currently-in-progress drag gesture (still read once at its start via
+  // `startW.current` below) rather than persisting past it — safe because
+  // by the time this prop changes from anything OTHER than this hook's own
+  // `onWidthChange` echo, the caller's value is already the source of
+  // truth `startW.current` should read from on the next drag anyway.
+  useEffect(() => {
+    setDragWidth(null);
+  }, [initialWidth]);
   const dragging = useRef(false);
   const startX = useRef(0);
   const startW = useRef(0);
