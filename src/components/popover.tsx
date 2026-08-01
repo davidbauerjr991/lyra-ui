@@ -174,9 +174,30 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
         onBlur={stopSyntheticBubble}
         style={{
           maxWidth,
-          /* overflow:hidden + maxHeight constrains the flex algorithm so children can distribute space */
-          ...((header || footer) && maxHeight
-            ? { maxHeight, display: "flex", flexDirection: "column", overflow: "hidden" }
+          /* overflow:hidden + maxHeight constrains the flex algorithm so children can distribute space.
+             Falls back to Radix Popper's own computed available-height (this
+             CSS var is set automatically on Content, from `avoidCollisions`'s
+             own measurement of the real gap between the trigger and the
+             nearest viewport edge — see @radix-ui/react-popper) whenever the
+             caller doesn't pass an explicit `maxHeight`, so a header/footer
+             popover (title + pinned actions, e.g. this app's own "Log
+             Outcome" popover) always self-constrains to whatever room is
+             actually available and scrolls its `content` instead of being
+             cut off by the viewport edge — per explicit follow-up request,
+             this no longer requires each such consumer to remember to pass
+             its own `maxHeight`. Content-only popovers (no header/footer)
+             are deliberately NOT given this same fallback below — that's the
+             case the "dead weight" comment further down guards against, and
+             plain body content is a fixed one-section shape that doesn't
+             carry the same "silently cut off, no way to reach the rest"
+             risk a pinned title/footer sandwich does. */
+          ...(header || footer
+            ? {
+                maxHeight: maxHeight ?? "var(--radix-popover-content-available-height)",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+              }
             : {}),
         }}
         className={cn(
@@ -207,19 +228,23 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
         {title && <PanelHeader title={title} bordered={false} className="px-5 pb-0" />}
         {header && <div style={{ flexShrink: 0 }}>{header}</div>}
         {/* Content scrolls; header/footer are flex-shrink-0 so they stay
-            visible. overflow-auto is only applied when maxHeight actually
-            constrains the height — otherwise it's dead weight that can
-            backfire: a CSS-transform entrance animation on something inside
-            (e.g. a slide-in) can register as scrollable overflow and paint a
+            visible. A header/footer popover always gets `overflow-auto` now
+            (falling back to the Radix available-height var above when no
+            explicit `maxHeight` is passed — see that style block's own doc
+            comment). Content-only popovers keep the old behavior exactly:
+            overflow-auto is only applied when an explicit `maxHeight` is
+            passed — otherwise it's dead weight that can backfire: a
+            CSS-transform entrance animation on something inside (e.g. a
+            slide-in) can register as scrollable overflow and paint a
             horizontal scrollbar even though nothing is meant to scroll here.
             `bodyPadding`'s `px-5` (20px) is the default inset for plain body
             content — see its own doc comment above for which real consumers
             opt out with `bodyPadding={false}` instead (full-bleed Menu/
             listbox rows, or content supplying its own complete chrome). */}
         <div
-          className={cn(bodyPadding && "px-5", maxHeight && "overflow-auto")}
+          className={cn(bodyPadding && "px-5", (header || footer || maxHeight) && "overflow-auto")}
           style={
-            (header || footer) && maxHeight
+            header || footer
               ? { flex: "1 1 auto", minHeight: 0, overflowY: "auto" }
               : maxHeight
               ? { maxHeight }
