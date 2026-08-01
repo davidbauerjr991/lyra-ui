@@ -69,10 +69,11 @@ export interface InteriorPanelProps extends React.HTMLAttributes<HTMLDivElement>
   /** Fired whenever the width changes during a drag */
   onWidthChange?: (width: number) => void;
   /**
-   * Width in px. Defaults to `maxWidth` (opens fully expanded) — unless
-   * `storageKey` is set and a previously drag-resized width was found under
-   * that key, in which case that remembered width is used instead. Passing
-   * this prop explicitly always wins over both.
+   * Width in px. Defaults to `minWidth` (opens at its narrowest, per
+   * explicit request) — unless `storageKey` is set and a previously
+   * drag-resized width was found under that key, in which case that
+   * remembered width is used instead. Passing this prop explicitly always
+   * wins over both.
    */
   width?: number;
   /**
@@ -147,6 +148,23 @@ export interface InteriorPanelProps extends React.HTMLAttributes<HTMLDivElement>
    * full-screen. */
   exitFullScreenSignal?: number | string;
 
+  /**
+   * Reports whenever this panel's own "overlay" branch (absolute
+   * positioning over the main content instead of squeezing it — narrow
+   * parent, user-triggered full screen, or the automatic sub-768px full
+   * screen; see the render branch's own doc comment below) turns on or
+   * off. Purely a passive report — this component's overlay/non-overlay
+   * layout is still entirely self-computed from its own parent-width
+   * measurement, not controlled from outside. Lets a consumer add "click
+   * anywhere in the main content behind this panel to close it" behavior
+   * (a modal-like scrim dismiss) ONLY while the panel is actually
+   * floating over that content — when docked side-by-side instead (this
+   * panel isn't overlapping anything), clicking the main content has no
+   * reason to close it. Omit if the consumer doesn't need this — e.g. a
+   * panel with no sibling content that could ever be "clicked behind".
+   */
+  onOverlayModeChange?: (isOverlay: boolean) => void;
+
   footer?: React.ReactNode;
 }
 
@@ -171,6 +189,7 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       headerTabs,
       allowFullScreen = false,
       exitFullScreenSignal,
+      onOverlayModeChange,
       footer,
       children,
       ...props
@@ -180,14 +199,15 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
     // Resolution order: an explicit `width` prop always wins; otherwise a
     // previously drag-resized width remembered under `storageKey` (so it
     // survives even a full remount, e.g. navigating away and back);
-    // otherwise `maxWidth` — panels open fully expanded by default. Read
-    // once via `useState(() => ...)` rather than on every render, since
-    // this only matters for the very first render's initial width; after
-    // that, drag state (`usePanelDragResize`'s own `dragWidth`) takes over.
+    // otherwise `minWidth` — panels open at their narrowest by default (per
+    // explicit request; previously `maxWidth`/fully expanded). Read once
+    // via `useState(() => ...)` rather than on every render, since this
+    // only matters for the very first render's initial width; after that,
+    // drag state (`usePanelDragResize`'s own `dragWidth`) takes over.
     const [initialWidth] = useState(() => {
       if (width !== undefined) return width;
       const stored = storageKey ? readNumberCookie(storageKey) : null;
-      return stored ?? maxWidth;
+      return stored ?? minWidth;
     });
 
     const [isResizing, setIsResizing] = useState(false);
@@ -267,6 +287,15 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
     // "always reopens at the pre-full-screen size." Hidden entirely below
     // 768px (`isAutoFullScreen`) — see that flag's own doc comment above.
     const [isFullScreen, setIsFullScreen] = useState(false);
+
+    // Reports the same combined condition the render branch below switches
+    // layout on — see `onOverlayModeChange`'s own doc comment for what a
+    // consumer does with this.
+    const isOverlay = isNarrow || isFullScreen || isAutoFullScreen;
+    useEffect(() => {
+      onOverlayModeChange?.(isOverlay);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOverlay]);
 
     // `exitFullScreenSignal` escape hatch (see its own doc comment above) —
     // skips the very first render (a `ref` instead of state/`useEffect`'s
@@ -379,7 +408,7 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
     // either threshold ever changes independently. See `allowFullScreen`'s
     // own doc comment for why full-screen deliberately reuses this instead
     // of needing its own separate layout branch.
-    if (isNarrow || isFullScreen || isAutoFullScreen) {
+    if (isOverlay) {
       return (
         <div
           ref={stableOuterRef}
