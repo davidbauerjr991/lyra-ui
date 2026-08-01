@@ -288,7 +288,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     // branch), without keeping two copies of this markup in sync by hand.
     const cardBody = (
       <>
-        <div className="flex items-center gap-2 px-4 pt-2 pb-1">
+        <div className="flex items-center gap-2 px-3 pt-2 pb-1">
           <span className="min-w-0 flex-1 truncate lyra-heading-sm text-lyra-fg-default">{displayName}</span>
           {headerAction}
         </div>
@@ -310,6 +310,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                   awaitingResponse={ch.awaitingResponse}
                   removable={ch.removable}
                   menuItems={ch.menuItems}
+                  outcome={ch.outcome}
                   // Keeps the hover-preview popover open (and its close
                   // timer disarmed) for as long as this row's own kebab
                   // dropdown is open — see `handleChannelMenuOpenChange`'s
@@ -360,11 +361,31 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       // response (that's conveyed via the channel chip / avatar badge
       // instead). Only an active card that's also awaiting response
       // shows red; every other active card shows the blue active border.
+      //
+      // Each branch also gets a `hover:` darkening of that same border,
+      // per an explicit follow-up request ("darker border color... around
+      // the entire card" — this is the card's own outer chrome, shared by
+      // both the real expanded card and the compact tile's hover-popover
+      // preview above, which is why this lives here rather than as a
+      // one-off on either render path). Two different techniques, deliberately:
+      //  - The inactive card's `border-subtle` (rgba(0,0,0,.10) /
+      //    rgba(255,255,255,.10), lyra-tokens.css) darkens to the real next
+      //    tier up, `border-default` (.16 alpha) — an actual token that
+      //    already exists for exactly this "a little darker than subtle"
+      //    step, in both themes.
+      //  - `border-active` (#166cca / #4896ec) and `status-critical-strong`
+      //    (#bc2626 / #fa7f7f) have no such next-darker token — each is
+      //    already its theme's most saturated tier, and `border-focus`
+      //    isn't a substitute (it's yellow in dark mode, a focus-ring
+      //    color, not a "darker active" one). `color-mix()` toward black
+      //    is used instead, computed against whichever theme's value the
+      //    token already resolves to, so it darkens correctly in both
+      //    themes without hardcoding either one's hex directly.
       active
         ? awaitingResponse
-          ? "border-lyra-status-critical-strong"
-          : "border-lyra-border-active"
-        : "border-lyra-border-subtle"
+          ? "border-lyra-status-critical-strong hover:border-[color-mix(in_srgb,var(--lyra-color-status-critical-strong)_80%,black_20%)]"
+          : "border-lyra-border-active hover:border-[color-mix(in_srgb,var(--lyra-color-border-active)_80%,black_20%)]"
+        : "border-lyra-border-subtle hover:border-lyra-border-default"
     );
 
     /* ── Compact: icon-rail avatar tile ── */
