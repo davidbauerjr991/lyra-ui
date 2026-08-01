@@ -143,6 +143,18 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     const displayName = customerName || "Customer";
     const channelCount = channels.length;
 
+    // Internal handle onto the compact tile's own DOM node, alongside
+    // (not instead of) the forwarded `ref` — needed so the Tab-trap logic
+    // below (see `previewContentRef`'s own doc comment) can call
+    // `.focus()` on the tile itself without depending on what shape of
+    // ref, if any, a consumer happened to pass in.
+    const tileRef = React.useRef<HTMLDivElement | null>(null);
+    const setTileRef = (node: HTMLDivElement | null) => {
+      tileRef.current = node;
+      if (typeof ref === "function") ref(node);
+      else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    };
+
     // The single channel actually treated as "current" (the one that gets
     // the blue-highlighted row) — resolved here rather than trusting each
     // `InteractionChannel.current` flag verbatim, since a consumer flipping
@@ -233,6 +245,20 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     // (dropdown included, since it's a child of `content`) unmounts out from
     // under the agent before they can pick an item.
     const openChannelMenuKeysRef = React.useRef<Set<string>>(new Set());
+    // Same reasoning as `openChannelMenuKeysRef` above, one level up: a
+    // channel row's "Outcome" button opens its own `Popover` (channel-
+    // row.tsx's `ChannelOutcomeConfig`), also portaled straight to
+    // `document.body`, also outside this preview's own wrapper div DOM-
+    // wise. Reported bug: opening "Outcome" from the hover-preview, leaving
+    // it open, then moving the pointer off the card closed the preview (and
+    // so unmounted the still-open Outcome popover with it, out from under
+    // the agent) after the same 150ms timer below — this tracked kebab-open
+    // state alone never knew the Outcome popover existed, so it didn't stop
+    // that. A second, separate set (not folded into the one above) since an
+    // Outcome popover and a kebab dropdown are independent, unrelated UI on
+    // the same row — a card could plausibly have one of each open on two
+    // different rows at once, and each needs its own key tracked.
+    const openChannelOutcomeKeysRef = React.useRef<Set<string>>(new Set());
     const openHoverCard = () => {
       if (closeHoverCardTimeoutRef.current) {
         clearTimeout(closeHoverCardTimeoutRef.current);
@@ -242,9 +268,11 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     };
     const scheduleCloseHoverCard = () => {
       if (closeHoverCardTimeoutRef.current) clearTimeout(closeHoverCardTimeoutRef.current);
-      // Never arm the close timer while any channel row's kebab dropdown is
-      // still open — see `openChannelMenuKeysRef`'s own doc comment above.
+      // Never arm the close timer while any channel row's kebab dropdown, or
+      // its Outcome popover, is still open — see `openChannelMenuKeysRef`'s
+      // and `openChannelOutcomeKeysRef`'s own doc comments above.
       if (openChannelMenuKeysRef.current.size > 0) return;
+      if (openChannelOutcomeKeysRef.current.size > 0) return;
       closeHoverCardTimeoutRef.current = setTimeout(() => setHoverCardOpen(false), 150);
     };
     // Passed to each channel row as `onMenuOpenChange` (threaded through
@@ -263,6 +291,21 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
         if (openChannelMenuKeysRef.current.size === 0) scheduleCloseHoverCard();
       }
     };
+    // Same shape as `handleChannelMenuOpenChange` above, for a row's Outcome
+    // popover instead of its kebab — wrapped around whatever `onOpenChange`
+    // the consumer already wired on `ch.outcome` (see the `outcome={...}`
+    // spread below), so this stays purely additive: the consumer's own
+    // open/close handling still runs exactly as before, this just also
+    // keeps the hover-preview pinned open for as long as it's open.
+    const handleChannelOutcomeOpenChange = (key: string, open: boolean) => {
+      if (open) {
+        openChannelOutcomeKeysRef.current.add(key);
+        openHoverCard();
+      } else {
+        openChannelOutcomeKeysRef.current.delete(key);
+        if (openChannelOutcomeKeysRef.current.size === 0) scheduleCloseHoverCard();
+      }
+    };
     React.useEffect(() => {
       return () => {
         if (closeHoverCardTimeoutRef.current) clearTimeout(closeHoverCardTimeoutRef.current);
@@ -274,9 +317,92 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       : { bg: "bg-lyra-status-info-subtle", text: "text-lyra-status-info-strong", border: active ? "border-lyra-status-info-strong" : "border-lyra-status-info-medium/30" };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
+      // `e.target !== e.currentTarget` — keydown bubbles, and this handler
+      // is shared by the tile, the preview wrapper, and the real expanded
+      // card, each of which also contains real nested interactive
+      // descendants (the preview wrapper's Tab-trap loop above walks
+      // straight through several: "+" Add Outbound, Consult/Transfer, a
+      // channel's Outcome button, its kebab). Without this guard, Enter/
+      // Space pressed while focus is on one of THOSE bubbles up here too,
+      // and this always calls `preventDefault()` — which silently cancels
+      // the focused button's own native "Enter/Space triggers a click"
+      // default action before it can fire. Confirmed live: tabbing all the
+      // way to a channel's Outcome button and pressing Enter did nothing
+      // until this guard was added back. Same `target === currentTarget`
+      // guard `modal.tsx`/`overlay.tsx` already use for their own backdrop-
+      // click checks — only a keydown that originates on the tile/wrapper
+      // itself (tabbing to it directly, the common case) still activates
+      // `onClick`; anything bubbling up from a nested descendant is left
+      // alone to handle its own Enter/Space activation normally.
+      if (e.target !== e.currentTarget) return;
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         onClick?.();
+      }
+    };
+
+    // Compact mode only: the hover-preview's own content (see the `!expanded`
+    // branch below) is a Radix `Popover.Content`, portaled straight to the
+    // very end of `document.body` — its position in the DOM (and so its
+    // place in the browser's *default* Tab order) is completely decoupled
+    // from where it visually/logically sits, right next to this tile.
+    // Confirmed live: tabbing forward from the tile skipped over all of the
+    // preview's own content entirely and landed in unrelated main-content
+    // dashboard/queue elements instead — the preview's "+" header action,
+    // channel rows, kebabs, and Outcome buttons were only ever reachable by
+    // continuing to tab through the *rest of the whole page* first, if at
+    // all. Fixed with a small, self-contained "roving" Tab loop instead of
+    // relying on raw DOM order: forward-Tab from the tile jumps straight
+    // into the preview's own first stop (the content wrapper itself, see
+    // `previewContentRef` below); forward-Tab off the *last* focusable row
+    // inside it loops back to the tile rather than escaping into the page.
+    // Shift+Tab off that first stop steps back out to the tile the same
+    // way. The tile's own Shift+Tab (leaving the loop from its own start)
+    // is left alone — normal page order already handles that correctly.
+    const previewContentRef = React.useRef<HTMLDivElement | null>(null);
+
+    // Every element inside the preview a Tab press could land on, in DOM
+    // (== visual) order — deliberately a plain allow-list query, not a
+    // library, since this only ever needs to answer "is focus currently on
+    // the last one of these" below. Includes elements that are currently
+    // `opacity-0`/hover-revealed (e.g. a channel row's Consult/Transfer and
+    // Outcome buttons) — they're still real, focusable DOM nodes (see this
+    // codebase's own `group-focus-within` fix for exactly that), so they
+    // belong in this list same as anything always-visible.
+    const getPreviewFocusables = (): HTMLElement[] => {
+      const root = previewContentRef.current;
+      if (!root) return [];
+      return Array.from(
+        root.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      );
+    };
+    const handleTileKeyDown = (e: React.KeyboardEvent) => {
+      handleKeyDown(e);
+      // Only while the preview is actually mounted — otherwise there's
+      // nothing to jump into, and eating the keypress here would strand
+      // focus on the tile with nowhere for Tab to go.
+      if (e.key === "Tab" && !e.shiftKey && previewContentRef.current) {
+        e.preventDefault();
+        previewContentRef.current.focus();
+      }
+    };
+    const handlePreviewContentKeyDown = (e: React.KeyboardEvent) => {
+      handleKeyDown(e);
+      if (e.key !== "Tab") return;
+      const focusables = getPreviewFocusables();
+      if (e.shiftKey) {
+        if (document.activeElement === previewContentRef.current) {
+          e.preventDefault();
+          tileRef.current?.focus();
+        }
+        return;
+      }
+      const last = focusables.length > 0 ? focusables[focusables.length - 1] : previewContentRef.current;
+      if (document.activeElement === last) {
+        e.preventDefault();
+        tileRef.current?.focus();
       }
     };
 
@@ -310,7 +436,23 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                   awaitingResponse={ch.awaitingResponse}
                   removable={ch.removable}
                   menuItems={ch.menuItems}
-                  outcome={ch.outcome}
+                  // Wrapped (not passed straight through) so this preview
+                  // also keeps itself open for as long as the Outcome
+                  // popover this renders is open — see
+                  // `handleChannelOutcomeOpenChange`'s own doc comment
+                  // above. Purely additive: `ch.outcome`'s own
+                  // `onOpenChange` (whatever the consumer wired up) still
+                  // runs exactly as it did before, every other field on
+                  // `ch.outcome` passes through unchanged.
+                  outcome={
+                    ch.outcome && {
+                      ...ch.outcome,
+                      onOpenChange: (open: boolean) => {
+                        handleChannelOutcomeOpenChange(channelKey(ch), open);
+                        ch.outcome!.onOpenChange(open);
+                      },
+                    }
+                  }
                   // Keeps the hover-preview popover open (and its close
                   // timer disarmed) for as long as this row's own kebab
                   // dropdown is open — see `handleChannelMenuOpenChange`'s
@@ -402,6 +544,23 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
           // popover the instant the pointer happens to land on the tile
           // would be disruptive (and isn't what a hover preview is for).
           onOpenAutoFocus={(e) => e.preventDefault()}
+          // Radix's default on close is to return focus to the trigger —
+          // exactly the compact tile itself, which (per its own onFocus
+          // doc comment below) opens this same popover on focus. Left
+          // unguarded, EVERY close (the 150ms mouse-away timer, Escape,
+          // clicking elsewhere) refocused the tile, which immediately
+          // reopened it right back — a close that never actually stuck,
+          // confirmed live: `openHoverCard` firing again in the same tick
+          // right after the close timer fired. This was also the real
+          // cause of "hovering one tile sometimes opens a different one" —
+          // with a card stuck permanently reopening itself, a second,
+          // genuinely-hovered tile's own preview could end up rendered
+          // alongside a first one that visually never left. Same "don't
+          // hand focus back to the trigger on close" fix already
+          // established for `TagPicker` (tag-picker.tsx) and `ChannelRow`'s
+          // own Outcome popover (channel-row.tsx) — this is that same
+          // fix, just missing here until now.
+          onCloseAutoFocus={(e) => e.preventDefault()}
           // Each channel row's kebab menu (`KebabMenuButton`, built on
           // `MenuRadix`/Radix DropdownMenu) portals its own dropdown content
           // straight to `document.body` — outside this hover popover's own
@@ -460,7 +619,8 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
               role="button"
               tabIndex={0}
               onClick={onClick}
-              onKeyDown={handleKeyDown}
+              onKeyDown={handlePreviewContentKeyDown}
+              ref={previewContentRef}
               aria-label={ariaLabel}
               // `shadow-md` added here only (not baked into
               // `expandedCardClassName` itself, which the real expanded
@@ -476,11 +636,11 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
           }
         >
           <div
-            ref={ref}
+            ref={setTileRef}
             role="button"
             tabIndex={0}
             onClick={onClick}
-            onKeyDown={handleKeyDown}
+            onKeyDown={handleTileKeyDown}
             onMouseEnter={openHoverCard}
             onMouseLeave={scheduleCloseHoverCard}
             // Keyboard equivalent of the hover pair above — per explicit
