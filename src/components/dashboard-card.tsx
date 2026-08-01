@@ -263,7 +263,13 @@ const DashboardCard = React.forwardRef<HTMLDivElement, DashboardCardProps>(
           // affordance on hover. Skipped when `showContainer` is false —
           // a card with no surface/shadow of its own shouldn't grow one
           // only on hover.
-          showContainer && "transition-shadow hover:shadow-md",
+          //
+          // Darker border on hover — `border-lyra-border-subtle` (the
+          // `default` Container variant's own border) steps up to
+          // `border-lyra-border-default`, the same neutral-card
+          // darken-on-hover pair `InteractionNavItem`'s own compact tile
+          // already uses (interaction-nav-item.tsx).
+          showContainer && "transition-[box-shadow,border-color] hover:shadow-md hover:border-lyra-border-default",
           className
         )}
         headerClassName={cn(
