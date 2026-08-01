@@ -442,6 +442,21 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
               // started by leaving the tile go on to close it.
               onMouseEnter={openHoverCard}
               onMouseLeave={scheduleCloseHoverCard}
+              // Keyboard equivalent of the mouseenter/mouseleave pair above
+              // — see the compact tile's own `onFocus`/`onBlur` doc comment
+              // below for why this needs to exist at all. React's
+              // `onFocus`/`onBlur` bubble (unlike native `focus`/`blur`),
+              // so these fire for a focus landing on ANY descendant here —
+              // the "+" headerAction, a channel row, its kebab button —
+              // not just this wrapper div itself, exactly mirroring how
+              // `onMouseEnter`/`onMouseLeave` already re-arm/disarm the
+              // close timer for the mouse case above. Tabbing onward from
+              // the compact tile into this now-open preview keeps it open;
+              // tabbing past its last focusable element with nothing else
+              // grabbing focus within `scheduleCloseHoverCard`'s own delay
+              // lets it close, same as moving the mouse away.
+              onFocus={openHoverCard}
+              onBlur={scheduleCloseHoverCard}
               role="button"
               tabIndex={0}
               onClick={onClick}
@@ -468,6 +483,23 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
             onKeyDown={handleKeyDown}
             onMouseEnter={openHoverCard}
             onMouseLeave={scheduleCloseHoverCard}
+            // Keyboard equivalent of the hover pair above — per explicit
+            // accessibility request: this compact tile's own popover
+            // preview (`content` above) is the ONLY way to reach anything
+            // in the expanded card — the "+" headerAction, each channel
+            // row, its kebab menu (Outcome/Consult-Transfer/etc.) — and
+            // Radix's `Popover.Content` isn't even mounted into the DOM
+            // while closed, so a keyboard user tabbing to this tile
+            // previously had no way to open it at all: pressing Tab again
+            // just skipped straight past every bit of that content to the
+            // next rail item. Opening on focus (and closing on blur, via
+            // the exact same `openHoverCard`/`scheduleCloseHoverCard`
+            // functions the mouse handlers already use — including their
+            // existing "don't close while a channel row's own kebab
+            // dropdown is open" guard) makes tabbing here behave like
+            // hovering it, with no change to the mouse experience at all.
+            onFocus={openHoverCard}
+            onBlur={scheduleCloseHoverCard}
             aria-label={ariaLabel}
             aria-current={active ? "true" : undefined}
             className={cn(

@@ -199,7 +199,16 @@ const ConversationMessage = React.forwardRef<HTMLDivElement, ConversationMessage
                   "absolute right-0 flex items-center gap-1",
                   bubble ? "-top-9" : "-top-7",
                   "bg-lyra-bg-surface-overlay border border-lyra-border-subtle shadow-md rounded-lyra-md px-1 py-1",
-                  "opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 z-10"
+                  // `group-focus-within/msg:opacity-100` alongside the
+                  // existing hover reveal — per explicit accessibility
+                  // request: these are real buttons (Restart/Copy below),
+                  // and `opacity-0` alone doesn't remove them from the tab
+                  // order, it just leaves them invisible while a keyboard
+                  // user has actually focused one. Tabbing into either
+                  // button now reveals this whole toolbar exactly like
+                  // hovering it does; nothing about the hover behavior
+                  // itself changes.
+                  "opacity-0 transition-opacity duration-150 z-10 group-hover/msg:opacity-100 group-focus-within/msg:opacity-100"
                 )}>
                   <Tooltip content="Restart conversation from here" placement="top">
                     <button

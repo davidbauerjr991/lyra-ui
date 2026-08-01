@@ -224,7 +224,16 @@ function useAgentNotificationsContent({
                     "absolute right-3 top-1/2 -translate-y-1/2",
                     "flex h-6 w-6 items-center justify-center rounded-lyra-sm",
                     "text-lyra-fg-secondary hover:text-lyra-fg-default hover:bg-lyra-state-hover transition-colors",
-                    "opacity-0 group-hover/notif:opacity-100",
+                    // `focus-visible:opacity-100` alongside the existing
+                    // hover reveal — per explicit accessibility request:
+                    // this button is itself the focusable element (unlike
+                    // a hover toolbar revealing several descendants), so a
+                    // plain `focus-visible:` suffices here, same technique
+                    // `favorite-button.tsx` already uses. Without it,
+                    // Tabbing here still reaches the button (opacity alone
+                    // doesn't pull it out of tab order) but leaves it
+                    // completely invisible while focused.
+                    "opacity-0 group-hover/notif:opacity-100 focus-visible:opacity-100",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
                   )}
                 >
