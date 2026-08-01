@@ -175,7 +175,6 @@ export interface CreateNewOutboundGroup {
   id: string;
   /** Select option label, e.g. "Agents". */
   label: string;
-  searchPlaceholder?: string;
   /** "contacts" (default when `contacts` is set) shows search + a paginated
    *  contact list. "dialpad" shows the phone quick-dial field instead of a
    *  list. "empty" always shows `emptyMessage`, with no favoriting concept.
@@ -185,6 +184,30 @@ export interface CreateNewOutboundGroup {
   kind?: "contacts" | "dialpad" | "empty" | "favorites";
   contacts?: CreateNewOutboundContact[];
   emptyMessage?: string;
+  /**
+   * Optional secondary picker rendered directly below the "Choose group"
+   * Select, but only while this group is the active one — e.g. the Teams
+   * group's own "Choose team" dropdown (per explicit request: picking a
+   * team should then let the agent search that team's own members). This
+   * component has no concept of "team" or "member" — it only renders the
+   * control and reports the pick via `onChange`. The consumer owns the
+   * real grouping (team → member) and is expected to swap this group's
+   * own `contacts` for the picked value's real members in response
+   * (typically by holding the picked value in its own state and
+   * recomputing the `outbound` config passed in) — `contacts`,
+   * `emptyMessage`, and the existing search box all keep working exactly
+   * as they already do for every other group once that swap happens, so
+   * no new filtering logic is needed here to make search scope to
+   * whatever's currently selected.
+   */
+  subFilter?: {
+    ariaLabel: string;
+    placeholder?: string;
+    /** Controlled value — empty string means nothing picked yet. */
+    value: string;
+    options: { value: string; label: string }[];
+    onChange: (value: string) => void;
+  };
 }
 
 export interface CreateNewChannelOption {
@@ -207,6 +230,22 @@ export interface CreateNewOutboundConfig {
   /** Which group is selected when screen 1 is first reached (defaults to
    *  the first entry in `groups`). */
   defaultGroupId?: string;
+  /**
+   * Placeholder for the search field above the group `Select` — one
+   * string for the whole outbound flow (default: "Search..."), NOT
+   * per-group. This used to be a per-`CreateNewOutboundGroup` field (so
+   * switching the filter changed the placeholder to e.g. "Search Agents"),
+   * removed per explicit request/confirmed UX bug: `contactMatchesSearch`
+   * matches name, subtitle, phone, AND email the exact same way regardless
+   * of which group is selected — the filter only narrows which contacts
+   * that search runs against, it doesn't change what kind of query is
+   * accepted. A placeholder that changed per group implied the opposite
+   * (that switching to "Agents" somehow made the box name-only, or
+   * accepted different input than "All" did), which wasn't true and was
+   * confusing. One placeholder, always accurate regardless of the
+   * selected filter.
+   */
+  searchPlaceholder?: string;
   /** Call/Email/SMS/WhatsApp definitions — drives both the per-row hover
    *  flyout and the detail screen's "Select Channel" dropdown. */
   channelOptions: CreateNewChannelOption[];
@@ -1523,7 +1562,14 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                 <Input
                   ref={searchInputRef}
                   type="text"
-                  placeholder={activeGroup.searchPlaceholder ?? `Search ${activeGroup.label.toLowerCase()}`}
+                  // One placeholder for the whole outbound flow
+                  // (`outbound?.searchPlaceholder`), NOT keyed off
+                  // `activeGroup` — see `CreateNewOutboundConfig.
+                  // searchPlaceholder`'s own doc comment for why a
+                  // per-group placeholder was a confirmed UX bug (implied
+                  // switching the filter changed what the search box
+                  // accepted, when it doesn't).
+                  placeholder={outbound?.searchPlaceholder ?? "Search..."}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   startIcon={<Search className="h-4 w-4 text-lyra-fg-disabled" strokeWidth={1.4} aria-hidden="true" />}
@@ -1546,6 +1592,21 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
               options={(outbound?.groups ?? []).map((g) => ({ value: g.id, label: g.label }))}
               portalDropdown
             />
+            {/* Per-group secondary picker — see `CreateNewOutboundGroup.
+                subFilter`'s own doc comment above. Renders below "Choose
+                group" so it reads as a further narrowing of whichever
+                group is already selected (e.g. Teams → a specific team),
+                not a second, competing top-level filter. */}
+            {activeGroup.subFilter && (
+              <Select
+                aria-label={activeGroup.subFilter.ariaLabel}
+                placeholder={activeGroup.subFilter.placeholder}
+                value={activeGroup.subFilter.value}
+                onValueChange={activeGroup.subFilter.onChange}
+                options={activeGroup.subFilter.options}
+                portalDropdown
+              />
+            )}
           </div>
         )}
 
@@ -1802,9 +1863,17 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                                   // group yet" (see its own doc comment),
                                   // NOT "this group has no contacts at all,"
                                   // which `No {label} available` would
-                                  // wrongly imply.
-                                  ? `No favorited ${activeGroup.label.toLowerCase()} yet`
-                                  : `No ${activeGroup.label.toLowerCase()} available`
+                                  // wrongly imply. `activeGroup.emptyMessage`
+                                  // takes priority when set (e.g. Teams'
+                                  // "Choose a team above to see its agents"
+                                  // before a `subFilter` pick has narrowed
+                                  // `contacts` to anything at all — the
+                                  // generic "No favorited teams yet" would
+                                  // be actively misleading there, since
+                                  // there's no team chosen to favorite from
+                                  // yet).
+                                  ? activeGroup.emptyMessage ?? `No favorited ${activeGroup.label.toLowerCase()} yet`
+                                  : activeGroup.emptyMessage ?? `No ${activeGroup.label.toLowerCase()} available`
                               // Generic "No matches found" per explicit
                               // request — not `No matching {label}` (e.g.
                               // "No matching all", which read oddly since
