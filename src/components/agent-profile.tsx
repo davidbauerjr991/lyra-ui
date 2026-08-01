@@ -44,6 +44,14 @@ export interface AgentProfileProps {
   /** Shows a "Help" row (below "Agent Leg Disconnected") when provided */
   onHelpClick?: () => void;
   onLogOut?: () => void;
+  /** Hides the "Connected Apps" row (and its flyout panel) entirely — for
+   *  a consumer with no real integrations to surface here at all, rather
+   *  than showing a permanently-empty "0" row. Unlike `onHelpClick`
+   *  (shown only when a handler is passed), Connected Apps has no such
+   *  natural "nothing to show" signal on its own — `connectedApps`
+   *  defaults to `[]` and the row still renders (just with a "0" badge)
+   *  when omitted, so this is an explicit opt-out instead. */
+  hideConnectedApps?: boolean;
   className?: string;
 }
 
@@ -103,6 +111,7 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
     connectedApps = [],
     onReconnect,
     onDarkModeToggle, isDarkMode: isDarkModeProp, onHelpClick, onLogOut,
+    hideConnectedApps = false,
     className,
   }, ref) => {
     /* Uncontrolled dark mode — same self-managing mechanism as ProfileMenu
@@ -251,37 +260,44 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
         // matches ProfileMenu's theme-toggle entry.
         closeOnSelect: false,
       },
-      {
-        id: "connected-apps",
-        label: "Connected Apps",
-        icon: <Activity className="h-4 w-4" strokeWidth={1.5} />,
-        // Submenu hover/click-to-open, portal-to-body, and viewport-edge
-        // flip positioning are all handled by Menu itself (same mechanism
-        // as a regular `submenu`) — this just supplies the rich panel
-        // content instead of a flat list of menu items.
-        submenuContent: <ConnectedAppsPanel apps={connectedApps} onReconnect={handleReconnect} />,
-        // Menu's own submenu flyout defaults to `z-[9999]` — correct for a
-        // top-level submenu, but this one is nested inside the status
-        // menu's own `z-[10001]` panel, so it needs to clear that parent
-        // (same reason the tooltips on this row and below are bumped to
-        // `z-[10002]`). See CONTRIBUTING.md §5 — this is a new documented
-        // tier (`10004`) since `10002`/`10003` are already claimed by other
-        // specific cases.
-        submenuZIndexClassName: "z-[10004]",
-        rightElement: (
-          issueCount > 0 ? (
-            <Tooltip content={`${issueCount} app${issueCount > 1 ? "s" : ""} not fully connected`} placement="left" className="z-[10002]">
-              <span>
-                <Badge shape="circle" variant="warning" size="sm">{connectedApps.length}</Badge>
-              </span>
-            </Tooltip>
-          ) : connectedApps.length > 0 ? (
-            <Badge shape="circle" variant="success" size="sm">{connectedApps.length}</Badge>
-          ) : (
-            <Badge shape="circle" variant="neutral" size="sm">0</Badge>
-          )
-        ),
-      },
+      // Omitted entirely when `hideConnectedApps` is set — see that prop's
+      // own doc comment for why this needs an explicit opt-out rather than
+      // just relying on an empty `connectedApps` list (the row still shows
+      // a "0" badge in that case, which is the default, existing behavior
+      // every other consumer already expects).
+      ...(hideConnectedApps
+        ? []
+        : [{
+            id: "connected-apps",
+            label: "Connected Apps",
+            icon: <Activity className="h-4 w-4" strokeWidth={1.5} />,
+            // Submenu hover/click-to-open, portal-to-body, and viewport-edge
+            // flip positioning are all handled by Menu itself (same mechanism
+            // as a regular `submenu`) — this just supplies the rich panel
+            // content instead of a flat list of menu items.
+            submenuContent: <ConnectedAppsPanel apps={connectedApps} onReconnect={handleReconnect} />,
+            // Menu's own submenu flyout defaults to `z-[9999]` — correct for a
+            // top-level submenu, but this one is nested inside the status
+            // menu's own `z-[10001]` panel, so it needs to clear that parent
+            // (same reason the tooltips on this row and below are bumped to
+            // `z-[10002]`). See CONTRIBUTING.md §5 — this is a new documented
+            // tier (`10004`) since `10002`/`10003` are already claimed by other
+            // specific cases.
+            submenuZIndexClassName: "z-[10004]",
+            rightElement: (
+              issueCount > 0 ? (
+                <Tooltip content={`${issueCount} app${issueCount > 1 ? "s" : ""} not fully connected`} placement="left" className="z-[10002]">
+                  <span>
+                    <Badge shape="circle" variant="warning" size="sm">{connectedApps.length}</Badge>
+                  </span>
+                </Tooltip>
+              ) : connectedApps.length > 0 ? (
+                <Badge shape="circle" variant="success" size="sm">{connectedApps.length}</Badge>
+              ) : (
+                <Badge shape="circle" variant="neutral" size="sm">0</Badge>
+              )
+            ),
+          }]),
       {
         id: "agent-leg",
         label: agentLegStatus === "connected" ? "Agent Leg Connected" : agentLegStatus === "connecting" ? "Agent Leg Connecting…" : "Agent Leg Disconnected",
