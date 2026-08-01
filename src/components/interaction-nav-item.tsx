@@ -274,6 +274,24 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       : { bg: "bg-lyra-status-info-subtle", text: "text-lyra-status-info-strong", border: active ? "border-lyra-status-info-strong" : "border-lyra-status-info-medium/30" };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
+      // `e.target !== e.currentTarget` — keydown bubbles, and this handler
+      // sits on the outer card/tile div (all three call sites below), so
+      // without this guard it also fires (and `preventDefault`s) for Enter/
+      // Space pressed while focus is on a NESTED interactive descendant —
+      // the "+" headerAction, a channel row's kebab, or (per an explicit
+      // accessibility bug report) its Consult/Transfer and Outcome buttons.
+      // `preventDefault` on that bubbled keydown was silently canceling the
+      // focused button's own native "Enter/Space triggers a click" default
+      // action before it could fire — the button never actually received a
+      // click, so its Popover never opened, even though it was focused and
+      // (per the `group-focus-within` fix above) visibly revealed. Same
+      // `target === currentTarget` guard `modal.tsx`/`overlay.tsx` already
+      // use for their own backdrop-click checks. With this guard, only a
+      // keydown that originates on the card/tile itself (the common case —
+      // tabbing to the tile with no nested element separately focused)
+      // still activates it; anything bubbling up from a nested button is
+      // left alone to handle its own Enter/Space activation normally.
+      if (e.target !== e.currentTarget) return;
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         onClick?.();
