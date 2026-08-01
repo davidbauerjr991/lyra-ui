@@ -96,8 +96,11 @@ const AIInput = React.forwardRef<HTMLTextAreaElement, AIInputProps>(
       <div className={cn("flex flex-col gap-2", className)}>
         {/* Input container */}
         <div className={cn(
-          "flex flex-col rounded-lyra-xl border bg-lyra-bg-surface-container-subtle transition-colors",
-          "border-lyra-border-strong",
+          // `rounded-lyra-sm` + `hover:border-lyra-state-border-hover-neutral`
+          // match the other input fields' shared border treatment (see
+          // input.tsx / textarea.tsx).
+          "flex flex-col rounded-lyra-sm border bg-lyra-bg-surface-container-subtle transition-colors",
+          "border-lyra-border-strong hover:border-lyra-state-border-hover-neutral",
           "focus-within:border-lyra-border-active focus-within:ring-2 focus-within:ring-lyra-border-active/20",
           disabled && "opacity-50 pointer-events-none bg-lyra-bg-disabled border-transparent"
         )}>
