@@ -413,7 +413,27 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
                 onOpenChange={outcome.onOpenChange}
                 placement="bottom"
                 align="end"
-                className="w-80"
+                // `z-[10003]` — "Popover nested inside another popover" per
+                // CONTRIBUTING.md §4's own hierarchy table. This row (and so
+                // this whole button cluster) is reused verbatim as the
+                // compact LeftNav tile's hover-preview popover content
+                // (`InteractionNavItem`'s `!expanded` branch) — in that
+                // context this Popover really is nested one level inside
+                // another already-open `Popover`, both otherwise sharing
+                // the same unhelpful `z-50` default, so which one painted on
+                // top came down to DOM/portal mount order rather than any
+                // real stacking rule — the reported symptom (this popover
+                // rendering *underneath* the hover-preview card, and both
+                // flickering open/closed as the mouse crossed the
+                // ambiguous overlap where hit-testing disagreed with what
+                // was visually on top). Bumped unconditionally rather than
+                // only when actually nested, since a Popover always meant
+                // to read as "topmost, modal-like" has no reason to sit at
+                // a lower tier in its other (non-nested, always-expanded
+                // row) usage either — see the Resolution popover and the
+                // Tags/Disposition `Select`s below, raised to `z-[10005]`
+                // for the exact same reason one level deeper.
+                className="z-[10003] w-80"
                 // Same "don't hand focus back to the trigger on close" fix
                 // `TagPicker` already established (tag-picker.tsx) — this
                 // trigger is an icon `Button` with its own `title`-driven
@@ -472,7 +492,15 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
                         }}
                         placement="bottom"
                         align="start"
-                        className="w-[var(--radix-popover-trigger-width)]"
+                        // `z-[10005]` — one tier above this popover's own,
+                        // now-`z-[10003]`, parent (see that Popover's own
+                        // doc comment above) — "Select dropdown nested
+                        // inside a popover nested inside another popover"
+                        // per CONTRIBUTING.md §4, reused here even though
+                        // this particular nested overlay is a `Popover`
+                        // (not a `Select`) since the table's tiers are
+                        // about nesting *depth*, not component identity.
+                        className="z-[10005] w-[var(--radix-popover-trigger-width)]"
                         // `bodyPadding` defaults to `true` (`popover.tsx`'s
                         // own `px-5` inset for plain body content) — a
                         // `bare` `Menu` already supplies its own full-bleed
@@ -610,6 +638,11 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
                         options={outcome.tagOptions.map((option) => ({ value: option.label, label: option.label }))}
                         values={outcome.selectedTags}
                         onValuesChange={outcome.onTagsChange}
+                        // Same `z-[10005]` tier as the Resolution popover
+                        // above — this dropdown is a `Select` nested inside
+                        // this now-`z-[10003]` "Log Outcome" popover, same
+                        // depth, same failure mode.
+                        dropdownClassName="z-[10005]"
                       />
                       {/* Applied tags render as removable pills BELOW the
                           picker itself, per explicit request — `Select`'s
@@ -644,6 +677,8 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
                       options={outcome.dispositionOptions}
                       value={outcome.dispositionCode}
                       onValueChange={outcome.onDispositionChange}
+                      // Same reasoning as the Tags `Select` above.
+                      dropdownClassName="z-[10005]"
                     />
                     <Textarea
                       label="Summary"
