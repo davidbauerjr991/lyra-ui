@@ -887,6 +887,92 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
       return () => document.removeEventListener("mousedown", handler);
     }, [filtersDropdownOpen]);
 
+    // ── Content-aware filter-chip "+N" overflow ──
+    // Bundling extra filter chips behind a "+N" trigger once they'd
+    // otherwise collide/overflow — regardless of the toolbar's own width
+    // tier — rather than either (a) rendering every chip unconditionally
+    // and letting them silently overflow the row past whatever room is
+    // actually left after search/actions/the custom `filters` node take
+    // theirs (the bug: 6 added filters spilling off the right edge of the
+    // Customers table toolbar, confirmed via screenshot, even though the
+    // toolbar itself measured `isWide`), or (b) collapsing ALL filters into
+    // one single dropdown the moment the toolbar drops below 991px even
+    // though most of them still comfortably fit. Same "measure the real
+    // available space, fit as many as genuinely fit" philosophy as
+    // `TabList`'s own `overflowBreakpoint="compact"` mode (tabs.tsx) — a
+    // hidden, unconstrained clone of every chip (plus one representative
+    // "+N" trigger) reports each one's true rendered width via
+    // `offsetWidth`, compared against `filterChipsWrapRef`'s own real
+    // `clientWidth` (its `flex-1 min-w-0` lets it actually claim whatever
+    // space search/`filters`/the Advanced Search button don't need, so that
+    // width reflects genuine leftover room, not a guess). Runs all the way
+    // from "fits fully" down to `isNarrow`'s own ≤768px threshold, where
+    // the filters row is dropped to a second line entirely instead (see
+    // the `isNarrow` combined-row blocks below, unchanged, still using
+    // `collapsedFilterChip`).
+    const filterChipsWrapRef = useRef<HTMLDivElement>(null);
+    const filterChipsMeasureRef = useRef<HTMLDivElement>(null);
+    const [visibleFilterCount, setVisibleFilterCount] = useState(filterDefs?.length ?? 0);
+    const [filterOverflowOpen, setFilterOverflowOpen] = useState(false);
+    const filterOverflowRef = useRef<HTMLDivElement>(null);
+
+    useLayoutEffect(() => {
+      if (!filterDefs || filterDefs.length === 0) {
+        setVisibleFilterCount(0);
+        return;
+      }
+      const wrapEl = filterChipsWrapRef.current;
+      const measureEl = filterChipsMeasureRef.current;
+      if (!wrapEl || !measureEl) return;
+
+      const GAP = 8; // matches gap-2 (0.5rem) between chips
+      const recompute = () => {
+        const available = wrapEl.clientWidth;
+        const chipEls = Array.from(measureEl.querySelectorAll<HTMLElement>("[data-measure-chip]"));
+        const overflowEl = measureEl.querySelector<HTMLElement>("[data-measure-overflow]");
+        const overflowWidth = overflowEl?.offsetWidth ?? 0;
+        const widths = chipEls.map((el) => el.offsetWidth);
+        const total = widths.reduce((sum, w, i) => sum + w + (i > 0 ? GAP : 0), 0);
+        if (total <= available) {
+          setVisibleFilterCount(widths.length);
+          return;
+        }
+        // Doesn't all fit — find the max leading count that still leaves
+        // room for a trailing "+N" trigger after it.
+        let used = 0;
+        let count = 0;
+        for (let i = 0; i < widths.length; i++) {
+          const next = used + widths[i] + (i > 0 ? GAP : 0);
+          if (next + GAP + overflowWidth <= available) {
+            used = next;
+            count++;
+          } else {
+            break;
+          }
+        }
+        setVisibleFilterCount(count);
+      };
+      recompute();
+      const ro = new ResizeObserver(recompute);
+      ro.observe(wrapEl);
+      return () => ro.disconnect();
+    }, [filterDefs, filterValues]);
+
+    useEffect(() => {
+      if (!filterOverflowOpen) return;
+      const handler = (e: MouseEvent) => {
+        // Same nested-Radix-portal exemption as `filtersDropdownOpen`'s own
+        // handler below — each overflowed `FilterChip`'s own dropdown
+        // portals to `document.body`, outside this panel's DOM subtree.
+        if ((e.target as Element)?.closest?.("[data-radix-popper-content-wrapper]")) return;
+        if (filterOverflowRef.current && !filterOverflowRef.current.contains(e.target as Node)) {
+          setFilterOverflowOpen(false);
+        }
+      };
+      document.addEventListener("mousedown", handler);
+      return () => document.removeEventListener("mousedown", handler);
+    }, [filterOverflowOpen]);
+
     const collapsedFilterChip = filterDefs && filterDefs.length > 0 ? (
       <div ref={filtersDropdownRef} className="relative">
         <button
@@ -925,6 +1011,9 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
       </div>
     ) : null;
 
+    // Kept as the `hasFilters` boolean's source below — no longer rendered
+    // directly (see `filterChipsRow`, which supersedes it for actual
+    // display with the content-aware "+N" overflow above).
     const filterChips = filterDefs ? (
       <>
         {filterDefs.map((f) => (
@@ -937,6 +1026,87 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
           />
         ))}
       </>
+    ) : null;
+
+    const visibleFilterDefs = filterDefs?.slice(0, visibleFilterCount) ?? [];
+    const overflowFilterDefs = filterDefs?.slice(visibleFilterCount) ?? [];
+
+    const filterOverflowChip = overflowFilterDefs.length > 0 ? (
+      <div ref={filterOverflowRef} className="relative shrink-0">
+        <button
+          onClick={() => setFilterOverflowOpen((v) => !v)}
+          className={cn(
+            "inline-flex items-center gap-1 h-8 px-2.5 rounded-lyra-md lyra-body-md-emphasis border transition-colors whitespace-nowrap",
+            overflowFilterDefs.some((f) => (filterValues?.[f.key]?.length ?? 0) > 0)
+              ? "bg-lyra-bg-active-subtle border-lyra-border-active text-lyra-fg-active-strong"
+              : "bg-lyra-bg-control border-lyra-border-default text-lyra-fg-default hover:bg-lyra-state-hover"
+          )}
+          aria-label={`${overflowFilterDefs.length} more filters`}
+          aria-expanded={filterOverflowOpen}
+        >
+          +{overflowFilterDefs.length}
+          <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </button>
+        {filterOverflowOpen && (
+          <div className="absolute left-0 top-full mt-1 z-50 min-w-[240px] rounded-lyra-md border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg p-3 flex flex-col gap-2">
+            {overflowFilterDefs.map((f) => (
+              <FilterChip
+                key={f.key}
+                label={f.label}
+                options={f.options}
+                selectedValues={filterValues?.[f.key] ?? []}
+                onSelectionChange={(vals) => onFilterChange?.(f.key, vals)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    ) : null;
+
+    // Real, visible row — as many chips as `visibleFilterCount` (computed
+    // above) says fit, plus the "+N" trigger for the rest. `flex-1 min-w-0`
+    // is load-bearing: it's what lets this element's own `clientWidth`
+    // (read by the `ResizeObserver` above) reflect genuine leftover space
+    // in its row rather than just its own content's width — same reasoning
+    // as `SearchInput`'s neighboring `flex-1 min-w-[240px] max-w-[320px]`
+    // already relies on to share a row correctly.
+    const filterChipsRow = filterDefs ? (
+      <div ref={filterChipsWrapRef} className="relative flex items-center gap-2 min-w-0 flex-1">
+        <div className="flex items-center gap-2 overflow-hidden">
+          {visibleFilterDefs.map((f) => (
+            <FilterChip
+              key={f.key}
+              label={f.label}
+              options={f.options}
+              selectedValues={filterValues?.[f.key] ?? []}
+              onSelectionChange={(vals) => onFilterChange?.(f.key, vals)}
+            />
+          ))}
+        </div>
+        {filterOverflowChip}
+        {/* Hidden measurement clone — see the "Content-aware filter-chip
+            '+N' overflow" doc comment above for why this exists and how
+            it's read. Absolutely positioned so it never affects this row's
+            own layout/width. */}
+        <div
+          ref={filterChipsMeasureRef}
+          aria-hidden="true"
+          inert
+          style={{ position: "absolute", top: 0, left: 0, visibility: "hidden", pointerEvents: "none", whiteSpace: "nowrap", display: "flex", gap: 8 }}
+        >
+          {filterDefs.map((f) => (
+            <div key={f.key} data-measure-chip>
+              <FilterChip label={f.label} options={f.options} selectedValues={filterValues?.[f.key] ?? []} />
+            </div>
+          ))}
+          <div data-measure-overflow>
+            <button className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lyra-md lyra-body-md-emphasis border whitespace-nowrap">
+              +99
+              <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.5} />
+            </button>
+          </div>
+        </div>
+      </div>
     ) : null;
 
     // Sits at the far right of the whole filters group (after filterDefs'
@@ -1200,27 +1370,14 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
                 />
               )}
               {hasFilters && !isNarrow && (
-                isWide ? (
-                  <div className="flex items-center gap-2">
-                    {filterChips}
-                    {filters}
-                    {advancedSearchNode}
-                    {clearFiltersButton}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">{collapsedFilterChip}{advancedSearchNode}</div>
-                )
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  {filterChipsRow}
+                  {filters}
+                  {advancedSearchNode}
+                  {clearFiltersButton}
+                </div>
               )}
             </div>
-          )}
-          {/* Custom `filters` node (distinct from the `filterDefs`-driven
-              chips above, which collapse into `collapsedFilterChip`) keeps
-              its own row while merely narrow (not yet `isNarrow`) — same
-              placement the no-title layout uses — rather than disappearing
-              when the chips collapse. Once `isNarrow`, it moves down again,
-              onto the shared row below instead. */}
-          {filters && !isWide && !isNarrow && (
-            <div className="flex items-center gap-2">{filters}</div>
           )}
           {/* `isNarrow`: filters (whichever form — collapsed chip, custom
               node, Query Builder) and action buttons share one row here
@@ -1275,11 +1432,12 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
                 buttons (both were previously identical branches here
                 regardless of `hasSearch`, so that no-op split is gone). */}
             {hasFilters && !isNarrow && (
-              isWide ? (
-                <div className="flex items-center gap-2">{filterChips}{filters}{advancedSearchNode}{clearFiltersButton}</div>
-              ) : (
-                <div className="flex items-center gap-2">{collapsedFilterChip}{advancedSearchNode}</div>
-              )
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                {filterChipsRow}
+                {filters}
+                {advancedSearchNode}
+                {clearFiltersButton}
+              </div>
             )}
           </div>
           {/* Action buttons move to their own row below search/filters
@@ -1287,12 +1445,6 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
               this row via `justify-between`. */}
           {!isNarrow && actionButtons}
         </div>
-        {/* Custom `filters` node's own row while merely narrow (not yet
-            `isNarrow`) — same as the title layout above. Once `isNarrow`,
-            it moves down again, onto the shared row below instead. */}
-        {hasSearch && filters && !isWide && !isNarrow && (
-          <div className="flex items-center gap-2">{filters}</div>
-        )}
         {/* `isNarrow`: filters (whichever form — collapsed chip, custom
             node, Query Builder) and action buttons share one row here
             instead of the former just wrapping down alone while filters
