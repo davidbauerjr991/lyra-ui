@@ -822,12 +822,17 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
     // menu) no longer share a row with search at all — nor do the filters
     // (whichever form they're already in — collapsed dropdown chip, the
     // custom `filters` node, Query Builder). Per "when the right buttons
-    // go to the second line, the filters should also go to the second line
-    // and right-align" — search (if present) is left alone on its own row;
-    // filters and action buttons both wrap down together onto one shared
-    // row beneath it, right-aligned, in both the title and no-title
-    // layouts.
-    const isNarrow = containerWidth <= 360;
+    // go to the second line, the filters should also go to the second
+    // line" — search (if present) is left alone on its own row; filters
+    // and action buttons both wrap down together onto one shared row
+    // beneath it — filters floated left, action buttons right (`justify-
+    // between`, not both crowded onto one right-aligned side) — in both
+    // the title and no-title layouts. Raised from 360 to 768 so this
+    // shared row kicks in well before `isWide`'s own 991 threshold,
+    // rather than leaving a narrow dead zone where the actions/filters
+    // row is still crowded (`isWide` false) but not yet wrapped
+    // (`isNarrow` also still false).
+    const isNarrow = containerWidth <= 768;
 
     useEffect(() => {
       if (!moreOpen) return;
@@ -1202,18 +1207,20 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
             <div className="flex items-center gap-2">{filters}</div>
           )}
           {/* `isNarrow`: filters (whichever form — collapsed chip, custom
-              node, Query Builder) and action buttons share one row here,
-              right-aligned, instead of the former just wrapping down alone
-              while filters stayed stranded on row 2. */}
+              node, Query Builder) and action buttons share one row here
+              instead of the former just wrapping down alone while filters
+              stayed stranded on row 2 — filters float left, action buttons
+              float right (`justify-between`), rather than crowding both
+              onto one right-aligned side. */}
           {isNarrow && (hasFilters || actionButtons) && (
-            <div className="flex items-center justify-end gap-2">
-              {hasFilters && (
+            <div className="flex items-center justify-between gap-2">
+              {hasFilters ? (
                 <div className="flex items-center gap-2">
                   {collapsedFilterChip}
                   {filters}
                   {advancedSearchNode}
                 </div>
-              )}
+              ) : <div />}
               {actionButtons}
             </div>
           )}
@@ -1271,18 +1278,20 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
           <div className="flex items-center gap-2">{filters}</div>
         )}
         {/* `isNarrow`: filters (whichever form — collapsed chip, custom
-            node, Query Builder) and action buttons share one row here,
-            right-aligned, instead of the former just wrapping down alone
-            while filters stayed stranded on row 1. */}
+            node, Query Builder) and action buttons share one row here
+            instead of the former just wrapping down alone while filters
+            stayed stranded on row 1 — filters float left, action buttons
+            float right (`justify-between`), rather than crowding both
+            onto one right-aligned side. */}
         {isNarrow && (hasFilters || actionButtons) && (
-          <div className="flex items-center justify-end gap-2">
-            {hasFilters && (
+          <div className="flex items-center justify-between gap-2">
+            {hasFilters ? (
               <div className="flex items-center gap-2">
                 {collapsedFilterChip}
                 {filters}
                 {advancedSearchNode}
               </div>
-            )}
+            ) : <div />}
             {actionButtons}
           </div>
         )}
