@@ -899,18 +899,24 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
     // one single dropdown the moment the toolbar drops below 991px even
     // though most of them still comfortably fit. Same "measure the real
     // available space, fit as many as genuinely fit" philosophy as
-    // `TabList`'s own `overflowBreakpoint="compact"` mode (tabs.tsx) — a
-    // hidden, unconstrained clone of every chip (plus one representative
-    // "+N" trigger) reports each one's true rendered width via
-    // `offsetWidth`, compared against `filterChipsWrapRef`'s own real
-    // `clientWidth` (its `flex-1 min-w-0` lets it actually claim whatever
-    // space search/`filters`/the Advanced Search button don't need, so that
-    // width reflects genuine leftover room, not a guess). Runs all the way
-    // from "fits fully" down to `isNarrow`'s own ≤768px threshold, where
-    // the filters row is dropped to a second line entirely instead (see
-    // the `isNarrow` combined-row blocks below, unchanged, still using
-    // `collapsedFilterChip`).
-    const filterChipsWrapRef = useRef<HTMLDivElement>(null);
+    // `TabList`'s own `overflowBreakpoint="compact"` mode (tabs.tsx).
+    //
+    // `filterGroupWrapRef` is the outer wrapper holding the chips AND the
+    // trailing group (custom `filters` node / Advanced Search / Clear) —
+    // it's the one that's `flex-1 min-w-0` in the row below, so its own
+    // `clientWidth` is the row's genuine leftover space after search/
+    // actions. Available room for CHIPS specifically is that width minus
+    // `filterTrailingRef`'s own real rendered width (that group stays its
+    // natural, un-stretched size). Deliberately NOT making the chips row
+    // itself `flex-1` (an earlier version did, and it technically measured
+    // correctly, but a `flex-1` chips row still greedily claims all
+    // leftover space even with zero chips to show, shoving the trailing
+    // `filters` group all the way to the far right of the row instead of
+    // sitting immediately beside the chips/search, per feedback on that
+    // version) — subtracting the trailing group's width up front instead
+    // keeps chips shrink-to-content and `filters` floating left, adjacent.
+    const filterGroupWrapRef = useRef<HTMLDivElement>(null);
+    const filterTrailingRef = useRef<HTMLDivElement>(null);
     const filterChipsMeasureRef = useRef<HTMLDivElement>(null);
     const [visibleFilterCount, setVisibleFilterCount] = useState(filterDefs?.length ?? 0);
     const [filterOverflowOpen, setFilterOverflowOpen] = useState(false);
@@ -921,13 +927,14 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
         setVisibleFilterCount(0);
         return;
       }
-      const wrapEl = filterChipsWrapRef.current;
+      const groupEl = filterGroupWrapRef.current;
       const measureEl = filterChipsMeasureRef.current;
-      if (!wrapEl || !measureEl) return;
+      if (!groupEl || !measureEl) return;
 
-      const GAP = 8; // matches gap-2 (0.5rem) between chips
+      const GAP = 8; // matches gap-2 (0.5rem)
       const recompute = () => {
-        const available = wrapEl.clientWidth;
+        const trailingWidth = filterTrailingRef.current?.offsetWidth ?? 0;
+        const available = groupEl.clientWidth - trailingWidth - (trailingWidth > 0 ? GAP : 0);
         const chipEls = Array.from(measureEl.querySelectorAll<HTMLElement>("[data-measure-chip]"));
         const overflowEl = measureEl.querySelector<HTMLElement>("[data-measure-overflow]");
         const overflowWidth = overflowEl?.offsetWidth ?? 0;
@@ -954,7 +961,7 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
       };
       recompute();
       const ro = new ResizeObserver(recompute);
-      ro.observe(wrapEl);
+      ro.observe(groupEl);
       return () => ro.disconnect();
     }, [filterDefs, filterValues]);
 
@@ -1064,14 +1071,13 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
     ) : null;
 
     // Real, visible row — as many chips as `visibleFilterCount` (computed
-    // above) says fit, plus the "+N" trigger for the rest. `flex-1 min-w-0`
-    // is load-bearing: it's what lets this element's own `clientWidth`
-    // (read by the `ResizeObserver` above) reflect genuine leftover space
-    // in its row rather than just its own content's width — same reasoning
-    // as `SearchInput`'s neighboring `flex-1 min-w-[240px] max-w-[320px]`
-    // already relies on to share a row correctly.
+    // above) says fit, plus the "+N" trigger for the rest. Deliberately
+    // shrink-to-content (no `flex-1` here — see `filterGroupWrapRef`'s own
+    // doc comment above for why that was wrong: it kept the row measurable
+    // but also shoved the trailing `filters` group to the far right even
+    // with zero/few chips shown, instead of it floating left, adjacent).
     const filterChipsRow = filterDefs ? (
-      <div ref={filterChipsWrapRef} className="relative flex items-center gap-2 min-w-0 flex-1">
+      <div className="relative flex items-center gap-2">
         <div className="flex items-center gap-2 overflow-hidden">
           {visibleFilterDefs.map((f) => (
             <FilterChip
@@ -1370,11 +1376,13 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
                 />
               )}
               {hasFilters && !isNarrow && (
-                <div className="flex items-center gap-2 flex-1 min-w-0">
+                <div ref={filterGroupWrapRef} className="flex items-center gap-2 flex-1 min-w-0">
                   {filterChipsRow}
-                  {filters}
-                  {advancedSearchNode}
-                  {clearFiltersButton}
+                  <div ref={filterTrailingRef} className="flex items-center gap-2 shrink-0">
+                    {filters}
+                    {advancedSearchNode}
+                    {clearFiltersButton}
+                  </div>
                 </div>
               )}
             </div>
@@ -1432,11 +1440,13 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
                 buttons (both were previously identical branches here
                 regardless of `hasSearch`, so that no-op split is gone). */}
             {hasFilters && !isNarrow && (
-              <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div ref={filterGroupWrapRef} className="flex items-center gap-2 flex-1 min-w-0">
                 {filterChipsRow}
-                {filters}
-                {advancedSearchNode}
-                {clearFiltersButton}
+                <div ref={filterTrailingRef} className="flex items-center gap-2 shrink-0">
+                  {filters}
+                  {advancedSearchNode}
+                  {clearFiltersButton}
+                </div>
               </div>
             )}
           </div>
