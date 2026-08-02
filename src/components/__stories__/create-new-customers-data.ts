@@ -9,7 +9,13 @@
  * firstName/lastName/group/firstPhone/emailAddress/address1/city/state/
  * postalCode fields below exist to give that list view real columns to
  * render, on top of the `channels` field this file already had for the
- * Outbound picker's per-row hover flyout.
+ * Outbound picker's per-row hover flyout. originalCustomerId/dateOfBirth/
+ * agent/agentTeam/paymentBalance were added on top of that so the same
+ * list view's "Add Filter" menu has a real, filterable field behind every
+ * option it offers (Customer ID, Original customer ID, Phone, Email
+ * address, Date of birth, Group, Agent, Agent team, Address 1, Payment
+ * balance, First name, Last name) instead of a menu entry with nothing to
+ * actually filter on.
  */
 import type { ChannelType } from "../channel-row";
 
@@ -35,6 +41,22 @@ export interface CreateNewCustomerRecord {
   city: string;
   state: string;
   postalCode: string;
+  /** Legacy/pre-migration id for this same customer — distinct from the
+   *  live `customerId` above, just another filterable identifier field. */
+  originalCustomerId: string;
+  /** "MM/DD/YYYY" — rotates through a fixed set of representative dates
+   *  (not one unique value per record) so a checkbox-style filter on this
+   *  field has a manageable option list, same reasoning as `group`/`state`
+   *  rotating through a small fixed set instead of being unique per row. */
+  dateOfBirth: string;
+  /** Assigned agent's display name. */
+  agent: string;
+  /** Assigned agent's team name. */
+  agentTeam: string;
+  /** Formatted balance string (e.g. "$149.99") — rotates through a small
+   *  fixed set of representative amounts for the same "manageable filter
+   *  option list" reason as `dateOfBirth` above. */
+  paymentBalance: string;
 }
 
 const FIRST_NAMES = [
@@ -76,6 +98,18 @@ const STREET_NAMES = [
   "Larimer St", "Burnside St", "Fayetteville St", "Capitol Blvd", "State St",
 ];
 
+// Fixed, small rotating sets for the filter-only fields below — deliberately
+// NOT one unique value per record (60 unique birthdates/balances would make
+// a checkbox-style filter's option list unusably long), same reasoning
+// `GROUPS`/`CITY_STATE_ZIP` already use.
+const DATES_OF_BIRTH = [
+  "03/14/1985", "07/22/1990", "11/02/1978", "01/30/1995", "05/18/1988",
+  "09/09/1972", "12/25/1993", "02/17/1982", "06/11/1998", "10/05/1965",
+];
+const AGENTS = ["Jordan Blake", "Casey Nguyen", "Morgan Lee", "Taylor Reyes", "Riley Chen", "Avery Kim"];
+const AGENT_TEAMS = ["Tier 1 Support", "Tier 2 Escalations", "Billing Support", "VIP Concierge"];
+const PAYMENT_BALANCES = ["$0.00", "$24.99", "$49.50", "$99.00", "$149.99", "$249.50", "$499.00", "$999.99"];
+
 function buildCustomers(count: number): CreateNewCustomerRecord[] {
   const customers: CreateNewCustomerRecord[] = [];
   for (let i = 0; i < count; i++) {
@@ -104,6 +138,11 @@ function buildCustomers(count: number): CreateNewCustomerRecord[] {
       city: loc.city,
       state: loc.state,
       postalCode: loc.postalCode,
+      originalCustomerId: `ORIG-${100000 + i * 91}`,
+      dateOfBirth: DATES_OF_BIRTH[i % DATES_OF_BIRTH.length],
+      agent: AGENTS[i % AGENTS.length],
+      agentTeam: AGENT_TEAMS[i % AGENT_TEAMS.length],
+      paymentBalance: PAYMENT_BALANCES[i % PAYMENT_BALANCES.length],
     });
   }
   return customers;
