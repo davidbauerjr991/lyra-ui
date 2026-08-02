@@ -819,11 +819,14 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
     const isWide = containerWidth >= 991;
     // Narrowest stage: below this, action buttons (whichever form `isWide`
     // above has already put them in — inline icons or the collapsed "More"
-    // menu) no longer share a row with search/filters at all. Per "at 360px
-    // breakpoint, wrap the right action button below the search and
-    // filters and align them right" — they instead wrap onto their own row
-    // beneath search/filters, right-aligned, in both the title and
-    // no-title layouts.
+    // menu) no longer share a row with search at all — nor do the filters
+    // (whichever form they're already in — collapsed dropdown chip, the
+    // custom `filters` node, Query Builder). Per "when the right buttons
+    // go to the second line, the filters should also go to the second line
+    // and right-align" — search (if present) is left alone on its own row;
+    // filters and action buttons both wrap down together onto one shared
+    // row beneath it, right-aligned, in both the title and no-title
+    // layouts.
     const isNarrow = containerWidth <= 360;
 
     useEffect(() => {
@@ -1160,8 +1163,10 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
               not" — `isWide` is measured off the toolbar's own root
               (`stableRef`/`containerWidth` above), not off row 1, so it
               applies here exactly the same way it already did in the
-              no-title layout. */}
-          {(hasSearch || hasFilters) && (
+              no-title layout. Once `isNarrow`, the filters portion moves
+              out of this row entirely — down to the shared row below,
+              alongside action buttons — so this row is search-only then. */}
+          {(hasSearch || (hasFilters && !isNarrow)) && (
             <div className="flex items-center gap-2">
               {hasSearch && (
                 <SearchInput
@@ -1173,7 +1178,7 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
                   size="sm"
                 />
               )}
-              {hasFilters && (
+              {hasFilters && !isNarrow && (
                 isWide ? (
                   <div className="flex items-center gap-2">
                     {filterChips}
@@ -1189,15 +1194,28 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
           )}
           {/* Custom `filters` node (distinct from the `filterDefs`-driven
               chips above, which collapse into `collapsedFilterChip`) keeps
-              its own row once narrow — same placement the no-title layout
-              uses — rather than disappearing when the chips collapse. */}
-          {filters && !isWide && (
+              its own row while merely narrow (not yet `isNarrow`) — same
+              placement the no-title layout uses — rather than disappearing
+              when the chips collapse. Once `isNarrow`, it moves down again,
+              onto the shared row below instead. */}
+          {filters && !isWide && !isNarrow && (
             <div className="flex items-center gap-2">{filters}</div>
           )}
-          {/* Action buttons wrap here, right-aligned, once ≤360px — see
-              `isNarrow` above. */}
-          {isNarrow && actionButtons && (
-            <div className="flex items-center justify-end">{actionButtons}</div>
+          {/* `isNarrow`: filters (whichever form — collapsed chip, custom
+              node, Query Builder) and action buttons share one row here,
+              right-aligned, instead of the former just wrapping down alone
+              while filters stayed stranded on row 2. */}
+          {isNarrow && (hasFilters || actionButtons) && (
+            <div className="flex items-center justify-end gap-2">
+              {hasFilters && (
+                <div className="flex items-center gap-2">
+                  {collapsedFilterChip}
+                  {filters}
+                  {advancedSearchNode}
+                </div>
+              )}
+              {actionButtons}
+            </div>
           )}
         </div>
       );
@@ -1228,34 +1246,45 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
                 size="sm"
               />
             )}
-            {/* Filters: inline when wide, collapsed chip when narrow */}
-            {hasFilters && (!hasSearch ? (
-              /* No search: filters + Query Builder inline */
+            {/* Filters: inline when wide, collapsed chip once narrower than
+                that — but once `isNarrow`, filters move off this row
+                entirely, down to the shared row below with action
+                buttons (both were previously identical branches here
+                regardless of `hasSearch`, so that no-op split is gone). */}
+            {hasFilters && !isNarrow && (
               isWide ? (
                 <div className="flex items-center gap-2">{filterChips}{filters}{advancedSearchNode}{clearFiltersButton}</div>
               ) : (
                 <div className="flex items-center gap-2">{collapsedFilterChip}{advancedSearchNode}</div>
               )
-            ) : (
-              /* Search present: wide shows everything inline;
-                 narrow collapses filter chips + keeps QBuilder on the same row */
-              isWide
-                ? <div className="flex items-center gap-2">{filterChips}{filters}{advancedSearchNode}{clearFiltersButton}</div>
-                : <div className="flex items-center gap-2">{collapsedFilterChip}{advancedSearchNode}</div>
-            ))}
+            )}
           </div>
           {/* Action buttons move to their own row below search/filters
               once ≤360px (`isNarrow` above) instead of squeezing onto
               this row via `justify-between`. */}
           {!isNarrow && actionButtons}
         </div>
-        {/* Filter chips on second row in narrow mode when search is present */}
-        {hasSearch && filters && !isWide && (
+        {/* Custom `filters` node's own row while merely narrow (not yet
+            `isNarrow`) — same as the title layout above. Once `isNarrow`,
+            it moves down again, onto the shared row below instead. */}
+        {hasSearch && filters && !isWide && !isNarrow && (
           <div className="flex items-center gap-2">{filters}</div>
         )}
-        {/* Action buttons wrap here, right-aligned, once ≤360px. */}
-        {isNarrow && actionButtons && (
-          <div className="flex items-center justify-end">{actionButtons}</div>
+        {/* `isNarrow`: filters (whichever form — collapsed chip, custom
+            node, Query Builder) and action buttons share one row here,
+            right-aligned, instead of the former just wrapping down alone
+            while filters stayed stranded on row 1. */}
+        {isNarrow && (hasFilters || actionButtons) && (
+          <div className="flex items-center justify-end gap-2">
+            {hasFilters && (
+              <div className="flex items-center gap-2">
+                {collapsedFilterChip}
+                {filters}
+                {advancedSearchNode}
+              </div>
+            )}
+            {actionButtons}
+          </div>
         )}
       </div>
     );
