@@ -76,6 +76,36 @@ interface TabListProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Formats the dropdown trigger's label from the number of tabs it
    *  holds (every tab except the active one). Defaults to `"{n} More"`. */
   overflowMoreLabel?: (count: number) => string;
+  /**
+   * Enables click-and-drag reordering of this `TabList`'s tabs — the same
+   * whole-element-is-the-handle, native HTML5 drag-and-drop convention
+   * `useColumnReorder`'s `SortableTableHead` already uses for table
+   * columns (mouse/pointer-driven only, no keyboard alternative, matching
+   * that existing precedent rather than inventing a second convention).
+   *
+   * `TabList` doesn't own tab order itself — `children`'s own render order
+   * IS the current order, same as always — so this only reports the
+   * *result* of a drag via `onReorder`; the consumer applies it to
+   * whatever state actually drives `children`'s order (e.g. re-sorting an
+   * array before mapping it to `<Tab>`s) and the reordered `children` flow
+   * back down on the next render.
+   *
+   * Each direct `Tab` child must have a stable, unique `key` — used as its
+   * drag identity and as the string each entry in `onReorder`'s array is.
+   * A `Tab` with no `key` is rendered normally but isn't made draggable
+   * (there'd be no stable identity to report), so give every tab one when
+   * turning this on.
+   *
+   * Scoped to the always-rendered tab row itself — if this `TabList` also
+   * collapses via `overflowMenu` (its own `compactCollapsed`/≤400px
+   * states), dragging only works while that row is actually visible, not
+   * from the collapsed "N More" dropdown or the collapsed row's single
+   * visible active-tab slot.
+   */
+  reorderable?: boolean;
+  /** Called with the new key order once a drag-reorder completes. Required
+   *  for `reorderable` to have any visible effect — see its doc comment. */
+  onReorder?: (order: string[]) => void;
 }
 
 const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
@@ -86,6 +116,8 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
       overflowMenu,
       overflowBreakpoint = "wide",
       overflowMoreLabel = (count) => `${count} More`,
+      reorderable,
+      onReorder,
       onKeyDown,
       children,
       ...props
@@ -208,6 +240,94 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
       },
       [onKeyDown]
     );
+
+    // ── `reorderable` drag-and-drop state ──
+    // Purely local UI feedback (which key is currently being dragged over,
+    // for the highlight below) plus the transient "what's mid-drag" ref —
+    // never the tab order itself, which stays fully owned by the consumer
+    // (see `reorderable`'s own doc comment). Mirrors `useColumnReorder`'s
+    // internal drag bookkeeping in table.tsx, minus the `columnOrder` state
+    // that hook owns and this one deliberately doesn't.
+    const [reorderDragOverKey, setReorderDragOverKey] = useState<string | null>(null);
+    const reorderDragKeyRef = useRef<string | null>(null);
+
+    const handleReorderDragStart = useCallback((e: React.DragEvent, key: string) => {
+      reorderDragKeyRef.current = key;
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", key);
+      if (e.currentTarget instanceof HTMLElement) e.currentTarget.style.opacity = "0.5";
+    }, []);
+
+    const handleReorderDragOver = useCallback((e: React.DragEvent, key: string) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      if (key !== reorderDragKeyRef.current) setReorderDragOverKey(key);
+    }, []);
+
+    const handleReorderDrop = useCallback(
+      (e: React.DragEvent, targetKey: string, currentOrder: string[]) => {
+        e.preventDefault();
+        setReorderDragOverKey(null);
+        const sourceKey = reorderDragKeyRef.current;
+        reorderDragKeyRef.current = null;
+        if (!sourceKey || sourceKey === targetKey) return;
+        const next = [...currentOrder];
+        const fromIdx = next.indexOf(sourceKey);
+        const toIdx = next.indexOf(targetKey);
+        if (fromIdx === -1 || toIdx === -1) return;
+        next.splice(fromIdx, 1);
+        next.splice(toIdx, 0, sourceKey);
+        onReorder?.(next);
+      },
+      [onReorder]
+    );
+
+    const handleReorderDragEnd = useCallback((e: React.DragEvent) => {
+      if (e.currentTarget instanceof HTMLElement) e.currentTarget.style.opacity = "";
+      setReorderDragOverKey(null);
+      reorderDragKeyRef.current = null;
+    }, []);
+
+    const handleReorderDragLeave = useCallback(() => setReorderDragOverKey(null), []);
+
+    // Attaches the drag handlers above to each direct `Tab` child that has
+    // a `key` (see `reorderable`'s doc comment — a keyless tab is left
+    // exactly as-is, just not draggable). `Tab`'s own `TabProps` already
+    // extends `ButtonHTMLAttributes`, so `draggable`/`onDragStart`/etc. are
+    // valid props that land on its real underlying `<button>` via `Tab`'s
+    // own `{...props}` spread — no changes needed to `Tab` itself. Reads
+    // keys off `React.Children.toArray(children)` the same way the
+    // overflow-menu logic below already does (`child.key` there, same
+    // pattern) rather than off any cloned/re-keyed output, since that's the
+    // proven way to recover the original author-supplied key in this file.
+    const renderedChildren = reorderable
+      ? (() => {
+          const items = React.Children.toArray(children) as React.ReactElement<TabProps>[];
+          const orderedKeys = items.map((child) =>
+            React.isValidElement(child) && child.key != null ? String(child.key) : null
+          );
+          return items.map((child, i) => {
+            const key = orderedKeys[i];
+            if (!React.isValidElement<TabProps>(child) || key == null) return child;
+            return React.cloneElement(child, {
+              draggable: true,
+              onDragStart: (e: React.DragEvent) => handleReorderDragStart(e, key),
+              onDragOver: (e: React.DragEvent) => handleReorderDragOver(e, key),
+              onDrop: (e: React.DragEvent) => {
+                const currentOrder = orderedKeys.filter((k): k is string => k != null);
+                handleReorderDrop(e, key, currentOrder);
+              },
+              onDragEnd: handleReorderDragEnd,
+              onDragLeave: handleReorderDragLeave,
+              className: cn(
+                "cursor-grab active:cursor-grabbing",
+                reorderDragOverKey === key && "bg-lyra-bg-active-moderate",
+                child.props.className
+              ),
+            });
+          });
+        })()
+      : children;
 
     // Close the overflow dropdown on outside click / Escape — same pattern
     // as `KebabMenuButton`'s own portal dropdown.
@@ -403,7 +523,7 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
         )}
         {...props}
       >
-        {children}
+        {renderedChildren}
       </div>
     );
 
