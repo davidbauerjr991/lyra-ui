@@ -47,6 +47,17 @@ interface DesktopRow {
   description: string;
   createdBy: string;
   customerCard: string;
+  // Not rendered as table columns — filter-only fields, same distinction
+  // the Customers table in agent-next-gen-v2 draws with fields like "Date
+  // of birth" (added via its own "+ Filter" menu, never a visible column).
+  // Exist purely to give the "Multiple Filters" story below enough
+  // real filters (7 total, alongside the 3 above) to reliably demonstrate
+  // `TableToolbar`'s content-aware "+N" overflow — the same "6 filters
+  // added" shape that originally exposed the bug this fixes.
+  environment: string;
+  team: string;
+  channel: string;
+  region: string;
 }
 
 const sampleData: DesktopRow[] = Array.from({ length: 50 }, (_, i) => ({
@@ -56,6 +67,10 @@ const sampleData: DesktopRow[] = Array.from({ length: 50 }, (_, i) => ({
   description: ["Back office", "Custom", "Knowledge Worker", "BPO", "Collections"][i % 5],
   createdBy: ["Jim Smith", "Alice Johnson", "Bob Lee", "Diana Park"][i % 4],
   customerCard: ["Default", "Premium", "Basic", "Enterprise"][i % 4],
+  environment: ["Production", "Staging", "Development"][i % 3],
+  team: ["Sales", "Support", "Success", "Billing"][i % 4],
+  channel: ["Voice", "Chat", "Email", "SMS"][i % 4],
+  region: ["Americas", "EMEA", "APAC"][i % 3],
 }));
 
 /* ── Column config ── */
@@ -104,11 +119,18 @@ interface TableFeatures {
   showColumns: boolean;
   showFilters: boolean;
   showTitle: boolean;
+  /** Adds 4 extra filter-only fields (environment/team/channel/region)
+   *  alongside the base 3, all pre-added to the toolbar at once — enough
+   *  real filters (7 total) to demonstrate `TableToolbar`'s content-aware
+   *  "+N" overflow (see the "Multiple Filters" story below) without
+   *  needing an "Add Filter" menu in this template to click through
+   *  first. */
+  manyFilters: boolean;
 }
 
 /* ── Template Component ── */
 
-function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, showTabs, showToolbar, showAskAI, showBadge, headerPanelToggle, toolbarPanelToggle, showQuickSearch, showRefresh, showEdit, showCopy, showDelete, showColumns, showFilters, showTitle }: TableFeatures) {
+function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, showTabs, showToolbar, showAskAI, showBadge, headerPanelToggle, toolbarPanelToggle, showQuickSearch, showRefresh, showEdit, showCopy, showDelete, showColumns, showFilters, showTitle, manyFilters }: TableFeatures) {
   /* Interior panels (controlled by Toolbar toggle) */
   const [toolbarLeftOpen, setToolbarLeftOpen] = useState(false);
   const [toolbarRightOpen, setToolbarRightOpen] = useState(false);
@@ -185,14 +207,21 @@ function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, sho
   const [searchQuery, setSearchQuery] = useState("");
   const [visibleCols, setVisibleCols] = useState<Set<string>>(new Set(defaultVisibleKeys));
 
-  /* Filters */
+  /* Filters — all 7 possible keys kept in state regardless of
+     `manyFilters` (the extra 4 just stay unused/empty when it's off,
+     since `filterDefs` below won't include them, so `TableToolbar` never
+     renders a chip for them). */
   const [filterValues, setFilterValues] = useState<Record<string, string[]>>({
     description: [],
     createdBy: [],
     published: [],
+    environment: [],
+    team: [],
+    channel: [],
+    region: [],
   });
 
-  const filterDefs = [
+  const baseFilterDefs = [
     {
       key: "description",
       label: "Description",
@@ -224,12 +253,48 @@ function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, sho
     },
   ];
 
+  // Only added when `manyFilters` is on (see the "Multiple Filters" story
+  // below) — filter-only fields (not table columns), same distinction the
+  // Customers table draws for fields like "Date of birth".
+  const extraFilterDefs = [
+    {
+      key: "environment",
+      label: "Environment",
+      options: ["Production", "Staging", "Development"].map((v) => ({ value: v, label: v })),
+    },
+    {
+      key: "team",
+      label: "Team",
+      options: ["Sales", "Support", "Success", "Billing"].map((v) => ({ value: v, label: v })),
+    },
+    {
+      key: "channel",
+      label: "Channel",
+      options: ["Voice", "Chat", "Email", "SMS"].map((v) => ({ value: v, label: v })),
+    },
+    {
+      key: "region",
+      label: "Region",
+      options: ["Americas", "EMEA", "APAC"].map((v) => ({ value: v, label: v })),
+    },
+  ];
+
+  const filterDefs = manyFilters ? [...baseFilterDefs, ...extraFilterDefs] : baseFilterDefs;
+
   const handleFilterChange = (key: string, values: string[]) => {
     setFilterValues((prev) => ({ ...prev, [key]: values }));
   };
 
   const clearAllFilters = () => {
-    setFilterValues({ description: [], createdBy: [], published: [] });
+    setFilterValues({
+      description: [],
+      createdBy: [],
+      published: [],
+      environment: [],
+      team: [],
+      channel: [],
+      region: [],
+    });
   };
 
   /* Pre-filter data (needed before grouping) */
@@ -245,6 +310,10 @@ function DataManagementTemplate({ sortable, reorderable, groupable, autoFit, sho
     if (filterValues.description.length > 0 && !filterValues.description.includes(row.description)) return false;
     if (filterValues.createdBy.length > 0 && !filterValues.createdBy.includes(row.createdBy)) return false;
     if (filterValues.published.length > 0 && !filterValues.published.includes(String(row.published))) return false;
+    if (filterValues.environment.length > 0 && !filterValues.environment.includes(row.environment)) return false;
+    if (filterValues.team.length > 0 && !filterValues.team.includes(row.team)) return false;
+    if (filterValues.channel.length > 0 && !filterValues.channel.includes(row.channel)) return false;
+    if (filterValues.region.length > 0 && !filterValues.region.includes(row.region)) return false;
     return true;
   });
 
@@ -683,6 +752,7 @@ const meta: Meta = {
     showColumns: { control: "boolean", description: "Show column toggle" },
     showFilters: { control: "boolean", description: "Show filter chips" },
     showTitle: { control: "boolean", description: "Show title above search row" },
+    manyFilters: { control: "boolean", description: "Pre-add 7 filters (3 base + 4 extra) to demonstrate the toolbar's content-aware '+N' overflow" },
   },
   args: {
     sortable: true,
@@ -702,6 +772,7 @@ const meta: Meta = {
     showColumns: true,
     showFilters: true,
     showTitle: false,
+    manyFilters: false,
   },
 };
 
@@ -730,6 +801,7 @@ export const Default: Story = {
         showColumns={args.showColumns as boolean}
         showFilters={args.showFilters as boolean}
         showTitle={args.showTitle as boolean}
+        manyFilters={args.manyFilters as boolean}
         autoFit={false}
       />
     </div>
@@ -763,7 +835,51 @@ export const AutoFit: Story = {
         showColumns={args.showColumns as boolean}
         showFilters={args.showFilters as boolean}
         showTitle={args.showTitle as boolean}
+        manyFilters={args.manyFilters as boolean}
         autoFit={true}
+      />
+    </div>
+  ),
+};
+
+/* ── Multiple Filters ──
+   Demonstrates `TableToolbar`'s content-aware filter-chip "+N" overflow
+   (table.tsx) — 7 filters pre-added at once (3 base + 4 extra, see
+   `manyFilters`'s own doc comment above), the same "more filters than
+   comfortably fit" shape that originally exposed the bug this feature
+   fixes (6 added filters overflowing the Customers table's toolbar even
+   in a "wide" container). Resize this story's own preview pane (or the
+   browser window, since this template renders `layout: "fullscreen"`) to
+   see chips bundle into "+N" as space tightens, then the whole filters
+   row drop to a second line entirely below 768px — matching `TableToolbar`
+   own `isNarrow` threshold. */
+export const MultipleFilters: Story = {
+  name: "Data Management (Multiple Filters)",
+  args: {
+    manyFilters: true,
+  },
+  render: (args) => (
+    <div className="h-screen">
+      <DataManagementTemplate
+        sortable={args.sortable as boolean}
+        reorderable={args.reorderable as boolean}
+        groupable={args.groupable as boolean}
+        showTabs={args.showTabs as boolean}
+        showToolbar={args.showToolbar as boolean}
+        showAskAI={args.showAskAI as boolean}
+        showBadge={args.showBadge as boolean}
+        headerPanelToggle={args.headerPanelToggle as "none" | "left" | "right" | "both"}
+        toolbarPanelToggle={args.toolbarPanelToggle as "none" | "left" | "right" | "both"}
+        showQuickSearch={args.showQuickSearch as boolean}
+        showRefresh={args.showRefresh as boolean}
+        showEdit={args.showEdit as boolean}
+        showCopy={args.showCopy as boolean}
+        showDelete={args.showDelete as boolean}
+        showColumns={args.showColumns as boolean}
+        showFilters={args.showFilters as boolean}
+        showTitle={args.showTitle as boolean}
+        manyFilters={args.manyFilters as boolean}
+        autoFit={false}
       />
     </div>
   ),
