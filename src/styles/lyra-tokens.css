@@ -792,7 +792,7 @@
    work below the old threshold instead of the row always collapsing
    first.)
 
-   `.lyra-tab-overflow-wrap` (the outer wrapper `TabList` renders only when
+   `.lyra-tab-overflow-wrap` (the outer wrapper `TabList` renders whenever
    `overflowMenu` is set) owns the container query boundary; the real
    `role="tablist"` row gets `.lyra-tab-overflow-full` (hidden below
    400px — it stays in the DOM so its buttons can still be `.click()`ed
@@ -801,7 +801,21 @@
    `.lyra-tab-overflow-collapsed` (the reverse — hidden above 400px, shown
    as a flex row below it).
 
-   Both rules are scoped with the `.lyra-tab-overflow-wrap` ancestor
+   `.lyra-tab-overflow-stretch` is `.lyra-tab-overflow-full`'s sibling for a
+   `TabList` with 2 tabs or fewer (`tabs.tsx`'s `allowOverflowCollapse`) —
+   collapsing 2 tabs down to "the active one + a 1-item dropdown" never
+   actually saves space (see that const's own doc comment), so below 400px
+   this class stretches both tabs to fill the row evenly instead of hiding
+   either of them — the same equal-width look the (unused, for this case)
+   collapsed row would have had, just as two real, independently-clickable
+   tabs rather than one visible tab + a dropdown standing in for the other.
+   Every other collapse rule below is unaffected by a `TabList` opting into
+   this instead — `.lyra-tab-overflow-full`/`-collapsed` and
+   `.lyra-tab-overflow-stretch` are mutually exclusive per render (`tabs.tsx`
+   only ever puts one of the first two, or the third, on the row), never
+   layered together.
+
+   Every rule below is scoped with the `.lyra-tab-overflow-wrap` ancestor
    (`.lyra-tab-overflow-wrap .lyra-tab-overflow-full`, not just
    `.lyra-tab-overflow-full` on its own) rather than left as bare single
    classes. `TabList`'s own row already carries Tailwind's `flex` utility
@@ -827,6 +841,10 @@
   }
   .lyra-tab-overflow-wrap .lyra-tab-overflow-collapsed {
     display: flex;
+  }
+  .lyra-tab-overflow-wrap .lyra-tab-overflow-stretch [role="tab"] {
+    flex: 1 1 0%;
+    max-width: none;
   }
 }
 

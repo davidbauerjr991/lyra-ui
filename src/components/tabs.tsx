@@ -144,6 +144,13 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
     const compactWrapRef = useRef<HTMLDivElement>(null);
     const compactMeasureRef = useRef<HTMLDivElement>(null);
     const [compactCollapsed, setCompactCollapsed] = useState(false);
+    // Set instead of `compactCollapsed` whenever there are 2 tabs or fewer
+    // AND they'd otherwise have collapsed — stretches both to fill the row
+    // evenly rather than hiding either one behind a dropdown, same
+    // "`allowOverflowCollapse`-gated `.lyra-tab-overflow-stretch`" behavior
+    // the "wide" breakpoint gets below, just driven by this mode's own
+    // measured-fit check instead of a fixed CSS threshold.
+    const [compactStretch, setCompactStretch] = useState(false);
     const isCompact = overflowMenu && overflowBreakpoint === "compact";
 
     useLayoutEffect(() => {
@@ -153,6 +160,7 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
       if (!wrapEl || !measureEl) return;
 
       const recompute = () => {
+        const wouldOverflow = measureEl.scrollWidth > wrapEl.clientWidth;
         // Collapsing 2 tabs down to "the active one + a 1-item dropdown"
         // never actually saves meaningful space — both slots still render,
         // just with an extra click standing between the agent and the tab
@@ -162,9 +170,11 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
         // breakpoint's `allowOverflowCollapse` below for the other mode.
         if (React.Children.count(children) <= 2) {
           setCompactCollapsed(false);
+          setCompactStretch(wouldOverflow);
           return;
         }
-        setCompactCollapsed(measureEl.scrollWidth > wrapEl.clientWidth);
+        setCompactCollapsed(wouldOverflow);
+        setCompactStretch(false);
       };
       recompute();
 
@@ -475,10 +485,19 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
           // dropdown below. Only applies in `"wide"` mode — `"compact"`
           // toggles which row renders via JS state instead (see below), so
           // this CSS class would be a harmless no-op there, but leaving it
-          // off keeps that distinction unambiguous. Also gated on
-          // `allowOverflowCollapse` — see that const's own doc comment for
-          // why 2 tabs or fewer never collapse at all, in either mode.
-          overflowMenu && overflowBreakpoint === "wide" && allowOverflowCollapse && "lyra-tab-overflow-full",
+          // off keeps that distinction unambiguous.
+          //
+          // 2 tabs or fewer (`allowOverflowCollapse` false) get
+          // `.lyra-tab-overflow-stretch` instead — same ≤400px trigger, but
+          // stretches both tabs to fill the row evenly rather than hiding
+          // either one, per explicit request ("still want the 2 tabs to
+          // stretch full width in responsive mode" — the equal-width look
+          // the collapsed row would have had, just as two real tabs instead
+          // of one tab + a dropdown). See that class's own doc comment in
+          // lyra-tokens.css.
+          overflowMenu &&
+            overflowBreakpoint === "wide" &&
+            (allowOverflowCollapse ? "lyra-tab-overflow-full" : "lyra-tab-overflow-stretch"),
           // Makes the full row itself the horizontally-scrollable element
           // (see `isWideOverflow`'s own state/effect above) — `min-w-0` so
           // it can actually shrink to whatever room the chevrons alongside
@@ -731,8 +750,26 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
               did nothing — a real, shipped bug, not a one-off edge case.
               "Wide" mode never had this problem because it always keeps
               the full row mounted (`.lyra-tab-overflow-full` just hides it
-              with CSS at ≤400px); "compact" mode now does the same. */}
-          <div className={cn(compactCollapsed && "hidden")}>{tablistEl}</div>
+              with CSS at ≤400px); "compact" mode now does the same.
+
+              `compactStretch` (2 tabs or fewer that would otherwise have
+              collapsed) stretches each tab to fill the row evenly instead —
+              targets `tablistEl`'s own `[role="tablist"]` root's direct
+              `[role="tab"]` children from here, since `tablistEl` is a
+              pre-built element and can't have classes injected into it
+              after the fact. Same visual result as "wide" mode's
+              `.lyra-tab-overflow-stretch` (lyra-tokens.css), just applied
+              via a plain Tailwind arbitrary-variant selector instead of a
+              container query, matching this mode's own JS-measured
+              (rather than CSS-threshold) collapse decision. */}
+          <div
+            className={cn(
+              compactCollapsed && "hidden",
+              compactStretch && "[&>[role='tablist']>[role='tab']]:flex-1 [&>[role='tablist']>[role='tab']]:max-w-none"
+            )}
+          >
+            {tablistEl}
+          </div>
           {compactCollapsed && collapsedRowEl}
           {portalEl}
         </div>
@@ -770,24 +807,27 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
       // Monitor dashboard's tabs were wrapping their own text onto 2–3
       // lines instead of scrolling/collapsing at all, because this wrapper
       // (and everything inside it) had almost no real width to work with.
-      <div className={cn(allowOverflowCollapse && "lyra-tab-overflow-wrap", "w-full")}>
-        {/* `.lyra-tab-overflow-full` moved onto this wrapping div (rather
-            than left solely on `tablistEl`) so the chevrons hide together
-            with the tab row the moment the CSS container query below
-            collapses this to the 2-slot row at ≤400px — leaving it on
-            `tablistEl` too is harmless (same class, same selector), just
-            redundant. Both this and the ancestor `.lyra-tab-overflow-wrap`
-            above are gated on `allowOverflowCollapse` too (see its own doc
-            comment) — with 2 tabs or fewer, there's no container-query
-            context at all here, so `.lyra-tab-overflow-full`/`-collapsed`'s
-            own rules (scoped to that ancestor, lyra-tokens.css) simply never
-            match: the full row stays visible unconditionally and
-            `collapsedRowEl` isn't even in the tree (see its own doc
-            comment). The chevron-scroll behavior (`leftChevron`/
-            `rightChevron` below) is unaffected either way — that's driven
-            by `useScrollChevrons`'s own `ResizeObserver` measurement, not
-            this CSS container query. */}
-        <div className={cn("flex items-stretch", isWideOverflow && allowOverflowCollapse && "lyra-tab-overflow-full")}>
+      <div className="lyra-tab-overflow-wrap w-full">
+        {/* `.lyra-tab-overflow-full`/`-stretch` moved onto this wrapping div
+            (rather than left solely on `tablistEl`) so the chevrons hide
+            together with the tab row the moment the CSS container query
+            below reacts at ≤400px — leaving either class on `tablistEl`
+            too is harmless (same class, same selector), just redundant.
+            2 tabs or fewer (`!allowOverflowCollapse`) get
+            `.lyra-tab-overflow-stretch` instead of `.lyra-tab-overflow-full`
+            — both tabs stay visible and simply stretch to fill the row at
+            ≤400px rather than either of them hiding behind
+            `collapsedRowEl` (which isn't even in the tree for that case —
+            see its own doc comment). The chevron-scroll behavior
+            (`leftChevron`/`rightChevron` below) is unaffected either way —
+            that's driven by `useScrollChevrons`'s own `ResizeObserver`
+            measurement, not this CSS container query. */}
+        <div
+          className={cn(
+            "flex items-stretch",
+            isWideOverflow && (allowOverflowCollapse ? "lyra-tab-overflow-full" : "lyra-tab-overflow-stretch")
+          )}
+        >
           {leftChevron}
           {tablistEl}
           {rightChevron}
