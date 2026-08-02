@@ -863,6 +863,22 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
     useEffect(() => {
       if (!filtersDropdownOpen) return;
       const handler = (e: MouseEvent) => {
+        // Each `FilterChip` below renders its own nested dropdown (a
+        // multi-select `Select`) via Radix Popper, which portals its
+        // content straight to `document.body` — outside this panel's own
+        // DOM subtree, even though it's visually/logically nested inside
+        // it. `filtersDropdownRef.contains()` can't see that, so clicking
+        // an option in a nested FilterChip's dropdown (e.g. "Jim Smith" in
+        // a "Created By" filter) registered as an outside click and closed
+        // this whole collapsed Filters panel out from under it. Every
+        // Radix Popper-based primitive (Popover, Select, DropdownMenu,
+        // Tooltip) wraps its portaled content in a
+        // `[data-radix-popper-content-wrapper]` div — same fix already
+        // used for this exact "nested portal reads as outside" shape in
+        // `interaction-nav-item.tsx`'s hover-preview `onInteractOutside`.
+        if ((e.target as Element)?.closest?.("[data-radix-popper-content-wrapper]")) {
+          return;
+        }
         if (filtersDropdownRef.current && !filtersDropdownRef.current.contains(e.target as Node)) {
           setFiltersDropdownOpen(false);
         }
