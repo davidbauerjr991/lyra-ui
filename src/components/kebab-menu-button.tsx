@@ -3,6 +3,7 @@ import { MoreVertical } from "lucide-react";
 import { cn } from "../lib/utils";
 import { type MenuEntry } from "./menu";
 import { MenuRadix } from "./menu-radix";
+import { Badge } from "./badge";
 
 /* ── KebabMenuButton ──
    Kebab (⋮) trigger + dropdown. Extracted out of `channel-row.tsx` (where
@@ -21,7 +22,27 @@ import { MenuRadix } from "./menu-radix";
    hand-rolled logic; the exported `KebabMenuButtonProps` API is unchanged,
    so no caller needs to change. */
 
-export interface KebabMenuButtonProps {
+export interface KebabMenuButtonProps extends Omit<React.HTMLAttributes<HTMLElement>, "children" | "className" | "onClick"> {
+  /**
+   * Extends `HTMLAttributes` (minus `children`/`className`/`onClick`, which
+   * this component already owns) so this trigger can be wrapped directly in
+   * a `<Tooltip>` — e.g. `channel-row.tsx`'s "More Options" tooltip on this
+   * exact kebab. `Tooltip`'s `TooltipPrimitive.Trigger asChild` clones
+   * whatever single child it wraps and injects its own hover/focus tracking
+   * props (`onPointerEnter`/`onPointerLeave`/`onFocus`/`onBlur`, etc.) onto
+   * it — that works automatically for a plain DOM element (React merges
+   * cloned props directly onto it), but NOT for a custom component like
+   * this one unless it explicitly accepts and forwards those extra props
+   * itself. Before this, wrapping `<KebabMenuButton>` in `<Tooltip>` silently
+   * did nothing on hover: the injected props landed on this component's own
+   * prop object, where they were destructured away and dropped (this
+   * function only ever read its own known prop names), never reaching the
+   * actual `<button>`/`<span>` Radix needs to attach its hover listeners to.
+   * `onClick` is still handled separately below (not spread generically)
+   * since it has to be composed with this component's own `stopPropagation`
+   * call rather than just overwritten either direction.
+   */
+  onClick?: React.MouseEventHandler<HTMLElement>;
   items: MenuEntry[];
   ariaLabel: string;
   className?: string;
@@ -68,38 +89,73 @@ export interface KebabMenuButtonProps {
    * CONTRIBUTING.md's "Tooltip wrapping a nested Menu trigger" note.
    */
   onOpenChange?: (open: boolean) => void;
+  /**
+   * Count badge overlaid on the trigger's top-right corner — hidden when 0
+   * or undefined. Same shared idiom `Button`'s own `badge` prop uses
+   * (button.tsx: a `relative inline-flex` wrapper around the icon plus a
+   * `Badge shape="circle" variant="critical" size="sm"` positioned
+   * `absolute -top-2 -right-2`), reproduced here rather than composing
+   * `Button` itself — this trigger isn't built on `Button` (see the class
+   * comment above: it's its own hand-rolled `<button>`/`<span>` so it can
+   * render as either). First added for "View All Apps" (`AgentNextGenPage
+   * .tsx`) surfacing an unread-notifications count once Notifications
+   * itself is unpinned from the header (and so no longer showing its own
+   * `NotificationsBell` badge) — without this, unpinning Notifications
+   * would silently hide the only visual cue that new notifications exist.
+   */
+  badge?: number;
 }
 
 const KebabMenuButton = React.forwardRef<HTMLButtonElement, KebabMenuButtonProps>(
-  ({ items, ariaLabel, className, as = "button", icon: iconProp, align = "right", onOpenChange }, ref) => {
+  ({ items, ariaLabel, className, as = "button", icon: iconProp, align = "right", onOpenChange, badge, onClick, ...rest }, ref) => {
     const triggerClassName = cn(
       "flex h-6 w-6 shrink-0 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary transition-colors hover:bg-lyra-state-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus",
       className
     );
-    const icon = iconProp ?? <MoreVertical className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />;
+    const iconContent = iconProp ?? <MoreVertical className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />;
+    const icon =
+      badge != null && badge > 0 ? (
+        <span className="relative inline-flex">
+          <span aria-hidden="true">{iconContent}</span>
+          <Badge shape="circle" variant="critical" size="sm" count={badge} className="absolute -top-2 -right-2" />
+        </span>
+      ) : (
+        iconContent
+      );
 
     // stopPropagation matches the original's `handleTriggerClick` — keeps a
     // click on the kebab from also bubbling to whatever row/card wraps it
     // (e.g. a table row's own onClick). MenuRadix's own open/close toggle
     // still fires — Radix composes this handler with its internal one
-    // rather than replacing it.
+    // rather than replacing it. `onClick` is called through explicitly here
+    // (not part of the generic `...rest` spread below) since a wrapping
+    // `Tooltip`'s own `asChild` composes an `onClick` onto this trigger too
+    // (to dismiss the tooltip on click) — this still has to run alongside
+    // (not instead of) that, same as any other prop `Tooltip` injects.
+    const handleTriggerClick = (e: React.MouseEvent<HTMLElement>) => {
+      onClick?.(e);
+      e.stopPropagation();
+    };
+
     const trigger =
       as === "span" ? (
         <span
           role="button"
           tabIndex={0}
-          onClick={(e: React.MouseEvent) => e.stopPropagation()}
           aria-label={ariaLabel}
           className={triggerClassName}
+          {...rest}
+          onClick={handleTriggerClick}
         >
           {icon}
         </span>
       ) : (
         <button
           type="button"
-          onClick={(e: React.MouseEvent) => e.stopPropagation()}
           aria-label={ariaLabel}
           className={triggerClassName}
+          {...rest}
+          onClick={handleTriggerClick}
         >
           {icon}
         </button>

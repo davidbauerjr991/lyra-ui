@@ -36,6 +36,23 @@ export interface TagProps extends React.HTMLAttributes<HTMLSpanElement> {
   onRemove?: () => void;
   /** Accessible label for the remove button (default: "Remove {label}") */
   removeLabel?: string;
+  /**
+   * Optional trailing icon, rendered in the same slot `onRemove`'s "×"
+   * button occupies — e.g. a small chevron on a Tag that's itself a
+   * dropdown/popover trigger somewhere in the tree (a status pill that
+   * opens a status-picker popover, say). Renders as plain decorative
+   * content (a `span`, `aria-hidden`), NOT a nested interactive element —
+   * unlike the remove button, this has no `onClick`/`Tooltip` of its own,
+   * since whatever wraps the whole `Tag` in that dropdown-trigger case
+   * already owns the click handling; a `<button>` here would nest inside
+   * that wrapping trigger and be invalid HTML (and steal its click).
+   * Ignored whenever `onRemove` is also set — both render in the same
+   * trailing slot, and a real interactive remove action takes priority
+   * over a decorative hint. Sized/colored to match the label text; pass a
+   * Lucide icon element at `h-3 w-3` (matches the `X` remove glyph's own
+   * size).
+   */
+  trailingIcon?: React.ReactNode;
   /** Disable the tag and remove button */
   disabled?: boolean;
 }
@@ -114,6 +131,7 @@ const Tag = React.forwardRef<HTMLSpanElement, TagProps>(
       icon,
       onRemove,
       removeLabel,
+      trailingIcon,
       disabled,
       className,
       ...props
@@ -148,7 +166,7 @@ const Tag = React.forwardRef<HTMLSpanElement, TagProps>(
         )}
         <span className="truncate max-w-[200px]">{label}</span>
 
-        {onRemove && !disabled && (
+        {onRemove && !disabled ? (
           <Tooltip content={removeLabel ?? `Remove ${label}`} placement="top" delayMs={400}>
             <button
               type="button"
@@ -163,6 +181,12 @@ const Tag = React.forwardRef<HTMLSpanElement, TagProps>(
               <X className={cn("h-3 w-3", "block")} strokeWidth={2} aria-hidden="true" />
             </button>
           </Tooltip>
+        ) : (
+          trailingIcon && (
+            <span className="flex-shrink-0 [&>svg]:h-3 [&>svg]:w-3" aria-hidden="true">
+              {trailingIcon}
+            </span>
+          )
         )}
       </span>
     );

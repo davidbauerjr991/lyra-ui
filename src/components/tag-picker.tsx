@@ -94,6 +94,18 @@ const TagPicker = React.forwardRef<HTMLButtonElement, TagPickerProps>(
         open={open}
         onOpenChange={onOpenChange}
         placement={placement}
+        // Radix's default behavior returns focus to the trigger
+        // (`ActionIconButton` below) when the popover closes. That trigger
+        // is wrapped in a `Tooltip` (Button's own `isIconVariant && title`
+        // handling), and Tooltip opens on focus as well as hover — so
+        // without this, closing the popover (e.g. its "×" button) hands
+        // focus back to the icon and pops the "Add tag" tooltip right back
+        // open with no real hover intent behind it, left dangling until
+        // something else happens to steal focus. Suppressing the
+        // auto-focus-return keeps the close action from re-triggering the
+        // tooltip; the picker was opened by a click, not keyboard nav, so
+        // there's no keyboard-focus chain here worth preserving.
+        onCloseAutoFocus={(e) => e.preventDefault()}
         header={
           <PanelHeader
             title={title}
@@ -103,12 +115,12 @@ const TagPicker = React.forwardRef<HTMLButtonElement, TagPickerProps>(
           />
         }
         content={
-          <div className="flex flex-col gap-1 py-2">
+          <div className="flex flex-wrap items-center gap-2 py-2">
             {available.map((opt) => (
               <button
                 key={opt.label}
                 type="button"
-                className="flex items-center rounded-lyra-sm px-1 py-1 text-left"
+                className="flex items-center rounded-lyra-sm text-left"
                 onClick={() => onSelect(opt)}
               >
                 {/* `Tag` now reacts to hover by default (tag.tsx) — no

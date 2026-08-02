@@ -61,10 +61,10 @@ const OUTBOUND_SKILLS: CreateNewOutboundContact[] = [
 
 const OUTBOUND_GROUPS: CreateNewOutboundGroup[] = [
   { id: "favorites", label: "Favorites", kind: "favorites", emptyMessage: "No favorites yet" },
-  { id: "agents", label: "Agents", searchPlaceholder: "Search Agents", contacts: OUTBOUND_AGENTS },
-  { id: "teams", label: "Teams", searchPlaceholder: "Search teams", contacts: OUTBOUND_TEAMS },
-  { id: "skills", label: "Skills", searchPlaceholder: "Search skills", contacts: OUTBOUND_SKILLS },
-  { id: "customers", label: "Customers", searchPlaceholder: "Search customers", contacts: OUTBOUND_CUSTOMERS },
+  { id: "agents", label: "Agents", contacts: OUTBOUND_AGENTS },
+  { id: "teams", label: "Teams", contacts: OUTBOUND_TEAMS },
+  { id: "skills", label: "Skills", contacts: OUTBOUND_SKILLS },
+  { id: "customers", label: "Customers", contacts: OUTBOUND_CUSTOMERS },
   { id: "dialpad", label: "Dial Pad", kind: "dialpad" },
 ];
 
