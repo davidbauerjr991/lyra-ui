@@ -93,6 +93,16 @@ export interface InteriorPanelProps extends React.HTMLAttributes<HTMLDivElement>
   /** Optional line below `headerTitle`, e.g. a record's name + id */
   headerSubhead?: string;
   headerIcon?: React.ReactNode;
+  /**
+   * Rendered inline immediately after `headerTitle`, same row (forwarded to
+   * `PanelHeader`/`ContainerHeader`'s own `titleBadge` slot) — e.g. an
+   * action button that needs to float next to the title itself rather than
+   * join the far-right `headerActions` cluster (useful once this panel is
+   * wide enough — full-screen, say — to have real room beside the title).
+   * Mirrors `SidePanel`'s identically-named prop for consistency between
+   * the two panel types.
+   */
+  headerTitleBadge?: React.ReactNode;
   headerActions?: React.ReactNode;
   /**
    * A `TabList` rendered inside the header itself, below the title/subhead
@@ -148,23 +158,6 @@ export interface InteriorPanelProps extends React.HTMLAttributes<HTMLDivElement>
    * full-screen. */
   exitFullScreenSignal?: number | string;
 
-  /**
-   * Reports whenever this panel's own "overlay" branch (absolute
-   * positioning over the main content instead of squeezing it — narrow
-   * parent, user-triggered full screen, or the automatic sub-768px full
-   * screen; see the render branch's own doc comment below) turns on or
-   * off. Purely a passive report — this component's overlay/non-overlay
-   * layout is still entirely self-computed from its own parent-width
-   * measurement, not controlled from outside. Lets a consumer add "click
-   * anywhere in the main content behind this panel to close it" behavior
-   * (a modal-like scrim dismiss) ONLY while the panel is actually
-   * floating over that content — when docked side-by-side instead (this
-   * panel isn't overlapping anything), clicking the main content has no
-   * reason to close it. Omit if the consumer doesn't need this — e.g. a
-   * panel with no sibling content that could ever be "clicked behind".
-   */
-  onOverlayModeChange?: (isOverlay: boolean) => void;
-
   footer?: React.ReactNode;
 }
 
@@ -185,11 +178,11 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       headerTitle,
       headerSubhead,
       headerIcon,
+      headerTitleBadge,
       headerActions,
       headerTabs,
       allowFullScreen = false,
       exitFullScreenSignal,
-      onOverlayModeChange,
       footer,
       children,
       ...props
@@ -288,15 +281,6 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
     // 768px (`isAutoFullScreen`) — see that flag's own doc comment above.
     const [isFullScreen, setIsFullScreen] = useState(false);
 
-    // Reports the same combined condition the render branch below switches
-    // layout on — see `onOverlayModeChange`'s own doc comment for what a
-    // consumer does with this.
-    const isOverlay = isNarrow || isFullScreen || isAutoFullScreen;
-    useEffect(() => {
-      onOverlayModeChange?.(isOverlay);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isOverlay]);
-
     // `exitFullScreenSignal` escape hatch (see its own doc comment above) —
     // skips the very first render (a `ref` instead of state/`useEffect`'s
     // dependency-array-only comparison, so passing an initial non-
@@ -377,6 +361,7 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
               title={headerTitle}
               subhead={headerSubhead}
               icon={headerIcon}
+              titleBadge={headerTitleBadge}
               actions={<>{headerActions}{fullScreenToggle}</>}
               tabs={headerTabs}
               onClose={onClose}
@@ -408,7 +393,7 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
     // either threshold ever changes independently. See `allowFullScreen`'s
     // own doc comment for why full-screen deliberately reuses this instead
     // of needing its own separate layout branch.
-    if (isOverlay) {
+    if (isNarrow || isFullScreen || isAutoFullScreen) {
       return (
         <div
           ref={stableOuterRef}
