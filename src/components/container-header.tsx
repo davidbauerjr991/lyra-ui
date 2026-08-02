@@ -198,11 +198,30 @@ const ContainerHeader = React.forwardRef<HTMLDivElement, ContainerHeaderProps>(
           {icon && <span className="flex-shrink-0 text-lyra-fg-secondary">{icon}</span>}
           <div className="min-w-0 flex-1">
             {(title || titleBadge) && (
-              <div className="flex h-10 flex-col justify-center overflow-hidden min-w-0">
-                {/* h-10 (40px), not h-9 (36px) — at 36px the subhead's
-                    descenders (g, y, etc.) were clipped by `overflow-hidden`;
-                    40px gives the title + subhead two lines enough room to
-                    render in full. */}
+              <div className="flex min-h-10 flex-col justify-center overflow-hidden min-w-0">
+                {/* min-h-10 (40px floor), not a fixed h-10 — 40px is exactly
+                    enough for the plain title+subhead case (was h-9/36px;
+                    at that height the subhead's descenders, g/y/etc., were
+                    clipped by `overflow-hidden`), so a text-only header
+                    still renders at exactly 40px same as before. But a FIXED
+                    h-10 also silently clipped the subhead again whenever
+                    `titleBadge` itself was taller than the title text's own
+                    line height — e.g. a real icon button (`ActionIconButton`,
+                    36px) rather than the small `Tag`/`Badge` this slot was
+                    originally sized around: `items-center` on the icon+title
+                    row right below sizes that ROW to its tallest child (the
+                    36px button), which by itself already nearly filled the
+                    old fixed 40px box, squeezing the subhead paragraph
+                    beneath it almost entirely out of view (caught from a
+                    screenshot: `CustomerRowInfoPanel`'s full-screen "Add
+                    Channel" button in `headerTitleBadge`, subhead reduced to
+                    a sliver of clipped descenders). `min-h-10` keeps the
+                    40px floor for the common case and simply lets this box
+                    grow to actually fit its content whenever a taller
+                    `titleBadge` needs more room — `overflow-hidden` stays as
+                    a safety net, but with `min-h` instead of `h` it no
+                    longer has anything of this box's own content left to
+                    clip. */}
                 {/* titleBadge sits in its own row with just the title text,
                     so it's centered against the title's line height — not
                     stretched to align against the full title+subhead block
