@@ -427,7 +427,12 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     // branch), without keeping two copies of this markup in sync by hand.
     const cardBody = (
       <>
-        <div className="flex items-center gap-2 px-4 pt-2 pb-1">
+        {/* `px-3` (12px) — matches each channel row's own `px-3` below
+            (channel-row.tsx's `ChannelRow`), so the whole card reads with
+            one consistent 12px horizontal inset top to bottom rather than
+            this name row sitting slightly wider (`px-4`/16px) than the
+            rows beneath it. */}
+        <div className="flex items-center gap-2 px-3 pt-2 pb-1">
           <span className="min-w-0 flex-1 truncate lyra-heading-sm text-lyra-fg-default">{displayName}</span>
           {headerAction}
         </div>
