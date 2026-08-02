@@ -295,38 +295,44 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
     // exactly as-is, just not draggable). `Tab`'s own `TabProps` already
     // extends `ButtonHTMLAttributes`, so `draggable`/`onDragStart`/etc. are
     // valid props that land on its real underlying `<button>` via `Tab`'s
-    // own `{...props}` spread — no changes needed to `Tab` itself. Reads
-    // keys off `React.Children.toArray(children)` the same way the
-    // overflow-menu logic below already does (`child.key` there, same
-    // pattern) rather than off any cloned/re-keyed output, since that's the
-    // proven way to recover the original author-supplied key in this file.
+    // own `{...props}` spread — no changes needed to `Tab` itself.
+    //
+    // Reads each child's key from the `React.Children.map` CALLBACK
+    // ARGUMENT, not from the array `React.Children.toArray`/`.map` itself
+    // return — those return re-keyed clones (React prefixes every key with
+    // a positional path, e.g. `"home"` becomes `".$home"`, to keep keys
+    // unique when lists get flattened/nested), so reading `.key` off the
+    // OUTPUT silently hands the consumer's `onReorder` these mangled,
+    // prefixed strings instead of the real keys it authored its tabs with —
+    // a real, shipped bug caught via manual testing (dragging a tab made
+    // the whole row appear to vanish, since the reordered array's values no
+    // longer matched anything the consumer's own render logic recognized).
+    // The callback argument itself is always the untouched original
+    // element, so its `.key` is the true developer-supplied one; collecting
+    // it into `orderedKeys` as a side effect during this same pass (rather
+    // than a second `toArray` pass) keeps every downstream closure (each
+    // tab's own `onDrop`) referencing that one true, shared array.
+    const orderedKeys: string[] = [];
     const renderedChildren = reorderable
-      ? (() => {
-          const items = React.Children.toArray(children) as React.ReactElement<TabProps>[];
-          const orderedKeys = items.map((child) =>
-            React.isValidElement(child) && child.key != null ? String(child.key) : null
-          );
-          return items.map((child, i) => {
-            const key = orderedKeys[i];
-            if (!React.isValidElement<TabProps>(child) || key == null) return child;
-            return React.cloneElement(child, {
-              draggable: true,
-              onDragStart: (e: React.DragEvent) => handleReorderDragStart(e, key),
-              onDragOver: (e: React.DragEvent) => handleReorderDragOver(e, key),
-              onDrop: (e: React.DragEvent) => {
-                const currentOrder = orderedKeys.filter((k): k is string => k != null);
-                handleReorderDrop(e, key, currentOrder);
-              },
-              onDragEnd: handleReorderDragEnd,
-              onDragLeave: handleReorderDragLeave,
-              className: cn(
-                "cursor-grab active:cursor-grabbing",
-                reorderDragOverKey === key && "bg-lyra-bg-active-moderate",
-                child.props.className
-              ),
-            });
+      ? React.Children.map(children, (child) => {
+          if (!React.isValidElement<TabProps>(child)) return child;
+          const key = child.key != null ? String(child.key) : null;
+          if (key == null) return child;
+          orderedKeys.push(key);
+          return React.cloneElement(child, {
+            draggable: true,
+            onDragStart: (e: React.DragEvent) => handleReorderDragStart(e, key),
+            onDragOver: (e: React.DragEvent) => handleReorderDragOver(e, key),
+            onDrop: (e: React.DragEvent) => handleReorderDrop(e, key, orderedKeys),
+            onDragEnd: handleReorderDragEnd,
+            onDragLeave: handleReorderDragLeave,
+            className: cn(
+              "cursor-grab active:cursor-grabbing",
+              reorderDragOverKey === key && "bg-lyra-bg-active-moderate",
+              child.props.className
+            ),
           });
-        })()
+        })
       : children;
 
     // Close the overflow dropdown on outside click / Escape — same pattern

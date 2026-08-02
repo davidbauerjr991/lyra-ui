@@ -325,3 +325,58 @@ export const OverflowMenu: Story = {
   name: "Overflow Menu (Responsive)",
   render: () => <OverflowMenuDemo />,
 };
+
+/* ── Reorderable (click-and-drag) ──
+   `reorderable` + `onReorder` — drag any tab by its whole body and drop it
+   on another to reorder the row. `TabList` doesn't own the order itself
+   (see the prop's own doc comment in tabs.tsx): this demo owns a `tabs`
+   array in state and re-sorts it in `onReorder`, the same "consumer owns
+   the array, TabList just reports the drag result" contract a real
+   integration (e.g. a desk's Home/Customers/Accounts/... tab bar) follows.
+   Each `Tab` below has an explicit, stable `key` — required for
+   `reorderable` to have any effect, per that same doc comment. */
+function ReorderableDemo() {
+  const [tabs, setTabs] = useState([
+    { id: "overview", label: "Overview" },
+    { id: "details", label: "Details" },
+    { id: "tickets", label: "Tickets" },
+    { id: "accounts", label: "Accounts" },
+    { id: "history", label: "History" },
+  ]);
+  const [active, setActive] = useState("overview");
+
+  const handleReorder = (order: string[]) => {
+    setTabs((prev) => {
+      const byId = new Map(prev.map((t) => [t.id, t]));
+      return order.map((id) => byId.get(id)!).filter(Boolean);
+    });
+  };
+
+  return (
+    <div>
+      <TabList
+        overflowMenu
+        reorderable
+        onReorder={handleReorder}
+        aria-label="Reorderable tabs"
+      >
+        {tabs.map((tab) => (
+          <Tab key={tab.id} active={active === tab.id} onClick={() => setActive(tab.id)}>
+            {tab.label}
+          </Tab>
+        ))}
+      </TabList>
+      <TabPanel active>
+        <div className="p-4 lyra-body-md text-lyra-fg-default">
+          Drag any tab by its body and drop it on another to reorder — content for &ldquo;
+          {tabs.find((t) => t.id === active)?.label}&rdquo;
+        </div>
+      </TabPanel>
+    </div>
+  );
+}
+
+export const Reorderable: Story = {
+  name: "Reorderable (Drag and Drop)",
+  render: () => <ReorderableDemo />,
+};
