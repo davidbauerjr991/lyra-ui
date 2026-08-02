@@ -270,20 +270,26 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     // they're only ever read there.
     const [hoverCardOpen, setHoverCardOpen] = React.useState(false);
     const closeHoverCardTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-    // Which of this card's channel rows currently have their own kebab
-    // dropdown open (see `handleChannelMenuOpenChange` below) — a Set, not a
-    // single bool, since a multi-channel card has one independent kebab per
-    // row. While non-empty, the hover-preview popover must never close out
-    // from under an open dropdown: `KebabMenuButton`'s menu portals its
-    // content straight to `document.body` (same as every Radix Popper-based
-    // primitive), landing outside both the compact tile and this preview's
-    // own wrapper div DOM-wise — so moving the pointer off the wrapper and
-    // onto that portaled menu genuinely fires the wrapper's `onMouseLeave`
-    // even though the agent is still actively using the card. Without this,
-    // clicking a row's kebab and then moving toward its dropdown reads as
-    // "left the card," the 150ms timer below elapses, and the whole preview
-    // (dropdown included, since it's a child of `content`) unmounts out from
-    // under the agent before they can pick an item.
+    // Which of this card's channel rows currently have a portaled popover of
+    // their own open — a row's kebab dropdown OR its Outcome popover (see
+    // `handleChannelMenuOpenChange` below, and each `RowComponent` call's
+    // `onMenuOpenChange`/`outcome.onOpenChange` wrapping further down) — a
+    // Set, not a single bool, since a multi-channel card has one independent
+    // kebab AND one independent Outcome popover per row. While non-empty,
+    // the hover-preview popover must never close out from under an open one
+    // of these: both `KebabMenuButton`'s dropdown and `ChannelRow`'s Outcome
+    // `Popover` portal their content straight to `document.body` (same as
+    // every Radix Popper-based primitive), landing outside both the compact
+    // tile and this preview's own wrapper div DOM-wise — so moving the
+    // pointer off the wrapper and onto that portaled content genuinely fires
+    // the wrapper's `onMouseLeave` even though the agent is still actively
+    // using the card. Without this, opening either one and then moving
+    // toward its content reads as "left the card," the 150ms timer below
+    // elapses, and the whole preview (dropdown/popover included, since it's
+    // a child of `content`) unmounts out from under the agent before they
+    // can finish using it — this exact bug was already fixed once for the
+    // kebab dropdown, then resurfaced for the Outcome popover since it has
+    // its own separate open state the original fix never accounted for.
     const openChannelMenuKeysRef = React.useRef<Set<string>>(new Set());
     const openHoverCard = () => {
       if (closeHoverCardTimeoutRef.current) {
@@ -294,18 +300,22 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     };
     const scheduleCloseHoverCard = () => {
       if (closeHoverCardTimeoutRef.current) clearTimeout(closeHoverCardTimeoutRef.current);
-      // Never arm the close timer while any channel row's kebab dropdown is
-      // still open — see `openChannelMenuKeysRef`'s own doc comment above.
+      // Never arm the close timer while any channel row's kebab dropdown OR
+      // Outcome popover is still open — see `openChannelMenuKeysRef`'s own
+      // doc comment above.
       if (openChannelMenuKeysRef.current.size > 0) return;
       closeHoverCardTimeoutRef.current = setTimeout(() => setHoverCardOpen(false), 150);
     };
     // Passed to each channel row as `onMenuOpenChange` (threaded through
     // `ChannelRow`/`ChannelRowInstanceProps` in channel-row.tsx down to that
-    // row's own `KebabMenuButton`). Opening a dropdown cancels/prevents the
-    // close timer immediately (`openHoverCard`); closing one only re-arms it
-    // once every kebab on this card is shut — a card can have more than one
-    // channel row, each with its own kebab, and this only ever fires for the
-    // one whose menu actually changed.
+    // row's own `KebabMenuButton`) AND reused below to wrap that same row's
+    // `outcome.onOpenChange` (each with its own distinctly-prefixed key, so
+    // the two popovers' tracking can't collide if both were somehow open on
+    // the same row at once). Opening either cancels/prevents the close timer
+    // immediately (`openHoverCard`); closing one only re-arms it once every
+    // such popover on this card is shut — a card can have more than one
+    // channel row, each with its own kebab AND Outcome popover, and this
+    // only ever fires for the one that actually changed.
     const handleChannelMenuOpenChange = (key: string, open: boolean) => {
       if (open) {
         openChannelMenuKeysRef.current.add(key);
@@ -471,7 +481,31 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                   // bug in both the expanded card below and the compact
                   // tile's hover-preview popover, since both render THIS
                   // shared `cardBody` (see its own doc comment above).
-                  outcome={ch.outcome}
+                  //
+                  // Wrapped (not passed straight through) so opening it
+                  // also keeps the hover-preview popover open — same
+                  // `openChannelMenuKeysRef`/`handleChannelMenuOpenChange`
+                  // mechanism the kebab dropdown above already uses (see
+                  // its own doc comment), just keyed with an `outcome:`
+                  // prefix so the two popovers' open/close tracking can't
+                  // collide if somehow both were open on the same row at
+                  // once. Without this, the Outcome popover (portaled to
+                  // `document.body`, same as the kebab's dropdown) sat
+                  // outside this preview's own wrapper DOM-wise, so moving
+                  // the pointer off the tile and into it still read as
+                  // "left the card" — the 150ms close timer fired and
+                  // unmounted the whole preview (Outcome popover included)
+                  // out from under the agent before they could use it,
+                  // same bug already fixed once for the kebab dropdown.
+                  outcome={
+                    ch.outcome && {
+                      ...ch.outcome,
+                      onOpenChange: (open: boolean) => {
+                        handleChannelMenuOpenChange(`outcome:${channelKey(ch)}`, open);
+                        ch.outcome!.onOpenChange(open);
+                      },
+                    }
+                  }
                 />
               );
             })}
