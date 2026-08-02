@@ -18,10 +18,27 @@ function getInitials(name?: string): string {
 /* ── InteractionNavItem ── */
 
 export interface InteractionNavItemProps {
-  /** Customer's full name — initials (compact mode) and the card title
-   *  (expanded mode) are derived from this. Falls back to "C" / "Customer"
-   *  when there's no customer attached to the interaction yet. */
+  /** Customer's full name — OR, for an interaction with no matched
+   *  customer, whatever raw address identifies it instead (a dialed phone
+   *  number, a typed email/WhatsApp handle) — the card's title (expanded
+   *  mode) and, by default, its compact-mode initials are both derived from
+   *  this. Falls back to "C" / "Customer" only when this is left entirely
+   *  unset. */
   customerName?: string;
+  /**
+   * Whether `customerName` above is an actual customer's name, as opposed
+   * to a raw address standing in for one (see that prop's own doc comment).
+   * Only affects the compact tile's AVATAR: a real name still gets initials
+   * either way `customerName` is used for the title text itself, but a raw
+   * address has no real initials to speak of — passing `false` here shows
+   * this interaction's own current-channel icon in the avatar instead of
+   * `getInitials` deriving a stray, meaningless leading character off the
+   * address (e.g. "1" off a phone number starting with a "1" country code).
+   * Omit when the consumer doesn't distinguish the two cases — inferred
+   * from whether `customerName` is non-empty, same as before this prop
+   * existed.
+   */
+  customerIdentified?: boolean;
   /** Open channels/conversations for this interaction. A compact-mode count
    *  badge appears when there's more than one; the expanded card lists each
    *  as its own row (chip + elapsed time + preview), dispatched to the
@@ -124,6 +141,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
   (
     {
       customerName,
+      customerIdentified,
       channels = [],
       elapsed,
       awaitingResponse = false,
@@ -143,16 +161,21 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     const displayName = customerName || "Customer";
     const channelCount = channels.length;
     // Whether there's a real customer name to derive initials from at all —
-    // an interaction identified only by a raw address (a quick-dialed phone
-    // number, an anonymous inbound email/WhatsApp handle) has none, and
-    // `getInitials`' own "C" fallback (or, worse, a stray leading digit/
-    // symbol off whatever raw string ended up passed as a name) reads as
-    // meaningless in the compact tile — a channel icon communicates "this is
-    // an unidentified voice/email/WhatsApp contact" far better than a letter
-    // that isn't actually anyone's initial. Real name still wins whenever
-    // there is one, same as every other name-driven bit of this component
-    // (`displayName`/`initials` above, the expanded card's header).
-    const hasCustomerName = Boolean(customerName?.trim());
+    // `customerIdentified` wins when the consumer passes it explicitly
+    // (they know definitively whether `customerName` is a real name or just
+    // a stand-in address, see that prop's own doc comment); otherwise falls
+    // back to non-empty-`customerName` the same way this worked before that
+    // prop existed. An interaction identified only by a raw address (a
+    // quick-dialed phone number, an anonymous inbound email/WhatsApp handle)
+    // has no real initials to derive — `getInitials`' own "C" fallback (or,
+    // worse, a stray leading digit/symbol off the address itself) reads as
+    // meaningless in the compact tile's avatar — a channel icon communicates
+    // "this is an unidentified voice/email/WhatsApp contact" far better than
+    // a letter that isn't actually anyone's initial. Only affects the
+    // avatar: `displayName` below still shows `customerName` as-is either
+    // way (the raw address is exactly what should read as this card's title
+    // when there's no real name).
+    const hasCustomerName = customerIdentified ?? Boolean(customerName?.trim());
 
     // Internal handle onto the compact tile's own DOM node, alongside
     // (not instead of) the forwarded `ref` — needed so the Tab-trap logic
