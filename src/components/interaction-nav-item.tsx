@@ -461,6 +461,17 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                     setManualCurrentKey(channelKey(ch));
                     onCurrentChannelChange?.(channelKey(ch));
                   }}
+                  // Was missing entirely — every other per-channel field
+                  // above (`elapsed`/`preview`/`awaitingResponse`/etc.) got
+                  // forwarded from `ch`, but this one line never made it
+                  // in, so `ChannelRow`'s Outcome button always rendered as
+                  // its unwired-placeholder fallback (`outcome` undefined),
+                  // silently doing nothing on click regardless of what the
+                  // consumer passed on `InteractionChannel.outcome` — same
+                  // bug in both the expanded card below and the compact
+                  // tile's hover-preview popover, since both render THIS
+                  // shared `cardBody` (see its own doc comment above).
+                  outcome={ch.outcome}
                 />
               );
             })}
