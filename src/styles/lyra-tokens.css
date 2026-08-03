@@ -282,8 +282,11 @@
    to a "Metric Name" caption underneath it. One step up in both size and
    weight, kept as its own preset (not a one-off className override) so any
    future stat/metric display reuses the same value instead of guessing at
-   a bespoke size again. */
-.lyra-heading-2xl { font-size: 28px; line-height: 32px; font-weight: 700; letter-spacing: -0.02rem; }
+   a bespoke size again. Weight lowered 700→600 per explicit request
+   (originally targeting the dashboard greeting's "Good afternoon, John"
+   header, applied here at the shared token level so every consumer of this
+   preset — including DashboardCard's metric numbers — stays consistent). */
+.lyra-heading-2xl { font-size: 28px; line-height: 32px; font-weight: 600; letter-spacing: -0.02rem; }
 .lyra-heading-xl { font-size: 24px; line-height: 28px; font-weight: 500; letter-spacing: -0.02rem; }
 .lyra-heading-lg { font-size: 20px; line-height: 24px; font-weight: 500; letter-spacing: -0.01rem; }
 .lyra-heading-md { font-size: 16px; line-height: 24px; font-weight: 500; letter-spacing: -0.01rem; }
