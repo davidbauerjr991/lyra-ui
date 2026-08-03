@@ -282,13 +282,19 @@
    to a "Metric Name" caption underneath it. One step up in both size and
    weight, kept as its own preset (not a one-off className override) so any
    future stat/metric display reuses the same value instead of guessing at
-   a bespoke size again. Weight lowered 700→600 per explicit request
-   (originally targeting the dashboard greeting's "Good afternoon, John"
-   header, applied here at the shared token level so every consumer of this
-   preset — including DashboardCard's metric numbers — stays consistent). */
-.lyra-heading-2xl { font-size: 28px; line-height: 32px; font-weight: 600; letter-spacing: -0.02rem; }
+   a bespoke size again. (Briefly lowered to 600 under the mistaken
+   assumption this token drove the dashboard greeting's "Good afternoon,
+   John" header — it doesn't, that's `PageHeader`'s title, `lyra-heading-lg`
+   below — reverted back to 700 here.) */
+.lyra-heading-2xl { font-size: 28px; line-height: 32px; font-weight: 700; letter-spacing: -0.02rem; }
 .lyra-heading-xl { font-size: 24px; line-height: 28px; font-weight: 500; letter-spacing: -0.02rem; }
-.lyra-heading-lg { font-size: 20px; line-height: 24px; font-weight: 500; letter-spacing: -0.01rem; }
+/* lg — the tier `PageHeader`'s own `<h1>` title uses (page-header.tsx) for
+   every page/record header title in the app, e.g. the Desk dashboard's
+   "Good afternoon, {name}" greeting. Weight raised 500→600 per explicit
+   request, at this shared token level so every `PageHeader` title (and any
+   other consumer of this same preset) changes consistently rather than a
+   one-off override on a single call site. */
+.lyra-heading-lg { font-size: 20px; line-height: 24px; font-weight: 600; letter-spacing: -0.01rem; }
 .lyra-heading-md { font-size: 16px; line-height: 24px; font-weight: 500; letter-spacing: -0.01rem; }
 .lyra-heading-sm { font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0; }
 .lyra-heading-xs { font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.01rem; }
