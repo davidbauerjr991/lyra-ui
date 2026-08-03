@@ -13,6 +13,10 @@ export { DateTimePicker, DateRangeTimePicker } from "./components/date-time-pick
 export { NumberField } from "./components/number-field";
 export type { NumberFieldProps } from "./components/number-field";
 export type { DateTimePickerProps, DateRangeTimePickerProps, DateRangeTimeValue } from "./components/date-time-picker";
+export { QuickReplyMenu } from "./components/quick-reply-menu";
+export type { QuickReplyMenuItem, QuickReplyMenuProps } from "./components/quick-reply-menu";
+export { QuickReplyVariableForm } from "./components/quick-reply-variable-form";
+export type { QuickReplyFieldType, QuickReplyFieldOption, QuickReplyField, QuickReplyVariableFormProps } from "./components/quick-reply-variable-form";
 export type { DatePickerProps, DateRangePickerProps } from "./components/date-picker";
 export { Accordion } from "./components/accordion";
 export type { AccordionProps, AccordionItem } from "./components/accordion";
