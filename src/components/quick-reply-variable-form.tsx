@@ -52,8 +52,11 @@ export interface QuickReplyField {
 export interface QuickReplyVariableFormProps {
   title: string;
   /** The `#id` this item was reached by — shown as a chip next to `title`,
-   *  matching `QuickReplyMenu`'s own hashtag chip for the same item. */
+   *  matching `QuickReplyMenu`'s own chip for the same item. */
   hashtagId: string;
+  /** Same as `QuickReplyMenu`'s own `triggerChar` — decorative only, see
+   *  that prop's doc comment. Defaults to `"#"`. */
+  triggerChar?: string;
   fields: QuickReplyField[];
   /** Current value per field `key` — a `string` for "select"/"text", a
    *  `Date` for "date"/"time" (matching `DatePicker`/`TimePicker`'s own
@@ -77,6 +80,7 @@ const QuickReplyVariableForm = React.forwardRef<HTMLDivElement, QuickReplyVariab
     {
       title,
       hashtagId,
+      triggerChar = "#",
       fields,
       values,
       onValueChange,
@@ -100,7 +104,7 @@ const QuickReplyVariableForm = React.forwardRef<HTMLDivElement, QuickReplyVariab
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-lyra-border-active bg-lyra-bg-active-subtle px-4 py-2.5">
           <span className="flex min-w-0 items-center gap-2">
             <span className="lyra-body-md-emphasis text-lyra-fg-default truncate">{title}</span>
-            <Tag label={`#${hashtagId}`} variant="default" className="shrink-0 font-mono" />
+            <Tag label={`${triggerChar}${hashtagId}`} variant="default" className="shrink-0 font-mono" />
           </span>
           {onClose && (
             <button
