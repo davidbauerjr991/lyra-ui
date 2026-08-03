@@ -98,6 +98,17 @@ export interface InteractionChannel {
    *  renders its chip and elapsed-time in critical (red) instead of
    *  success (green) / secondary gray. */
   awaitingResponse?: boolean;
+  /** When `awaitingResponse` is true, which visual tier to render —
+   *  `"warning"` (amber) for a wait that's getting old but hasn't crossed
+   *  the harder threshold yet, `"critical"` (red) once it has. Ignored
+   *  when `awaitingResponse` is false, and defaults to `"critical"` when
+   *  left unset while `awaitingResponse` IS true — matching this prop's
+   *  own pre-existing binary behavior, so any consumer that doesn't pass
+   *  it renders exactly as before. Lets a consumer with real wait-time
+   *  data (e.g. seconds since the customer's last message) drive a
+   *  two-stage escalation instead of jumping straight to red the instant
+   *  a reply is pending. */
+  awaitingSeverity?: "warning" | "critical";
   /** Show the trailing kebab (⋮) menu for this channel row. Default: true. */
   removable?: boolean;
   /** Override this row's default (per-`type`) kebab menu items. */
@@ -220,6 +231,8 @@ interface ChannelRowProps {
   /** Skip the top divider — set by the parent for the first row in the list. */
   isFirst?: boolean;
   awaitingResponse?: boolean;
+  /** See `InteractionChannel.awaitingSeverity`'s own doc comment above. */
+  awaitingSeverity?: "warning" | "critical";
   menuItems: MenuEntry[];
   showMenu?: boolean;
   /** Marks this channel "current" (see `InteractionNavItem`'s own doc
@@ -268,12 +281,20 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
   highlighted,
   isFirst,
   awaitingResponse,
+  awaitingSeverity,
   menuItems,
   showMenu = true,
   onSelect,
   onMenuOpenChange,
   outcome,
 }) => {
+  // `null` when not awaiting at all (the plain success/gray look below is
+  // untouched); otherwise `awaitingSeverity`, defaulting to `"critical"` —
+  // see that prop's own doc comment on `InteractionChannel` for why the
+  // default preserves this row's pre-existing binary red behavior for any
+  // consumer that doesn't pass real wait-time data.
+  const severity: "warning" | "critical" | null = awaitingResponse ? awaitingSeverity ?? "critical" : null;
+
   // Coordinates this row's own kebab `Tooltip` ("More Options") with its
   // `KebabMenuButton` dropdown — same "tooltip's trigger and the dropdown's
   // trigger are the same DOM node" problem `ChannelTab`/`ChannelToggle`
@@ -330,10 +351,14 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
           `InteractionNavItem`'s compact-mode avatar corner badge already
           uses (`shape="circle" dot variant="critical"`), just inline here
           rather than absolutely positioned. */}
-      {awaitingResponse && (
-        <Badge shape="circle" dot variant="critical" size="sm" className="mr-1" aria-hidden="true" />
+      {severity && (
+        // `severity` ("warning" | "critical") lines up 1:1 with `Badge`'s
+        // own `BadgeCircleVariant` values, so it drops straight in — no
+        // translation needed between this row's escalation tier and the
+        // dot's color.
+        <Badge shape="circle" dot variant={severity} size="sm" className="mr-1" aria-hidden="true" />
       )}
-      <span className={cn(tagVariants({ variant: awaitingResponse ? "critical" : variant, shape: "pill" }))}>
+      <span className={cn(tagVariants({ variant: severity ?? variant, shape: "pill" }))}>
         <span aria-hidden="true">{icon}</span>
         {label}
       </span>
@@ -736,7 +761,11 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
       <span
         className={cn(
           "flex shrink-0 items-center gap-1 lyra-body-xs",
-          awaitingResponse ? "text-lyra-status-critical-strong" : "text-lyra-fg-secondary"
+          severity === "critical"
+            ? "text-lyra-status-critical-strong"
+            : severity === "warning"
+            ? "text-lyra-status-warning-strong"
+            : "text-lyra-fg-secondary"
         )}
       >
         <Clock className="h-3 w-3" strokeWidth={1.5} aria-hidden="true" />
@@ -758,6 +787,8 @@ export interface ChannelRowInstanceProps {
   highlighted?: boolean;
   isFirst?: boolean;
   awaitingResponse?: boolean;
+  /** See `InteractionChannel.awaitingSeverity`'s own doc comment above. */
+  awaitingSeverity?: "warning" | "critical";
   removable?: boolean;
   menuItems?: MenuEntry[];
   /** Wired onto the default menu's "Unassign & Dismiss" item — see the

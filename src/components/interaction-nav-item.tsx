@@ -51,10 +51,19 @@ export interface InteractionNavItemProps {
   elapsed: string;
   /**
    * True when the customer has sent a message the agent hasn't replied to
-   * yet: the avatar switches from primary (blue) to critical (red) and a
-   * red badge dot appears. Default (false) is primary with no badge.
+   * yet: the avatar switches from primary (blue) to critical (red) (or
+   * amber — see `awaitingSeverity` below) and a badge dot appears. Default
+   * (false) is primary with no badge.
    */
   awaitingResponse?: boolean;
+  /** When `awaitingResponse` is true, which visual tier to render —
+   *  `"warning"` (amber) for a wait that's getting old but hasn't crossed
+   *  the harder threshold yet, `"critical"` (red) once it has. Ignored
+   *  when `awaitingResponse` is false, and defaults to `"critical"` when
+   *  left unset while `awaitingResponse` IS true — matching this prop's
+   *  own pre-existing binary behavior, so any consumer that doesn't pass
+   *  it (this file's own stories included) renders exactly as before. */
+  awaitingSeverity?: "warning" | "critical";
   /** Whether this is the currently-open/selected interaction. */
   active?: boolean;
   /**
@@ -145,6 +154,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       channels = [],
       elapsed,
       awaitingResponse = false,
+      awaitingSeverity,
       active = false,
       expanded = false,
       onClick,
@@ -331,9 +341,18 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       };
     }, []);
 
-    const tone = awaitingResponse
-      ? { bg: "bg-lyra-status-critical-subtle", text: "text-lyra-status-critical-strong", border: active ? "border-lyra-status-critical-strong" : "border-lyra-status-critical-medium/30" }
-      : { bg: "bg-lyra-status-info-subtle", text: "text-lyra-status-info-strong", border: active ? "border-lyra-status-info-strong" : "border-lyra-status-info-medium/30" };
+    // `null` when not awaiting at all; otherwise `awaitingSeverity`,
+    // defaulting to `"critical"` — see that prop's own doc comment above
+    // for why the default preserves this card's pre-existing binary red
+    // behavior for any consumer that doesn't pass real wait-time data.
+    const severity: "warning" | "critical" | null = awaitingResponse ? awaitingSeverity ?? "critical" : null;
+
+    const tone =
+      severity === "critical"
+        ? { bg: "bg-lyra-status-critical-subtle", text: "text-lyra-status-critical-strong", border: active ? "border-lyra-status-critical-strong" : "border-lyra-status-critical-medium/30" }
+        : severity === "warning"
+        ? { bg: "bg-lyra-status-warning-subtle", text: "text-lyra-status-warning-strong", border: active ? "border-lyra-status-warning-strong" : "border-lyra-status-warning-strong/30" }
+        : { bg: "bg-lyra-status-info-subtle", text: "text-lyra-status-info-strong", border: active ? "border-lyra-status-info-strong" : "border-lyra-status-info-medium/30" };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
       // `e.target !== e.currentTarget` — keydown bubbles, and this handler
@@ -452,6 +471,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                   highlighted={highlighted}
                   isFirst={i === 0}
                   awaitingResponse={ch.awaitingResponse}
+                  awaitingSeverity={ch.awaitingSeverity}
                   removable={ch.removable}
                   menuItems={ch.menuItems}
                   // Keeps the hover-preview popover open (and its close
@@ -560,8 +580,10 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       //    token already resolves to, so it darkens correctly in both
       //    themes without hardcoding either one's hex directly.
       active
-        ? awaitingResponse
+        ? severity === "critical"
           ? "border-lyra-status-critical-strong hover:border-[color-mix(in_srgb,var(--lyra-color-status-critical-strong)_80%,black_20%)]"
+          : severity === "warning"
+          ? "border-lyra-status-warning-strong hover:border-[color-mix(in_srgb,var(--lyra-color-status-warning-strong)_80%,black_20%)]"
           : "border-lyra-border-active hover:border-[color-mix(in_srgb,var(--lyra-color-border-active)_80%,black_20%)]"
         : "border-lyra-border-subtle hover:border-lyra-border-default"
     );
@@ -742,28 +764,34 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                   className={cn(
                     "absolute -left-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-lyra-fg-on-primary",
                     // Blue by default — only switches to the same critical
-                    // red the avatar/border already use once the
-                    // interaction is actually awaiting a response. This
-                    // badge is just a count, not itself a "needs attention"
-                    // signal, so it shouldn't default to red the way a
-                    // notification badge would.
-                    awaitingResponse ? "bg-lyra-bg-destructive" : "bg-lyra-bg-primary"
+                    // red (or warning amber, see `severity`) the avatar/
+                    // border already use once the interaction is actually
+                    // awaiting a response. This badge is just a count, not
+                    // itself a "needs attention" signal, so it shouldn't
+                    // default to a status color the way a notification
+                    // badge would.
+                    severity === "critical"
+                      ? "bg-lyra-bg-destructive"
+                      : severity === "warning"
+                      ? "bg-lyra-status-warning-strong"
+                      : "bg-lyra-bg-primary"
                   )}
                   aria-label={`${channelCount} open channels`}
                 >
                   <span aria-hidden="true">{channelCount}</span>
                 </span>
               )}
-              {awaitingResponse && (
+              {severity && (
                 /* Bottom-right corner (was top-right), now a small `Badge`
                    dot (`size="sm"` — Badge's own size vocabulary) instead
                    of a bespoke span, so this dot indicator shares the same
                    implementation as every other corner badge in the
-                   library. */
+                   library. `severity` ("warning" | "critical") lines up
+                   1:1 with `Badge`'s own `BadgeCircleVariant` values. */
                 <Badge
                   shape="circle"
                   dot
-                  variant="critical"
+                  variant={severity}
                   size="sm"
                   className="absolute bottom-[-2px] right-[-2px] ring-2 ring-lyra-bg-surface-shell"
                   aria-hidden="true"
