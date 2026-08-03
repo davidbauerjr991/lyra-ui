@@ -18,10 +18,10 @@ This is an append-only history log (~650KB — it does not fit in a context wind
 - **Key Components** (line 191) — 46 entries
 - **Stories** (line 608) — 47 entries
 - **Typography Presets Added This Session** (line 1024)
-- **Important Patterns** (line 1027) — 25 entries
-- **Scope Rules** (line 1198) — 91 entries
-- **Planned Future Work** (line 1818)
-- **Known Debt** (line 1824)
+- **Important Patterns** (line 1027) — 26 entries
+- **Scope Rules** (line 1206) — 91 entries
+- **Planned Future Work** (line 1826)
+- **Known Debt** (line 1832)
 
 _Line numbers drift as entries are appended — grep the section name if a number is stale._
 
@@ -1194,6 +1194,14 @@ Verified with `tsc --noEmit` in lyra-ui — clean, same 2 pre-existing unrelated
 **Fix**: `MonitorDashboardPage.tsx` now measures its own root width the same way (`rootRef`/`ResizeObserver`/`containerWidth < 1024` → `isNarrowContainer`), derives `effectivePanelPinned = isNarrowContainer ? false : panelPinned` (the underlying `panelPinned` state is preserved so the previous pin preference restores once the container widens back out), and passes `effectivePanelPinned` to both `CallCentersSideMenu`'s `pinned` and `PageHeader`'s `panelPinned`, with `onPinToggle` set to `undefined` while narrow (hiding the pin button, same as `AdminShell`). `CallCentersSideMenu`'s `onPinToggle` prop was widened from required to optional to allow this.
 **Standing takeaway, now in CLAUDE.md (both repos)**: any new `SidePanel` usage — not just ones built on `AdminShell` — needs this same container-width pin guard from the start; it's core to how the component is meant to be installed, not an `AdminShell`-specific nicety to skip at a "simpler scale."
 - Verified: `vite build` in Outbound-Campaigns (clean transform, only the known harmless sandbox `EPERM` dist-cleanup error).
+
+### Five rules from the Agent-next-gen-v2 review (hover previews, slots, z-index, 2-tab TabList)
+2026-08-03. Consolidated review of every correction the user made in the Agent-next-gen-v2 session; each became a standing rule (now in CLAUDE.md / CONTRIBUTING §4):
+- Previews/popovers of existing UI render the REAL content (never a paraphrase) and copy an existing analogous affordance's mechanics (collapsed LeftNav / InteractionNavItem hover previews), including the onOpenAutoFocus/onCloseAutoFocus guards — without them Radix's focus return re-fires the trigger's onFocus and the popover flash-loops on mouse-off.
+- Named slots have semantics: check a slot's stories/consumers before filling it; "component doesn't fit my content" is a wrong-slot signal, not a patch-the-component signal. Incident: Add Channel button in ContainerHeader's headerTitleBadge clipped the subhead and skewed spacing across two patches; the fix was moving it to headerActions.
+- Consumer apps follow CONTRIBUTING §4's z-index scale — an invented z-[5] interior panel painted over interaction content in responsive mode.
+- TabList with ≤2 tabs never collapses to "N More" and stretches both tabs evenly in the narrow state (built into tabs.tsx; collapse engages at 3+).
+- Process: before coding any responsive/visual behavior change, state the expected end visual state in one sentence — the 2-tab fix shipped the mechanic without the visual intent and needed a second round.
 
 ## Scope Rules
 - **Do NOT modify `lyra-ui` core components** (anything under `lyra-ui/src/components/`) unless the request explicitly specifies making changes to lyra-ui. Template and story work in `lyra-ux-templates` should be solved at the template/consumer level.

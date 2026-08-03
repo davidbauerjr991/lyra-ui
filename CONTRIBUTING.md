@@ -361,6 +361,7 @@ All overlapping layers in Lyra UI follow a fixed z-index scale. **Never use an a
 
 ### Rules
 
+- **Consumer apps and prototypes follow this scale too.** Never invent an arbitrary small z-index (`z-[5]`, `z-[3]`…) at a call site: any z-index in consumer code either comes from this table or carries a comment justifying it against the local stacking context it lives in (real incident: an interior session-details panel at an invented `z-[5]` painted over the interaction content in responsive mode).
 - **Portal wrappers** that use `ReactDOM.createPortal` or `position: fixed` must use `z-index: 9999` (Tailwind: `z-[9999]`).
 - **Tooltips** must use `z-[10000]` so they always clear portal wrappers. The Lyra `Tooltip` component already enforces this — do not override it lower.
 - **The agent status menu** uses `z-[10001]` and must remain the highest persistent interactive layer. Never add a new component at `z-[10001]` or above without updating this table. (Floating `Draggable` panels top out at `10000` — see the table row above.)
