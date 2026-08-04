@@ -106,6 +106,31 @@ interface TabListProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Called with the new key order once a drag-reorder completes. Required
    *  for `reorderable` to have any visible effect — see its doc comment. */
   onReorder?: (order: string[]) => void;
+  /**
+   * Only meaningful alongside `overflowMenu` (default: `false`). Makes this
+   * `TabList`'s own outer wrapper (the actual top-level node it renders
+   * once `overflowMenu` is on — see that wrapper's own doc comment) a
+   * `flex-1` flex item, so it claims the rest of its row instead of sizing
+   * to its own near-content-less `container-type`-constrained width. Needed
+   * for a tab bar sharing a horizontal row with sibling buttons/dividers
+   * (e.g. a record header's "Customer History | SMS | Voice | ... | +"
+   * row) — without it, this wrapper can end up measuring itself as
+   * genuinely narrow regardless of how much room the row actually has,
+   * collapsing the `overflowMenu` breakpoint early.
+   *
+   * Opt-in rather than a standing default specifically because `flex-1`
+   * isn't safe to assume: it's a no-op in a *row*-direction flex ancestor
+   * with room to spare, but actively wrong in a *column*-direction one (a
+   * page's own vertical header/tabs/content stack) — there, `flex-grow`
+   * makes this `TabList` greedily claim the remaining *vertical* space
+   * instead, stretching the tab row itself and opening a large blank gap
+   * above whatever content follows it. Turn this on only for a `TabList`
+   * that's actually a flex *row* item competing for horizontal space with
+   * real siblings; leave it off for one that's simply the next block in a
+   * vertical stack (the common case — most `TabList`s render below a page/
+   * panel header with nothing beside them).
+   */
+  growToFillRow?: boolean;
 }
 
 const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
@@ -120,6 +145,7 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
       onReorder,
       onKeyDown,
       children,
+      growToFillRow = false,
       ...props
     },
     ref
@@ -129,6 +155,13 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
     const [overflowPosition, setOverflowPosition] = useState<{ top: number; left: number; width: number; maxHeight?: number } | null>(null);
     const overflowTriggerRef = useRef<HTMLButtonElement>(null);
     const overflowMenuRef = useRef<HTMLDivElement>(null);
+    // Declared unconditionally up here (hooks can't be conditional) even
+    // though it's only ever read/written further down, past the
+    // `if (!overflowMenu) return tablistEl` early return — see this
+    // state's own read/write sites (`openOverflowMenu`'s `setOverflowEntries`
+    // call, and the `<Menu items={overflowEntries} .../>` render) for the
+    // full reasoning.
+    const [overflowEntries, setOverflowEntries] = useState<MenuEntry[]>([]);
 
     // ── "compact" content-aware measurement ──
     // `compactMeasureRef` is a hidden, unconstrained clone of the tab row
@@ -213,6 +246,46 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
     // own `.lyra-tab-overflow-full` className needs it too, and that's
     // built well before `childArray` exists.
     const allowOverflowCollapse = React.Children.count(children) > 2;
+    // Mirrors the CSS `@container (max-width: 400px)` threshold that
+    // actually drives which of the two rows (`tablistEl` vs.
+    // `collapsedRowEl`) is visually shown (`.lyra-tab-overflow-full`/
+    // `-collapsed`, lyra-tokens.css) — in JS, purely so the ACTIVE tab's
+    // `outcome` config (`ChannelTab`'s own Outcome popover, channel-
+    // row.tsx) can be handed to whichever of its two rendered copies is
+    // actually on screen, and stripped from the other.
+    //
+    // Both `tablistEl`'s own copy of the active tab AND `collapsedRowEl`'s
+    // `cloneElement` mirror of it are ALWAYS mounted simultaneously once
+    // there are >2 tabs (`allowOverflowCollapse`) — only one is ever
+    // CSS-visible at a time, but the OTHER is still a real, live component
+    // instance, not actually removed from the tree. For a plain `Tab` that
+    // was harmless (an inert visual duplicate). It stopped being harmless
+    // the moment a channel tab carried its own externally-shared,
+    // independently-poppable `outcome.open` state (`ChannelTab`): both
+    // copies read the SAME shared value, so the instant it turned `true`,
+    // BOTH mounted their OWN `Popover`, portaling two separate "Log
+    // Outcome" panels at once — confirmed via screenshot, reported for
+    // "the last tab in the list" specifically (the LAST tab is the one
+    // `activeIndex` defaults to whenever nothing else is explicitly
+    // `active`, so it's the one most likely to be both the active channel
+    // AND the one this duplication actually affects).
+    //
+    // Only observed when it's actually needed (`isWideOverflow &&
+    // allowOverflowCollapse` — 2-or-fewer tabs never render
+    // `collapsedRowEl` at all, so there's no second copy to disambiguate)
+    // — see the effect below.
+    const wrapRef = useRef<HTMLDivElement>(null);
+    const [isNarrow, setIsNarrow] = useState(false);
+    useLayoutEffect(() => {
+      if (!isWideOverflow || !allowOverflowCollapse) return;
+      const el = wrapRef.current;
+      if (!el) return;
+      const recompute = () => setIsNarrow(el.getBoundingClientRect().width <= 400);
+      recompute();
+      const ro = new ResizeObserver(recompute);
+      ro.observe(el);
+      return () => ro.disconnect();
+    }, [isWideOverflow, allowOverflowCollapse]);
     const { canScrollStart: canScrollLeft, canScrollEnd: canScrollRight, recompute: updateTabScrollState } =
       useScrollChevrons(listRef, [isWideOverflow, children], "horizontal");
 
@@ -342,25 +415,39 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
     // than a second `toArray` pass) keeps every downstream closure (each
     // tab's own `onDrop`) referencing that one true, shared array.
     const orderedKeys: string[] = [];
-    const renderedChildren = reorderable
+    // Neutralizes the ACTIVE tab's `outcome` prop (`ChannelTab`'s own
+    // Outcome popover config, channel-row.tsx) on THIS copy specifically
+    // whenever `collapsedRowEl`'s separate `cloneElement` mirror of that
+    // same tab is the one actually visible right now (`isNarrow` — see
+    // that state's own doc comment above) — the two-live-copies-of-the-
+    // active-tab duplicate-popover bug this whole block exists to fix.
+    // Every OTHER child (every non-active tab, plus the active one
+    // whenever THIS row is the visible copy instead) passes through with
+    // its real `outcome` intact.
+    const stripOutcomeFromActive = isWideOverflow && allowOverflowCollapse && isNarrow;
+    const renderedChildren = reorderable || stripOutcomeFromActive
       ? React.Children.map(children, (child) => {
           if (!React.isValidElement<TabProps>(child)) return child;
           const key = child.key != null ? String(child.key) : null;
-          if (key == null) return child;
-          orderedKeys.push(key);
-          return React.cloneElement(child, {
-            draggable: true,
-            onDragStart: (e: React.DragEvent) => handleReorderDragStart(e, key),
-            onDragOver: (e: React.DragEvent) => handleReorderDragOver(e, key),
-            onDrop: (e: React.DragEvent) => handleReorderDrop(e, key, orderedKeys),
-            onDragEnd: handleReorderDragEnd,
-            onDragLeave: handleReorderDragLeave,
-            className: cn(
+          const overrides: Record<string, unknown> = {};
+          if (reorderable && key != null) {
+            orderedKeys.push(key);
+            overrides.draggable = true;
+            overrides.onDragStart = (e: React.DragEvent) => handleReorderDragStart(e, key);
+            overrides.onDragOver = (e: React.DragEvent) => handleReorderDragOver(e, key);
+            overrides.onDrop = (e: React.DragEvent) => handleReorderDrop(e, key, orderedKeys);
+            overrides.onDragEnd = handleReorderDragEnd;
+            overrides.onDragLeave = handleReorderDragLeave;
+            overrides.className = cn(
               "cursor-grab active:cursor-grabbing",
               reorderDragOverKey === key && "bg-lyra-bg-active-moderate",
               child.props.className
-            ),
-          });
+            );
+          }
+          if (stripOutcomeFromActive && child.props?.active) {
+            overrides.outcome = undefined;
+          }
+          return Object.keys(overrides).length > 0 ? React.cloneElement(child, overrides) : child;
         })
       : children;
 
@@ -449,13 +536,14 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
           ? prev
           : { top, left, width: prev?.width ?? triggerRect.width, maxHeight }
       );
-      // `React.Children.count(children)`, not `overflowEntries.length` — this
-      // effect has to sit above the `if (!overflowMenu) return tablistEl;`
-      // early return below (every Hook must run unconditionally on every
-      // render), and `overflowEntries` isn't computed until after that
-      // return, so it isn't in scope here yet. Counting `children` directly
-      // gives the same "re-measure if the tab set changes size" signal
-      // without needing that later value.
+      // `React.Children.count(children)`, not `overflowEntries.length` —
+      // `overflowEntries` is only ever populated lazily, when the dropdown
+      // actually opens (see `openOverflowMenu` below), so its length stays
+      // stale/`0` the rest of the time and wouldn't reflect the real
+      // current tab count as a re-measure signal here. Counting `children`
+      // directly gives that same "re-measure if the tab set changes size"
+      // signal without depending on a value that isn't kept in sync with
+      // it.
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [overflowOpen, React.Children.count(children)]);
 
@@ -581,35 +669,95 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
     const activeChild = childArray[activeIndex];
     const otherChildren = childArray.filter((_, i) => i !== activeIndex);
 
+    // Built lazily, right as the dropdown opens (`openOverflowMenu` below)
+    // rather than inline on every render — this needs the REAL, committed
+    // DOM (`listRef.current`'s `[role="tab"]` elements), which isn't
+    // reliably available yet on whichever render happens to run first
+    // (refs attach *after* React commits, and nothing here forces a
+    // second render just to re-read them). Computing this inside a click
+    // handler sidesteps the whole timing question — by the time an agent
+    // can actually click "N More," the tabs have obviously already
+    // mounted.
     const openOverflowMenu = () => {
       const rect = overflowTriggerRef.current?.getBoundingClientRect();
       if (rect) setOverflowPosition({ top: rect.bottom + 4, left: rect.left, width: rect.width });
       setOverflowOpen(true);
+      setOverflowEntries(
+        otherChildren.map((child) => {
+          const originalIndex = childArray.indexOf(child);
+          const tabEl = listRef.current?.querySelectorAll<HTMLElement>('[role="tab"]')[originalIndex];
+          // `child.props.children` covers the common case — a plain `Tab`
+          // given a simple string label directly — without needing to
+          // touch the DOM at all. Falls back to a `[data-tab-label]`
+          // element for anything else: a composite wrapper like
+          // `ChannelTab` (channel-row.tsx) has no `children`/`icon` prop
+          // of its own for `TabList` to read here — it builds its own
+          // label/icon internally from a `type` prop instead, so there's
+          // nothing at the `<ChannelTab>` element level to introspect.
+          // `[data-tab-label]` is a convention each such wrapper opts into
+          // on its OWN specific label element (not `Tab`'s own generic
+          // children-wrapper span — see that span's own doc comment for
+          // why marking the wrong, too-broad element there duplicated the
+          // address into the label text), so this stays correct for *any*
+          // composite wrapper, present or future, with no special-casing
+          // needed here. Only truly falls to "Tab N" if even that comes up
+          // empty (e.g. an icon-only tab with no label text at all).
+          const label =
+            typeof child.props.children === "string"
+              ? child.props.children
+              : tabEl?.querySelector("[data-tab-label]")?.textContent?.trim() || `Tab ${originalIndex + 1}`;
+          // Same reasoning as `label` above, for the icon: `child.props
+          // .icon` covers a plain `Tab`; a composite wrapper's own
+          // rendered icon `<span>` (the one immediately preceding the
+          // label span, `Tab`'s own `{icon && <span aria-hidden="true">
+          // ...` above) is cloned via its real markup instead, since
+          // there's no React element to read off `child.props` for it
+          // either. `dangerouslySetInnerHTML` is safe here specifically
+          // because the source is this same render's own trusted output
+          // (an SVG this app already rendered), not third-party/user
+          // content.
+          const iconHtml = tabEl?.querySelector('span[aria-hidden="true"]')?.innerHTML;
+          const icon =
+            child.props.icon ??
+            (iconHtml ? <span aria-hidden="true" dangerouslySetInnerHTML={{ __html: iconHtml }} /> : undefined);
+          // `MenuEntry`'s `description` — rendered as a secondary line
+          // below the label (menu-item.tsx) — reused here as this entry's
+          // subhead once collapsed: an agent scanning "SMS"/"Voice"/
+          // "WhatsApp" entries in this dropdown has no way to tell two
+          // same-type channels apart without the number/email/handle each
+          // one is actually on, the same reason it's already on this same
+          // tab's `Tooltip` (`ChannelTab`'s own `address`/`metaLine`, see
+          // channel-row.tsx). `[data-tab-subhead]` (`ChannelTab`'s own
+          // doc comment) is what makes this available here even when a
+          // consumer has `showAddressOnFace={false}` (hiding it from the
+          // tab face itself, per its own doc comment) — this dropdown
+          // still gets it regardless, same "read what's actually there"
+          // approach as `label`/`icon` above rather than a plain `Tab`-only
+          // prop this composite wrapper doesn't have.
+          const description = tabEl?.querySelector("[data-tab-subhead]")?.textContent?.trim() || undefined;
+          return {
+            id: child.key != null ? String(child.key) : `tab-overflow-${originalIndex}`,
+            label,
+            icon,
+            description,
+            disabled: child.props.disabled,
+            onClick: () => {
+              // Click the real (hidden) tab button rather than reaching
+              // into its `onClick` prop directly — same reasoning as the
+              // arrow-key navigation above: it fires exactly the same
+              // handlers a real click would, with no separate "select
+              // this tab" code path to keep in sync.
+              tabEl?.click();
+              setOverflowOpen(false);
+            },
+          };
+        })
+      );
     };
     const handleOverflowTriggerClick = () => {
       if (overflowOpen) setOverflowOpen(false);
       else openOverflowMenu();
     };
-
-    const overflowEntries: MenuEntry[] = otherChildren.map((child) => {
-      const originalIndex = childArray.indexOf(child);
-      const label = typeof child.props.children === "string" ? child.props.children : `Tab ${originalIndex + 1}`;
-      return {
-        id: child.key != null ? String(child.key) : `tab-overflow-${originalIndex}`,
-        label,
-        icon: child.props.icon,
-        disabled: child.props.disabled,
-        onClick: () => {
-          // Click the real (hidden) tab button rather than reaching into
-          // its `onClick` prop directly — same reasoning as the arrow-key
-          // navigation above: it fires exactly the same handlers a real
-          // click would, with no separate "select this tab" code path to
-          // keep in sync.
-          listRef.current?.querySelectorAll<HTMLElement>('[role="tab"]')[originalIndex]?.click();
-          setOverflowOpen(false);
-        },
-      };
-    });
 
     // `className` merges onto this collapsed "active + N more" row too, same
     // as `tablistEl` above — otherwise a consumer's horizontal inset would
@@ -622,9 +770,30 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
     // `allowOverflowCollapse &&` — never build this row at all for 2 tabs or
     // fewer (see that const's own doc comment); nothing left to gate via CSS
     // alone in `"wide"` mode without it existing in the tree to begin with.
+    //
+    // The "each direct child grows to fill its half" rule used to live
+    // right here as a Tailwind arbitrary-variant utility (`[&>*]:flex-1`)
+    // instead of the plain hand-written CSS rule this class now gets in
+    // lyra-tokens.css (`.lyra-tab-overflow-collapsed > *`) — moved to match
+    // `.lyra-tab-overflow-stretch`'s own already-verified-working pattern
+    // (that file's own doc comment), after this specific rule was reported
+    // as not actually stretching a `ChannelTab`'s slot in practice despite
+    // every other check (compiled Tailwind output, `cn()`/twMerge class
+    // survival, the real DOM chain Radix builds) coming back clean in
+    // isolation — moving it off Tailwind's JIT-generated arbitrary-variant
+    // path entirely removes that whole class of doubt rather than trying
+    // to keep chasing why it wasn't landing.
+    // `pt-1.5` below (was `py-1.5`, top *and* bottom) — per explicit
+    // request: dropping just the bottom half leaves each tab's own active/
+    // hover indicator bar (`absolute bottom-0` inside `Tab`'s button,
+    // tabs.tsx) sitting flush against this row's own bottom `border-b`
+    // instead of floating 6px above it (confirmed via a DevTools
+    // screenshot — the highlighted row box visibly extended well past the
+    // indicator bar before this change). Top padding is untouched, so the
+    // row still has the same breathing room above the tabs it always did.
     const collapsedRowEl = allowOverflowCollapse && activeChild && (
-      <div className={cn("lyra-tab-overflow-collapsed [&>*]:flex-1 flex items-stretch gap-2 border-b border-lyra-border-subtle py-1.5", className)}>
-        {React.cloneElement(activeChild, {
+      <div className={cn("lyra-tab-overflow-collapsed flex items-stretch gap-2 border-b border-lyra-border-subtle pt-1.5", className)}>
+        {React.cloneElement(activeChild as React.ReactElement<Record<string, unknown>>, {
           key: `${activeChild.key ?? activeIndex}-overflow-active`,
           // No `id` here — the tab with the real id lives in the full row
           // (hidden in `"wide"` mode via `.lyra-tab-overflow-full`, or not
@@ -643,6 +812,17 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
           // conflicting `max-w-*` utility in favor of this one over the
           // base class, regardless of source order.
           className: cn("max-w-none", (activeChild.props as TabProps).className),
+          // Inverse of `renderedChildren`'s own `stripOutcomeFromActive`
+          // override above — see `isNarrow`'s doc comment for the full
+          // "two live copies of the active tab, only one should ever be
+          // interactive" reasoning. This clone only keeps its real
+          // `outcome` (`ChannelTab`'s own Outcome popover config) while
+          // it's actually the visible copy (`isNarrow`); otherwise it's
+          // stripped here too, same as `tablistEl`'s own copy is whenever
+          // THIS one is the visible copy instead. Exactly one of the two
+          // ever has a real `outcome` at a time — never both, never
+          // neither.
+          outcome: isNarrow ? (activeChild.props as { outcome?: unknown }).outcome : undefined,
         })}
         {otherChildren.length > 0 && (
           // Styled as a plain (never-"active") `Tab` — no border/fill —
@@ -807,7 +987,31 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
       // Monitor dashboard's tabs were wrapping their own text onto 2–3
       // lines instead of scrolling/collapsing at all, because this wrapper
       // (and everything inside it) had almost no real width to work with.
-      <div className="lyra-tab-overflow-wrap w-full">
+      //
+      // `min-w-0` — related, but scoped tighter than a first pass at this
+      // fix tried: this outer wrap is the actual top-level node `TabList`
+      // renders once `overflowMenu` is on (`tablistEl` itself sits two
+      // levels deeper, inside `.lyra-tab-overflow-full`'s row — see that
+      // div below), and without this, a flex item's default `min-width:
+      // auto` can refuse to shrink below its content's natural width,
+      // fighting the very collapse/scroll behavior this whole component
+      // exists to provide. `min-w-0` alone is a no-op outside an actual
+      // flex ancestor (same as `w-full` above), so there's no downside for
+      // a `TabList` that isn't inside one — unlike `flex-1` (see
+      // `growToFillRow` below), which is NOT a safe unconditional default:
+      // it's a no-op in a *row*-direction flex ancestor with room to
+      // spare, but actively wrong in a *column*-direction one (a page's
+      // own vertical header/tabs/content stack, say), where `flex-grow`
+      // makes this wrap greedily claim the remaining *vertical* space
+      // instead — confirmed from a screenshot of a dashboard page's own
+      // `Dashboard/Customers/Accounts/...` tab row growing to swallow the
+      // entire body height, leaving a huge blank gap above its content
+      // cards, the moment `flex-1` was added here unconditionally on a
+      // first pass at this exact fix. `growToFillRow` below opts a
+      // specific `TabList` into that behavior instead, rather than every
+      // `overflowMenu` consumer inheriting it regardless of which axis its
+      // own parent flexes along.
+      <div ref={wrapRef} className={cn("lyra-tab-overflow-wrap w-full min-w-0", growToFillRow && "flex-1")}>
         {/* `.lyra-tab-overflow-full`/`-stretch` moved onto this wrapping div
             (rather than left solely on `tablistEl`) so the chevrons hide
             together with the tab row the moment the CSS container query
@@ -1000,6 +1204,21 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
             {icon}
           </span>
         )}
+        {/* No `data-tab-label` marker here (deliberately) — a first pass at
+            this put it on THIS span, since it wraps `children` and seemed
+            like the obvious "the label lives here" spot. But `children` for
+            a composite wrapper like `ChannelTab` (channel-row.tsx) isn't
+            just the label — it's a small fragment (an icon-less label
+            `<span>` plus an optional address `<span>`), and marking this
+            outer span meant `TabList`'s "N More" dropdown (`openOverflowMenu`,
+            below in this file) read its `textContent` as BOTH pieces
+            concatenated with no separator ("Voice(456) 383-3329" instead of
+            "Voice"), duplicating the address that's already shown on its own
+            subhead line right below (confirmed via screenshot). Each
+            composite wrapper marks its OWN, more specific label element
+            instead — see `ChannelTab`'s own `data-tab-label` span — so this
+            generic span here stays a plain, unmarked truncation-measurement
+            box with no assumptions about what's actually inside it. */}
         <span ref={labelRef} className="min-w-0 truncate">
           {children}
         </span>

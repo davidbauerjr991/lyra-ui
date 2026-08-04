@@ -21,7 +21,7 @@ const AppName = React.forwardRef<HTMLButtonElement, AppNameProps>(
       aria-haspopup="true"
       aria-label={`${name} — open application menu`}
       className={cn(
-        "group inline-flex items-center gap-2.5 rounded-lyra-sm p-2 transition-colors",
+        "group inline-flex items-center gap-4 rounded-lyra-sm p-2 transition-colors",
         "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
         className

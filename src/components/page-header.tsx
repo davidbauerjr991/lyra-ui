@@ -224,7 +224,24 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
           // truncates on one line instead of the trail wrapping onto a
           // second one. Same DOM-swap technique TabList's `overflowMenu`
           // uses for `.lyra-tab-overflow-full`/`-collapsed`.
-          <div className="lyra-page-header-breadcrumb-wrap min-w-0">
+          //
+          // Unlike the `icon`/plain title branches (see the comment above
+          // this ternary explaining why THEY dropped `flex-1`), this wrap
+          // needs `flex-1` — it's a `container-type: inline-size` container,
+          // which implies size containment: the browser is barred from
+          // using this box's content to compute its own width. As a
+          // flex-grow:0 item, that leaves nothing to size it from, so it
+          // collapses to a 0px container and permanently matches the
+          // `@container (max-width: 480px)` collapsed rule, no matter how
+          // wide the actual row is — the exact bug reported (only the "…"
+          // ellipsis trigger ever rendering). Giving it `flex-1` makes the
+          // flex algorithm hand it a definite width instead of trying to
+          // measure its content, which is what the container query needs
+          // to work at all. (Trade-off: if `titleSuffix` is ever combined
+          // with `breadcrumb`, it may sit away from the title the same way
+          // it once did on the icon/plain branches — not fixed here since
+          // that combination doesn't have a real usage yet.)
+          <div className="lyra-page-header-breadcrumb-wrap min-w-0 flex-1">
             <Breadcrumb className="lyra-page-header-breadcrumb-full min-w-0">
               <BreadcrumbList className="flex-nowrap min-w-0">
                 {(Array.isArray(breadcrumb) ? breadcrumb : [breadcrumb]).map((crumb, i) => (

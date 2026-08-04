@@ -35,7 +35,7 @@ interface LeftNavProps extends React.HTMLAttributes<HTMLElement> {
   /** Show/hide the collapse toggle button */
   collapsible?: boolean;
   /**
-   * Overlay mode (narrow screens): the aside keeps a fixed 52px footprint;
+   * Overlay mode (narrow screens): the aside keeps a fixed 60px footprint;
    * the expanded panel slides out as an absolutely-positioned overlay.
    *
    * Defaults to `"auto"`: LeftNav tracks the window width itself and
@@ -252,16 +252,16 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
         <aside
           ref={ref}
           aria-label="Main navigation"
-          className={cn("relative z-10 flex-shrink-0 overflow-visible bg-lyra-bg-surface-shell w-[52px]", className)}
+          className={cn("relative z-10 flex-shrink-0 overflow-visible bg-lyra-bg-surface-shell w-[60px]", className)}
           onMouseEnter={onHoverStart}
           onMouseLeave={onHoverEnd}
           {...props}
         >
-          {/* Sliding panel: 52px footprint when closed, 256px overlay when open */}
+          {/* Sliding panel: 60px footprint when closed, 256px overlay when open */}
           <div
             className="absolute left-0 top-0 bottom-0 flex flex-col bg-lyra-bg-surface-shell overflow-hidden"
             style={{
-              width: hoverOpen ? 256 : 52,
+              width: hoverOpen ? 256 : 60,
               zIndex: hoverOpen ? 20 : 10,
               transition: "width 200ms cubic-bezier(0.4, 0, 0.2, 1)",
               boxShadow: hoverOpen ? "4px 0 12px rgba(0,0,0,0.1)" : "none",
@@ -362,7 +362,7 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
         aria-label="Main navigation"
         className={cn(
           "relative z-10 flex h-full flex-shrink-0 flex-col overflow-visible bg-lyra-bg-surface-shell transition-all duration-200",
-          open ? "w-[256px]" : "w-[52px]",
+          open ? "w-[256px]" : "w-[60px]",
           className
         )}
         {...props}

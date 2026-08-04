@@ -65,6 +65,48 @@ export interface PopoverProps {
   onCloseAutoFocus?: PopoverContentProps["onCloseAutoFocus"];
   onEscapeKeyDown?: PopoverContentProps["onEscapeKeyDown"];
   onInteractOutside?: PopoverContentProps["onInteractOutside"];
+  /**
+   * Render `children` as a Radix `Anchor` (pure positioning reference, no
+   * behavior of its own) instead of a `Trigger` (default, `false`).
+   *
+   * `Trigger` unconditionally wires up its own click handler that calls
+   * `onOpenChange` — even in fully controlled mode (`open` passed
+   * explicitly), Radix still fires it on every click of the wrapped
+   * element, composed alongside whatever `onClick` that element already
+   * had. That's invisible when the wrapped element has no `onClick` of its
+   * own (a plain icon `Button` that exists only to open the popover), but
+   * breaks the moment the wrapped element is independently interactive —
+   * e.g. `ChannelTab`'s `Tab`, whose own `onClick` switches the active
+   * channel. Wrapping that `Tab` as a `Trigger` meant every ordinary
+   * channel-switch click *also* toggled this popover open, since Radix's
+   * click-to-toggle fired in addition to the tab's own `onClick` — not
+   * because anything called `onOpenChange` on purpose. Set `asAnchor` for
+   * exactly this case: something else (e.g. a kebab menu item) drives
+   * `open`/`onOpenChange` explicitly, and `children` should only ever
+   * supply Popper a position to anchor against, never its own click
+   * behavior.
+   */
+  asAnchor?: boolean;
+  /**
+   * Radix's own `modal` mode (default: `false`, matching every existing
+   * consumer's current behavior unchanged). While open, traps focus inside
+   * the popover (`FocusScope`) and unconditionally swallows any outside
+   * focus-outside event instead of treating it as a dismiss trigger.
+   *
+   * Needed specifically for `asAnchor` popovers whose open state is driven
+   * by picking an item from *another* floating layer (e.g. `ChannelTab`'s
+   * kebab "Outcome" entry, a `DropdownMenu.Item`): that menu closing
+   * returns focus to its own trigger via Radix's own `onCloseAutoFocus` —
+   * and since that trigger sits inside this popover's anchor, non-modal
+   * mode's outside-focus detection (keyed off `PopoverTrigger`'s own ref,
+   * which `asAnchor` never populates — see that prop's doc comment) can't
+   * reliably tell that refocus apart from a real outside interaction,
+   * dismissing the popover a tick after it opens (it visibly flashes open
+   * then immediately closes). `modal` sidesteps the whole detection
+   * problem rather than trying to out-guess it: with focus trapped inside,
+   * that stray refocus is never allowed to leave in the first place.
+   */
+  modal?: boolean;
 }
 
 /* ── Arrow ──
@@ -154,9 +196,15 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
   onCloseAutoFocus,
   onEscapeKeyDown,
   onInteractOutside,
+  asAnchor = false,
+  modal = false,
 }, ref) => (
-  <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange}>
-    <PopoverPrimitive.Trigger asChild>{children}</PopoverPrimitive.Trigger>
+  <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange} modal={modal}>
+    {asAnchor ? (
+      <PopoverPrimitive.Anchor asChild>{children}</PopoverPrimitive.Anchor>
+    ) : (
+      <PopoverPrimitive.Trigger asChild>{children}</PopoverPrimitive.Trigger>
+    )}
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
         ref={ref}

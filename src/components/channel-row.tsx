@@ -214,6 +214,274 @@ export interface ChannelOutcomeConfig {
   onCancel: () => void;
 }
 
+/** Local state the Outcome popover's own nested Resolution dropdown needs
+ *  (which body it's showing — the status list, or the "Close Contact?"
+ *  confirm). Factored into its own hook so each of the two places that can
+ *  render this popover (`ChannelRow`'s standalone button below, and
+ *  `ChannelTab`'s kebab-triggered version further down) calls it itself
+ *  rather than threading it through as props — each has its own
+ *  independent popover instance, so this state must never be shared
+ *  between them. The RESOLUTION VALUE itself is NOT here — it's fully
+ *  lifted through `ChannelOutcomeConfig.resolution`/`onResolutionChange`,
+ *  same as before; only "is the dropdown showing, and which body" is
+ *  local. */
+function useOutcomePopoverState() {
+  const [resolutionMenuOpen, setResolutionMenuOpen] = React.useState(false);
+  const [resolutionMenuView, setResolutionMenuView] = React.useState<"menu" | "confirm">("menu");
+  return { resolutionMenuOpen, setResolutionMenuOpen, resolutionMenuView, setResolutionMenuView };
+}
+
+/** Builds the Outcome popover's `header`/`footer`/`content` — the actual
+ *  Resolution/Tags/Disposition/Summary form (see `ChannelOutcomeConfig`'s
+ *  own doc comment above) — shared verbatim between `ChannelRow`'s
+ *  standalone Outcome button and `ChannelTab`'s kebab-triggered version, so
+ *  the two can't drift into two different forms for logging the same
+ *  thing. Each caller still owns its OWN wrapping `<Popover>`
+ *  (placement/trigger/exact z-index differ — `ChannelRow` anchors a small
+ *  icon button with `align="end"`, `ChannelTab` anchors the whole tab). */
+function buildOutcomePopoverSlots(
+  outcome: ChannelOutcomeConfig,
+  { resolutionMenuOpen, setResolutionMenuOpen, resolutionMenuView, setResolutionMenuView }: ReturnType<typeof useOutcomePopoverState>
+): { header: React.ReactNode; footer: React.ReactNode; content: React.ReactNode } {
+  return {
+    header: (
+      <PanelHeader
+        title={outcome.title ?? "Log Outcome"}
+        bordered={false}
+        className="px-5 pb-0"
+        onClose={() => outcome.onOpenChange(false)}
+      />
+    ),
+    footer: (
+      <div className="flex items-center justify-end gap-2 px-5 pb-4 pt-1">
+        <Button variant="outline" size="md" onClick={outcome.onCancel}>
+          Cancel
+        </Button>
+        <Button variant="default" size="md" onClick={outcome.onSave}>
+          Approve &amp; Save
+        </Button>
+      </div>
+    ),
+    content: (
+      <div className="flex flex-col gap-4 pb-2 pt-1">
+        <div>
+          <Label label="Status" className="mb-1.5" />
+          {/* Same colored-dot `Menu` the session-status pill's own dropdown
+              uses (`TranscriptSessionSeparator`, `AgentNextGenPage.tsx`) —
+              reused here, not just visually matched, so a consumer wiring
+              both `outcome.resolutionOptions`/`resolution` and the
+              session-status pill to the same underlying status state (as
+              `AgentNextGenPage` does) gets a single "is this session Open/
+              Pending/Escalated/Resolved/Closed" value that's reflected —
+              and changeable — from either surface. This field only owns
+              the field-look TRIGGER (bordered box + chevron, matching
+              every other field in this popover); the dropdown content
+              itself is a plain `Menu`, not `Select`, since `Select`'s own
+              single-select mode has no way to render a leading colored dot
+              per row. */}
+          <Popover
+            open={resolutionMenuOpen}
+            onOpenChange={(open) => {
+              setResolutionMenuOpen(open);
+              // Always land back on the status list next time this opens,
+              // never stranded on a stale confirm view from a previous
+              // visit — same reset `handleStatusMenuOpenChange` performs
+              // for the session-status popover.
+              setResolutionMenuView("menu");
+            }}
+            placement="bottom"
+            align="start"
+            // `z-[10005]` — one tier above this popover's own, now-
+            // `z-[10003]`, parent (see that Popover's own doc comment at
+            // each call site) — "Select dropdown nested inside a popover
+            // nested inside another popover" per CONTRIBUTING.md §4,
+            // reused here even though this particular nested overlay is a
+            // `Popover` (not a `Select`) since the table's tiers are about
+            // nesting *depth*, not component identity.
+            className="z-[10005] w-[var(--radix-popover-trigger-width)]"
+            // `bodyPadding` defaults to `true` (`popover.tsx`'s own `px-5`
+            // inset for plain body content) — a `bare` `Menu` already
+            // supplies its own full-bleed row padding (`p-1` per row), so
+            // leaving the default on here stacks BOTH insets, reading as
+            // oversized gaps around/between rows. Only true for the "menu"
+            // view though — the "confirm" view's plain description
+            // paragraph DOES want the normal inset, same
+            // `bodyPadding={statusMenuView === "confirm"}` split the
+            // session-status popover uses (rule #28) — any future
+            // `Popover content={<Menu bare .../>}` must set this
+            // explicitly too, it's never automatic.
+            bodyPadding={resolutionMenuView === "confirm"}
+            // `header`/`footer` are real `Popover` slots, only supplied
+            // for the confirm view — the menu view has neither, it's just
+            // `content`. Same split the session-status popover's own
+            // confirm view uses.
+            header={
+              resolutionMenuView === "confirm" ? (
+                <PanelHeader
+                  title="Close Contact?"
+                  icon={
+                    <WarningIconSolid
+                      className="h-5 w-5 text-lyra-status-critical-strong"
+                      aria-hidden="true"
+                    />
+                  }
+                  bordered={false}
+                  className="px-5 pb-0"
+                />
+              ) : undefined
+            }
+            footer={
+              resolutionMenuView === "confirm" ? (
+                <div className="flex items-center justify-end gap-2 px-5 pb-4 pt-1">
+                  <Button
+                    variant="destructive"
+                    size="md"
+                    onClick={() => {
+                      outcome.onResolutionChange("Closed");
+                      setResolutionMenuOpen(false);
+                      setResolutionMenuView("menu");
+                    }}
+                  >
+                    Close
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="md"
+                    onClick={() => {
+                      setResolutionMenuOpen(false);
+                      setResolutionMenuView("menu");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              ) : undefined
+            }
+            content={
+              resolutionMenuView === "confirm" ? (
+                <p className="pb-2 pt-1 lyra-body-md text-lyra-fg-secondary">
+                  Closing a contact cannot be undone. Are you sure you want to close this contact?
+                </p>
+              ) : (
+                <Menu
+                  bare
+                  items={outcome.resolutionOptions.map((option) => ({
+                    id: option.label,
+                    label: option.label,
+                    active: option.label === outcome.resolution,
+                    icon: (
+                      <span
+                        aria-hidden="true"
+                        className="block h-2 w-2 rounded-full"
+                        style={{ backgroundColor: option.dotColor }}
+                      />
+                    ),
+                    onClick: () => {
+                      // "Closed" needs a confirm step first (same reasoning
+                      // the session-status popover's own
+                      // `selectSessionStatus` already established) — every
+                      // other status applies immediately and closes the
+                      // dropdown.
+                      if (option.label === "Closed") {
+                        setResolutionMenuView("confirm");
+                        return;
+                      }
+                      outcome.onResolutionChange(option.label);
+                      setResolutionMenuOpen(false);
+                    },
+                  }))}
+                />
+              )
+            }
+          >
+            <Button
+              variant="outline"
+              aria-haspopup="menu"
+              aria-expanded={resolutionMenuOpen}
+              // Same "Closed locks it, nothing left to change" treatment
+              // the session-status pill's own trigger already gets (rule
+              // #28) — once this reads "Closed" there's no popover to
+              // reopen, so the field disables outright rather than staying
+              // clickable for no reason.
+              disabled={outcome.resolution === "Closed"}
+              className="h-9 w-full justify-between border-lyra-border-strong bg-lyra-bg-field font-normal text-lyra-fg-default hover:bg-lyra-bg-field hover:border-lyra-state-border-hover-neutral"
+            >
+              <span className="truncate">{outcome.resolution}</span>
+              {/* Dropped once locked, same as the "#caseId · date" toggle
+                  chevron on a Closed session (rule #28) — no chevron on a
+                  field that's no longer a dropdown trigger. */}
+              {outcome.resolution !== "Closed" && (
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 shrink-0 text-lyra-fg-secondary transition-transform",
+                    resolutionMenuOpen && "rotate-180"
+                  )}
+                  strokeWidth={1.5}
+                  aria-hidden="true"
+                />
+              )}
+            </Button>
+          </Popover>
+        </div>
+        <div>
+          <Label label="Tags" className="mb-1.5" />
+          <Select
+            multiple
+            placeholder="Select tags"
+            options={outcome.tagOptions.map((option) => ({ value: option.label, label: option.label }))}
+            values={outcome.selectedTags}
+            onValuesChange={outcome.onTagsChange}
+            // Same `z-[10005]` tier as the Resolution popover above — this
+            // dropdown is a `Select` nested inside this now-`z-[10003]`
+            // "Log Outcome" popover, same depth, same failure mode.
+            dropdownClassName="z-[10005]"
+          />
+          {/* Applied tags render as removable pills BELOW the picker
+              itself, per explicit request — `Select`'s own multi-select
+              mode only ever shows a "{n} selected" summary inside its
+              trigger, not a separate persistent pill row, so that's added
+              here rather than inside `Select`. Both read/write the exact
+              same `selectedTags` array, so removing a pill here and
+              un-checking it in the dropdown are two views of one piece of
+              state, not two. */}
+          {outcome.selectedTags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-1.5">
+              {outcome.selectedTags.map((tagLabel) => {
+                const option = outcome.tagOptions.find((o) => o.label === tagLabel);
+                return (
+                  <Tag
+                    key={tagLabel}
+                    label={tagLabel}
+                    variant={option?.variant ?? "neutral"}
+                    onRemove={() =>
+                      outcome.onTagsChange(outcome.selectedTags.filter((t) => t !== tagLabel))
+                    }
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
+        <Select
+          label="Disposition code"
+          searchable
+          options={outcome.dispositionOptions}
+          value={outcome.dispositionCode}
+          onValueChange={outcome.onDispositionChange}
+          // Same reasoning as the Tags `Select` above.
+          dropdownClassName="z-[10005]"
+        />
+        <Textarea
+          label="Summary"
+          rows={5}
+          value={outcome.summary}
+          onChange={(e) => outcome.onSummaryChange(e.target.value)}
+        />
+      </div>
+    ),
+  };
+}
+
 /* ── Base row (shared rendering) ── */
 
 interface ChannelRowProps {
@@ -307,24 +575,9 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
   // local bit so the tooltip-disable logic doesn't depend on whether a
   // consumer happened to pass that prop at all.
   const [menuOpen, setMenuOpen] = React.useState(false);
-  // Whether the Resolution field's own nested dropdown (inside the already-
-  // open Outcome popover) is expanded — local rather than lifted like the
-  // session-status pill's `statusMenuOpenId` since only one Outcome popover
-  // (and so only one Resolution dropdown) can ever be open for this row at
-  // a time; the RESOLUTION VALUE itself is still fully lifted (read/written
-  // through `outcome.resolution`/`onResolutionChange`), only this
-  // "is the dropdown showing" bit is local.
-  const [resolutionMenuOpen, setResolutionMenuOpen] = React.useState(false);
-  // Which body the Resolution dropdown's own popover is showing — the
-  // status list, or the "Close Contact?" confirm — same reasoning and same
-  // one-popover-two-swappable-bodies shape `TranscriptSessionSeparator`'s
-  // own status popover already uses (`statusMenuView`, `AgentNextGenPage
-  // .tsx`) for the exact same "Closed" status, reused here rather than
-  // reinvented since picking "Closed" from EITHER dropdown should feel
-  // like the same, one confirmed action. Reset to `"menu"` whenever this
-  // Resolution popover closes (see `onOpenChange` below) so it never opens
-  // back up stranded on a stale confirm view.
-  const [resolutionMenuView, setResolutionMenuView] = React.useState<"menu" | "confirm">("menu");
+  // Outcome popover's own Resolution-dropdown state — see
+  // `useOutcomePopoverState`'s own doc comment above.
+  const outcomePopoverState = useOutcomePopoverState();
   return (
   <div
     onClick={onSelect}
@@ -466,253 +719,7 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
                 // focus to it would immediately reopen that tooltip with no
                 // real hover intent behind it.
                 onCloseAutoFocus={(e) => e.preventDefault()}
-                header={
-                  <PanelHeader
-                    title={outcome.title ?? "Log Outcome"}
-                    bordered={false}
-                    className="px-5 pb-0"
-                    onClose={() => outcome.onOpenChange(false)}
-                  />
-                }
-                footer={
-                  <div className="flex items-center justify-end gap-2 px-5 pb-4 pt-1">
-                    <Button variant="outline" size="md" onClick={outcome.onCancel}>
-                      Cancel
-                    </Button>
-                    <Button variant="default" size="md" onClick={outcome.onSave}>
-                      Approve &amp; Save
-                    </Button>
-                  </div>
-                }
-                content={
-                  <div className="flex flex-col gap-4 pb-2 pt-1">
-                    <div>
-                      <Label label="Status" className="mb-1.5" />
-                      {/* Same colored-dot `Menu` the session-status pill's
-                          own dropdown uses (`TranscriptSessionSeparator`,
-                          `AgentNextGenPage.tsx`) — reused here, not just
-                          visually matched, so a consumer wiring both
-                          `outcome.resolutionOptions`/`resolution` and the
-                          session-status pill to the same underlying status
-                          state (as `AgentNextGenPage` does) gets a single
-                          "is this session Open/Pending/Escalated/Resolved/
-                          Closed" value that's reflected — and changeable —
-                          from either surface. This field only owns the
-                          field-look TRIGGER (bordered box + chevron,
-                          matching every other field in this popover); the
-                          dropdown content itself is a plain `Menu`, not
-                          `Select`, since `Select`'s own single-select mode
-                          has no way to render a leading colored dot per
-                          row. */}
-                      <Popover
-                        open={resolutionMenuOpen}
-                        onOpenChange={(open) => {
-                          setResolutionMenuOpen(open);
-                          // Always land back on the status list next time
-                          // this opens, never stranded on a stale confirm
-                          // view from a previous visit — same reset
-                          // `handleStatusMenuOpenChange` performs for the
-                          // session-status popover.
-                          setResolutionMenuView("menu");
-                        }}
-                        placement="bottom"
-                        align="start"
-                        // `z-[10005]` — one tier above this popover's own,
-                        // now-`z-[10003]`, parent (see that Popover's own
-                        // doc comment above) — "Select dropdown nested
-                        // inside a popover nested inside another popover"
-                        // per CONTRIBUTING.md §4, reused here even though
-                        // this particular nested overlay is a `Popover`
-                        // (not a `Select`) since the table's tiers are
-                        // about nesting *depth*, not component identity.
-                        className="z-[10005] w-[var(--radix-popover-trigger-width)]"
-                        // `bodyPadding` defaults to `true` (`popover.tsx`'s
-                        // own `px-5` inset for plain body content) — a
-                        // `bare` `Menu` already supplies its own full-bleed
-                        // row padding (`p-1` per row), so leaving the
-                        // default on here stacks BOTH insets, reading as
-                        // oversized gaps around/between rows. Only true for
-                        // the "menu" view though — the "confirm" view's
-                        // plain description paragraph DOES want the normal
-                        // inset, same `bodyPadding={statusMenuView ===
-                        // "confirm"}` split the session-status popover uses
-                        // (rule #28) — any future `Popover content={<Menu
-                        // bare .../>}` must set this explicitly too, it's
-                        // never automatic.
-                        bodyPadding={resolutionMenuView === "confirm"}
-                        // `header`/`footer` are real `Popover` slots, only
-                        // supplied for the confirm view — the menu view has
-                        // neither, it's just `content`. Same split the
-                        // session-status popover's own confirm view uses.
-                        header={
-                          resolutionMenuView === "confirm" ? (
-                            <PanelHeader
-                              title="Close Contact?"
-                              icon={
-                                <WarningIconSolid
-                                  className="h-5 w-5 text-lyra-status-critical-strong"
-                                  aria-hidden="true"
-                                />
-                              }
-                              bordered={false}
-                              className="px-5 pb-0"
-                            />
-                          ) : undefined
-                        }
-                        footer={
-                          resolutionMenuView === "confirm" ? (
-                            <div className="flex items-center justify-end gap-2 px-5 pb-4 pt-1">
-                              <Button
-                                variant="destructive"
-                                size="md"
-                                onClick={() => {
-                                  outcome.onResolutionChange("Closed");
-                                  setResolutionMenuOpen(false);
-                                  setResolutionMenuView("menu");
-                                }}
-                              >
-                                Close
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="md"
-                                onClick={() => {
-                                  setResolutionMenuOpen(false);
-                                  setResolutionMenuView("menu");
-                                }}
-                              >
-                                Cancel
-                              </Button>
-                            </div>
-                          ) : undefined
-                        }
-                        content={
-                          resolutionMenuView === "confirm" ? (
-                            <p className="pb-2 pt-1 lyra-body-md text-lyra-fg-secondary">
-                              Closing a contact cannot be undone. Are you sure you want to close this contact?
-                            </p>
-                          ) : (
-                            <Menu
-                              bare
-                              items={outcome.resolutionOptions.map((option) => ({
-                                id: option.label,
-                                label: option.label,
-                                active: option.label === outcome.resolution,
-                                icon: (
-                                  <span
-                                    aria-hidden="true"
-                                    className="block h-2 w-2 rounded-full"
-                                    style={{ backgroundColor: option.dotColor }}
-                                  />
-                                ),
-                                onClick: () => {
-                                  // "Closed" needs a confirm step first
-                                  // (same reasoning the session-status
-                                  // popover's own `selectSessionStatus`
-                                  // already established) — every other
-                                  // status applies immediately and closes
-                                  // the dropdown.
-                                  if (option.label === "Closed") {
-                                    setResolutionMenuView("confirm");
-                                    return;
-                                  }
-                                  outcome.onResolutionChange(option.label);
-                                  setResolutionMenuOpen(false);
-                                },
-                              }))}
-                            />
-                          )
-                        }
-                      >
-                        <Button
-                          variant="outline"
-                          aria-haspopup="menu"
-                          aria-expanded={resolutionMenuOpen}
-                          // Same "Closed locks it, nothing left to change"
-                          // treatment the session-status pill's own trigger
-                          // already gets (rule #28) — once this reads
-                          // "Closed" there's no popover to reopen, so the
-                          // field disables outright rather than staying
-                          // clickable for no reason.
-                          disabled={outcome.resolution === "Closed"}
-                          className="h-9 w-full justify-between border-lyra-border-strong bg-lyra-bg-field font-normal text-lyra-fg-default hover:bg-lyra-bg-field hover:border-lyra-state-border-hover-neutral"
-                        >
-                          <span className="truncate">{outcome.resolution}</span>
-                          {/* Dropped once locked, same as the "#caseId · date"
-                              toggle chevron on a Closed session (rule #28)
-                              — no chevron on a field that's no longer a
-                              dropdown trigger. */}
-                          {outcome.resolution !== "Closed" && (
-                            <ChevronDown
-                              className={cn(
-                                "h-4 w-4 shrink-0 text-lyra-fg-secondary transition-transform",
-                                resolutionMenuOpen && "rotate-180"
-                              )}
-                              strokeWidth={1.5}
-                              aria-hidden="true"
-                            />
-                          )}
-                        </Button>
-                      </Popover>
-                    </div>
-                    <div>
-                      <Label label="Tags" className="mb-1.5" />
-                      <Select
-                        multiple
-                        placeholder="Select tags"
-                        options={outcome.tagOptions.map((option) => ({ value: option.label, label: option.label }))}
-                        values={outcome.selectedTags}
-                        onValuesChange={outcome.onTagsChange}
-                        // Same `z-[10005]` tier as the Resolution popover
-                        // above — this dropdown is a `Select` nested inside
-                        // this now-`z-[10003]` "Log Outcome" popover, same
-                        // depth, same failure mode.
-                        dropdownClassName="z-[10005]"
-                      />
-                      {/* Applied tags render as removable pills BELOW the
-                          picker itself, per explicit request — `Select`'s
-                          own multi-select mode only ever shows a "{n}
-                          selected" summary inside its trigger, not a
-                          separate persistent pill row, so that's added here
-                          rather than inside `Select`. Both read/write the
-                          exact same `selectedTags` array, so removing a
-                          pill here and un-checking it in the dropdown are
-                          two views of one piece of state, not two. */}
-                      {outcome.selectedTags.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-1.5">
-                          {outcome.selectedTags.map((tagLabel) => {
-                            const option = outcome.tagOptions.find((o) => o.label === tagLabel);
-                            return (
-                              <Tag
-                                key={tagLabel}
-                                label={tagLabel}
-                                variant={option?.variant ?? "neutral"}
-                                onRemove={() =>
-                                  outcome.onTagsChange(outcome.selectedTags.filter((t) => t !== tagLabel))
-                                }
-                              />
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                    <Select
-                      label="Disposition code"
-                      searchable
-                      options={outcome.dispositionOptions}
-                      value={outcome.dispositionCode}
-                      onValueChange={outcome.onDispositionChange}
-                      // Same reasoning as the Tags `Select` above.
-                      dropdownClassName="z-[10005]"
-                    />
-                    <Textarea
-                      label="Summary"
-                      rows={5}
-                      value={outcome.summary}
-                      onChange={(e) => outcome.onSummaryChange(e.target.value)}
-                    />
-                  </div>
-                }
+                {...buildOutcomePopoverSlots(outcome, outcomePopoverState)}
               >
                 <Button
                   variant="icon"
@@ -900,43 +907,63 @@ const CHANNEL_TYPE_META: Record<ChannelType, { icon: React.ReactNode; label: str
  * an overflow menu; that bespoke behavior was removed in favor of the
  * standard "active tab + N More" pattern every other `TabList` already uses
  * (see PROJECT_SUMMARY.md's "ChannelTab no longer has its own collapse
- * strategy" entry). A `Tooltip` on every tab still surfaces the full "Label
- * address" text (no divider between the two — see `address`'s own doc
- * comment), plus a second, smaller line with this channel's message count
- * and conversation id (`messageCount`/`interactionId`) when either is on
- * hand — info that never appears on the tab face itself, only in the
- * tooltip. */
+ * strategy" entry). A `Tooltip` on every tab still surfaces the full channel
+ * label on its own top line, plus a second, smaller line with this
+ * channel's message count and its own address (`messageCount`/`address`)
+ * when either is on hand — the tooltip is always the one place both are
+ * reachable, whether or not `address` is also showing on the tab face
+ * itself (`showAddressOnFace` — see its own doc comment for when a
+ * consumer wants the face to stay compact while the tooltip still surfaces
+ * it). */
 export interface ChannelTabProps {
   /** Determines this tab's icon, label, and default kebab menu items — same
    *  per-type choices as the matching `*ChannelRow`. */
   type: ChannelType;
   /** The phone number/email address/WhatsApp handle this channel is on, if
-   *  any (e.g. `TrackedChannel.addressLabel`) — rendered directly after the
-   *  type label with no divider between them (e.g. "WhatsApp
-   *  @Jamie Torres") so two tabs of the same `type` stay distinguishable,
-   *  and repeated the same way in this tab's `Tooltip` so that stays true
-   *  even once the bar has collapsed down to hiding it (see the
-   *  container-query note above). Omit when this channel has no address on
-   *  hand (e.g. a redialed voice call with no stored number) — the tab just
-   *  shows icon + type label, and its tooltip just the type label. */
+   *  any (e.g. `TrackedChannel.addressLabel`). Always shown on this tab's
+   *  `Tooltip` (second line, alongside `messageCount` — see that prop's own
+   *  doc comment) when present, regardless of `showAddressOnFace` below —
+   *  the tooltip is the one place it's always reachable. Also rendered
+   *  directly after the type label on the tab face itself by default (e.g.
+   *  "WhatsApp @Jamie Torres", no divider between them) so two tabs of the
+   *  same `type` stay distinguishable there too — see `showAddressOnFace`
+   *  to opt a consumer out of that face-level display specifically (e.g.
+   *  a bar that wants to stay compact) while still surfacing it in the
+   *  tooltip. Omit entirely when this channel has no address on hand (e.g.
+   *  a redialed voice call with no stored number) — the tab just shows icon
+   *  + type label, and its tooltip's second line falls back to whatever
+   *  `messageCount` alone provides (or disappears entirely if that's also
+   *  absent). */
   address?: string;
+  /** Show `address` (above) on the tab face itself, next to the type label
+   *  — default `true`. Set `false` to keep the face compact (type label
+   *  only) while still passing `address` through so it reaches the
+   *  tooltip's second line — e.g. a bar with several tabs open at once,
+   *  where every tab showing its own address would crowd the row, but an
+   *  agent hovering one specific tab still wants to see which number/
+   *  handle it's on. Has no effect on the tooltip either way. */
+  showAddressOnFace?: boolean;
   /** Total message count for this channel's conversation, if on hand — shown
-   *  on a second, smaller (`lyra-body-sm`) `Tooltip` line below the label
-   *  (+ address) line (e.g. "16 Messages | #707535188548"), never on the
-   *  tab face itself (there's no room once the bar starts collapsing, see
-   *  the container-query note above — the tooltip is the one place this is
-   *  always reachable regardless of stage). Omit for channel types with no
-   *  real message concept (voice) and for a channel that hasn't exchanged
-   *  any messages yet — `0` renders "0 Messages", which is exactly right
-   *  for a just-started outbound conversation; `undefined` renders no
-   *  message segment on this line at all. */
+   *  on a second, smaller (`lyra-body-sm`) `Tooltip` line below the plain
+   *  label line, alongside `address` (e.g. "16 Messages | +1 555-123-4567"),
+   *  never on the tab face itself (there's no room once the bar starts
+   *  collapsing, see the container-query note above — the tooltip is the
+   *  one place this is always reachable regardless of stage). Omit for
+   *  channel types with no real message concept (voice) and for a channel
+   *  that hasn't exchanged any messages yet — `0` renders "0 Messages",
+   *  which is exactly right for a just-started outbound conversation;
+   *  `undefined` renders no message segment on this line at all. */
   messageCount?: number;
   /** This channel's own conversation/session id, if on hand — distinct from
    *  the customer-record id (`ActiveInteraction.recordId`, e.g. "AGT-2000")
    *  shown in the page header above: one customer record can have several
-   *  channels open, each its own conversation with its own id. Rendered as
-   *  "#{interactionId}" on the same second `Tooltip` line as `messageCount`.
-   *  Omit when unknown. */
+   *  channels open, each its own conversation with its own id. No longer
+   *  shown anywhere on this tab itself (its old spot, this tab's `Tooltip`,
+   *  now shows `address` instead — an agent scanning tabs cares which
+   *  number/handle a channel is on far more than its internal
+   *  conversation id) — kept as a prop purely so existing callers don't
+   *  need an unrelated change, and in case some other surface on this tab
+   *  wants it later. Omit when unknown. */
   interactionId?: string;
   active?: boolean;
   onClick?: () => void;
@@ -949,12 +976,24 @@ export interface ChannelTabProps {
   menuItems?: MenuEntry[];
   /** Hide the trailing kebab entirely. Default: true (kebab shown). */
   showMenu?: boolean;
+  /** Wires the kebab's "Outcome" entry to open the real Log Outcome popover
+   *  (same Resolution/Tags/Disposition/Summary form `ChannelRow`'s own
+   *  standalone Outcome button opens — see `ChannelOutcomeConfig`'s doc
+   *  comment) instead of being a plain, unwired menu item. Omit to leave
+   *  "Outcome" inert, its pre-existing behavior — every existing consumer
+   *  that doesn't pass this is unaffected. Unlike `ChannelRow`, there's no
+   *  separate standalone Outcome button here to anchor the popover to (the
+   *  action only ever lived in this kebab) — the popover anchors to the
+   *  whole tab instead, opening below it once "Outcome" is picked from the
+   *  dropdown. */
+  outcome?: ChannelOutcomeConfig;
   className?: string;
 }
 
 const ChannelTab: React.FC<ChannelTabProps> = ({
   type,
   address,
+  showAddressOnFace = true,
   messageCount,
   interactionId,
   active,
@@ -962,10 +1001,44 @@ const ChannelTab: React.FC<ChannelTabProps> = ({
   onDismiss,
   menuItems,
   showMenu = true,
+  outcome,
   className,
 }) => {
   const meta = CHANNEL_TYPE_META[type];
   const defaultMenuItems = type === "voice" ? buildVoiceMenuItems(onDismiss) : buildDigitalMenuItems(onDismiss);
+  // Wires the "outcome" entry specifically (see `ChannelTabProps.outcome`'s
+  // own doc comment) — every other entry (Unassign & Dismiss, Consult /
+  // Transfer, Send/Download Transcript, etc.) is untouched. Only rewritten
+  // when `outcome` is actually provided, so an omitted `outcome` leaves
+  // this list — and so the kebab's behavior — byte-for-byte what it was
+  // before this prop existed.
+  const rawMenuItems = menuItems ?? defaultMenuItems;
+  const effectiveMenuItems = outcome
+    ? rawMenuItems.map((item) =>
+        typeof item === "string" || "sectionLabel" in item || item.id !== "outcome"
+          ? item
+          : {
+              ...item,
+              // `menu-radix.tsx`'s `onSelect` calls this `onClick` and then
+              // lets Radix's default close-on-select run in the very same
+              // event — the kebab's `DropdownMenu` unmounts and its own
+              // `onCloseAutoFocus` fires a synchronous `.focus()` back onto
+              // the kebab trigger, which sits inside this same Popover's
+              // Anchor. Calling `outcome.onOpenChange(true)` synchronously
+              // here raced that close/focus-return cycle — the Popover's
+              // Content would mount and then immediately get treated as
+              // having lost focus/interacted-outside before the user ever
+              // saw it, so nothing visibly opened. This is the same
+              // "Dialog doesn't open from a DropdownMenu item" collision
+              // Radix-based menu libraries hit generally (shadcn/ui's docs
+              // carry the identical workaround); deferring to the next tick
+              // lets the dropdown's own close finish first, so the Popover
+              // opens into a settled DOM/focus state instead of the middle
+              // of another layer's teardown.
+              onClick: () => setTimeout(() => outcome.onOpenChange(true), 0),
+            }
+      )
+    : rawMenuItems;
   // This tab's own kebab dropdown (rendered by `Tab` itself, inside the
   // same button this outer `Tooltip` wraps) has no other way to tell this
   // Tooltip it opened — the tooltip's trigger and the dropdown's trigger
@@ -974,55 +1047,212 @@ const ChannelTab: React.FC<ChannelTabProps> = ({
   // open (and visually sitting on top of the dropdown) the whole time the
   // dropdown is showing.
   const [menuOpen, setMenuOpen] = React.useState(false);
-  // Second tooltip line — "16 Messages | #707535188548" — omitted entirely
-  // when neither value is on hand rather than rendering an empty/half-blank
-  // line under the "Label | address" one.
-  // Second tooltip line, e.g. "16 Messages | #707535188548" — the "|"
-  // between these two is kept (they're two distinct facts, not a label and
-  // its own value like the line above), just rendered smaller
-  // (`lyra-body-sm`, one step below the tooltip's own default `lyra-body-md`)
-  // since it's secondary/reference info, not the tab's primary identity.
+  // Outcome popover's own Resolution-dropdown state — see
+  // `useOutcomePopoverState`'s own doc comment above. Declared
+  // unconditionally (hooks can't be conditional) even though it's only
+  // read when `outcome` is actually provided below.
+  const outcomePopoverState = useOutcomePopoverState();
+  // Guards the outcome Popover's `onInteractOutside` below — see that
+  // prop's own comment for why this ref exists at all (short version:
+  // swapping to `asAnchor` to fix the tab-click-opens-it bug also silently
+  // lost Radix's built-in "don't treat clicking/refocusing my own trigger
+  // as an outside interaction" exemption, since that exemption is wired to
+  // `PopoverTrigger` specifically and never fires for `PopoverAnchor`).
+  const anchorRef = React.useRef<HTMLSpanElement>(null);
+  // Second tooltip line — e.g. "16 Messages | +1 555-123-4567" — omitted
+  // entirely when neither value is on hand rather than rendering an empty/
+  // half-blank line under the plain channel-label one above it. Used to be
+  // "16 Messages | #<interactionId>" (the case/interaction id), but that's
+  // not something an agent actually needs at a glance while scanning
+  // channel tabs — the channel's own number/email/handle is the far more
+  // useful "which one is this, specifically" fact, so `address` replaces
+  // `interactionId` here per explicit request. `interactionId` itself is
+  // unchanged/still a real prop (still shown elsewhere, e.g. this same
+  // tab's `#caseId · date` line in the transcript) — just no longer
+  // duplicated into this tooltip. The "|" between the two remaining values
+  // is kept (two distinct facts, not a label and its own value), rendered
+  // smaller (`lyra-body-sm`, one step below the tooltip's own default
+  // `lyra-body-md`) since it's secondary/reference info, not the tab's
+  // primary identity.
   const metaLine = [
     messageCount !== undefined ? `${messageCount} Message${messageCount === 1 ? "" : "s"}` : undefined,
-    interactionId ? `#${interactionId}` : undefined,
+    address,
   ]
     .filter(Boolean)
     .join(" | ");
+  // Top line is now always just the plain channel label ("Voice"/"SMS"/
+  // etc.) — `address` used to also be folded in here ("Voice +1 555-123-
+  // 4567") when present, which duplicated it against the second line once
+  // that line started showing `address` too (see `metaLine` above). One
+  // line owns "what channel," the other owns "which specific number/
+  // handle," instead of the top line trying to carry both.
   const tooltipContent = (
     <div className="flex flex-col gap-0.5">
-      <span>{address ? `${meta.label} ${address}` : meta.label}</span>
+      <span>{meta.label}</span>
       {metaLine && <span className="lyra-body-sm text-lyra-fg-secondary">{metaLine}</span>}
     </div>
   );
-  return (
-    <Tooltip content={tooltipContent} placement="bottom" disabled={menuOpen}>
-      <Tab
-        active={active}
-        onClick={onClick}
-        icon={meta.icon}
-        menuItems={showMenu ? (menuItems ?? defaultMenuItems) : undefined}
-        onMenuOpenChange={setMenuOpen}
-        menuAriaLabel={`More options for ${meta.label}`}
-        // This outer `Tooltip` already shows "{label} {address}" (a
-        // superset of this tab's own truncated "{label} {address}"
-        // children) plus the message-count/id line — `Tab`'s own built-in
-        // truncation tooltip was firing alongside it whenever the address
-        // got clipped, stacking two tooltip bubbles on one hover. See
-        // `showTruncationTooltip`'s own doc comment in tabs.tsx.
-        showTruncationTooltip={false}
-        className={className}
-      >
-        <span>{meta.label}</span>
-        {address && (
+  const tabElement = (
+    <Tab
+      active={active}
+      onClick={onClick}
+      icon={meta.icon}
+      menuItems={showMenu ? effectiveMenuItems : undefined}
+      onMenuOpenChange={setMenuOpen}
+      menuAriaLabel={`More options for ${meta.label}`}
+      // This outer `Tooltip` already shows "{label} {address}" (a
+      // superset of this tab's own truncated "{label} {address}"
+      // children) plus the message-count/id line — `Tab`'s own built-in
+      // truncation tooltip was firing alongside it whenever the address
+      // got clipped, stacking two tooltip bubbles on one hover. See
+      // `showTruncationTooltip`'s own doc comment in tabs.tsx.
+      showTruncationTooltip={false}
+      className={className}
+    >
+      {/* `data-tab-label` — marks specifically THIS span (not `Tab`'s own
+          generic children-wrapper) as the real label text for `TabList`'s
+          "N More" overflow dropdown to read (see that attribute's own doc
+          comment in tabs.tsx) — scoping it this tight, rather than to
+          `Tab`'s outer wrapper, is what keeps that dropdown's label from
+          also picking up `address` below and duplicating it into the
+          label text ("Voice(456) 383-3329" instead of a plain "Voice"
+          with the number on its own subhead line, confirmed via
+          screenshot). */}
+      <span data-tab-label>{meta.label}</span>
+      {address &&
+        (showAddressOnFace ? (
           // `text-lyra-fg-secondary` — not `-disabled`: an address isn't
           // disabled content, and `-disabled` is intentionally very low
           // contrast (20% white in dark mode vs. secondary's 60%), which
           // made phone numbers/addresses on an active dark-mode tab nearly
           // unreadable. `-secondary` is the correct semantic token for
           // "real but de-emphasized" text and is legible in both themes.
-          <span className="ml-1 font-normal text-lyra-fg-secondary">{address}</span>
-        )}
-      </Tab>
+          //
+          // `data-tab-subhead` — see the `sr-only` branch below for what
+          // this is for; carried on this visible span instead of a
+          // duplicate hidden one whenever the face is already showing the
+          // address, so a screen reader (or `TabList`'s own "N More"
+          // dropdown, once collapsed) never sees it twice.
+          <span data-tab-subhead className="ml-1 font-normal text-lyra-fg-secondary">
+            {address}
+          </span>
+        ) : (
+          // `showAddressOnFace={false}` means there's no visible element
+          // carrying `address` for `TabList`'s "N More" overflow dropdown
+          // to read (`data-tab-subhead`, read alongside `data-tab-label` —
+          // see that attribute's own doc comment in tabs.tsx) once this
+          // tab collapses into it: an agent scanning a long list of "SMS" /
+          // "Voice" / "WhatsApp" entries with no number/handle next to any
+          // of them can't tell which is which. `sr-only` keeps it out of
+          // the tab face itself (unchanged from before — this is purely
+          // additive) while still being real, queryable DOM content for
+          // both that dropdown and screen readers.
+          <span data-tab-subhead className="sr-only">
+            {address}
+          </span>
+        ))}
+    </Tab>
+  );
+  return (
+    <Tooltip content={tooltipContent} placement="bottom" disabled={menuOpen || Boolean(outcome?.open)}>
+      {outcome ? (
+        // Plain host `<span>`, not `Tab` itself, is what `Popover`'s own
+        // `Trigger asChild` clones onto here — `Tooltip`/`Popover` are both
+        // ordinary components (not `forwardRef`-and-prop-spreading like
+        // `Tab`/`Button` are), so nesting `Popover` directly around
+        // `Tooltip` would silently drop Radix's injected ref/handlers the
+        // same way `KebabMenuButton` once did as a bare `Tooltip` child
+        // (see that component's own doc comment) — except here there's no
+        // equivalent fix to reach for, since neither `Tooltip` nor
+        // `Popover` is this file's to edit around that. A plain span
+        // sidesteps the whole problem: host elements always forward
+        // ref/props correctly, and Radix only needs *some* real DOM box to
+        // measure for positioning — it doesn't have to be `Tab`'s own
+        // element specifically. `inline-flex` so the span shrink-wraps
+        // exactly around the tab instead of stretching to a block width —
+        // in the PLAIN (uncollapsed) tab row, that leaves this span sized
+        // exactly to the real `<button>` inside it, same as if there were
+        // no wrapper at all.
+        //
+        // `lyra-channel-tab-anchor` (lyra-tokens.css) — `Popover`'s own
+        // `asAnchor` mode adds no DOM node of its own (`asChild` clones
+        // straight onto `tabElement`), so this span's one real DOM child is
+        // `Tab`'s own `<button>` — that plain CSS class's `> *` rule
+        // targets that button specifically. Needed for `TabList`'s
+        // collapsed "active tab + N More" row (`overflowMenu`,
+        // `.lyra-tab-overflow-collapsed > *` in lyra-tokens.css): that rule
+        // stretches this span itself to fill its half of the row, but
+        // `inline-flex` alone doesn't propagate that stretch to a *child*
+        // with no `flex-grow`/width of its own — the button just sized to
+        // its own content and sat flush-left inside the now-much-wider
+        // span, leaving a visible gap before the "N More" trigger instead
+        // of a clean 50/50 split (confirmed via screenshot: the active
+        // tab's own underline stopped well short of half the row). A plain
+        // hand-written CSS class rather than a Tailwind arbitrary-variant
+        // utility (`[&>*]:w-full`, what this used to be) for the same
+        // reason `.lyra-tab-overflow-collapsed`'s own matching rule is
+        // plain CSS now too — see that rule's own doc comment
+        // (lyra-tokens.css): this specific stretch was reported as still
+        // not landing in practice despite every check on the Tailwind path
+        // (compiled output, `cn()`/twMerge survival) coming back clean in
+        // isolation, so this removes that whole path from the equation
+        // rather than continuing to chase why it wasn't working. Doesn't
+        // change anything in the *plain* (uncollapsed) row above — the
+        // span still shrink-wraps to the button's own natural width either
+        // way, this only matters once something upstream (like that
+        // `flex-1`) hands the span more room than the button would take on
+        // its own.
+        <span ref={anchorRef} className="inline-flex lyra-channel-tab-anchor">
+          <Popover
+            open={outcome.open}
+            onOpenChange={outcome.onOpenChange}
+            placement="bottom"
+            align="start"
+            // Same `z-[10003]`/`onCloseAutoFocus` reasoning as `ChannelRow`'s
+            // own Outcome popover — see that component's call site.
+            className="z-[10003] w-80"
+            onCloseAutoFocus={(e) => e.preventDefault()}
+            // `tabElement` is `Tab`, which carries its own `onClick` (channel
+            // selection) — without `asAnchor`, Radix's `Trigger` ALSO wires
+            // up its own click-to-toggle on that same element, so an
+            // ordinary click to switch channels was firing `onOpenChange`
+            // right alongside `onClick`, popping this open on every tab
+            // click instead of only when "Outcome" is picked from the
+            // kebab. `asAnchor` makes `tabElement` a pure position
+            // reference — `open` is driven exclusively by the kebab menu
+            // item's `onClick` above (`effectiveMenuItems`), never by a
+            // click on the tab itself. See `Popover`'s own `asAnchor` doc
+            // comment for the general problem this solves.
+            asAnchor
+            // `modal` — see `Popover`'s own doc comment for the full
+            // mechanics. Short version: `asAnchor` means Radix never
+            // learns this tab is "our own" trigger (that exemption is
+            // wired to `PopoverTrigger` specifically), so when the kebab's
+            // `DropdownMenu` closes and returns focus to the kebab button
+            // sitting inside this same anchor, non-modal mode couldn't
+            // reliably tell that apart from a real outside interaction —
+            // it flashed open, then immediately dismissed itself. Trapping
+            // focus inside via `modal` while open sidesteps the detection
+            // problem entirely instead of trying to out-guess it by hand.
+            modal
+            // Belt-and-suspenders alongside `modal`: still ignore any
+            // stray interaction that lands back inside the tab/kebab
+            // itself specifically (rather than relying purely on focus
+            // trapping), so only a click truly outside the tab can close
+            // this popover.
+            onInteractOutside={(e) => {
+              if (anchorRef.current?.contains(e.target as Node)) {
+                e.preventDefault();
+              }
+            }}
+            {...buildOutcomePopoverSlots(outcome, outcomePopoverState)}
+          >
+            {tabElement}
+          </Popover>
+        </span>
+      ) : (
+        tabElement
+      )}
     </Tooltip>
   );
 };

@@ -844,6 +844,32 @@
 .lyra-tab-overflow-wrap .lyra-tab-overflow-collapsed {
   display: none;
 }
+/* Not gated inside the `@container` block below — `.lyra-tab-overflow-
+   collapsed` only ever actually renders as `display: flex` at ≤400px in
+   the first place (the rule right above this one), so this has no visual
+   effect until that's already true; no need to duplicate the same width
+   condition a second time. Plain, hand-written CSS rather than a Tailwind
+   arbitrary-variant utility (`[&>*]:flex-1`, what this used to be, applied
+   directly on the element in tabs.tsx) for the same reason
+   `.lyra-tab-overflow-stretch`'s own matching rule below is plain CSS —
+   see that rule's own doc comment: reported as not actually stretching a
+   `ChannelTab`'s slot in practice, and moving off the JIT-generated
+   arbitrary-variant path removes that whole class of doubt rather than
+   continuing to chase why it wasn't landing. `> *` grows whatever this
+   row's direct child actually is — a plain `Tab`'s own button, or
+   `ChannelTab`'s wrapper `<span>` (whose own `[&>*]:w-full`, channel-
+   row.tsx, propagates that growth down into its real button one level
+   further in). `max-width: none` clears `Tab`'s own `max-w-[22ch]` cap at
+   any depth — the active tab's clone (`collapsedRowEl`, tabs.tsx) already
+   gets this via a direct `className` override too, so this is a second,
+   redundant guarantee of the same thing rather than the only source of
+   it. */
+.lyra-tab-overflow-wrap .lyra-tab-overflow-collapsed > * {
+  flex: 1 1 0%;
+}
+.lyra-tab-overflow-wrap .lyra-tab-overflow-collapsed [role="tab"] {
+  max-width: none;
+}
 @container (max-width: 400px) {
   .lyra-tab-overflow-wrap .lyra-tab-overflow-full {
     display: none;
@@ -851,10 +877,47 @@
   .lyra-tab-overflow-wrap .lyra-tab-overflow-collapsed {
     display: flex;
   }
-  .lyra-tab-overflow-wrap .lyra-tab-overflow-stretch [role="tab"] {
+  /* Split into two rules (was one, targeting `[role="tab"]` for both
+     `flex` and `max-width`) — `flex: 1 1 0%` has to land on the row's own
+     DIRECT children to actually grow: flex-grow only distributes extra
+     space from an item's immediate flex parent, and for a plain `Tab`
+     that direct child IS the real `[role="tab"]` button, so the old
+     single rule happened to work there. But `ChannelTab` (channel-
+     row.tsx) wraps that same button in its own `<span>` (for its Outcome
+     popover's anchor), so the real button sits one level *below* the
+     row's actual direct child — telling the deeply-nested button itself
+     to grow had nothing to distribute into, since its own immediate
+     parent (that wrapper span) was never told to grow in the first place
+     (confirmed via screenshot: a 2-tab row with a `ChannelTab` in it
+     stayed at natural width below 400px instead of stretching). `> *`
+     grows whatever the direct child actually is — the plain case's own
+     button, or a composite wrapper's span — and `ChannelTab`'s own span
+     already propagates that growth down into its real button
+     (`.lyra-channel-tab-anchor`, channel-row.tsx — see that class's own
+     definition below). `max-width: none` still targets `[role="tab"]`
+     specifically (at any depth) since that's genuinely where `Tab`'s own
+     `max-w-[22ch]` cap lives, however deep the real button sits. */
+  .lyra-tab-overflow-wrap .lyra-tab-overflow-stretch > * {
     flex: 1 1 0%;
+  }
+  .lyra-tab-overflow-wrap .lyra-tab-overflow-stretch [role="tab"] {
     max-width: none;
   }
+}
+
+/* `ChannelTab`'s own Outcome-popover anchor span (channel-row.tsx) — see
+   that call site's own doc comment for the full "why this exists" story.
+   Short version: this span is `ChannelTab`'s real, single DOM wrapper
+   around its `Tab`; when something upstream (`.lyra-tab-overflow-collapsed`/
+   `-stretch` above) stretches this span itself via `flex: 1 1 0%`, the
+   real `<button>` inside it doesn't automatically grow to match — a plain
+   flex/inline-flex container doesn't hand its children `flex-grow` for
+   free, so the button just sized to its own content and sat flush-left in
+   the now-wider span. `> *` fills whatever real DOM child this span has
+   (always exactly one — `Tab`'s own button) with the space the span
+   itself was given. */
+.lyra-channel-tab-anchor > * {
+  width: 100%;
 }
 
 /* Note: `TabList`'s `overflowBreakpoint="compact"` variant (tabs.tsx) does
