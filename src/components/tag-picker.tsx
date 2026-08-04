@@ -2,64 +2,69 @@ import * as React from "react";
 import { Tags } from "lucide-react";
 import { ActionIconButton, type ActionIconButtonProps } from "./actions";
 import { Popover, type PopoverPlacement } from "./popover";
-import { PanelHeader } from "./panel-header";
-import { Tag, type TagVariant } from "./tag";
+import { Checkbox } from "./checkbox";
+import { type TagVariant } from "./tag";
+import { cn } from "../lib/utils";
 
 /* ── TagPicker ──
    Extracted out of `agent-next-gen-v1`'s conversation transcript (where a
    message's hover toolbar has an "Add tag" action) into its own atom, per
-   CONTRIBUTING.md §0/"Composition over reimplementation" — the trigger
-   (`ActionIconButton`) and the flyout shell (`Popover`) were already real
-   lyra-ui components there; the only hand-rolled piece was each row inside
-   the flyout, a `<button>` wrapping a colored `Tag` pill.
+   CONTRIBUTING.md §0/"Composition over reimplementation".
 
-   This is deliberately a `Popover` with custom content, not a `Menu` —
-   `Menu`'s row template is icon + label text + trailing element, with its
-   own baked-in hover background (gray/blue + accent bar). A tag-picker row
-   IS just a colored pill, not a labeled row with a leading icon; forcing it
-   through `Menu` would mean either hacking the pill into the `icon` slot
-   with an empty label (and still fighting `Menu`'s own row hover
-   background underneath it) or adding a bespoke "no default hover, custom
-   content" escape hatch to `MenuItemDef` for a shape that isn't really a
-   menu to begin with. `Popover` + custom content is exactly the pattern
-   CONTRIBUTING.md's own component table already prescribes for "arbitrary
-   custom content in a flyout," so this is the correct primitive, not a
-   workaround. */
+   Row list + checkbox markup below is a deliberate copy of `Select`'s own
+   `multiple` mode listbox (select.tsx — accent bar, `Checkbox`, truncated
+   label, "no results" state, same class names), not a fresh design — per
+   explicit request, this needed to become a real checkbox multi-select
+   ("dropdown like this" — screenshot of `Select`'s own multi-select
+   result), not the single-click pill-row list this had before. It's a
+   copy rather than `TagPicker` literally rendering `<Select multiple>`
+   underneath for one hard reason: `Select`'s own open/closed state is
+   fully internal (no controlled `open` prop, only a fire-and-forget
+   `onOpenChange` callback — see select.tsx's own `const [open, setOpen] =
+   useState(false)`), but this trigger's open state has to stay externally
+   controlled here — the message hover toolbar keeps at most one message's
+   picker open at a time (`tagPickerOpenId` in AgentNextGenPage.tsx) and
+   uses that same open flag to force the toolbar itself visible while the
+   popover is open. `Popover`'s own `open`/`onOpenChange` (used directly
+   below) support exactly that; `Select` doesn't expose a way in. If a
+   later need comes up for `Select` to support a controlled `open` prop
+   too, this could go back to wrapping it directly instead of duplicating
+   its row markup — flagged here so that migration is easy to spot.
+
+   Rows show plain text labels only, no color swatch (matching the
+   reference screenshot exactly) — the actual colored `Tag` pill per
+   applied label still renders, just in the caller's own "applied tags"
+   row below the message, same as before; this popover's own job is only
+   picking which labels are checked. */
 
 interface TagPickerOption {
   /** Tag label */
   label: string;
-  /** Tag color/variant — see `TagVariant` (tag.tsx) */
+  /** Tag color/variant — see `TagVariant` (tag.tsx). Not shown inside this
+   *  picker's own rows (see top doc comment) — only used by the caller's
+   *  own applied-tags pill row, and echoed back on `onSelect` so callers
+   *  don't need a second lookup by label. */
   variant: TagVariant;
 }
 
 interface TagPickerProps {
-  /** Every tag option that could be offered. */
+  /** Every tag option that could be offered — always all shown, each as
+   *  its own checkbox row (checked when in `appliedLabels`); unlike the
+   *  old pill-grid version, applied ones stay in the list rather than
+   *  disappearing from it. */
   options: TagPickerOption[];
-  /** Labels already applied elsewhere (e.g. already on this message) —
-   *  filtered out of the offered list so the same tag can't be picked
-   *  twice. Matched by `label`, same as the reference usage this was
-   *  extracted from. */
+  /** Currently-applied tag labels (checked rows). */
   appliedLabels?: string[];
-  /**
-   * Fires when a tag option is picked. The popover is left open afterward
-   * (matching the reference usage this was extracted from) so more than
-   * one tag can be added in a single pass — close it yourself via
-   * `onOpenChange(false)` inside this callback if a single-pick-then-close
-   * flow is wanted instead.
-   */
+  /** Fires once for each tag newly checked in a single toggle. */
   onSelect: (option: TagPickerOption) => void;
+  /** Fires once for each tag newly unchecked in a single toggle. */
+  onDeselect: (label: string) => void;
   /** Controlled open state — same convention as every other Popover-based
    *  trigger in this library. */
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Popover placement (default: "bottom"). */
   placement?: PopoverPlacement;
-  /** Popover header title (default: "Add tag"). */
-  title?: string;
-  /** Shown once every option in `options` is already in `appliedLabels`
-   *  (default: "All tags added"). */
-  emptyLabel?: string;
   /** Trigger button size — see `ActionIconButton`'s own `size` scale
    *  (default: "sm", matching the reference usage's compact message-hover
    *  toolbar). */
@@ -76,63 +81,85 @@ const TagPicker = React.forwardRef<HTMLButtonElement, TagPickerProps>(
       options,
       appliedLabels = [],
       onSelect,
+      onDeselect,
       open,
       onOpenChange,
       placement = "bottom",
-      title = "Add tag",
-      emptyLabel = "All tags added",
       triggerSize = "sm",
       triggerLabel = "Add tag",
       className,
     },
     ref
   ) => {
-    const available = options.filter((opt) => !appliedLabels.includes(opt.label));
+    const toggle = (option: TagPickerOption) => {
+      if (appliedLabels.includes(option.label)) onDeselect(option.label);
+      else onSelect(option);
+    };
 
     return (
       <Popover
         open={open}
         onOpenChange={onOpenChange}
         placement={placement}
+        sideOffset={4}
+        showArrow={false}
+        // Full-bleed row list (own `p-1` inset for the hover background,
+        // matching `Select`'s own multi-select listbox) — Popover's
+        // default 16px body inset would push every row in further, same
+        // reasoning `Select`'s own multi-select `Popover` usage documents.
+        bodyPadding={false}
+        className="w-[220px]"
         // Radix's default behavior returns focus to the trigger
         // (`ActionIconButton` below) when the popover closes. That trigger
         // is wrapped in a `Tooltip` (Button's own `isIconVariant && title`
         // handling), and Tooltip opens on focus as well as hover — so
-        // without this, closing the popover (e.g. its "×" button) hands
-        // focus back to the icon and pops the "Add tag" tooltip right back
-        // open with no real hover intent behind it, left dangling until
-        // something else happens to steal focus. Suppressing the
-        // auto-focus-return keeps the close action from re-triggering the
-        // tooltip; the picker was opened by a click, not keyboard nav, so
-        // there's no keyboard-focus chain here worth preserving.
+        // without this, closing the popover hands focus back to the icon
+        // and pops the "Add tag" tooltip right back open with no real
+        // hover intent behind it, left dangling until something else
+        // happens to steal focus. Suppressing the auto-focus-return keeps
+        // the close action from re-triggering the tooltip; the picker was
+        // opened by a click, not keyboard nav, so there's no keyboard-focus
+        // chain here worth preserving.
         onCloseAutoFocus={(e) => e.preventDefault()}
-        header={
-          <PanelHeader
-            title={title}
-            bordered={false}
-            className="px-5 pb-0"
-            onClose={() => onOpenChange(false)}
-          />
-        }
         content={
-          <div className="flex flex-wrap items-center gap-2 py-2">
-            {available.map((opt) => (
-              <button
-                key={opt.label}
-                type="button"
-                className="flex items-center rounded-lyra-sm text-left"
-                onClick={() => onSelect(opt)}
-              >
-                {/* `Tag` now reacts to hover by default (tag.tsx) — no
-                    per-row `group`/`group-hover:brightness-*` override
-                    needed here anymore, the pill handles its own hover
-                    feedback. */}
-                <Tag label={opt.label} variant={opt.variant} shape="pill" />
-              </button>
-            ))}
-            {available.length === 0 && (
-              <span className="px-1 py-1 lyra-body-sm text-lyra-fg-secondary">{emptyLabel}</span>
+          <div
+            role="listbox"
+            aria-label={triggerLabel}
+            aria-multiselectable
+            className="flex max-h-[280px] flex-col overflow-y-auto lyra-scrollbar-hide p-1"
+          >
+            {options.length === 0 && (
+              <div className="px-3 py-2 lyra-body-sm text-lyra-fg-secondary">No tags available</div>
             )}
+            {options.map((option) => {
+              const isSelected = appliedLabels.includes(option.label);
+              return (
+                <button
+                  key={option.label}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => toggle(option)}
+                  className={cn(
+                    "group/item relative flex w-full items-center gap-2.5 rounded-lyra-sm px-3 py-2.5 lyra-body-md text-left transition-colors",
+                    "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
+                    "focus:outline-none focus-visible:bg-lyra-state-hover"
+                  )}
+                >
+                  {/* Left accent bar — visible on hover/press, matching
+                      `Select`'s own multi-select row treatment (itself
+                      matching `Menu`'s row template). Plain buttons here
+                      (not Radix `Select.Item`/`Menu`), so reproduced by
+                      hand, same as `Select`'s own copy. */}
+                  <span
+                    aria-hidden="true"
+                    className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-lyra-fg-default opacity-0 transition-opacity group-hover/item:opacity-100 group-active/item:opacity-100"
+                  />
+                  <Checkbox checked={isSelected} tabIndex={-1} className="pointer-events-none" />
+                  <span className="min-w-0 flex-1 truncate text-lyra-fg-default">{option.label}</span>
+                </button>
+              );
+            })}
           </div>
         }
       >

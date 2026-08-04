@@ -212,12 +212,20 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
             item.active ||
             (item.children && item.children.some((c) => c.active));
           return (
-            // `relative w-full justify-center` (rather than relying on the
-            // parent nav's `items-center`) so the active-state bar below can
-            // be positioned `absolute left-0` against this row's own full
-            // width, flush with the rail's left edge, independent of the
-            // centered button inside it.
-            <div key={i} className="relative flex w-full flex-shrink-0 justify-center">
+            // `relative w-9` — matching the button's own `h-9 w-9` exactly,
+            // not `w-full`/`justify-center`, and centered within the nav
+            // rail via the parent `<nav>`'s `items-center`. `<nav>` has no
+            // explicit width, so its default flex cross-axis behavior
+            // stretches it to fill the rail's full content width (44px,
+            // after the rail's own `px-2`); a `w-full` row here used to
+            // inherit that same 44px against the button's 36px, leaving a
+            // ~4px gap between the absolutely-positioned `left-0` active bar
+            // and the button itself instead of sitting flush against it.
+            // Sizing the row to the button's own width removes that gap
+            // regardless of the rail's actual width (e.g. with vs. without
+            // a `header`) — see the "active bar detached from collapsed nav
+            // item" incident in PROJECT_SUMMARY.md.
+            <div key={i} className="relative flex w-9 flex-shrink-0 justify-center">
               {isActive && (
                 <span
                   aria-hidden="true"

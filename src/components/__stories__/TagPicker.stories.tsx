@@ -23,6 +23,7 @@ const meta: Meta<typeof TagPicker> = {
     open: { table: { disable: true } },
     onOpenChange: { table: { disable: true } },
     onSelect: { table: { disable: true } },
+    onDeselect: { table: { disable: true } },
   },
 };
 
@@ -62,6 +63,7 @@ function TagPickerDemo() {
           open={open}
           onOpenChange={setOpen}
           onSelect={(option) => setAppliedLabels((prev) => [...prev, option.label])}
+          onDeselect={(label) => setAppliedLabels((prev) => prev.filter((l) => l !== label))}
         />
       </div>
       {appliedLabels.length > 0 && (
@@ -91,15 +93,22 @@ export const Default: Story = {
 
 function AllAppliedDemo() {
   const [open, setOpen] = useState(true);
+  // Every option already checked — unlike the old pill-grid version (which
+  // had a dedicated "everything's already added" empty state once nothing
+  // was left to offer), a checkbox multi-select just shows every row
+  // checked; there's no separate empty state to demonstrate anymore since
+  // options never disappear from the list.
+  const [appliedLabels, setAppliedLabels] = useState<string[]>(DEMO_OPTIONS.map((o) => o.label));
   return (
     <div className="flex w-80 flex-col gap-3 rounded-lyra-lg border border-lyra-border-subtle p-4">
-      <p className="lyra-body-sm text-lyra-fg-secondary">Every option already applied — shows the empty state</p>
+      <p className="lyra-body-sm text-lyra-fg-secondary">Every option already applied — all rows checked</p>
       <TagPicker
         options={DEMO_OPTIONS}
-        appliedLabels={DEMO_OPTIONS.map((o) => o.label)}
+        appliedLabels={appliedLabels}
         open={open}
         onOpenChange={setOpen}
-        onSelect={() => {}}
+        onSelect={(option) => setAppliedLabels((prev) => [...prev, option.label])}
+        onDeselect={(label) => setAppliedLabels((prev) => prev.filter((l) => l !== label))}
       />
     </div>
   );
@@ -110,7 +119,7 @@ export const AllVariants: Story = {
   render: () => (
     <div className="flex flex-col gap-6">
       <div>
-        <p className="lyra-body-sm text-lyra-fg-secondary mb-1.5">Default — some tags already applied, filtered out of the list</p>
+        <p className="lyra-body-sm text-lyra-fg-secondary mb-1.5">Default — some tags already applied, checked in the list</p>
         <TagPickerDemo />
       </div>
       <div>
