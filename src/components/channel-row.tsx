@@ -2,10 +2,13 @@ import * as React from "react";
 import {
   Clock,
   MessageSquare,
+  MessageCircle,
   Mail,
   Phone,
   TriangleAlert,
+  CircleAlert,
   User,
+  UserX,
   ArrowUpRight,
   CircleCheck,
   ChevronDown,
@@ -13,6 +16,7 @@ import {
   FileDown,
   Languages,
   PlayCircle,
+  X,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Tag, tagVariants, type TagVariant } from "./tag";
@@ -24,7 +28,8 @@ import { Badge } from "./badge";
 import { Button } from "./button";
 import { Popover } from "./popover";
 import { PanelHeader } from "./panel-header";
-import { Select, type SelectOption } from "./select";
+import { Select } from "./select";
+import { DispositionSelect, type DispositionOption } from "./disposition-select";
 import { Label } from "./label";
 import { Textarea } from "./textarea";
 import { type TagPickerOption } from "./tag-picker";
@@ -53,17 +58,26 @@ const ConsultTransferIcon = () => (
 export type ChannelType = "chat" | "email" | "sms" | "whatsapp" | "voice";
 
 /** Channel-type → `Tag` color, per CONTRIBUTING.md's "Channel type colors"
- *  convention — Voice is purple, every text-based channel (Chat/SMS/
- *  WhatsApp all read as "Chat" for this purpose) is teal, Email is pink.
- *  Used by each `*ChannelRow` below for its chip's non-`awaitingResponse`
- *  color (see `ChannelRow`'s own `variant` prop — `awaitingResponse` still
- *  always overrides to "critical" red regardless of channel type, since
- *  that's a status signal, not a type signal). */
+ *  convention — Voice is purple, Email is pink, and Chat/SMS/WhatsApp (three
+ *  genuinely distinct channels — a website chat widget, texting, and a
+ *  WhatsApp thread are three different conversations an agent can have with
+ *  the same customer at once, see `ChannelType`'s own doc comment) each get
+ *  their own color rather than sharing one, per explicit request: three
+ *  same-colored chips in a row (the old "all text channels read as Chat"
+ *  simplification) made it too easy to mistake one open channel for
+ *  another at a glance. Deliberately NOT one of the reserved status colors
+ *  (`success`/`warning`/`critical`/`info`) for any of the three — those
+ *  stay reserved for state (resolved/pending/error/informational), same
+ *  reasoning CONTRIBUTING.md already gives for Voice/Email. Used by each
+ *  `*ChannelRow` below for its chip's non-`awaitingResponse` color (see
+ *  `ChannelRow`'s own `variant` prop — `awaitingResponse` still always
+ *  overrides to "critical" red regardless of channel type, since that's a
+ *  status signal, not a type signal). */
 export const CHANNEL_TYPE_TAG_VARIANT: Record<ChannelType, TagVariant> = {
   voice: "purple",
   chat: "teal",
-  sms: "teal",
-  whatsapp: "teal",
+  sms: "neutral",
+  whatsapp: "default",
   email: "pink",
 };
 
@@ -83,7 +97,11 @@ export interface InteractionChannel {
    *  `SmsChannelRow` / `WhatsAppChannelRow` / `VoiceChannelRow` below).
    *  Override the menu for one specific row via `menuItems`. */
   type: ChannelType;
-  /** Elapsed time for this channel's last message, as 4-digit MM:SS, or "Now". */
+  /** Elapsed time for this channel's last message, as 4-digit MM:SS, or "Now".
+   *  Pass `""` for a channel with nothing to time yet (e.g. an agent-
+   *  initiated channel still waiting on the customer's very first reply) —
+   *  the clock icon + text are omitted entirely rather than showing a blank
+   *  or misleadingly-ticking value. */
   elapsed: string;
   /** Message preview for this channel. */
   preview?: string;
@@ -99,16 +117,17 @@ export interface InteractionChannel {
    *  success (green) / secondary gray. */
   awaitingResponse?: boolean;
   /** When `awaitingResponse` is true, which visual tier to render —
-   *  `"warning"` (amber) for a wait that's getting old but hasn't crossed
-   *  the harder threshold yet, `"critical"` (red) once it has. Ignored
-   *  when `awaitingResponse` is false, and defaults to `"critical"` when
-   *  left unset while `awaitingResponse` IS true — matching this prop's
-   *  own pre-existing binary behavior, so any consumer that doesn't pass
-   *  it renders exactly as before. Lets a consumer with real wait-time
+   *  `"success"` (green) for a reply that just landed and is still well
+   *  within SLA, `"warning"` (amber) once the wait's gotten old enough to
+   *  need attention, `"critical"` (red) once it's genuinely overdue.
+   *  Ignored when `awaitingResponse` is false, and defaults to `"critical"`
+   *  when left unset while `awaitingResponse` IS true — matching this
+   *  prop's own pre-existing binary behavior, so any consumer that doesn't
+   *  pass it renders exactly as before. Lets a consumer with real wait-time
    *  data (e.g. seconds since the customer's last message) drive a
-   *  two-stage escalation instead of jumping straight to red the instant
+   *  three-stage escalation instead of jumping straight to red the instant
    *  a reply is pending. */
-  awaitingSeverity?: "warning" | "critical";
+  awaitingSeverity?: "success" | "warning" | "critical";
   /** Show the trailing kebab (⋮) menu for this channel row. Default: true. */
   removable?: boolean;
   /** Override this row's default (per-`type`) kebab menu items. */
@@ -124,6 +143,13 @@ export interface InteractionChannel {
  * kebab behavior at the component level — e.g. Voice gets recording actions
  * instead of transcript/translate actions. Override per-row via
  * `InteractionChannel.menuItems`.
+ *
+ * Icons: "Unassign & Dismiss" uses `UserX` (not a warning/alert glyph —
+ * per explicit correction, this action isn't a warning at all, just
+ * "remove this agent from the assignment," and sharing `TriangleAlert`
+ * with the SLA-severity tab icon (`ChannelTab`'s own `tabIcon`, further
+ * down this file) made the two easy to visually confuse on a busy tab
+ * bar/kebab menu).
  *
  * Built as functions (not flat consts) so "Unassign & Dismiss" — the one
  * action every channel type shares — can carry a real `onClick` wired to
@@ -146,7 +172,7 @@ export interface InteractionChannel {
 
 export function buildDigitalMenuItems(onDismiss?: () => void): MenuEntry[] {
   return [
-    { id: "unassign-dismiss", label: "Unassign & Dismiss", icon: <TriangleAlert className="h-4 w-4" strokeWidth={1.5} />, onClick: onDismiss },
+    { id: "unassign-dismiss", label: "Unassign & Dismiss", icon: <UserX className="h-4 w-4" strokeWidth={1.5} />, onClick: onDismiss },
     { id: "consult-transfer", label: "Consult / Transfer", icon: <ConsultTransferIcon /> },
     { id: "outcome", label: "Outcome", icon: <CircleCheck className="h-4 w-4 text-lyra-status-info-strong" strokeWidth={1.5} /> },
     { id: "send-transcript", label: "Send Transcript", icon: <Send className="h-4 w-4" strokeWidth={1.5} /> },
@@ -157,7 +183,7 @@ export function buildDigitalMenuItems(onDismiss?: () => void): MenuEntry[] {
 
 export function buildVoiceMenuItems(onDismiss?: () => void): MenuEntry[] {
   return [
-    { id: "unassign-dismiss", label: "Unassign & Dismiss", icon: <TriangleAlert className="h-4 w-4" strokeWidth={1.5} />, onClick: onDismiss },
+    { id: "unassign-dismiss", label: "Unassign & Dismiss", icon: <UserX className="h-4 w-4" strokeWidth={1.5} />, onClick: onDismiss },
     { id: "consult-transfer", label: "Consult / Transfer", icon: <ConsultTransferIcon /> },
     { id: "outcome", label: "Outcome", icon: <CircleCheck className="h-4 w-4 text-lyra-status-info-strong" strokeWidth={1.5} /> },
     { id: "listen-recording", label: "Listen to Recording", icon: <PlayCircle className="h-4 w-4" strokeWidth={1.5} /> },
@@ -203,7 +229,10 @@ export interface ChannelOutcomeConfig {
    *  rows. */
   selectedTags: string[];
   onTagsChange: (labels: string[]) => void;
-  dispositionOptions: SelectOption[];
+  /** Per explicit request, grouped into named sections (`category`) with a
+   *  favoritable star per row — see `DispositionSelect`'s own doc comment
+   *  (disposition-select.tsx) for why this is no longer a flat `Select`. */
+  dispositionOptions: DispositionOption[];
   dispositionCode: string;
   onDispositionChange: (value: string) => void;
   summary: string;
@@ -462,9 +491,8 @@ function buildOutcomePopoverSlots(
             </div>
           )}
         </div>
-        <Select
+        <DispositionSelect
           label="Disposition code"
-          searchable
           options={outcome.dispositionOptions}
           value={outcome.dispositionCode}
           onValueChange={outcome.onDispositionChange}
@@ -500,9 +528,25 @@ interface ChannelRowProps {
   isFirst?: boolean;
   awaitingResponse?: boolean;
   /** See `InteractionChannel.awaitingSeverity`'s own doc comment above. */
-  awaitingSeverity?: "warning" | "critical";
+  awaitingSeverity?: "success" | "warning" | "critical";
   menuItems: MenuEntry[];
+  /** Hide the trailing kebab. Default: true (kebab shown). `false` doesn't
+   *  just leave that trailing cluster empty — per explicit request (matching
+   *  `ChannelTab`'s own identical `showMenu`/`onDismiss` behavior, channel-
+   *  row.tsx's other tab-shaped export further down), it's replaced with a
+   *  real close ("×") button wired to `onDismiss` below instead, for the one
+   *  case every current caller actually sets this false for: a closed
+   *  channel/interaction, which has nothing left to show a kebab menu FOR
+   *  but still needs a way to close/remove the row itself. */
   showMenu?: boolean;
+  /** Wired to the close ("×") button that replaces the kebab whenever
+   *  `showMenu` is false — see that prop's own doc comment. Has no effect
+   *  while `showMenu` is true (the kebab's own "Unassign & Dismiss" entry,
+   *  built from this same callback one level up in `ChatChannelRow`/etc.,
+   *  is what fires it there instead). Omitting this while `showMenu` is
+   *  false just leaves the trailing cluster empty, same as before this
+   *  close button existed. */
+  onDismiss?: () => void;
   /** Marks this channel "current" (see `InteractionNavItem`'s own doc
    *  comment on its internal current-channel state) — lets an agent toggle
    *  which open channel is highlighted within a multi-channel card. Doesn't
@@ -552,16 +596,17 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
   awaitingSeverity,
   menuItems,
   showMenu = true,
+  onDismiss,
   onSelect,
   onMenuOpenChange,
   outcome,
 }) => {
-  // `null` when not awaiting at all (the plain success/gray look below is
+  // `null` when not awaiting at all (the plain gray look below is
   // untouched); otherwise `awaitingSeverity`, defaulting to `"critical"` —
   // see that prop's own doc comment on `InteractionChannel` for why the
   // default preserves this row's pre-existing binary red behavior for any
   // consumer that doesn't pass real wait-time data.
-  const severity: "warning" | "critical" | null = awaitingResponse ? awaitingSeverity ?? "critical" : null;
+  const severity: "success" | "warning" | "critical" | null = awaitingResponse ? awaitingSeverity ?? "critical" : null;
 
   // Coordinates this row's own kebab `Tooltip` ("More Options") with its
   // `KebabMenuButton` dropdown — same "tooltip's trigger and the dropdown's
@@ -657,8 +702,11 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
           pointer-events-auto group-hover:opacity-100` is the same
           invisible-until-hovered technique used throughout this file. Both
           the overlay and the kebab are gated on `showMenu` together, same
-          as before. */}
-      {showMenu && (
+          as before. Per explicit follow-up, `showMenu={false}` no longer
+          just leaves this whole cluster empty — see the close-button
+          `else` branch right after this block, and `onDismiss`'s own doc
+          comment above. */}
+      {showMenu ? (
         <span className="relative ml-auto flex h-6 shrink-0 items-center">
           <div
             className={cn(
@@ -748,6 +796,30 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
             />
           </Tooltip>
         </span>
+      ) : (
+        onDismiss && (
+          // Replaces the kebab entirely (not an addition alongside it —
+          // `showMenu` is false here) for a closed channel/interaction: per
+          // explicit request, this row still needs a way to close/remove
+          // itself even with nothing left to open a kebab menu FOR. Same
+          // plain `variant="icon"` ghost button as Consult/Transfer/Outcome
+          // above, always visible (no hover-reveal — unlike those two,
+          // there's no separate resting-state element here for it to
+          // overlay/collide with), so an agent doesn't have to hover the
+          // row first just to find it.
+          <Button
+            variant="icon"
+            size="icon-sm"
+            title="Close"
+            className="ml-auto h-6 shrink-0 text-lyra-fg-secondary"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDismiss();
+            }}
+          >
+            <X className="h-4 w-4" strokeWidth={1.5} />
+          </Button>
+        )
       )}
     </div>
     {/* Preview/skill-name line + elapsed clock+time, side by side — NOT
@@ -760,24 +832,30 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
         (`shrink-0`, never truncates) fully readable; when it's absent, the
         timer is simply the first (and only) item in this row and sits at
         the same left edge the preview text would have, rather than getting
-        pushed or centered anywhere. Always rendered (not gated on
-        `preview`, unlike before) since `elapsed` itself is a required prop
-        — there's always at least a timer to show here now. */}
+        pushed or centered anywhere. Always rendered whenever `elapsed` is
+        non-empty (not gated on `preview`, unlike before) — see `elapsed`'s
+        own doc comment for the `""` case, which now omits this span
+        entirely (a bare clock icon with nothing next to it would just read
+        as a rendering glitch, not "nothing to time yet"). */}
     <div className="flex items-center gap-1">
       {preview && <p className="min-w-0 flex-1 truncate lyra-body-sm text-lyra-fg-secondary">{preview}</p>}
-      <span
-        className={cn(
-          "flex shrink-0 items-center gap-1 lyra-body-xs",
-          severity === "critical"
-            ? "text-lyra-status-critical-strong"
-            : severity === "warning"
-            ? "text-lyra-status-warning-strong"
-            : "text-lyra-fg-secondary"
-        )}
-      >
-        <Clock className="h-3 w-3" strokeWidth={1.5} aria-hidden="true" />
-        {elapsed}
-      </span>
+      {elapsed && (
+        <span
+          className={cn(
+            "flex shrink-0 items-center gap-1 lyra-body-xs",
+            severity === "critical"
+              ? "text-lyra-status-critical-strong"
+              : severity === "warning"
+              ? "text-lyra-status-warning-strong"
+              : severity === "success"
+              ? "text-lyra-status-success-strong"
+              : "text-lyra-fg-secondary"
+          )}
+        >
+          <Clock className="h-3 w-3" strokeWidth={1.5} aria-hidden="true" />
+          {elapsed}
+        </span>
+      )}
     </div>
   </div>
   );
@@ -795,12 +873,16 @@ export interface ChannelRowInstanceProps {
   isFirst?: boolean;
   awaitingResponse?: boolean;
   /** See `InteractionChannel.awaitingSeverity`'s own doc comment above. */
-  awaitingSeverity?: "warning" | "critical";
+  awaitingSeverity?: "success" | "warning" | "critical";
   removable?: boolean;
   menuItems?: MenuEntry[];
-  /** Wired onto the default menu's "Unassign & Dismiss" item — see the
-   *  `buildDigitalMenuItems`/`buildVoiceMenuItems` doc comment above.
-   *  Ignored when `menuItems` overrides the default list. */
+  /** Wired onto the default menu's "Unassign & Dismiss" item (see the
+   *  `buildDigitalMenuItems`/`buildVoiceMenuItems` doc comment above —
+   *  ignored there when `menuItems` overrides the default list) AND onto
+   *  `ChannelRow`'s own close-button fallback for when `removable` is
+   *  `false` (see that prop's own doc comment right below, and `ChannelRow
+   *  Props.onDismiss`'s) — one callback, two possible triggers depending on
+   *  whether this row still has a kebab to fire it from. */
   onDismiss?: () => void;
   /** Passed straight through to `ChannelRow` — see its own doc comment. */
   onSelect?: () => void;
@@ -813,11 +895,18 @@ export interface ChannelRowInstanceProps {
 const ChatChannelRow: React.FC<ChannelRowInstanceProps> = ({ menuItems, removable, onDismiss, ...rest }) => (
   <ChannelRow
     {...rest}
-    icon={<MessageSquare className="h-3 w-3" strokeWidth={1.5} />}
+    // `MessageCircle` (a rounded chat bubble), not `MessageSquare` — per
+    // explicit request, this needs to read as visually distinct from
+    // `SmsChannelRow`'s icon at a glance (both used to share the exact
+    // same glyph, the actual bug report), since Chat here means a website
+    // chat widget conversation, a genuinely different channel from SMS
+    // texting, not just a different color for the same icon.
+    icon={<MessageCircle className="h-3 w-3" strokeWidth={1.5} />}
     label="Chat"
     variant={CHANNEL_TYPE_TAG_VARIANT.chat}
     menuItems={menuItems ?? buildDigitalMenuItems(onDismiss)}
     showMenu={removable !== false}
+    onDismiss={onDismiss}
   />
 );
 
@@ -829,6 +918,7 @@ const EmailChannelRow: React.FC<ChannelRowInstanceProps> = ({ menuItems, removab
     variant={CHANNEL_TYPE_TAG_VARIANT.email}
     menuItems={menuItems ?? buildDigitalMenuItems(onDismiss)}
     showMenu={removable !== false}
+    onDismiss={onDismiss}
   />
 );
 
@@ -840,6 +930,7 @@ const SmsChannelRow: React.FC<ChannelRowInstanceProps> = ({ menuItems, removable
     variant={CHANNEL_TYPE_TAG_VARIANT.sms}
     menuItems={menuItems ?? buildDigitalMenuItems(onDismiss)}
     showMenu={removable !== false}
+    onDismiss={onDismiss}
   />
 );
 
@@ -851,6 +942,7 @@ const WhatsAppChannelRow: React.FC<ChannelRowInstanceProps> = ({ menuItems, remo
     variant={CHANNEL_TYPE_TAG_VARIANT.whatsapp}
     menuItems={menuItems ?? buildDigitalMenuItems(onDismiss)}
     showMenu={removable !== false}
+    onDismiss={onDismiss}
   />
 );
 
@@ -862,6 +954,7 @@ const VoiceChannelRow: React.FC<ChannelRowInstanceProps> = ({ menuItems, removab
     variant={CHANNEL_TYPE_TAG_VARIANT.voice}
     menuItems={menuItems ?? buildVoiceMenuItems(onDismiss)}
     showMenu={removable !== false}
+    onDismiss={onDismiss}
   />
 );
 
@@ -881,7 +974,10 @@ const CHANNEL_ROW_COMPONENTS: Record<ChannelType, React.FC<ChannelRowInstancePro
  *  them. Sized `h-4 w-4` (a `Tab`'s icon slot) rather than the `h-3 w-3` chip
  *  size the rows above use. */
 const CHANNEL_TYPE_META: Record<ChannelType, { icon: React.ReactNode; label: string }> = {
-  chat:     { icon: <MessageSquare className="h-4 w-4" strokeWidth={1.5} />, label: "Chat" },
+  // `MessageCircle`, matching `ChatChannelRow`'s own icon above — see that
+  // component's doc comment for why this needs to read as distinct from
+  // SMS's `MessageSquare` rather than sharing it.
+  chat:     { icon: <MessageCircle className="h-4 w-4" strokeWidth={1.5} />, label: "Chat" },
   email:    { icon: <Mail className="h-4 w-4" strokeWidth={1.5} />, label: "Email" },
   sms:      { icon: <MessageSquare className="h-4 w-4" strokeWidth={1.5} />, label: "SMS" },
   whatsapp: { icon: <WhatsAppIcon className="h-4 w-4" />, label: "WhatsApp" },
@@ -907,53 +1003,88 @@ const CHANNEL_TYPE_META: Record<ChannelType, { icon: React.ReactNode; label: str
  * an overflow menu; that bespoke behavior was removed in favor of the
  * standard "active tab + N More" pattern every other `TabList` already uses
  * (see PROJECT_SUMMARY.md's "ChannelTab no longer has its own collapse
- * strategy" entry). A `Tooltip` on every tab still surfaces the full channel
- * label on its own top line, plus a second, smaller line with this
- * channel's message count and its own address (`messageCount`/`address`)
- * when either is on hand — the tooltip is always the one place both are
- * reachable, whether or not `address` is also showing on the tab face
- * itself (`showAddressOnFace` — see its own doc comment for when a
- * consumer wants the face to stay compact while the tooltip still surfaces
- * it). */
+ * strategy" entry). A `Tooltip` on every tab always surfaces the type
+ * label + address together on its own top line (e.g. "Email |
+ * david.brown@example.com"), plus a second, smaller line with this
+ * channel's current status and how long it's been since the customer last
+ * spoke (`statusLabel`/`lastCustomerContactLabel`) when either is on hand
+ * — the tooltip is the one place the type label is always paired with the
+ * address, even though the tab FACE itself normally shows `address` alone
+ * (replacing the type label there — see that prop's own doc comment, and
+ * `showAddressOnFace` for opting a consumer back to the plain type label
+ * on the face specifically). */
 export interface ChannelTabProps {
   /** Determines this tab's icon, label, and default kebab menu items — same
    *  per-type choices as the matching `*ChannelRow`. */
   type: ChannelType;
   /** The phone number/email address/WhatsApp handle this channel is on, if
    *  any (e.g. `TrackedChannel.addressLabel`). Always shown on this tab's
-   *  `Tooltip` (second line, alongside `messageCount` — see that prop's own
-   *  doc comment) when present, regardless of `showAddressOnFace` below —
-   *  the tooltip is the one place it's always reachable. Also rendered
-   *  directly after the type label on the tab face itself by default (e.g.
-   *  "WhatsApp @Jamie Torres", no divider between them) so two tabs of the
-   *  same `type` stay distinguishable there too — see `showAddressOnFace`
-   *  to opt a consumer out of that face-level display specifically (e.g.
-   *  a bar that wants to stay compact) while still surfacing it in the
-   *  tooltip. Omit entirely when this channel has no address on hand (e.g.
-   *  a redialed voice call with no stored number) — the tab just shows icon
-   *  + type label, and its tooltip's second line falls back to whatever
-   *  `messageCount` alone provides (or disappears entirely if that's also
-   *  absent). */
+   *  `Tooltip` (top line, alongside the plain type label — e.g. "Email |
+   *  david.brown@example.com") when present, regardless of
+   *  `showAddressOnFace` below — the tooltip is the one place it's always
+   *  reachable. Per explicit request, also REPLACES the plain type label
+   *  ("Email"/"SMS"/etc.) on the tab face itself by default — an agent
+   *  scanning open tabs cares which specific number/handle a conversation
+   *  is on far more than its generic channel type, which the leading icon
+   *  already conveys — see `showAddressOnFace` to opt a consumer back to
+   *  the plain type label on the face specifically (e.g. a bar that wants
+   *  to stay compact) while still surfacing the address in the tooltip.
+   *  Omit entirely when this channel has no address on hand (e.g. a
+   *  redialed voice call with no stored number) — the tab just shows icon
+   *  + type label (face and tooltip alike), and the tooltip's second line
+   *  falls back to whatever `statusLabel`/`lastCustomerContactLabel` alone
+   *  provide (or disappears entirely if both are also absent). */
   address?: string;
-  /** Show `address` (above) on the tab face itself, next to the type label
-   *  — default `true`. Set `false` to keep the face compact (type label
-   *  only) while still passing `address` through so it reaches the
-   *  tooltip's second line — e.g. a bar with several tabs open at once,
-   *  where every tab showing its own address would crowd the row, but an
+  /** Show `address` (above) on the tab face itself, REPLACING the plain
+   *  type label there — default `true`. Set `false` to keep the face
+   *  showing just the plain type label instead (its pre-`address` look)
+   *  while still passing `address` through so it reaches the tooltip's top
+   *  line — e.g. a bar with several tabs open at once, where every tab
+   *  showing its own (often longer) address would crowd the row, but an
    *  agent hovering one specific tab still wants to see which number/
    *  handle it's on. Has no effect on the tooltip either way. */
   showAddressOnFace?: boolean;
-  /** Total message count for this channel's conversation, if on hand — shown
-   *  on a second, smaller (`lyra-body-sm`) `Tooltip` line below the plain
-   *  label line, alongside `address` (e.g. "16 Messages | +1 555-123-4567"),
-   *  never on the tab face itself (there's no room once the bar starts
-   *  collapsing, see the container-query note above — the tooltip is the
-   *  one place this is always reachable regardless of stage). Omit for
-   *  channel types with no real message concept (voice) and for a channel
-   *  that hasn't exchanged any messages yet — `0` renders "0 Messages",
-   *  which is exactly right for a just-started outbound conversation;
-   *  `undefined` renders no message segment on this line at all. */
+  /** Total message count for this channel's conversation, if on hand.
+   *  Currently not rendered anywhere on this tab — its old spot, the
+   *  `Tooltip`'s second line, now shows `statusLabel`/
+   *  `lastCustomerContactLabel` instead (per explicit request: an agent
+   *  scanning tabs cares more about where a conversation stands and how
+   *  long it's been since the customer last spoke than its raw message
+   *  count). Kept as a real prop rather than removed outright — existing
+   *  callers already pass it, and it's a reasonable candidate to resurface
+   *  elsewhere on this tab later — but omit it for any new integration;
+   *  it's a no-op today. */
   messageCount?: number;
+  /**
+   * This channel's own current status (e.g. "Open"/"Pending"/"Escalated"/
+   * "Resolved"/"Closed" — whatever vocabulary the consumer's own status
+   * popover uses) — first half of the `Tooltip`'s second line, alongside
+   * `lastCustomerContactLabel` below (e.g. "Pending | Last contact 2m
+   * ago"). Per explicit request, this replaced `messageCount` in that
+   * spot — see that prop's own doc comment. Omit for a channel with no
+   * status concept yet (e.g. a channel that's never had its status
+   * explicitly set) — the tooltip's second line falls back to whatever
+   * `lastCustomerContactLabel` alone provides, or disappears entirely if
+   * that's also absent.
+   */
+  statusLabel?: string;
+  /**
+   * How long it's been since the CUSTOMER last said something on this
+   * channel, already formatted as a short elapsed/relative-time string —
+   * whatever convention the consumer's own UI already uses elsewhere (e.g.
+   * this app's own "MM:SS" elapsed format, or a humanized "2m ago") — NOT
+   * prefixed with "Last contact" here; `ChannelTab`
+   * itself adds that label when composing the tooltip's second line (see
+   * `statusLabel`'s own doc comment), so pass the bare relative-time value
+   * only. Pre-formatted rather than a raw seconds count, same reasoning
+   * `address` is already a pre-formatted string: this component has no
+   * ticking clock of its own to derive a live "time since" value from —
+   * that's the consumer's job (e.g. `AgentNextGenPage.tsx`'s own
+   * `clockTick`-driven elapsed-time helpers), this just displays whatever
+   * string it's handed. Omit when unknown (e.g. the customer hasn't sent a
+   * message on this channel yet).
+   */
+  lastCustomerContactLabel?: string;
   /** This channel's own conversation/session id, if on hand — distinct from
    *  the customer-record id (`ActiveInteraction.recordId`, e.g. "AGT-2000")
    *  shown in the page header above: one customer record can have several
@@ -974,7 +1105,13 @@ export interface ChannelTabProps {
   onDismiss?: () => void;
   /** Override this tab's default (per-`type`) kebab menu items. */
   menuItems?: MenuEntry[];
-  /** Hide the trailing kebab entirely. Default: true (kebab shown). */
+  /** Hide the trailing kebab. Default: true (kebab shown). `false` doesn't
+   *  just leave that slot empty — per explicit request, it's replaced with a
+   *  real close ("×") button wired to `onDismiss` instead (see the
+   *  `<Tab onRemove>` call site below), for the one place this is actually
+   *  set false today: a closed interaction's own tab, which has nothing left
+   *  to show a kebab menu FOR (no Outcome to log, no Consult/Transfer) but
+   *  still needs a way to close/remove the tab itself. */
   showMenu?: boolean;
   /** Wires the kebab's "Outcome" entry to open the real Log Outcome popover
    *  (same Resolution/Tags/Disposition/Summary form `ChannelRow`'s own
@@ -987,6 +1124,22 @@ export interface ChannelTabProps {
    *  whole tab instead, opening below it once "Outcome" is picked from the
    *  dropdown. */
   outcome?: ChannelOutcomeConfig;
+  /** Same meaning as `InteractionChannel.awaitingResponse` above (the
+   *  LeftNav card's own per-channel prop) — when true, this tab's active-
+   *  state color (see `severity`, `Tab`'s own doc comment for the full
+   *  mechanics) switches from the plain blue "selected" look to the
+   *  warning/critical status tokens, matching `ChannelRow`'s own elapsed-
+   *  time text for the exact same channel. Has no visible effect while this
+   *  tab isn't the active one — same as `Tab`'s own `severity` prop. Omit
+   *  (the default) to leave this tab exactly as it's always looked. */
+  awaitingResponse?: boolean;
+  /** Same meaning as `InteractionChannel.awaitingSeverity` above — ignored
+   *  when `awaitingResponse` is false/omitted, defaults to `"critical"`
+   *  when left unset while `awaitingResponse` IS true (same fallback
+   *  `ChannelRow`'s own prop uses, for the same reason: a consumer with no
+   *  real wait-time data still gets this tab's pre-existing binary red-or-
+   *  not behavior once wired up). */
+  awaitingSeverity?: "success" | "warning" | "critical";
   className?: string;
 }
 
@@ -994,7 +1147,12 @@ const ChannelTab: React.FC<ChannelTabProps> = ({
   type,
   address,
   showAddressOnFace = true,
+  // Destructured but intentionally unused below — kept as a real prop for
+  // existing callers/future use; see its own doc comment on
+  // `ChannelTabProps.messageCount` for why it's currently unrendered.
   messageCount,
+  statusLabel,
+  lastCustomerContactLabel,
   interactionId,
   active,
   onClick,
@@ -1002,9 +1160,48 @@ const ChannelTab: React.FC<ChannelTabProps> = ({
   menuItems,
   showMenu = true,
   outcome,
+  awaitingResponse,
+  awaitingSeverity,
   className,
 }) => {
   const meta = CHANNEL_TYPE_META[type];
+  // See `ChannelRow`'s own identical `severity` derivation above — same
+  // "null when not awaiting at all, otherwise `awaitingSeverity` defaulting
+  // to critical" rule, just feeding `Tab`'s `severity` prop instead of a
+  // chip/elapsed-text color directly.
+  const severity: "success" | "warning" | "critical" | undefined = awaitingResponse ? awaitingSeverity ?? "critical" : undefined;
+  // Per explicit request, this tab's own leading icon swaps from the plain
+  // per-type glyph (`meta.icon` — the WhatsApp/Mail/Phone/etc. mark) once
+  // it's ACTUALLY overdue, so the tab bar reads as a real alert rather than
+  // just a recolored version of its normal icon — and escalates AGAIN once
+  // SLA is fully breached, not just late: a warning triangle for
+  // `"warning"` (getting old, not overdue yet), then a circled exclamation
+  // point (`CircleAlert`) for `"critical"` once it's actually breached —
+  // same escalation the SLA banner's own copy ("nearing SLA breach" vs.
+  // "has breached SLA time") already draws, now mirrored in the icon
+  // itself instead of color being the only thing that changes between the
+  // two. The green "success" tier (a reply just landed, still well within
+  // SLA) keeps the plain per-type icon — just recolored green by `Tab`'s
+  // own `iconColorClass` below — since a channel that's right on track
+  // isn't something to alert on at all. `TriangleAlert`/`CircleAlert` here
+  // are reserved for genuine SLA severity now — `buildDigitalMenuItems`/
+  // `buildVoiceMenuItems`'s own "Unassign & Dismiss" entry used to share
+  // `TriangleAlert` with this same warning tier, which made the two easy to
+  // visually confuse; it now uses `UserX` instead (see those functions'
+  // own doc comment), so a warning triangle on this tab bar always means
+  // "SLA," never "dismiss." Lucide's `CircleAlert` is the outline circled-
+  // "!" mark, distinct from `ErrorIcon`'s hardcoded-red solid dot used in
+  // `InlineNotification` — this one needs a `currentColor` stroke, not a
+  // fixed fill, so `Tab`'s `iconColorClass` can still recolor it the same
+  // way it would any other icon passed into that slot).
+  const tabIcon =
+    severity === "critical" ? (
+      <CircleAlert className="h-4 w-4" strokeWidth={1.5} />
+    ) : severity === "warning" ? (
+      <TriangleAlert className="h-4 w-4" strokeWidth={1.5} />
+    ) : (
+      meta.icon
+    );
   const defaultMenuItems = type === "voice" ? buildVoiceMenuItems(onDismiss) : buildDigitalMenuItems(onDismiss);
   // Wires the "outcome" entry specifically (see `ChannelTabProps.outcome`'s
   // own doc comment) — every other entry (Unassign & Dismiss, Consult /
@@ -1059,98 +1256,102 @@ const ChannelTab: React.FC<ChannelTabProps> = ({
   // as an outside interaction" exemption, since that exemption is wired to
   // `PopoverTrigger` specifically and never fires for `PopoverAnchor`).
   const anchorRef = React.useRef<HTMLSpanElement>(null);
-  // Second tooltip line — e.g. "16 Messages | +1 555-123-4567" — omitted
+  // Second tooltip line — e.g. "Pending | Last contact 2m ago" — omitted
   // entirely when neither value is on hand rather than rendering an empty/
-  // half-blank line under the plain channel-label one above it. Used to be
-  // "16 Messages | #<interactionId>" (the case/interaction id), but that's
-  // not something an agent actually needs at a glance while scanning
-  // channel tabs — the channel's own number/email/handle is the far more
-  // useful "which one is this, specifically" fact, so `address` replaces
-  // `interactionId` here per explicit request. `interactionId` itself is
-  // unchanged/still a real prop (still shown elsewhere, e.g. this same
-  // tab's `#caseId · date` line in the transcript) — just no longer
-  // duplicated into this tooltip. The "|" between the two remaining values
-  // is kept (two distinct facts, not a label and its own value), rendered
-  // smaller (`lyra-body-sm`, one step below the tooltip's own default
-  // `lyra-body-md`) since it's secondary/reference info, not the tab's
-  // primary identity.
-  const metaLine = [
-    messageCount !== undefined ? `${messageCount} Message${messageCount === 1 ? "" : "s"}` : undefined,
-    address,
-  ]
+  // half-blank line under the top line. Used to show message count +
+  // address (and, before that, message count + the case/interaction id);
+  // per explicit request this now shows this channel's own current status
+  // and how long it's been since the customer last spoke instead — an
+  // agent scanning tabs cares more about where a conversation stands and
+  // whether it's gone quiet than its raw message count (see
+  // `messageCount`'s own doc comment for where that went). `lastCustomer
+  // ContactLabel` gets its own "Last contact" prefix added here (see that
+  // prop's own doc comment for why it arrives as a bare relative-time
+  // string instead). The "|" between the two is kept (two distinct facts,
+  // not a label and its own value), rendered smaller (`lyra-body-sm`, one
+  // step below the tooltip's own default `lyra-body-md`) since it's
+  // secondary/reference info, not the tab's primary identity.
+  const metaLine = [statusLabel, lastCustomerContactLabel ? `Last contact ${lastCustomerContactLabel}` : undefined]
     .filter(Boolean)
     .join(" | ");
-  // Top line is now always just the plain channel label ("Voice"/"SMS"/
-  // etc.) — `address` used to also be folded in here ("Voice +1 555-123-
-  // 4567") when present, which duplicated it against the second line once
-  // that line started showing `address` too (see `metaLine` above). One
-  // line owns "what channel," the other owns "which specific number/
-  // handle," instead of the top line trying to carry both.
+  // Top line is now "{type} | {address}" when an address is on hand (e.g.
+  // "Email | david.brown@example.com") — per explicit request, since the
+  // tab face itself (below) now shows the address INSTEAD OF the type
+  // label whenever one's available, the tooltip is the one place an agent
+  // can still confirm which channel TYPE a given address is actually on
+  // (address alone doesn't always make that obvious — a phone number could
+  // be SMS or Voice). Falls back to the plain type label alone when there's
+  // no address to pair it with (unchanged from before).
   const tooltipContent = (
     <div className="flex flex-col gap-0.5">
-      <span>{meta.label}</span>
+      <span>{address ? `${meta.label} | ${address}` : meta.label}</span>
       {metaLine && <span className="lyra-body-sm text-lyra-fg-secondary">{metaLine}</span>}
     </div>
   );
   const tabElement = (
     <Tab
       active={active}
+      severity={severity}
       onClick={onClick}
-      icon={meta.icon}
+      icon={tabIcon}
       menuItems={showMenu ? effectiveMenuItems : undefined}
       onMenuOpenChange={setMenuOpen}
       menuAriaLabel={`More options for ${meta.label}`}
-      // This outer `Tooltip` already shows "{label} {address}" (a
-      // superset of this tab's own truncated "{label} {address}"
-      // children) plus the message-count/id line — `Tab`'s own built-in
-      // truncation tooltip was firing alongside it whenever the address
-      // got clipped, stacking two tooltip bubbles on one hover. See
-      // `showTruncationTooltip`'s own doc comment in tabs.tsx.
+      // Per explicit request: once `showMenu` is off (a closed interaction's
+      // tab, per this prop's own doc comment — the one existing caller only
+      // ever sets this false for that exact case), the kebab's old spot
+      // isn't just left empty — it becomes a real close ("×") button
+      // instead, wired to this same `onDismiss` the kebab's own "Unassign &
+      // Dismiss" entry already used. `Tab` already supports exactly this
+      // (`onRemove`, mutually exclusive with `menuItems` — see its own doc
+      // comment in tabs.tsx), so this reuses that built-in slot rather than
+      // hand-rolling a second close icon here. `undefined` (not `onDismiss`
+      // unconditionally) while `showMenu` is on, so a normal, still-open
+      // tab's trailing slot is unaffected — only a closed tab with no kebab
+      // gets this.
+      onRemove={!showMenu ? onDismiss : undefined}
+      removeLabel={`Close ${meta.label}`}
+      // This outer `Tooltip` already shows "{type} | {address}" (a
+      // superset of this tab's own face text below) plus the status/last-
+      // contact line — `Tab`'s own built-in truncation tooltip was firing
+      // alongside it whenever the face text got clipped, stacking two
+      // tooltip bubbles on one hover. See `showTruncationTooltip`'s own
+      // doc comment in tabs.tsx.
       showTruncationTooltip={false}
       className={className}
     >
       {/* `data-tab-label` — marks specifically THIS span (not `Tab`'s own
           generic children-wrapper) as the real label text for `TabList`'s
           "N More" overflow dropdown to read (see that attribute's own doc
-          comment in tabs.tsx) — scoping it this tight, rather than to
-          `Tab`'s outer wrapper, is what keeps that dropdown's label from
-          also picking up `address` below and duplicating it into the
-          label text ("Voice(456) 383-3329" instead of a plain "Voice"
-          with the number on its own subhead line, confirmed via
-          screenshot). */}
-      <span data-tab-label>{meta.label}</span>
-      {address &&
-        (showAddressOnFace ? (
-          // `text-lyra-fg-secondary` — not `-disabled`: an address isn't
-          // disabled content, and `-disabled` is intentionally very low
-          // contrast (20% white in dark mode vs. secondary's 60%), which
-          // made phone numbers/addresses on an active dark-mode tab nearly
-          // unreadable. `-secondary` is the correct semantic token for
-          // "real but de-emphasized" text and is legible in both themes.
-          //
-          // `data-tab-subhead` — see the `sr-only` branch below for what
-          // this is for; carried on this visible span instead of a
-          // duplicate hidden one whenever the face is already showing the
-          // address, so a screen reader (or `TabList`'s own "N More"
-          // dropdown, once collapsed) never sees it twice.
-          <span data-tab-subhead className="ml-1 font-normal text-lyra-fg-secondary">
-            {address}
-          </span>
-        ) : (
-          // `showAddressOnFace={false}` means there's no visible element
-          // carrying `address` for `TabList`'s "N More" overflow dropdown
-          // to read (`data-tab-subhead`, read alongside `data-tab-label` —
-          // see that attribute's own doc comment in tabs.tsx) once this
-          // tab collapses into it: an agent scanning a long list of "SMS" /
-          // "Voice" / "WhatsApp" entries with no number/handle next to any
-          // of them can't tell which is which. `sr-only` keeps it out of
-          // the tab face itself (unchanged from before — this is purely
-          // additive) while still being real, queryable DOM content for
-          // both that dropdown and screen readers.
-          <span data-tab-subhead className="sr-only">
-            {address}
-          </span>
-        ))}
+          comment in tabs.tsx). Per explicit request, this now shows the
+          channel's own `address` INSTEAD OF the plain type label
+          ("Email"/"SMS"/etc.) whenever one's on hand and `showAddressOnFace`
+          is on (default) — an agent scanning open tabs cares which specific
+          number/handle/address a conversation is on far more than its
+          generic channel type, which the leading icon (and this tab's own
+          `Tooltip`, see `tooltipContent` above) already conveys. Falls back
+          to the plain type label whenever there's no address to show, or
+          `showAddressOnFace` is off (see the `sr-only` branch below for that
+          case). */}
+      <span data-tab-label>{address && showAddressOnFace ? address : meta.label}</span>
+      {/* `showAddressOnFace={false}` means the face above is showing the
+          plain type label, not `address` — so there's no visible element
+          carrying `address` for `TabList`'s "N More" overflow dropdown to
+          read (`data-tab-subhead`, read alongside `data-tab-label` — see
+          that attribute's own doc comment in tabs.tsx) once this tab
+          collapses into it: an agent scanning a long list of "SMS"/"Voice"/
+          "WhatsApp" entries with no number/handle next to any of them can't
+          tell which is which. `sr-only` keeps it out of the tab face itself
+          while still being real, queryable DOM content for both that
+          dropdown and screen readers. Only rendered in this one branch —
+          when the face is already showing `address` as its own visible
+          `data-tab-label` text above, a second copy here would just
+          duplicate it for a screen reader/the dropdown. */}
+      {address && !showAddressOnFace && (
+        <span data-tab-subhead className="sr-only">
+          {address}
+        </span>
+      )}
     </Tab>
   );
   return (

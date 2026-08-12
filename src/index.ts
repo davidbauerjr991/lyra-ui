@@ -79,6 +79,8 @@ export {
   WhatsAppChannelRow,
   VoiceChannelRow,
   CHANNEL_TYPE_META,
+  CHANNEL_TYPE_TAG_VARIANT,
+  WhatsAppIcon,
   ChannelTab,
   ChannelToggle,
   ChannelToggleGroup,
@@ -143,6 +145,8 @@ export { ContentArea } from "./components/content-area";
 export type { ContentAreaProps } from "./components/content-area";
 export { Select } from "./components/select";
 export type { SelectOption } from "./components/select";
+export { DispositionSelect } from "./components/disposition-select";
+export type { DispositionOption, DispositionSelectProps } from "./components/disposition-select";
 export { Menu } from "./components/menu";
 export type { MenuItemDef, MenuEntry, MenuProps, MenuSectionLabel } from "./components/menu";
 export { TreeMenu, CollapsiblePanel } from "./components/tree-menu";
@@ -170,6 +174,8 @@ export type { InlineNotificationProps } from "./components/inline-notification";
 export { Toast, ToastContainer, useToast } from "./components/toast";
 export type { TooltipProps, TooltipPlacement } from "./components/tooltip";
 export type { ToastProps, ToastVariant, ToastItem } from "./components/toast";
+export { AgentLegDisconnectedToast } from "./components/agent-leg-disconnected-toast";
+export type { AgentLegDisconnectedToastProps } from "./components/agent-leg-disconnected-toast";
 
 /* ── Spinner ── */
 export { Spinner, spinnerBarVariants, spinnerCircleVariants } from "./components/spinner";

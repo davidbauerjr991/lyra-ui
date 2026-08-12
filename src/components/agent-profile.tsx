@@ -16,9 +16,38 @@ import { SearchInput } from "./search-input";
    same terminology `AgentDashboard`'s "Unavailable Agents" badge already
    uses (see agent-dashboard.tsx) — same word, same red/critical color,
    now also the same icon. "offline" was dropped too, per explicit
-   request: just Available and Unavailable for now. */
+   request: just Available and Unavailable for now.
 
-export type AgentStatus = "available" | "unavailable";
+   Per a later explicit request, 15 more granular "unavailable, and here's
+   why" reason codes were added on top of that — real call-center ACD/ACW
+   reason-code vocabulary (lunch, break, coaching, system down, etc.), so
+   `AgentProfile`'s own status search/Favorites/scrolling menu has enough
+   real rows to stress-test with instead of just the two. Every one of
+   these 15 reuses `"unavailable"`'s own icon/color in `statusConfig`
+   below verbatim (same `Minus` glyph, same critical/red badge) rather than
+   getting a distinct glyph each — per that same request, they're meant to
+   read as "flavors of Unavailable," not 15 new semantically-distinct
+   states `StatusIcon`/`Avatar`/anything else in this file would need to
+   tell apart. Add a real per-reason icon later if that ever changes. */
+
+export type AgentStatus =
+  | "available"
+  | "unavailable"
+  | "lunch"
+  | "break"
+  | "meeting"
+  | "training"
+  | "coaching"
+  | "team-huddle"
+  | "after-call-work"
+  | "bio-break"
+  | "technical-issue"
+  | "system-outage"
+  | "administrative-work"
+  | "back-office"
+  | "do-not-disturb"
+  | "end-of-shift"
+  | "emergency";
 
 export interface AgentProfileProps {
   name: string;
@@ -44,6 +73,33 @@ export interface AgentProfileProps {
   /** Shows a "Help" row (below "Agent Leg Disconnected") when provided */
   onHelpClick?: () => void;
   onLogOut?: () => void;
+  /** Fired once the agent leg finishes connecting or disconnecting — after
+   *  the ~2s "connecting" animation settles into "connected" (see this
+   *  file's own `handleAgentLegToggle`), or immediately on disconnect
+   *  (no animation on that transition). NOT fired for the "connecting"
+   *  state itself, and never fired for the initial mount-time value — only
+   *  real, agent-caused transitions. Lets the consumer show its own toast
+   *  (or anything else) confirming what just happened; this component has
+   *  no toast infrastructure of its own to show one directly with (see
+   *  `AgentNextGenPage.tsx`'s own `useToast`/`ToastContainer` for where
+   *  that actually lives, app-side). */
+  onAgentLegStatusChange?: (status: "disconnected" | "connected") => void;
+  /** Bump this to a new number (e.g. `n => n + 1`) to imperatively start
+   *  connecting the agent leg from OUTSIDE this component — e.g. a
+   *  "Connect" button on the toast `onAgentLegStatusChange`'s own
+   *  disconnected event already fired (see `AgentNextGenPage.tsx`'s
+   *  `showAgentLegToast`/`handleConnectAgentLeg`), so the agent doesn't
+   *  have to also open this menu and click the "Agent Leg Disconnected" row
+   *  by hand. Only the VALUE CHANGING matters (same "signal" convention as
+   *  a counter-based re-run trigger elsewhere) — the number itself is never
+   *  read or displayed. No-ops if the agent leg isn't currently
+   *  `"disconnected"` (already connected, or already mid-connect), same as
+   *  clicking the row/avatar itself would. Left undefined, agent leg
+   *  connect/disconnect stays fully self-managed via that row/avatar click
+   *  exactly as before this prop existed — this is purely an additive
+   *  external trigger, not a controlled-value takeover the way `isDarkMode`/
+   *  `onDarkModeToggle` is. */
+  connectAgentLegSignal?: number;
   /** Hides the "Connected Apps" row (and its flyout panel) entirely — for
    *  a consumer with no real integrations to surface here at all, rather
    *  than showing a permanently-empty "0" row. Unlike `onHelpClick`
@@ -63,9 +119,34 @@ export interface AgentProfileProps {
 
 type StatusBadgeVariant = NonNullable<Extract<BadgeProps, { shape: "circle" }>["variant"]>;
 
+// Shared by "unavailable" and all 15 reason-code statuses below — same
+// icon/color for every one of them, see `AgentStatus`'s own doc comment
+// above for why these deliberately don't get distinct glyphs.
+const UNAVAILABLE_STATUS_STYLE = {
+  color: "bg-lyra-status-critical-strong",
+  textColor: "text-lyra-status-critical-strong",
+  icon: Minus,
+  badgeVariant: "critical" as StatusBadgeVariant,
+};
+
 const statusConfig: Record<AgentStatus, { label: string; color: string; textColor: string; icon?: typeof Check; badgeVariant?: StatusBadgeVariant }> = {
-  available:   { label: "Available",   color: "bg-lyra-status-success-strong",  textColor: "text-lyra-status-success-strong",  icon: Check, badgeVariant: "success" },
-  unavailable: { label: "Unavailable", color: "bg-lyra-status-critical-strong", textColor: "text-lyra-status-critical-strong", icon: Minus, badgeVariant: "critical" },
+  available:            { label: "Available",            color: "bg-lyra-status-success-strong", textColor: "text-lyra-status-success-strong", icon: Check, badgeVariant: "success" },
+  unavailable:          { label: "Unavailable",           ...UNAVAILABLE_STATUS_STYLE },
+  lunch:                { label: "Lunch",                 ...UNAVAILABLE_STATUS_STYLE },
+  break:                { label: "Break",                 ...UNAVAILABLE_STATUS_STYLE },
+  meeting:              { label: "Meeting",                ...UNAVAILABLE_STATUS_STYLE },
+  training:             { label: "Training",               ...UNAVAILABLE_STATUS_STYLE },
+  coaching:             { label: "Coaching",                ...UNAVAILABLE_STATUS_STYLE },
+  "team-huddle":        { label: "Team Huddle",             ...UNAVAILABLE_STATUS_STYLE },
+  "after-call-work":    { label: "After Call Work",         ...UNAVAILABLE_STATUS_STYLE },
+  "bio-break":          { label: "Bio Break",               ...UNAVAILABLE_STATUS_STYLE },
+  "technical-issue":    { label: "Technical Issue",         ...UNAVAILABLE_STATUS_STYLE },
+  "system-outage":      { label: "System Outage",           ...UNAVAILABLE_STATUS_STYLE },
+  "administrative-work":{ label: "Administrative Work",     ...UNAVAILABLE_STATUS_STYLE },
+  "back-office":        { label: "Back Office",             ...UNAVAILABLE_STATUS_STYLE },
+  "do-not-disturb":     { label: "Do Not Disturb",          ...UNAVAILABLE_STATUS_STYLE },
+  "end-of-shift":       { label: "End of Shift",            ...UNAVAILABLE_STATUS_STYLE },
+  emergency:            { label: "Emergency",               ...UNAVAILABLE_STATUS_STYLE },
 };
 
 /** Status menu row icon — circle-shape `Badge` with the status glyph as
@@ -88,13 +169,53 @@ function StatusIcon({ status, className }: { status: AgentStatus; className?: st
   );
 }
 
-function Avatar({ initials, src, status }: { initials?: string; src?: string; status: AgentStatus }) {
+/** Per explicit request: while the agent LEG (softphone/telephony
+ *  connection — `agentLegStatus`, distinct from `status`'s own available/
+ *  unavailable/etc. presence) isn't connected, this avatar's own circle
+ *  swaps its usual initials for a real signal of that — `Link2Off` while
+ *  fully disconnected, the same spinning `Loader2` the "Agent Leg
+ *  Connecting…" menu row already uses while reconnecting is in flight —
+ *  and reverts to plain initials the moment `agentLegStatus` reads
+ *  "connected" again. `status`'s own corner `StatusIcon` badge is
+ *  untouched either way — that's a separate concept (availability, not
+ *  connectivity) and keeps reading whatever it already did. Purely
+ *  presentational: the click-to-connect behavior/tooltip live on whichever
+ *  element wraps this (see this file's own render return — that wrapper
+ *  differs by state, so it doesn't belong in here). */
+function Avatar({
+  initials,
+  src,
+  status,
+  agentLegStatus,
+}: {
+  initials?: string;
+  src?: string;
+  status: AgentStatus;
+  agentLegStatus?: "disconnected" | "connecting" | "connected";
+}) {
   return (
     <div className="relative shrink-0">
-      <div className="h-9 w-9 rounded-full overflow-hidden bg-lyra-avatar-default-bg flex items-center justify-center">
-        {src
-          ? <img src={src} alt={initials} className="h-full w-full object-cover" />
-          : <span className="lyra-label text-white">{initials}</span>}
+      <div
+        className={cn(
+          "h-9 w-9 rounded-full overflow-hidden flex items-center justify-center",
+          // Warning-colored CIRCLE (not just the glyph) while disconnected,
+          // per explicit request — same solid-fill + white-icon treatment
+          // `Badge`'s own `warning` circle variant uses (`bg-lyra-status-
+          // warning-strong text-white`, badge.tsx), reused here directly so
+          // this reads as "needs attention" at a glance instead of blending
+          // into the same neutral slate every other avatar state uses.
+          agentLegStatus === "disconnected" ? "bg-lyra-status-warning-strong" : "bg-lyra-avatar-default-bg"
+        )}
+      >
+        {src ? (
+          <img src={src} alt={initials} className="h-full w-full object-cover" />
+        ) : agentLegStatus === "disconnected" ? (
+          <Link2Off className="h-4 w-4 text-white" strokeWidth={1.75} aria-hidden="true" />
+        ) : agentLegStatus === "connecting" ? (
+          <Loader2 className="h-4 w-4 text-white animate-spin" strokeWidth={1.75} aria-hidden="true" />
+        ) : (
+          <span className="lyra-label text-white">{initials}</span>
+        )}
       </div>
       <StatusIcon status={status} className="absolute bottom-[-2px] right-[-2px] px-0 border border-lyra-bg-surface-base" />
     </div>
@@ -111,6 +232,8 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
     connectedApps = [],
     onReconnect,
     onDarkModeToggle, isDarkMode: isDarkModeProp, onHelpClick, onLogOut,
+    onAgentLegStatusChange,
+    connectAgentLegSignal,
     hideConnectedApps = false,
     className,
   }, ref) => {
@@ -164,11 +287,56 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
       }
     };
 
+    // Watches `connectAgentLegSignal` (see that prop's own doc comment) —
+    // any CHANGE to it (not its value) starts the same connect sequence
+    // `handleAgentLegToggle` already runs from the row/avatar click, just
+    // triggered from outside instead of a direct click. Guarded the same
+    // "skip the mount-time run" way `onAgentLegStatusChange`'s own effect
+    // below is, via a ref holding the last-seen value rather than an
+    // `isFirstRender` flag specifically, since the "did this actually
+    // change" comparison doubles as that same skip-on-mount guard for free
+    // (the ref starts equal to the first render's own value, so a still-
+    // undefined or unchanged prop never fires). Only acts while actually
+    // `"disconnected"` — already connected/mid-connecting silently no-ops,
+    // same as the row/avatar click already does via `handleAgentLegToggle`'s
+    // own guard.
+    const lastConnectAgentLegSignalRef = React.useRef(connectAgentLegSignal);
+    React.useEffect(() => {
+      if (connectAgentLegSignal === undefined) return;
+      if (connectAgentLegSignal === lastConnectAgentLegSignalRef.current) return;
+      lastConnectAgentLegSignalRef.current = connectAgentLegSignal;
+      if (agentLegStatus === "disconnected") handleAgentLegToggle();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [connectAgentLegSignal]);
+
     const agentLegIconMap = {
-      disconnected: { icon: <Link2Off className="h-4 w-4" strokeWidth={1.4} />, color: "text-lyra-fg-secondary",          tooltip: "Click to connect"    },
+      // Warning-colored per explicit request (was neutral gray,
+      // `text-lyra-fg-secondary`) — matches the same disconnected `Link2Off`
+      // glyph's own recoloring in `Avatar` above, so this footer row and the
+      // avatar agree on how "disconnected" reads instead of one flagging it
+      // and the other treating it as neutral.
+      disconnected: { icon: <Link2Off className="h-4 w-4" strokeWidth={1.4} />, color: "text-lyra-status-warning-strong", tooltip: "Click to connect"    },
       connecting:   { icon: <Loader2  className="h-4 w-4 animate-spin" strokeWidth={1.4} />, color: "text-lyra-status-warning-strong", tooltip: "Connecting..."       },
       connected:    { icon: <Link2    className="h-4 w-4" strokeWidth={1.4} />, color: "text-lyra-status-success-strong", tooltip: "Click to disconnect" },
     };
+
+    // Fires `onAgentLegStatusChange` for a real connect/disconnect, not for
+    // "connecting" (the in-between state — see that prop's own doc comment
+    // for why) and not for the very first render (an effect runs after
+    // mount too, which would otherwise fire this once for free on load with
+    // nothing having actually happened yet — `isFirstRender` below is what
+    // skips exactly that one run, same "skip the mount-time call" guard
+    // this kind of change-notification effect always needs).
+    const isFirstAgentLegRender = React.useRef(true);
+    React.useEffect(() => {
+      if (isFirstAgentLegRender.current) {
+        isFirstAgentLegRender.current = false;
+        return;
+      }
+      if (agentLegStatus === "connected" || agentLegStatus === "disconnected") {
+        onAgentLegStatusChange?.(agentLegStatus);
+      }
+    }, [agentLegStatus]);
 
     // Clear search when main menu closes. The Connected Apps flyout no
     // longer needs a matching reset — its open state now lives inside
@@ -204,7 +372,25 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
     );
 
     /* Build Menu entries using the Menu component's interface */
-    const allStatuses = ["available", "unavailable"] as AgentStatus[];
+    const allStatuses = [
+      "available",
+      "unavailable",
+      "lunch",
+      "break",
+      "meeting",
+      "training",
+      "coaching",
+      "team-huddle",
+      "after-call-work",
+      "bio-break",
+      "technical-issue",
+      "system-outage",
+      "administrative-work",
+      "back-office",
+      "do-not-disturb",
+      "end-of-shift",
+      "emergency",
+    ] as AgentStatus[];
     const filteredStatuses = statusSearch.trim()
       ? allStatuses.filter((s) => statusConfig[s].label.toLowerCase().includes(statusSearch.toLowerCase()))
       : allStatuses;
@@ -212,7 +398,18 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
     const noStatusMatch = filteredStatuses.length === 0;
     const favoriteStatusList = filteredStatuses.filter((s) => favoriteStatuses.has(s));
 
-    const menuItems: MenuEntry[] = [
+    // Per explicit request: split into two independent `Menu`s (below,
+    // render return) instead of one flat list — `statusMenuItems` (this
+    // one) is the part that scrolls once the status list is long enough to
+    // overflow (now up to 17 rows, see `AgentStatus`'s own doc comment);
+    // `footerMenuItems` (right after) is Dark Mode/Connected Apps/Agent
+    // Leg/Help/Log Out, which need to stay pinned/visible at the bottom of
+    // the popover instead of scrolling out of view along with the statuses
+    // above them. Splitting the DATA here (not just wrapping one `Menu` in
+    // two scroll regions) is what actually keeps this footer out of the
+    // scrollable area — a single `Menu` renders one continuous list with no
+    // way to make only PART of its own rows sticky/pinned.
+    const statusMenuItems: MenuEntry[] = [
       // Favorites shortcut — only shown once something's been starred, and
       // only lists whatever still matches the active search (so it hides
       // itself naturally when a search excludes every favorite).
@@ -248,7 +445,14 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
               rightElement: favoriteRightElement(s),
             })),
           ]),
-      "separator" as const,
+    ];
+
+    // No leading "separator" entry here (unlike the old single-list
+    // version) — the wrapping `border-t` at this Menu's own render call
+    // site (below) already draws that same divider line, between this
+    // fixed footer and the scrollable status list right above it; a
+    // "separator" row here on top of that border would double it up.
+    const footerMenuItems: MenuEntry[] = [
       {
         id: "dark-mode",
         label: isDarkMode ? "Light Mode" : "Dark Mode",
@@ -340,9 +544,26 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
       },
     ];
 
+    // Per explicit request: the avatar stays put INSIDE the "Agent Status
+    // and More" trigger button in every state (not pulled out as a
+    // standalone sibling control) — while the agent leg isn't connected, it
+    // just needs to swallow its own click instead of opening the status
+    // popover. A real `<button>` can't nest inside another `<button>`
+    // (invalid HTML, unreliable click bubbling), so this reuses the same
+    // `<span role="button">` + `stopPropagation` pattern `FavoriteButton`
+    // already uses to sit inside Menu's own row buttons (see
+    // `favoriteRightElement` above) rather than a second real button.
+    const agentLegNeedsAttention = agentLegStatus === "disconnected" || agentLegStatus === "connecting";
+
     return (
-      <div ref={ref} className={className}>
-        <Tooltip content="Agent Status and More" placement="bottom" asLabel disabled={open}>
+      <div ref={ref} className={cn("flex items-center gap-2", className)}>
+        {/* Disabled (not just "would be redundant") while the avatar needs
+            its own attention-tooltip below — this Tooltip's Trigger spans
+            the ENTIRE button including the avatar, so leaving it enabled
+            here risked both this one and the avatar's own inner Tooltip
+            being open at once while hovering the avatar. Simplest fix:
+            only one of the two tooltips is ever "live" per state. */}
+        <Tooltip content="Agent Status and More" placement="bottom" asLabel disabled={open || agentLegNeedsAttention}>
           {/* Wrap the whole Popover (not just its trigger) in a plain span —
               Tooltip's own Trigger clones its hover/focus props onto its
               immediate child via Radix Slot, which only works on a plain
@@ -390,12 +611,23 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
                 // a screen edge and a variable-length list (Favorites can
                 // make this tall), nothing capped the height, so it could
                 // run off the viewport with no way to scroll to the rest.
-                // --radix-popper-available-height is the space Radix
-                // actually computed as free, live-updated as it repositions
-                // — capping total height to it and making just the list
-                // scroll (search stays pinned) keeps this on-screen no
-                // matter how many favorites/statuses there are.
-                <div className="flex flex-col" style={{ maxHeight: "var(--radix-popper-available-height, 400px)" }}>
+                // `h-[80vh] max-h-[768px]` — per explicit request, the same
+                // fixed height constraint the Customer Information hover
+                // preview uses (agent-next-gen-customer-info-panel.tsx's own
+                // `CustomerInfoHoverPreview`, see that component's own doc
+                // comment): scales with the viewport on a normal display but
+                // never grows past 768px on a very tall one. Replaces the
+                // earlier `--radix-popper-available-height`-driven cap
+                // (Radix's own live-computed free space, with a 400px
+                // fallback) — that dynamic approach guaranteed this never
+                // ran off-screen near a trigger close to a screen edge, but
+                // per explicit follow-up request this popover should now
+                // match the other one's height exactly rather than shrink
+                // itself around whatever room Radix happens to find. The
+                // list below still scrolls independently either way (see
+                // its own `overflow-y-auto` div, unchanged), so a long
+                // status list still can't push the fixed footer off-screen.
+                <div className="flex h-[80vh] max-h-[768px] flex-col">
                   {/* Search statuses — SearchInput (not the generic Input +
                       manual startIcon this used before), so typing a query
                       gets the built-in clear ("x") button for free instead
@@ -408,10 +640,33 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
                     />
                   </div>
 
-                  {/* Menu — uses the existing Menu component for consistent styling */}
+                  {/* Statuses — the one part of this popover that scrolls.
+                      Per explicit request, split out of what used to be one
+                      flat `menuItems` list specifically so Dark Mode/
+                      Connected Apps/Agent Leg/Help/Log Out (the separate
+                      `footerMenuItems` `Menu` right below, OUTSIDE this
+                      `overflow-y-auto` div) stay pinned/visible at the
+                      bottom of the popover instead of scrolling away with a
+                      long status list (now up to 17 rows). No
+                      `rounded-b-lyra-lg` here any more — this `Menu` no
+                      longer touches the popover's own bottom edge, that
+                      rounding moved to `footerMenuItems`' `Menu` below. */}
                   <div className="min-h-0 flex-1 overflow-y-auto">
                     <Menu
-                      items={menuItems}
+                      items={statusMenuItems}
+                      className="border-0 shadow-none rounded-none bg-transparent"
+                    />
+                  </div>
+
+                  {/* Fixed footer — `flex-shrink-0` (not part of the
+                      `overflow-y-auto` region above) is what actually keeps
+                      this pinned in place regardless of how tall the status
+                      list above gets. `border-t` here is the divider line
+                      between the two (see `footerMenuItems`' own comment
+                      for why that's not also a "separator" row). */}
+                  <div className="flex-shrink-0 border-t border-lyra-border-subtle">
+                    <Menu
+                      items={footerMenuItems}
                       className="border-0 shadow-none rounded-none rounded-b-lyra-lg bg-transparent"
                     />
                   </div>
@@ -423,7 +678,48 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
                 aria-label="Agent Status and More"
                 className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-lyra-sm hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
               >
-                <Avatar initials={initials} src={avatarSrc} status={status} />
+                {/* While the agent leg needs attention, wrap the avatar in
+                    its own click target + tooltip so it swallows the click
+                    (connect/reconnect) instead of also opening the status
+                    popover — see this component's own doc comment above
+                    the render return for why this is a `<span role="button">`
+                    and not a real nested `<button>`. */}
+                {agentLegNeedsAttention ? (
+                  <Tooltip
+                    content={
+                      agentLegStatus === "connecting"
+                        ? "Connecting…"
+                        : "Agent Leg Disconnected, Click To Connect"
+                    }
+                    placement="bottom"
+                  >
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      aria-label={
+                        agentLegStatus === "connecting"
+                          ? "Connecting agent leg"
+                          : "Agent Leg Disconnected, Click To Connect"
+                      }
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAgentLegToggle();
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleAgentLegToggle();
+                        }
+                      }}
+                      className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
+                    >
+                      <Avatar initials={initials} src={avatarSrc} status={status} agentLegStatus={agentLegStatus} />
+                    </span>
+                  </Tooltip>
+                ) : (
+                  <Avatar initials={initials} src={avatarSrc} status={status} agentLegStatus={agentLegStatus} />
+                )}
                 <div className="flex flex-col items-start min-w-0">
                   <span className={cn("lyra-label leading-tight", statusConfig[status].textColor)}>{statusConfig[status].label}</span>
                   {timer && <span className={cn("lyra-body-sm tabular-nums", statusConfig[status].textColor)}>{timer}</span>}

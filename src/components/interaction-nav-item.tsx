@@ -1,8 +1,16 @@
 import * as React from "react";
+import { ChevronDown, TriangleAlert, CircleAlert, User } from "lucide-react";
 import { cn } from "../lib/utils";
-import { CHANNEL_ROW_COMPONENTS, CHANNEL_TYPE_META, type InteractionChannel, type ChannelType } from "./channel-row";
+import {
+  CHANNEL_ROW_COMPONENTS,
+  CHANNEL_TYPE_META,
+  CHANNEL_TYPE_TAG_VARIANT,
+  type InteractionChannel,
+  type ChannelType,
+} from "./channel-row";
 import { Popover } from "./popover";
-import { Badge } from "./badge";
+import { Badge, getPillInlineStyles, type BadgeColor } from "./badge";
+import { Button } from "./button";
 
 /* ── Helpers ── */
 
@@ -30,10 +38,14 @@ export interface InteractionNavItemProps {
    * to a raw address standing in for one (see that prop's own doc comment).
    * Only affects the compact tile's AVATAR: a real name still gets initials
    * either way `customerName` is used for the title text itself, but a raw
-   * address has no real initials to speak of — passing `false` here shows
-   * this interaction's own current-channel icon in the avatar instead of
-   * `getInitials` deriving a stray, meaningless leading character off the
-   * address (e.g. "1" off a phone number starting with a "1" country code).
+   * address has no real initials to speak of — passing `false` here shows a
+   * generic person icon in the avatar instead of `getInitials` deriving a
+   * stray, meaningless leading character off the address (e.g. "1" off a
+   * phone number starting with a "1" country code). Previously this showed
+   * the interaction's own current-channel icon instead — changed per
+   * explicit request, since the channel icon read as "this is an email/
+   * voice/etc. conversation" rather than clearly communicating "unknown
+   * customer" the way a person icon does.
    * Omit when the consumer doesn't distinguish the two cases — inferred
    * from whether `customerName` is non-empty, same as before this prop
    * existed.
@@ -51,19 +63,21 @@ export interface InteractionNavItemProps {
   elapsed: string;
   /**
    * True when the customer has sent a message the agent hasn't replied to
-   * yet: the avatar switches from primary (blue) to critical (red) (or
-   * amber — see `awaitingSeverity` below) and a badge dot appears. Default
-   * (false) is primary with no badge.
+   * yet: the avatar switches from primary (blue) to success (green)/warning
+   * (amber)/critical (red) — see `awaitingSeverity` below — and a badge dot
+   * appears. Default (false) is primary with no badge.
    */
   awaitingResponse?: boolean;
   /** When `awaitingResponse` is true, which visual tier to render —
-   *  `"warning"` (amber) for a wait that's getting old but hasn't crossed
-   *  the harder threshold yet, `"critical"` (red) once it has. Ignored
-   *  when `awaitingResponse` is false, and defaults to `"critical"` when
-   *  left unset while `awaitingResponse` IS true — matching this prop's
-   *  own pre-existing binary behavior, so any consumer that doesn't pass
-   *  it (this file's own stories included) renders exactly as before. */
-  awaitingSeverity?: "warning" | "critical";
+   *  `"success"` (green) for a reply that just landed and is still well
+   *  within SLA, `"warning"` (amber) once the wait's gotten old enough to
+   *  need attention, `"critical"` (red) once it's genuinely overdue.
+   *  Ignored when `awaitingResponse` is false, and defaults to `"critical"`
+   *  when left unset while `awaitingResponse` IS true — matching this
+   *  prop's own pre-existing binary behavior, so any consumer that doesn't
+   *  pass it (this file's own stories included) renders exactly as
+   *  before. */
+  awaitingSeverity?: "success" | "warning" | "critical";
   /** Whether this is the currently-open/selected interaction. */
   active?: boolean;
   /**
@@ -134,6 +148,43 @@ export interface InteractionNavItemProps {
    * back in as `currentChannelKey`, so a click on either side updates both.
    */
   onCurrentChannelChange?: (key: string) => void;
+  /**
+   * Replaces `headerAction` in the expanded card's header row with a
+   * chevron toggle that expands/collapses the channel list below it —
+   * opt-in (default `false`, every existing consumer's header row is
+   * completely unchanged) rather than a behavior change applied to every
+   * consumer of this component at once, per explicit request. Each card
+   * manages its own expanded/collapsed state internally (defaults to
+   * expanded, matching this component's pre-existing always-shown
+   * behavior) — nothing outside this component needs to read or
+   * coordinate it, so it isn't lifted into a controlled prop pair the way
+   * `currentChannelKey` above is. Only takes effect when there's at least
+   * one channel to collapse; with none, the header row renders with no
+   * trailing action at all, same as `headerAction` being omitted.
+   */
+  collapsible?: boolean;
+  /**
+   * External one-shot override for the channel list's expanded/collapsed
+   * state — e.g. a page-level "Collapse all"/"Expand all" bulk action
+   * controlling every card in a list at once. Deliberately NOT a normal
+   * continuously-controlled prop pair (there's no plain `channelsExpanded`/
+   * `onChannelsExpandedChange`, unlike `currentChannelKey` above): a simple
+   * controlled boolean would PERMANENTLY link every card to the same
+   * state, so toggling one card's own chevron afterward would have to
+   * either fight the controlling parent or stop working entirely. The
+   * whole point here is a one-time "set them all to X right now" — after
+   * which each card goes right back to toggling independently via its own
+   * chevron, exactly as if this prop were never passed.
+   *
+   * `version` is a nonce, not a value to diff against `expanded` itself:
+   * bump it (e.g. an incrementing counter) any time `expanded` should be
+   * re-applied, even if `expanded`'s own value hasn't changed since the
+   * last bump (e.g. two consecutive "Collapse all" clicks in a row with no
+   * individual card toggled in between — `expanded` would be `false` both
+   * times, but the second click still needs to re-collapse any card the
+   * agent individually re-expanded since the first one).
+   */
+  channelsExpandedOverride?: { expanded: boolean; version: number };
   className?: string;
 }
 
@@ -163,10 +214,41 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       headerAction,
       currentChannelKey,
       onCurrentChannelChange,
+      collapsible = false,
+      channelsExpandedOverride,
       className,
     },
     ref
   ) => {
+    // Own the channel list's expanded/collapsed state — see `collapsible`'s
+    // own doc comment above for why this stays internal rather than a
+    // controlled prop. Declared unconditionally (not inside `cardBody`'s
+    // JSX below, which isn't a component/hook of its own) regardless of
+    // whether `collapsible` is actually true, same "hooks can't be called
+    // conditionally" reasoning `hoverCardOpen` below already documents for
+    // itself.
+    const [channelsExpanded, setChannelsExpanded] = React.useState(true);
+
+    // Applies `channelsExpandedOverride` (see its own doc comment above)
+    // the moment its `version` changes — "adjusting state during render
+    // when a prop changes," the same pattern (compare against a ref of the
+    // last-seen value, update during render rather than in a `useEffect`)
+    // `currentChannelKeys`/`prevChannelKeys`/`channelKeysChanged` below
+    // already uses for the "a newly-opened channel takes over as current"
+    // case. A `useEffect` here would apply the override one render late —
+    // this fires in the SAME render the new `version` arrives in, which
+    // matters for a bulk "Collapse all" click meant to feel instant across
+    // every card in a list at once, not staggered by an extra render each.
+    const lastAppliedOverrideVersionRef = React.useRef(channelsExpandedOverride?.version);
+    if (
+      channelsExpandedOverride &&
+      channelsExpandedOverride.version !== lastAppliedOverrideVersionRef.current
+    ) {
+      lastAppliedOverrideVersionRef.current = channelsExpandedOverride.version;
+      if (channelsExpanded !== channelsExpandedOverride.expanded) {
+        setChannelsExpanded(channelsExpandedOverride.expanded);
+      }
+    }
     const initials = getInitials(customerName);
     const displayName = customerName || "Customer";
     const channelCount = channels.length;
@@ -179,9 +261,11 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     // quick-dialed phone number, an anonymous inbound email/WhatsApp handle)
     // has no real initials to derive — `getInitials`' own "C" fallback (or,
     // worse, a stray leading digit/symbol off the address itself) reads as
-    // meaningless in the compact tile's avatar — a channel icon communicates
-    // "this is an unidentified voice/email/WhatsApp contact" far better than
-    // a letter that isn't actually anyone's initial. Only affects the
+    // meaningless in the compact tile's avatar — a generic person icon
+    // communicates "unknown/unidentified customer" far better than a letter
+    // that isn't actually anyone's initial (previously this showed the
+    // current channel's own icon instead — changed per explicit request, see
+    // `customerIdentified`'s own doc comment above). Only affects the
     // avatar: `displayName` below still shows `customerName` as-is either
     // way (the raw address is exactly what should read as this card's title
     // when there's no real name).
@@ -259,12 +343,6 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       currentChannelKey !== undefined
         ? currentChannelKey
         : channels.some((c) => channelKey(c) === manualCurrentKey) ? manualCurrentKey : fallbackCurrentKey;
-
-    // Which channel's icon stands in for a missing customer name in the
-    // compact tile below — the current one (the same one the agent's tabs/
-    // rows already treat as "the" channel), falling back to the first open
-    // channel when nothing's current yet.
-    const primaryChannel = channels.find((c) => channelKey(c) === effectiveCurrentKey) ?? channels[0];
 
     // Compact mode only: hovering the icon-rail avatar tile opens a popover
     // previewing the full expanded card (name, headerAction, every channel
@@ -345,16 +423,24 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     // defaulting to `"critical"` — see that prop's own doc comment above
     // for why the default preserves this card's pre-existing binary red
     // behavior for any consumer that doesn't pass real wait-time data.
-    const severity: "warning" | "critical" | null = awaitingResponse ? awaitingSeverity ?? "critical" : null;
+    const severity: "success" | "warning" | "critical" | null = awaitingResponse ? awaitingSeverity ?? "critical" : null;
 
     const tone =
       severity === "critical"
         ? { bg: "bg-lyra-status-critical-subtle", text: "text-lyra-status-critical-strong", border: active ? "border-lyra-status-critical-strong" : "border-lyra-status-critical-medium/30" }
         : severity === "warning"
         ? { bg: "bg-lyra-status-warning-subtle", text: "text-lyra-status-warning-strong", border: active ? "border-lyra-status-warning-strong" : "border-lyra-status-warning-strong/30" }
+        : severity === "success"
+        ? { bg: "bg-lyra-status-success-subtle", text: "text-lyra-status-success-strong", border: active ? "border-lyra-status-success-strong" : "border-lyra-status-success-strong/30" }
         : { bg: "bg-lyra-status-info-subtle", text: "text-lyra-status-info-strong", border: active ? "border-lyra-status-info-strong" : "border-lyra-status-info-medium/30" };
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
+    // `activate` — defaults to plain `onClick`, but the real expanded
+    // card's own call site below passes `handleExpandedCardActivate`
+    // instead (see that function's own doc comment) so Enter/Space
+    // activation gets the exact same "also expand a collapsed card" side
+    // effect a mouse click there gets, rather than only auto-expanding for
+    // mouse users.
+    const handleKeyDown = (e: React.KeyboardEvent, activate: () => void = () => onClick?.()) => {
       // `e.target !== e.currentTarget` — keydown bubbles, and this handler
       // is shared by the tile, the preview wrapper, and the real expanded
       // card, each of which also contains real nested interactive
@@ -367,13 +453,13 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       // can fire. Same `target === currentTarget` guard `modal.tsx`/
       // `overlay.tsx` already use for their own backdrop-click checks —
       // only a keydown that originates on the tile/wrapper itself (tabbing
-      // to it directly, the common case) still activates `onClick`;
-      // anything bubbling up from a nested descendant is left alone to
-      // handle its own Enter/Space activation normally.
+      // to it directly, the common case) still activates; anything
+      // bubbling up from a nested descendant is left alone to handle its
+      // own Enter/Space activation normally.
       if (e.target !== e.currentTarget) return;
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        onClick?.();
+        activate();
       }
     };
 
@@ -438,27 +524,24 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       }
     };
 
-    const ariaLabel = `${displayName}${awaitingResponse ? ", awaiting response" : ""}${channelCount > 1 ? `, ${channelCount} open channels` : ""}, ${elapsed}`;
+    // `elapsed` can now arrive as `""` (every channel on this card closed —
+    // see the app-level `elapsed` prop's own call-site comment,
+    // AgentNextGenPage.tsx) — appended conditionally so that doesn't leave
+    // a dangling ", " with nothing after it.
+    const ariaLabel = `${displayName}${awaitingResponse ? ", awaiting response" : ""}${channelCount > 1 ? `, ${channelCount} open channels` : ""}${elapsed ? `, ${elapsed}` : ""}`;
 
     // Header row + channel list — the expanded card's actual content,
     // factored out so it can be rendered both by the real expanded return
     // below and inside the compact tile's hover popover (see `!expanded`
     // branch), without keeping two copies of this markup in sync by hand.
-    const cardBody = (
-      <>
-        {/* `px-3` (12px) — matches each channel row's own `px-3` below
-            (channel-row.tsx's `ChannelRow`), so the whole card reads with
-            one consistent 12px horizontal inset top to bottom rather than
-            this name row sitting slightly wider (`px-4`/16px) than the
-            rows beneath it. */}
-        <div className="flex items-center gap-2 px-3 pt-2 pb-1">
-          <span className="min-w-0 flex-1 truncate lyra-heading-sm text-lyra-fg-default">{displayName}</span>
-          {headerAction}
-        </div>
-
-        {channels.length > 0 && (
-          <div className="flex flex-col">
-            {channels.map((ch, i) => {
+    //
+    // `channelRows` factored out of `cardBody` itself (rather than inlined
+    // straight into whichever wrapper below ends up rendering it) so the
+    // `collapsible`/non-`collapsible` branches just below can pick between
+    // two different WRAPPERS around the exact same rows, instead of two
+    // separate copies of this `.map()` that would need to stay in sync by
+    // hand.
+    const channelRows = channels.map((ch, i) => {
               // Only ever highlighted on the active card — an inactive card's
               // "current" channel still renders plain, same as every other row.
               const highlighted = active && channelKey(ch) === effectiveCurrentKey;
@@ -533,8 +616,161 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                   }
                 />
               );
-            })}
-          </div>
+    });
+
+    // The chevron toggle rendered in `headerAction`'s spot when `collapsible`
+    // is true (see that prop's own doc comment) — `Button variant="icon"
+    // size="icon-sm"` per CLAUDE.md's Rule zero (no hand-rolled `<button>`s),
+    // not `ActionIconButton`: that wrapper's own size scale (actions.tsx,
+    // `ACTION_ICON_BUTTON_SIZE_MAP`) starts at `icon-md` (32px) and has no
+    // way to reach `icon-sm` (24px) at all. 24px is what this needs to
+    // actually match its neighbors — each channel row's own trailing button
+    // cluster (channel-row.tsx) uses this exact same `Button variant="icon"
+    // size="icon-sm"` for Consult/Transfer and Outcome, and `KebabMenuButton`
+    // (kebab-menu-button.tsx, a separate hand-rolled trigger for unrelated
+    // reasons — see its own doc comment — not a sign this one should be
+    // hand-rolled too) is `h-6 w-6`, the same 24px, right below this row.
+    // `h-3.5 w-3.5` on the icon itself (was `h-4 w-4`) matches
+    // `KebabMenuButton`'s own `MoreVertical` icon size for the same reason.
+    // Same `ChevronDown` + `rotate-180` treatment `Accordion`'s own trigger
+    // chevron uses (accordion.tsx) for the identical "pointing down =
+    // expanded, rotates to point up = collapsed" convention.
+    // `stopPropagation` — this header row sits inside the card's own
+    // `onClick`-handling wrapper (selecting/activating the interaction), so
+    // without it, toggling the chevron would also select the card
+    // underneath it, same fix already applied to the "Select Channel"
+    // popover elsewhere in this app for the same "interactive control
+    // nested inside a clickable row" shape.
+    const channelsToggle = channels.length > 0 && (
+      <Button
+        variant="icon"
+        size="icon-sm"
+        title={channelsExpanded ? "Collapse channels" : "Expand channels"}
+        aria-expanded={channelsExpanded}
+        onClick={(e) => {
+          e.stopPropagation();
+          setChannelsExpanded((v) => !v);
+        }}
+      >
+        <ChevronDown
+          className={cn("h-3.5 w-3.5 transition-transform duration-200", channelsExpanded && "rotate-180")}
+          strokeWidth={1.5}
+          aria-hidden="true"
+        />
+      </Button>
+    );
+
+    const cardBody = (
+      <>
+        {/* `px-3` (12px) — matches each channel row's own `px-3` below
+            (channel-row.tsx's `ChannelRow`), so the whole card reads with
+            one consistent 12px horizontal inset top to bottom rather than
+            this name row sitting slightly wider (`px-4`/16px) than the
+            rows beneath it.
+
+            `pt-1` (was `pt-2`) — per explicit request/reference screenshot,
+            matches `pb-1` (4px) so this row sits evenly centered top-to-
+            bottom rather than sitting 4px closer to the bottom. Mattered
+            most with `collapsible` (this component's own new chevron
+            toggle) collapsed: with no channel rows left beneath it, this
+            name row IS the whole visible card, and the old 8px-top/4px-
+            bottom split read as visibly off-center rather than just a
+            slightly-tight top inset above other content. */}
+        <div className="flex items-center gap-2 px-3 pt-1 pb-1">
+          {/* Open-channel count — per explicit request, shown once there's
+              more than one open channel to actually count (a single-
+              channel card's own channel type is normally obvious from its
+              one visible chip row below, so a "1" badge here would just be
+              noise — EXCEPT while `collapsible` has that row hidden, see
+              the sibling badge just below for that case). Same circular
+              `Badge` shape/size the compact icon-rail tile already uses
+              for this exact same count (see that branch's own
+              `channelCount > 1` badge further down) — reused rather than a
+              fresh style, just rendered inline here instead of absolutely
+              positioned on a corner, since this expanded header has a
+              normal flow row to sit in rather than a small square avatar
+              to overlay. `aria-label` overridden (Badge's own default
+              reads "N notifications", which is wrong here) — passed as a
+              real prop so it lands in Badge's own `{...rest}` spread,
+              which runs AFTER its internal default and so wins. */}
+          {channelCount > 1 && (
+            <Badge
+              shape="circle"
+              size="sm"
+              count={channelCount}
+              className="shrink-0"
+              aria-label={`${channelCount} open channels`}
+            />
+          )}
+          {/* Single-channel type indicator — per explicit follow-up
+              request/reference screenshot: a COLLAPSED single-channel card
+              (channel rows hidden — see `collapsible` above) lost the only
+              place its channel type was visible at all, unlike the
+              multi-channel case just above (a count is still informative
+              collapsed OR expanded) or the non-collapsible case (the chip
+              row is always right there). Same circular `Badge` shape/size
+              as the count badge, colored via `getPillInlineStyles`
+              (badge.tsx, exported for exactly this reuse) with
+              `CHANNEL_TYPE_TAG_VARIANT`'s own purple/teal/pink channel-
+              type color (channel-row.tsx — the same mapping this card's
+              own `*ChannelRow` chips already use), so this reads as "the
+              same channel, just badge-shaped" rather than an unrelated new
+              color. That map's declared type is the wider `TagVariant`
+              (it also covers non-color semantic names like "critical" for
+              OTHER `Tag` consumers), but every value it actually assigns
+              per `ChannelType` is one of the three color names also
+              present in `BadgeColor` — the cast below is narrowing to what
+              the map is already guaranteed to contain, not asserting
+              something unverified. */}
+          {collapsible && !channelsExpanded && channelCount === 1 && channels[0] && (
+            <Badge
+              shape="circle"
+              size="sm"
+              className="shrink-0"
+              style={getPillInlineStyles("subtle", CHANNEL_TYPE_TAG_VARIANT[channels[0].type] as BadgeColor)}
+              aria-label={`${CHANNEL_TYPE_META[channels[0].type].label} channel open`}
+            >
+              {/* `h-2.5 w-2.5` (10px, was `CHANNEL_TYPE_META`'s own default
+                  `h-4 w-4`/16px) — cloned down to fit this `size="sm"`
+                  circle badge's own 16px diameter (`min-w-[16px] h-[16px]
+                  px-1`, badge.tsx): the un-resized 16px icon would fill the
+                  ENTIRE badge with none of its own `px-1` padding left to
+                  breathe, the same "too cramped" problem this file's own
+                  `size="sm"` numeric badges avoid by pairing that diameter
+                  with `text-[10px]`, not full-size digits. */}
+              {React.cloneElement(
+                CHANNEL_TYPE_META[channels[0].type].icon as React.ReactElement<{ className?: string }>,
+                { className: "h-2.5 w-2.5" }
+              )}
+            </Badge>
+          )}
+          <span className="min-w-0 flex-1 truncate lyra-heading-sm text-lyra-fg-default">{displayName}</span>
+          {collapsible ? channelsToggle : headerAction}
+        </div>
+
+        {channels.length > 0 && (
+          collapsible ? (
+            // CSS-only expand/collapse (`grid-template-rows: 0fr` ↔ `1fr`,
+            // the standard "animate to auto height" trick) rather than a
+            // JS-measured height or `Accordion`'s own `--radix-accordion-
+            // content-height` variable (that variable is wired to Radix's
+            // own `Accordion.Content`, not reusable here without pulling
+            // this whole row list into a real `Accordion` instance) —
+            // `overflow-hidden` on the inner wrapper clips the row list
+            // while its grid track animates between the two sizes.
+            <div
+              className={cn(
+                "grid transition-[grid-template-rows] duration-200 ease-in-out",
+                channelsExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+              )}
+            >
+              <div className="overflow-hidden">
+                <div className="flex flex-col">{channelRows}</div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col">{channelRows}</div>
+          )
         )}
       </>
     );
@@ -584,6 +820,8 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
           ? "border-lyra-status-critical-strong hover:border-[color-mix(in_srgb,var(--lyra-color-status-critical-strong)_80%,black_20%)]"
           : severity === "warning"
           ? "border-lyra-status-warning-strong hover:border-[color-mix(in_srgb,var(--lyra-color-status-warning-strong)_80%,black_20%)]"
+          : severity === "success"
+          ? "border-lyra-status-success-strong hover:border-[color-mix(in_srgb,var(--lyra-color-status-success-strong)_80%,black_20%)]"
           : "border-lyra-border-active hover:border-[color-mix(in_srgb,var(--lyra-color-border-active)_80%,black_20%)]"
         : "border-lyra-border-subtle hover:border-lyra-border-default"
     );
@@ -757,28 +995,70 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                 )}
                 aria-hidden="true"
               >
-                {hasCustomerName || !primaryChannel ? initials : CHANNEL_TYPE_META[primaryChannel.type].icon}
+                {hasCustomerName ? initials : <User className="h-4 w-4" strokeWidth={1.5} />}
               </span>
               {channelCount > 1 && (
                 <span
                   className={cn(
-                    "absolute -left-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-lyra-fg-on-primary",
+                    "absolute -left-1.5 -top-1.5 flex h-[18px] items-center justify-center rounded-full font-bold text-lyra-fg-on-primary",
+                    // Fixed `w-[18px]` (not `min-w`) for the icon case — per
+                    // explicit follow-up, letting the icon's own intrinsic
+                    // width push this wider than 18px (via `min-w` alone)
+                    // stretched the badge into an oval/rounded-square
+                    // instead of staying a small circle. The plain digit
+                    // case below keeps its original `min-w-[18px] px-1`
+                    // (and needs to: a 2-digit count, e.g. "12", genuinely
+                    // is wider than 18px and should grow as a pill rather
+                    // than get clipped) — only the icon glyphs get the
+                    // hard-capped square treatment, since `h-2.5 w-2.5`
+                    // below is small enough to always fit inside 18px with
+                    // room to spare.
+                    severity === "critical" || severity === "warning" ? "w-[18px]" : "min-w-[18px] px-1 text-[10px]",
                     // Blue by default — only switches to the same critical
-                    // red (or warning amber, see `severity`) the avatar/
-                    // border already use once the interaction is actually
-                    // awaiting a response. This badge is just a count, not
-                    // itself a "needs attention" signal, so it shouldn't
-                    // default to a status color the way a notification
-                    // badge would.
+                    // red / warning amber / success green (see `severity`)
+                    // the avatar/border already use once the interaction is
+                    // actually awaiting a response. This badge is just a
+                    // count, not itself a "needs attention" signal, so it
+                    // shouldn't default to a status color the way a
+                    // notification badge would.
                     severity === "critical"
                       ? "bg-lyra-bg-destructive"
                       : severity === "warning"
                       ? "bg-lyra-status-warning-strong"
+                      : severity === "success"
+                      ? "bg-lyra-status-success-strong"
                       : "bg-lyra-bg-primary"
                   )}
-                  aria-label={`${channelCount} open channels`}
+                  aria-label={
+                    severity === "critical"
+                      ? "SLA breached"
+                      : severity === "warning"
+                      ? "Nearing SLA breach"
+                      : `${channelCount} open channels`
+                  }
                 >
-                  <span aria-hidden="true">{channelCount}</span>
+                  {/* Per explicit request, once this card is actually
+                      overdue ("warning"/"critical"), this badge swaps from
+                      the plain channel count to the exact same glyph
+                      `ChannelTab`'s own `tabIcon` uses (channel-row.tsx) for
+                      the matching tier — a triangle for "warning", a
+                      circled "!" for "critical" — so a collapsed, multi-
+                      channel card reads as an alert at a glance, the same
+                      way the record-header tab bar already does, instead of
+                      staying a neutral count no matter how late it's gotten.
+                      The green "success" tier keeps the plain count — a
+                      channel that's right on track isn't something to alert
+                      on — same reasoning `tabIcon` itself uses. `currentColor`
+                      stroke inherits this badge's own `text-lyra-fg-on-
+                      primary` (white), same contrast treatment the digit it
+                      replaces already had. */}
+                  {severity === "critical" ? (
+                    <CircleAlert className="h-2.5 w-2.5 shrink-0" strokeWidth={2.25} aria-hidden="true" />
+                  ) : severity === "warning" ? (
+                    <TriangleAlert className="h-2.5 w-2.5 shrink-0" strokeWidth={2.25} aria-hidden="true" />
+                  ) : (
+                    <span aria-hidden="true">{channelCount}</span>
+                  )}
                 </span>
               )}
               {severity && (
@@ -786,8 +1066,12 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                    dot (`size="sm"` — Badge's own size vocabulary) instead
                    of a bespoke span, so this dot indicator shares the same
                    implementation as every other corner badge in the
-                   library. `severity` ("warning" | "critical") lines up
-                   1:1 with `Badge`'s own `BadgeCircleVariant` values. */
+                   library. `severity` ("success" | "warning" | "critical")
+                   lines up 1:1 with `Badge`'s own `BadgeCircleVariant`
+                   values — this is the actual "green dot, then amber, then
+                   red" indicator per explicit request, driven entirely by
+                   how `severity` escalates over time (see the app-level
+                   `getAwaitingSeverity`, AgentNextGenPage.tsx). */
                 <Badge
                   shape="circle"
                   dot
@@ -798,11 +1082,59 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                 />
               )}
             </span>
-            <span className="lyra-body-xs text-lyra-fg-secondary" aria-hidden="true">{elapsed}</span>
+            {/* Same "success"/"warning"/"critical" color escalation
+                `ChannelRow`'s own elapsed-time text uses (channel-row.tsx)
+                and `Tab`'s own `textColorClass`/`iconColorClass` (tabs.tsx)
+                — per explicit request, this compact tile's timer shouldn't
+                be the one place that stays plain gray no matter how overdue
+                the card actually is. Deliberately NOT `tone.text` (used for
+                the avatar above): that falls back to a blue "info" tint
+                even while nothing's awaiting at all, which would recolor
+                this timer on every ordinary card, not just an overdue one —
+                this stays the plain gray `text-lyra-fg-secondary` look
+                whenever `severity` is `null`, same as before.
+                Skipped entirely (not just left blank) when `elapsed` is
+                `""` — per a further explicit follow-up, once every channel
+                on this card is closed there's nothing left to count, so the
+                counter itself is removed rather than showing a stale/frozen
+                time (the app-level caller is what actually decides when to
+                pass `""` — see `elapsed`'s own call-site comment,
+                AgentNextGenPage.tsx). */}
+            {elapsed && (
+              <span
+                className={cn(
+                  "lyra-body-xs",
+                  severity === "critical"
+                    ? "text-lyra-status-critical-strong"
+                    : severity === "warning"
+                    ? "text-lyra-status-warning-strong"
+                    : severity === "success"
+                    ? "text-lyra-status-success-strong"
+                    : "text-lyra-fg-secondary"
+                )}
+                aria-hidden="true"
+              >
+                {elapsed}
+              </span>
+            )}
           </div>
         </Popover>
       );
     }
+
+    // Per explicit request: while the LEFT NAV ITSELF is expanded (this is
+    // the real full-detail card, not the icon-rail compact tile/hover-
+    // preview above — those don't get this), clicking a COLLAPSED card
+    // also expands its channel list, instead of the agent having to
+    // separately hit the chevron after selecting it. Only acts when
+    // there's actually something to expand (`collapsible && !channelsExpanded`
+    // — a no-op otherwise, so this never fights a card that's already open
+    // or one that isn't collapsible at all); `onClick` (the consumer's own
+    // select/activate handler) always still fires either way, unchanged.
+    const handleExpandedCardActivate = () => {
+      if (collapsible && !channelsExpanded) setChannelsExpanded(true);
+      onClick?.();
+    };
 
     /* ── Expanded: full detail card ── */
     return (
@@ -810,8 +1142,8 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
         ref={ref}
         role="button"
         tabIndex={0}
-        onClick={onClick}
-        onKeyDown={handleKeyDown}
+        onClick={handleExpandedCardActivate}
+        onKeyDown={(e) => handleKeyDown(e, handleExpandedCardActivate)}
         aria-label={ariaLabel}
         aria-current={active ? "true" : undefined}
         // `mb-2` (not baked into `expandedCardClassName`, which the compact

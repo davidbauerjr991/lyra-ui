@@ -254,6 +254,56 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
       </nav>
     );
 
+    // Whether the shared scroll region (`header` cards + the sticky nav
+    // rail) actually has anything scrolling at all — per explicit report,
+    // the sticky rail's own "soft fade instead of a hard edge" (below, both
+    // branches) used to render unconditionally, so with few enough cards to
+    // fit without scrolling, the fade still overlaid the last visible
+    // card's bottom edge even though nothing was actually hidden/scrolling
+    // underneath it to indicate. Gated on this instead: `false` (no fade)
+    // whenever the content fits without overflowing, `true` once there's
+    // enough to actually scroll.
+    //
+    // Only ONE ref/state pair, shared by both the overlay- and inline-mode
+    // branches below — they're mutually exclusive returns (never both
+    // mounted at once), so whichever branch is active just attaches this
+    // same ref to its own copy of the scroll container.
+    //
+    // Deliberately `scrollHeight > clientHeight`, not one of
+    // `useScrollChevrons`' own `canScrollStart`/`canScrollEnd` booleans
+    // (scroll-chevron.tsx, used elsewhere in this library for a similar-
+    // looking affordance) — those answer "is there more content PAST THE
+    // CURRENT SCROLL POSITION," which is exactly right for a chevron button
+    // that should disappear once you've scrolled as far as it points, but
+    // wrong here: this fade's job is only to signal "this list can scroll
+    // at all," and disappearing again once scrolled all the way to the
+    // bottom would just reintroduce the same "fades over content with
+    // nothing left to hide" report this fix exists for, at the opposite
+    // end of the list instead of the near end.
+    //
+    // Recomputed two ways: the effect's own dependency array (`header`/
+    // `items`/`open`/`hoverOpen` — whatever can actually change how much
+    // content is rendered or how much room it has) catches content/layout
+    // changes driven by props, and the `ResizeObserver` on the scroll
+    // container itself catches anything a prop change wouldn't (e.g. a
+    // bare browser window resize changing the rail's own available
+    // height) — content growing/shrinking alone doesn't resize the
+    // scroll container's own box (it's a fixed-height flex child,
+    // `flex-1 min-h-0`), which is exactly why the dependency array half of
+    // this still matters and the ResizeObserver alone wouldn't be enough.
+    const listScrollRef = useRef<HTMLDivElement>(null);
+    const [listHasOverflow, setListHasOverflow] = useState(false);
+    useEffect(() => {
+      const el = listScrollRef.current;
+      if (!el) return;
+      const update = () => setListHasOverflow(el.scrollHeight > el.clientHeight + 1);
+      update();
+      const ro = new ResizeObserver(update);
+      ro.observe(el);
+      return () => ro.disconnect();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [header, items, open, hoverOpen]);
+
     /* ── Overlay mode (narrow screens): hover to open, no toggle button ── */
     if (effectiveOverlay) {
       return (
@@ -281,7 +331,17 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
               // top-aligned with the container itself rather than inset to
               // match the nav list. Exempt from scrolling, unlike `header`
               // below (see the scroll wrapper's own comment).
-              <div className={cn("flex-shrink-0 flex flex-col items-center px-2 pt-0", hoverOpen ? "gap-2" : "gap-1")}>
+              //
+              // `pb-1` (4px) while collapsed (`!hoverOpen`) — per explicit
+              // request/reference screenshot: with no `header` content
+              // above it to add its own top inset (icon-rail mode has none
+              // visible), the collapsed "+" icon (e.g. CreateNew) sat flush
+              // against the Home icon directly below it with zero gap.
+              // Expanded mode is untouched — its own spacing wasn't
+              // reported as a problem, so left alone rather than changing
+              // both to stay "consistent" when only one was actually asked
+              // to change.
+              <div className={cn("flex-shrink-0 flex flex-col items-center px-2 pt-0", hoverOpen ? "gap-2" : "gap-1 pb-1")}>
                 {injectExpanded(pinnedHeader, hoverOpen)}
               </div>
             )}
@@ -302,7 +362,7 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
                 for). Needs an opaque background so scrolled-under cards
                 don't show through the nav items' icons/labels. */}
             <div className="flex flex-1 flex-col overflow-hidden min-h-0">
-              <div className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden lyra-scrollbar-hide min-h-0">
+              <div ref={listScrollRef} className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden lyra-scrollbar-hide min-h-0">
                 {/* No `gap` here — `header` (InteractionNavItem cards) supplies its own
                     bottom margin per item (see InteractionNavItem), so spacing only
                     appears when there's a real card to space out. Order (and which edge
@@ -332,14 +392,15 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
                     className={cn(
                       "flex flex-shrink-0 flex-col px-2",
                       hoverOpen ? "items-stretch" : "items-center",
-                      // No top padding when `itemsFirst` — `header`'s first
-                      // child there is `AssignmentsSectionCaption`'s own
-                      // separator, which should sit flush under the rail
-                      // above it, not offset by this row's usual top inset
-                      // (kept for the default "cards first" arrangement,
-                      // where `header` is the very first thing in the
-                      // scroll region and still needs its own top inset).
-                      !itemsFirst && "pt-3",
+                      // No top padding at all now (was `!itemsFirst &&
+                      // "pt-3"`) — per explicit request/reference
+                      // screenshot, `header`'s own first child (e.g.
+                      // `AssignmentsSectionCaption`) should sit flush
+                      // against the top of the scroll region with no gap
+                      // above it, matching `itemsFirst`'s own
+                      // already-flush arrangement (its first child there is
+                      // that same caption's separator, which already sits
+                      // flush under the rail above it).
                       itemsFirst && "pb-3"
                     )}
                   >
@@ -348,6 +409,34 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
                 )}
                 {!itemsFirst && (
                   <div className={cn("sticky bottom-0 flex flex-shrink-0 flex-col bg-lyra-bg-surface-shell px-2 pb-3", !header && "pt-3")}>
+                    {/* Soft fade instead of a hard edge — per explicit
+                        request, same technique used elsewhere for content
+                        scrolling underneath a fixed/sticky bar (a solid-to-
+                        transparent gradient overlaying the scrolled content
+                        rather than the rail's opaque background just
+                        cutting it off). `-top-8` places it outside this
+                        div's own box, extending up into whatever `header`
+                        content (e.g. nav cards) is scrolling underneath the
+                        rail, rather than adding empty space inside the
+                        rail itself. Gradient runs transparent at the top
+                        down to solid (matching the rail's own background)
+                        at the bottom, so it blends into the rail exactly
+                        where the hard edge used to be.
+
+                        `listHasOverflow &&` — per explicit follow-up
+                        report, this used to render unconditionally, so a
+                        short list that fits without ever needing to scroll
+                        still had this fade cutting across the bottom of
+                        its last visible card, even though nothing was
+                        actually scrolling underneath the rail to indicate.
+                        See `listHasOverflow`'s own doc comment above for
+                        how it's computed. */}
+                    {listHasOverflow && (
+                      <div
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-x-0 -top-8 h-8 bg-gradient-to-b from-transparent to-lyra-bg-surface-shell"
+                      />
+                    )}
                     {hoverOpen ? <TreeMenu items={treeItems} /> : iconOnlyNav}
                   </div>
                 )}
@@ -381,8 +470,10 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
           // Same reasoning as the overlay branch above: flush to the top,
           // no pt-3 inset, so the pinned header's first item (CreateNew) is
           // top-aligned with the rail itself. Exempt from scrolling — see
-          // the scroll wrapper's own comment below.
-          <div className={cn("flex-shrink-0 flex flex-col items-center px-2 pt-0", open ? "gap-2" : "gap-1")}>
+          // the scroll wrapper's own comment below. `pb-1` while collapsed
+          // — see the overlay-mode branch above for the full explanation;
+          // same change, same reasoning, just this mode's own copy.
+          <div className={cn("flex-shrink-0 flex flex-col items-center px-2 pt-0", open ? "gap-2" : "gap-1 pb-1")}>
             {pinnedHeader}
           </div>
         )}
@@ -403,7 +494,7 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
             is what was asked for). Needs an opaque background so scrolled-under cards don't
             show through the nav items' icons/labels. */}
         <div className="flex flex-1 flex-col overflow-hidden min-h-0">
-          <div className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden lyra-scrollbar-hide min-h-0">
+          <div ref={listScrollRef} className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden lyra-scrollbar-hide min-h-0">
             {/* No `gap` here — `header`'s items (InteractionNavItem cards) carry their own
                 bottom margin, so an empty-but-truthy `header` (e.g. a Fragment wrapping a
                 zero-length `.map()`) contributes zero visible space instead of a phantom gap
@@ -430,13 +521,9 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
                 className={cn(
                   "flex flex-shrink-0 flex-col px-2",
                   open ? "items-stretch" : "items-center",
-                  // No top padding when `itemsFirst` — `header`'s first
-                  // child there is `AssignmentsSectionCaption`'s own
-                  // separator, which should sit flush under the rail above
-                  // it (kept for the default "cards first" arrangement,
-                  // where this row is the very first thing in the scroll
-                  // region and still needs its own top inset).
-                  !itemsFirst && "pt-3",
+                  // No top padding at all now — see the overlay-mode
+                  // branch above for the full explanation; same change,
+                  // same reasoning, just this mode's own copy.
                   itemsFirst && "pb-3"
                 )}
               >
@@ -445,6 +532,17 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
             )}
             {!itemsFirst && (
               <div className={cn("sticky bottom-0 flex flex-shrink-0 flex-col bg-lyra-bg-surface-shell px-2 pb-3", !header && "pt-3")}>
+                {/* Soft fade instead of a hard edge — see the overlay-mode
+                    branch above for the full explanation (including
+                    `listHasOverflow`, gating this the same way here); same
+                    technique, same reasoning, just this mode's own copy of
+                    the rail. */}
+                {listHasOverflow && (
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-0 -top-8 h-8 bg-gradient-to-b from-transparent to-lyra-bg-surface-shell"
+                  />
+                )}
                 {open ? <TreeMenu items={treeItems} /> : iconOnlyNav}
               </div>
             )}

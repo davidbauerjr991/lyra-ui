@@ -58,19 +58,37 @@ interface TabListProps extends React.HTMLAttributes<HTMLDivElement> {
    *
    * `"compact"` — content-aware instead of a fixed threshold: measures
    * whether the tabs actually fit their available width (via a hidden,
-   * unconstrained clone + `ResizeObserver`) and only collapses once they
-   * genuinely don't, at any container width. Meant for narrow, often-
-   * resizable hosts like an `InteriorPanel`'s own tabs (200–425px wide,
-   * see interior-panel.tsx) — a fixed threshold there is basically always
-   * wrong: either the panel's whole range sits above it (never collapses,
-   * clipping once tabs stop fitting) or below it (permanently collapsed,
-   * no visible response to resizing). Content-aware measurement collapses
-   * exactly when needed regardless of the panel's width or the tabs'
-   * label lengths, rather than guessing a pixel number tuned to one
-   * specific tab set. Note: the hidden measurement clone duplicates
-   * `children` in the DOM (aria-hidden, non-interactive) purely to read
-   * its natural width — avoid `"compact"` for a `TabList` whose children
-   * rely on globally-unique `id`/`panelId` values.
+   * unconstrained clone + `ResizeObserver`), rather than guessing a pixel
+   * number tuned to one specific tab set. Meant for hosts where a fixed
+   * threshold would be basically always wrong — either a narrow,
+   * resizable panel like `InteriorPanel`'s own tabs (200–425px wide, see
+   * interior-panel.tsx) whose whole range sits below "wide" mode's own
+   * fixed 400px trigger, or (the opposite problem) a row that SHARES its
+   * space with sibling buttons/dividers, where the tabs' own genuinely
+   * available width has no fixed relationship to any single container
+   * breakpoint (e.g. `AgentNextGenPage.tsx`'s record-header tabs, sharing
+   * a row with a Customer Information toggle button whose OWN icon-only
+   * breakpoint is a different pixel value entirely — a fixed CSS
+   * threshold on the tabs read as arbitrary and disconnected from what
+   * was actually changing on screen).
+   *
+   * Same three-state progression `"wide"` mode's own row goes through —
+   * full row, then a horizontally-scrollable strip with chevrons once the
+   * tabs' real content stops fitting, then "active tab + N More" (equal-
+   * width slots) once even that's too cramped
+   * (`TAB_LIST_COMPACT_COLLAPSE_WIDTH`, currently 400px of this
+   * `TabList`'s own real rendered width) — just driven by this mode's own
+   * measured fit rather than "wide" mode's fixed container-query
+   * threshold. Unlike an earlier version of this mode, there's no
+   * separate "stretch 2 tabs instead of collapsing" carve-out — collapses
+   * at 2+ tabs same as 3+ (`allowOverflowCollapse`'s own doc comment),
+   * per explicit request for one consistent overflow behavior across
+   * every `TabList` in the design system regardless of tab count.
+   *
+   * Note: the hidden measurement clone duplicates `children` in the DOM
+   * (aria-hidden, non-interactive) purely to read its natural width —
+   * avoid `"compact"` for a `TabList` whose children rely on
+   * globally-unique `id`/`panelId` values.
    */
   overflowBreakpoint?: "wide" | "compact";
   /** Formats the dropdown trigger's label from the number of tabs it
@@ -133,6 +151,17 @@ interface TabListProps extends React.HTMLAttributes<HTMLDivElement> {
   growToFillRow?: boolean;
 }
 
+// Below this width, `overflowBreakpoint="compact"`'s own content-measured
+// overflow state (`compactScrolling`) gives up on the chevron/scroll strip
+// and collapses to "active tab + N More" (`compactCollapsed`) instead — the
+// same numeric value `"wide"` mode's own fixed CSS `@container` query used
+// to gate its analogous scroll-vs-collapse switch, kept here as the point
+// past which even a single active tab plus chevrons doesn't leave
+// meaningfully more room than the collapsed row would, not as a hard rule
+// tied to any one consumer's container. See `overflowBreakpoint`'s own doc
+// comment above for the full three-state progression this drives.
+const TAB_LIST_COMPACT_COLLAPSE_WIDTH = 400;
+
 const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
   (
     {
@@ -177,13 +206,16 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
     const compactWrapRef = useRef<HTMLDivElement>(null);
     const compactMeasureRef = useRef<HTMLDivElement>(null);
     const [compactCollapsed, setCompactCollapsed] = useState(false);
-    // Set instead of `compactCollapsed` whenever there are 2 tabs or fewer
-    // AND they'd otherwise have collapsed — stretches both to fill the row
-    // evenly rather than hiding either one behind a dropdown, same
-    // "`allowOverflowCollapse`-gated `.lyra-tab-overflow-stretch`" behavior
-    // the "wide" breakpoint gets below, just driven by this mode's own
-    // measured-fit check instead of a fixed CSS threshold.
-    const [compactStretch, setCompactStretch] = useState(false);
+    // True whenever the tabs' real content doesn't fit but
+    // `compactWrapRef`'s own rendered width is still ≥
+    // `TAB_LIST_COMPACT_COLLAPSE_WIDTH` — the tabs hold their natural width
+    // (`[&>[role='tab']]:flex-shrink-0` below) and scroll horizontally with
+    // chevrons instead of collapsing straight to "active tab + N More",
+    // same intermediate state "wide" mode's own `hasScrollableOverflow`
+    // provides, just driven by this mode's own measured fit rather than a
+    // fixed CSS threshold. Mutually exclusive with `compactCollapsed` (see
+    // `recompute` below) — never both at once.
+    const [compactScrolling, setCompactScrolling] = useState(false);
     const isCompact = overflowMenu && overflowBreakpoint === "compact";
 
     useLayoutEffect(() => {
@@ -194,20 +226,24 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
 
       const recompute = () => {
         const wouldOverflow = measureEl.scrollWidth > wrapEl.clientWidth;
-        // Collapsing 2 tabs down to "the active one + a 1-item dropdown"
-        // never actually saves meaningful space — both slots still render,
-        // just with an extra click standing between the agent and the tab
-        // that used to be one click away. Only ever collapse once there's a
-        // real "everything else" to hide behind the dropdown (3+ tabs) —
-        // per explicit request. See the matching guard on the "wide"
-        // breakpoint's `allowOverflowCollapse` below for the other mode.
-        if (React.Children.count(children) <= 2) {
+        if (!wouldOverflow) {
           setCompactCollapsed(false);
-          setCompactStretch(wouldOverflow);
+          setCompactScrolling(false);
           return;
         }
-        setCompactCollapsed(wouldOverflow);
-        setCompactStretch(false);
+        // Below `TAB_LIST_COMPACT_COLLAPSE_WIDTH`: collapse to "active tab +
+        // N More" instead of leaving a scrollable strip too cramped to be
+        // useful. At or above it: scroll instead — see that const's own doc
+        // comment for why this specific number, and `compactScrolling`'s
+        // own doc comment for the "wide" mode parallel. No `allowOverflowCollapse`-
+        // style tab-count gate here (unlike an earlier version of this
+        // effect) — per explicit request, this collapses at 2 tabs same as
+        // 3+, one consistent overflow behavior regardless of count. See
+        // `allowOverflowCollapse`'s own doc comment below (shared by both
+        // modes) for the same change there.
+        const collapse = wrapEl.clientWidth < TAB_LIST_COMPACT_COLLAPSE_WIDTH;
+        setCompactCollapsed(collapse);
+        setCompactScrolling(!collapse);
       };
       recompute();
 
@@ -238,14 +274,54 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
     // exceeds `clientWidth`, so both come back `false` and neither chevron
     // renders; no separate flag needed.
     const isWideOverflow = Boolean(overflowMenu) && overflowBreakpoint === "wide";
-    // Same "don't collapse 2 tabs down to 1 visible + a 1-item dropdown"
-    // rule as the "compact" breakpoint's own `recompute` guard above, for
-    // "wide" mode's CSS-container-query-driven collapse instead — see that
-    // guard's own doc comment for why. Computed here (not down by
-    // `childArray` below, where it's consumed the most) since `tablistEl`'s
-    // own `.lyra-tab-overflow-full` className needs it too, and that's
-    // built well before `childArray` exists.
-    const allowOverflowCollapse = React.Children.count(children) > 2;
+    // Scrolling only makes sense with >1 tab — with a single tab, hovering
+    // the chevrons would just pan that one tab's own label back and forth
+    // in place, revealing nothing new. In that case the row should behave
+    // like a plain flex item instead: `Tab`'s own `min-w-0` + `truncate`
+    // (tabs.tsx, `Tab`'s `labelRef` span) already handles a too-long label
+    // fine on its own once `flex-shrink-0` below isn't forcing it to hold
+    // its full natural width. Everything else about `isWideOverflow` (the
+    // `.lyra-tab-overflow-full` CSS class, the ≤400px collapse threshold)
+    // is unaffected — this only gates the scroll/chevron-specific styling
+    // and handlers further down.
+    //
+    // `React.Children.toArray`, NOT `React.Children.count` — callers here
+    // (`AgentNextGenPage.tsx`'s record-header `TabList`) mix real `Tab`s
+    // with a conditional slot (`{historyConversationForActive && <Tab .../>}`),
+    // and `Children.count` counts that slot even while it's `false` and
+    // rendering nothing — confirmed live: a single real tab still measured
+    // as "2 children" and stayed in scroll mode. `Children.toArray` drops
+    // null/undefined/boolean children entirely, so it reflects what's
+    // actually on screen.
+    const hasScrollableOverflow = isWideOverflow && React.Children.toArray(children).length > 1;
+    // Same idea as `hasScrollableOverflow` just above, but covering BOTH
+    // modes' own "genuinely scrolling right now" state — `"wide"`'s own
+    // (CSS-container-driven) or `"compact"`'s `compactScrolling` (content-
+    // measured). Drives every piece of `tablistEl`'s own scroll-specific
+    // wiring below (the `overflow-x-auto`/`flex-1`/`min-w-0`/
+    // `lyra-scrollbar-hide` classes, the `onScroll` handler) — previously
+    // gated on `hasScrollableOverflow` alone, which left `"compact"` mode's
+    // own scrolling state with none of that wiring even though it now
+    // renders the exact same chevron-flanked `tablistEl` (see `leftChevron`/
+    // `rightChevron` and the `isCompact` return branch, both below).
+    const showChevronScroll = hasScrollableOverflow || (isCompact && compactScrolling);
+    // True at 2+ tabs — collapses to "active tab + N More" (equal-width
+    // slots, `collapsedRowEl` below) once the row can't fit them, same
+    // threshold `"compact"` mode's own `recompute` effect above now uses.
+    // Used to require 3+ (collapsing exactly 2 tabs down to "the active one
+    // + a 1-item dropdown" was judged not worth an extra click when both
+    // slots still render either way) — lowered per explicit follow-up
+    // request for one consistent overflow behavior across every `TabList`
+    // regardless of tab count, rather than a special 2-tab carve-out that
+    // stretched instead. Computed here (not down by `childArray` below,
+    // where it's consumed the most) since `tablistEl`'s own
+    // `.lyra-tab-overflow-full` className needs it too, and that's built
+    // well before `childArray` exists.
+    // `Children.toArray`, not `Children.count` — same reasoning as
+    // `hasScrollableOverflow` just above: a conditional `Tab` slot that's
+    // currently `false` shouldn't count toward "how many real tabs are
+    // here" for this collapse-eligibility check either.
+    const allowOverflowCollapse = React.Children.toArray(children).length > 1;
     // Mirrors the CSS `@container (max-width: 400px)` threshold that
     // actually drives which of the two rows (`tablistEl` vs.
     // `collapsedRowEl`) is visually shown (`.lyra-tab-overflow-full`/
@@ -545,7 +621,7 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
       // signal without depending on a value that isn't kept in sync with
       // it.
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [overflowOpen, React.Children.count(children)]);
+    }, [overflowOpen, React.Children.toArray(children).length]);
 
     const tablistEl = (
       <div
@@ -556,7 +632,7 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
         }}
         role="tablist"
         onKeyDown={handleKeyDown}
-        onScroll={isWideOverflow ? updateTabScrollState : undefined}
+        onScroll={showChevronScroll ? updateTabScrollState : undefined}
         className={cn(
           "flex border-b border-lyra-border-subtle",
           // `fullWidth` also overrides `Tab`'s own `max-w-[22ch]` cap (via
@@ -586,16 +662,43 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
           overflowMenu &&
             overflowBreakpoint === "wide" &&
             (allowOverflowCollapse ? "lyra-tab-overflow-full" : "lyra-tab-overflow-stretch"),
+          // `flex-1 min-w-0` — unconditional whenever `overflowMenu` is on
+          // (not just while `showChevronScroll`/actually scrolling): both
+          // the "wide" and "compact" branches below mount `tablistEl` as a
+          // flex ITEM inside their own `<div className="flex items-stretch">
+          // {leftChevron}{tablistEl}{rightChevron}</div>` row, and a plain
+          // flex item defaults to its own content width (`flex: 0 auto`) —
+          // so whenever the tabs' real content is narrower than that row's
+          // full available width (few short tabs in a wide docked panel,
+          // say), `tablistEl` itself only ever grew as wide as its own
+          // labels, and this element's own `border-b` (above) is drawn on
+          // ITS box, not the row's — so the divider visibly stopped dead
+          // partway across, instead of spanning the panel's full width.
+          // `flex-1` lets `tablistEl` claim the row's remaining space (its
+          // OWN children, the individual `Tab`s, stay left-aligned at their
+          // natural width regardless — only `fullWidth` above stretches
+          // those; this is just the outer box growing so its border reaches
+          // the far edge), `min-w-0` alongside it so that growth doesn't
+          // fight the separate scrolling/collapsing this row already does
+          // once its content genuinely doesn't fit (confirmed safe: once
+          // content truly overflows, `scrollWidth` still exceeds the row's
+          // capped `clientWidth` regardless of how that `clientWidth` was
+          // arrived at, so `hasScrollableOverflow`/`compactCollapsed`'s own
+          // measurements — driven by that same comparison — are unaffected
+          // by this class being unconditional now).
+          overflowMenu && "flex-1 min-w-0",
           // Makes the full row itself the horizontally-scrollable element
-          // (see `isWideOverflow`'s own state/effect above) — `min-w-0` so
-          // it can actually shrink to whatever room the chevrons alongside
-          // it leave, `lyra-scrollbar-hide` (lyra-tokens.css) since the
-          // chevrons are the intended scroll affordance, not a visible
-          // native scrollbar. Mutually exclusive with `!overflowMenu`/
-          // `isCompact` (this is only ever true in the one render path that
-          // wraps `tablistEl` with chevrons, below), so it's safe to always
-          // include here rather than threading a second flag through.
-          isWideOverflow && "min-w-0 flex-1 overflow-x-auto lyra-scrollbar-hide",
+          // (see `showChevronScroll`'s own doc comment above) — `lyra-
+          // scrollbar-hide` (lyra-tokens.css) since the chevrons are the
+          // intended scroll affordance, not a visible native scrollbar.
+          // `showChevronScroll`, not the narrower `hasScrollableOverflow` —
+          // this same `tablistEl` is also what `"compact"` mode's own
+          // scrolling state (`compactScrolling`) wraps with chevrons now
+          // (the `isCompact` return branch below), and needs the identical
+          // scroll wiring there. `flex-1 min-w-0` themselves moved up into
+          // the unconditional class just above (still needed here too, just
+          // no longer only-here).
+          showChevronScroll && "overflow-x-auto lyra-scrollbar-hide",
           // `[&>[role='tab']]:flex-shrink-0` — each `Tab` keeps its own
           // natural (or `max-w-[22ch]`-capped) width instead of the default
           // flex-shrink:1 letting it compress toward zero as the row
@@ -638,7 +741,19 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
           // "active tab + N More" row `isCompact` is supposed to produce —
           // there's no third, partially-shrunk state in either mode's
           // design.
-          (isWideOverflow || isCompact) && "[&>[role='tab']]:flex-shrink-0",
+          //
+          // Safe to apply across all three of `isCompact`'s own states now
+          // (full/`compactScrolling`/`compactCollapsed`, not just the
+          // "scrolling" one) — there used to be a "stretch 2 tabs instead
+          // of collapsing" state here (`compactStretch`) that this class
+          // would have wrongly blocked from shrinking+truncating, but that
+          // carve-out is gone (`allowOverflowCollapse`'s own doc comment
+          // above): every tab count now either fits (this class is a
+          // no-op), scrolls (this class is exactly the point, same as
+          // "wide" mode), or collapses to `collapsedRowEl` — which doesn't
+          // render `tablistEl`'s own tabs at all, so this class has nothing
+          // to affect there either.
+          (hasScrollableOverflow || isCompact) && "[&>[role='tab']]:flex-shrink-0",
           // Consumer's `className` (e.g. a horizontal inset like `px-4`/
           // `px-6`) merges onto THIS SAME element as `border-b` above —
           // that's deliberate, not incidental. `border` sits outside
@@ -662,6 +777,26 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
     );
 
     if (!overflowMenu) return tablistEl;
+
+    // Chevron buttons flank the scrollable full row — rendered only once
+    // there's actually something to scroll to that side (`canScrollLeft`/
+    // `canScrollRight`, which also double as the old `tabOverflow` gate:
+    // both come back `false` whenever nothing overflows at all). Shared
+    // `ScrollChevronButton` (scroll-chevron.tsx) instead of a hand-rolled
+    // click-to-scroll-one-tab button — continuous hover-driven scroll,
+    // matching `Select`'s multi-select listbox/`MenuRadix`'s own chevrons,
+    // not a discrete per-click step. `showChevronScroll`, not
+    // `hasScrollableOverflow` — computed up here (rather than down by the
+    // "wide" mode return below, where these used to live) so the
+    // `isCompact` branch just below can flank its own `tablistEl` copy with
+    // the exact same chevrons while it's in its own `compactScrolling`
+    // state.
+    const leftChevron = showChevronScroll && canScrollLeft && (
+      <ScrollChevronButton direction="left" onStep={() => scrollTabsStep(-6)} />
+    );
+    const rightChevron = showChevronScroll && canScrollRight && (
+      <ScrollChevronButton direction="right" onStep={() => scrollTabsStep(6)} />
+    );
 
     const childArray = React.Children.toArray(children) as React.ReactElement<TabProps>[];
     const rawActiveIndex = childArray.findIndex((child) => child.props?.active);
@@ -858,6 +993,24 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
       <div
         ref={overflowMenuRef}
         onClick={(e) => e.stopPropagation()}
+        // Marked with the same `data-radix-popper-content-wrapper`
+        // attribute every REAL Radix Popper-based primitive's portaled
+        // Content gets (Popover/Select/DropdownMenu/Tooltip, all built on
+        // `@radix-ui/react-popper`) — even though this dropdown is its own
+        // hand-rolled `createPortal`, not an actual Radix component. This
+        // is a plain `closest("[data-radix-popper-content-wrapper]")`
+        // marker, not anything Radix's own internals read — it exists
+        // purely so an ANCESTOR Popover's `onInteractOutside` guard (the
+        // established convention for "some other overlay is portaled
+        // outside my content, don't treat clicking it as outside me" —
+        // see e.g. `InteractionNavItem`'s own kebab-menu guard, this
+        // exact comment reused there) also recognizes clicks on THIS menu
+        // as belonging to a known nested overlay, not a genuine outside
+        // click. Without this, a `TabList overflowMenu` nested inside any
+        // Popover (e.g. the Customer Information hover preview,
+        // agent-next-gen-v2) closed that whole Popover the instant its
+        // own "N More" dropdown was clicked — confirmed live.
+        data-radix-popper-content-wrapper=""
         style={{
           position: "fixed",
           top: overflowPosition.top,
@@ -894,13 +1047,26 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
         // too, per the CSS overflow spec, rather than leaving it `visible`)
         // would pick up the clone's extra width and show an unwanted
         // horizontal scrollbar under the actually-visible tabs.
-        // `w-full` here for the same reason the "wide" mode wrapper below
-        // needs it (see that return statement's own comment): without an
-        // explicit width, this flex item can collapse toward its own
-        // content instead of the real available space, which would also
-        // throw off `updateScrollState`'s `wrapEl.clientWidth` comparison
-        // against the hidden clone.
-        <div ref={compactWrapRef} className="relative w-full overflow-x-hidden">
+        // `growToFillRow ? "flex-1" : "w-full"`, plus `min-w-0` — same
+        // `growToFillRow`-driven sizing "wide" mode's own
+        // `.lyra-tab-overflow-wrap` div uses (further down), NOT the
+        // original bare `w-full` this used to be: confirmed live as a real
+        // bug once this mode had a consumer sharing its row with other
+        // siblings (`AgentNextGenPage.tsx`'s record-header, alongside the
+        // Customer Information toggle button) — `width: 100%` on a flex
+        // item resolves against the ROW's own full content-box width
+        // regardless of what siblings need, and without `min-w-0` this
+        // wrapper's default `min-width: auto` floor (based on its visible
+        // child's own content, once `[&>[role='tab']]:flex-shrink-0` below
+        // holds each tab at its natural width) then refused to shrink back
+        // down even after that — between the two, this wrapper claimed
+        // however much space it wanted and simply overlapped/overflowed
+        // past the button next to it instead of sharing the row. Without
+        // `growToFillRow`, `w-full` is kept as the prior default (a
+        // standalone consumer with nothing else in its row, this mode's
+        // original use case, still wants to fill 100% of that ROW on its
+        // own — there's just no sibling here for it to be sharing with).
+        <div ref={compactWrapRef} className={cn("relative min-w-0 overflow-x-hidden", growToFillRow ? "flex-1" : "w-full")}>
           {/* Hidden measurement clone — never visible, never interactive,
               exists purely so `compactMeasureRef.current.scrollWidth`
               reflects the tabs' true unconstrained width. `whiteSpace:
@@ -932,44 +1098,25 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
               the full row mounted (`.lyra-tab-overflow-full` just hides it
               with CSS at ≤400px); "compact" mode now does the same.
 
-              `compactStretch` (2 tabs or fewer that would otherwise have
-              collapsed) stretches each tab to fill the row evenly instead —
-              targets `tablistEl`'s own `[role="tablist"]` root's direct
-              `[role="tab"]` children from here, since `tablistEl` is a
-              pre-built element and can't have classes injected into it
-              after the fact. Same visual result as "wide" mode's
-              `.lyra-tab-overflow-stretch` (lyra-tokens.css), just applied
-              via a plain Tailwind arbitrary-variant selector instead of a
-              container query, matching this mode's own JS-measured
-              (rather than CSS-threshold) collapse decision. */}
-          <div
-            className={cn(
-              compactCollapsed && "hidden",
-              compactStretch && "[&>[role='tablist']>[role='tab']]:flex-1 [&>[role='tablist']>[role='tab']]:max-w-none"
-            )}
-          >
+              Flanked with the same `leftChevron`/`rightChevron`
+              `"wide"` mode's own row uses (both computed once, above,
+              shared by both modes) while `compactScrolling` is true — the
+              tabs hold their natural width (`[&>[role='tab']]:flex-shrink-0`
+              above) and this becomes a real horizontally-scrollable strip,
+              same intermediate state between "everything fits" and
+              "collapsed to active + N More" that "wide" mode's own fixed
+              ≤400px CSS threshold provides, just reached via this mode's
+              own measured fit instead. */}
+          <div className={cn("flex items-stretch", compactCollapsed && "hidden")}>
+            {leftChevron}
             {tablistEl}
+            {rightChevron}
           </div>
           {compactCollapsed && collapsedRowEl}
           {portalEl}
         </div>
       );
     }
-
-    // Chevron buttons flank the scrollable full row — rendered only once
-    // there's actually something to scroll to that side (`canScrollLeft`/
-    // `canScrollRight`, which also double as the old `tabOverflow` gate:
-    // both come back `false` whenever nothing overflows at all). Shared
-    // `ScrollChevronButton` (scroll-chevron.tsx) instead of a hand-rolled
-    // click-to-scroll-one-tab button — continuous hover-driven scroll,
-    // matching `Select`'s multi-select listbox/`MenuRadix`'s own chevrons,
-    // not a discrete per-click step.
-    const leftChevron = isWideOverflow && canScrollLeft && (
-      <ScrollChevronButton direction="left" onStep={() => scrollTabsStep(-6)} />
-    );
-    const rightChevron = isWideOverflow && canScrollRight && (
-      <ScrollChevronButton direction="right" onStep={() => scrollTabsStep(6)} />
-    );
 
     return (
       // `w-full` here is load-bearing, not cosmetic — and it's a distinct
@@ -1102,6 +1249,33 @@ interface TabProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
    * text.
    */
   showTruncationTooltip?: boolean;
+  /**
+   * Recolors this tab's look (label text, leading icon, and — while
+   * `active` — the bottom indicator bar) from the plain blue
+   * `text-lyra-fg-active-strong`/`bg-lyra-fg-active-strong` to the same
+   * green/amber/red status tokens `ChannelRow`'s own elapsed-time text uses
+   * for `awaitingSeverity` (channel-row.tsx) — "success" green (a reply
+   * just landed, still well within SLA), "warning" amber, "critical" red.
+   * The label text and leading `icon` both stay in this color EVEN ON AN
+   * INACTIVE tab — per explicit request, so an agent scanning the tab bar
+   * can read which channel needs attention (or just got a reply) without
+   * selecting it first (see `textColorClass`/`iconColorClass` below). Only
+   * the kebab/remove/rightIcon slots and the bottom indicator bar still
+   * follow the plain "colored only while active, gray otherwise" rule —
+   * the bar in particular only ever renders for the active tab in the
+   * first place, so it has nothing to show on an inactive one regardless.
+   * Omit (the default) to leave this tab exactly the plain blue/gray it's
+   * always been; every existing consumer that doesn't pass this is
+   * unaffected. First consumer: `ChannelTab` (channel-row.tsx), passing
+   * through a channel's own `awaitingResponse`/`awaitingSeverity` (and
+   * swapping the icon itself to a warning/breached glyph once it's
+   * actually "warning"/"critical" — see that component's own `tabIcon`),
+   * so the record-header tab bar reflects the exact same "how urgently
+   * does this channel need a reply" signal the LeftNav's
+   * `InteractionNavItem` cards already show, instead of that tab staying a
+   * neutral blue/gray no matter how overdue the channel actually is.
+   */
+  severity?: "success" | "warning" | "critical";
 }
 
 const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
@@ -1118,12 +1292,73 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
       onMenuOpenChange,
       panelId,
       showTruncationTooltip = true,
+      severity,
       children,
       id,
       ...props
     },
     ref
   ) => {
+    // Resolved once, reused everywhere this tab would otherwise hardcode
+    // `text-lyra-fg-active-strong`/`bg-lyra-fg-active-strong` for its
+    // active look — see `severity`'s own doc comment above for why this
+    // only ever applies while `active` is true.
+    const activeTextClass =
+      active && severity === "critical"
+        ? "text-lyra-status-critical-strong"
+        : active && severity === "warning"
+        ? "text-lyra-status-warning-strong"
+        : active && severity === "success"
+        ? "text-lyra-status-success-strong"
+        : active
+        ? "text-lyra-fg-active-strong"
+        : "";
+    const activeBarClass =
+      severity === "critical"
+        ? "bg-lyra-status-critical-strong"
+        : severity === "warning"
+        ? "bg-lyra-status-warning-strong"
+        : severity === "success"
+        ? "bg-lyra-status-success-strong"
+        : "bg-lyra-fg-active-strong";
+    // Unlike `activeTextClass` above, NOT gated on `active` — per explicit
+    // request, the leading `icon` slot (below) stays in its success/warning/
+    // critical color even while this tab isn't the selected one, so an
+    // agent scanning the tab bar can spot which channel needs attention
+    // without having to select it first. Only the kebab/remove/rightIcon
+    // slots still fall back to the plain gray "inactive" look via
+    // `activeTextClass` when `active` is false, unchanged — the label text
+    // gets this same treatment too, see `textColorClass` right below.
+    const iconColorClass =
+      severity === "critical"
+        ? "text-lyra-status-critical-strong"
+        : severity === "warning"
+        ? "text-lyra-status-warning-strong"
+        : severity === "success"
+        ? "text-lyra-status-success-strong"
+        : active
+        ? activeTextClass
+        : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary";
+    // Same "stays colored regardless of `active`" treatment as
+    // `iconColorClass` above, per explicit follow-up request — only the
+    // "no severity" fallback differs (this is the button's own base text
+    // color, which the plain label `<span>` below has no color class of its
+    // own and so inherits — `text-lyra-fg-secondary hover:text-lyra-fg-
+    // default`, the tab's ordinary inactive-label look, not the dimmer
+    // `-disabled` tone the icon alone uses inactive). Applied on the
+    // `<button>` itself (below) rather than a class on the label span
+    // directly, so it keeps covering the label the exact same way the
+    // pre-existing `active ? activeTextClass : ...` base color always has.
+    const textColorClass =
+      severity === "critical"
+        ? "text-lyra-status-critical-strong"
+        : severity === "warning"
+        ? "text-lyra-status-warning-strong"
+        : severity === "success"
+        ? "text-lyra-status-success-strong"
+        : active
+        ? activeTextClass
+        : "text-lyra-fg-secondary hover:text-lyra-fg-default";
     // ── Truncate + tooltip-on-truncation ──
     // A `Tab` can end up narrower than its own label needs — `fullWidth`
     // mode's equal-width columns, or just a squeezed row before `TabList`'s
@@ -1189,18 +1424,13 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
           // those two layouts.
           "group relative inline-flex min-h-[48px] min-w-0 max-w-[22ch] items-center justify-center gap-2 px-3 py-2.5 lyra-body-md-emphasis transition-colors",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
-          active
-            ? "text-lyra-fg-active-strong"
-            : "text-lyra-fg-secondary hover:text-lyra-fg-default",
+          textColorClass,
           className
         )}
         {...props}
       >
         {icon && (
-          <span
-            aria-hidden="true"
-            className={cn("flex-shrink-0 transition-colors", active ? "text-lyra-fg-active-strong" : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary")}
-          >
+          <span aria-hidden="true" className={cn("flex-shrink-0 transition-colors", iconColorClass)}>
             {icon}
           </span>
         )}
@@ -1230,7 +1460,7 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
             onOpenChange={handleMenuOpenChange}
             className={cn(
               "h-5 w-5 flex-shrink-0",
-              active ? "text-lyra-fg-active-strong" : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary"
+              active ? activeTextClass : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary"
             )}
           />
         )}
@@ -1244,7 +1474,7 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
             className={cn(
               "flex h-4 w-4 items-center justify-center rounded-lyra-xs flex-shrink-0 transition-colors",
               "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
-              active ? "text-lyra-fg-active-strong" : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary"
+              active ? activeTextClass : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary"
             )}
           >
             <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
@@ -1256,14 +1486,14 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
         {rightIcon && !onRemove && !menuItems && (
           <span
             aria-hidden="true"
-            className={cn("flex-shrink-0 transition-colors", active ? "text-lyra-fg-active-strong" : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary")}
+            className={cn("flex-shrink-0 transition-colors", active ? activeTextClass : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary")}
           >
             {rightIcon}
           </span>
         )}
         {/* Active indicator — blue bar */}
         {active && (
-          <span aria-hidden="true" className="absolute bottom-0 left-0 right-0 h-[4px] bg-lyra-fg-active-strong" />
+          <span aria-hidden="true" className={cn("absolute bottom-0 left-0 right-0 h-[4px]", activeBarClass)} />
         )}
         {/* Hover indicator — gray bar (only when not active) */}
         {!active && (

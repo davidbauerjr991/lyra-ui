@@ -599,28 +599,45 @@ function buildAdHocSearchContact(query: string): { contact: CreateNewOutboundCon
 }
 
 /** Whether `channel` should be disabled in the outbound detail form's
- *  "Select Channel" field for `contact` — only ever true for Voice, and
- *  only once this contact already has a voice channel open. Unlike SMS/
- *  WhatsApp/Email, where each address is its own independent thread (so a
- *  second SMS number is a genuinely separate conversation, not a
- *  duplicate), a phone call has no per-address concept here at all — an
- *  agent can't have two simultaneous voice conversations with the same
- *  customer regardless of which outbound number either one used, so once
- *  one is open, Voice itself (not just one specific number) is off the
- *  table until it ends.
+ *  "Select Channel" field for `contact` — two independent reasons:
  *
- *  Checks `openChannelTypes`, NOT `openChannelAddresses.voice` — the
- *  latter only ever contains channels with a *known* address (see its own
- *  doc comment), so a voice channel with no recorded number (e.g. a
- *  contact-history "Redial," which has no stored phone number at all)
- *  would never show up there even though it's genuinely open. That was a
- *  real, shipped bug: confirmed via screenshot that redialing, then
- *  opening "Add Channel" on that same card, showed Voice as selectable —
- *  the address-keyed map had nothing to disable it with, even though a
- *  voice channel was plainly already active right next to it in the
- *  toggle row. */
-function isChannelBlockedForContact(contact: CreateNewOutboundContact, channel: ChannelType): boolean {
-  return channel === "voice" && !!contact.openChannelTypes?.includes("voice");
+ *  1. Voice specifically, once this contact already has a voice channel
+ *     open. Unlike SMS/WhatsApp/Email, where each address is its own
+ *     independent thread (so a second SMS number is a genuinely separate
+ *     conversation, not a duplicate), a phone call has no per-address
+ *     concept here at all — an agent can't have two simultaneous voice
+ *     conversations with the same customer regardless of which outbound
+ *     number either one used, so once one is open, Voice itself (not just
+ *     one specific number) is off the table until it ends.
+ *
+ *     Checks `openChannelTypes`, NOT `openChannelAddresses.voice` — the
+ *     latter only ever contains channels with a *known* address (see its
+ *     own doc comment), so a voice channel with no recorded number (e.g. a
+ *     contact-history "Redial," which has no stored phone number at all)
+ *     would never show up there even though it's genuinely open. That was
+ *     a real, shipped bug: confirmed via screenshot that redialing, then
+ *     opening "Add Channel" on that same card, showed Voice as selectable
+ *     — the address-keyed map had nothing to disable it with, even though
+ *     a voice channel was plainly already active right next to it in the
+ *     toggle row.
+ *
+ *  2. ANY channel (including Voice, redundantly with #1) once every
+ *     address it could possibly be started on is already open — per
+ *     explicit request: a customer with their one synthesized WhatsApp
+ *     handle (or email address) already in an open conversation has
+ *     nothing left to pick from `resolveOutboundDetailField`'s own
+ *     `options` list for that channel, which used to still let the agent
+ *     open the picker anyway onto an empty "No results found" dropdown
+ *     with no way to actually start anything. Reuses that same `options`
+ *     list rather than re-deriving the "already open" filter a second
+ *     time here, so the two stay in lockstep by construction. */
+function isChannelBlockedForContact(
+  contact: CreateNewOutboundContact,
+  channel: ChannelType,
+  phoneOptions: { value: string; label: string }[]
+): boolean {
+  if (channel === "voice" && !!contact.openChannelTypes?.includes("voice")) return true;
+  return resolveOutboundDetailField(contact, channel, phoneOptions).options.length === 0;
 }
 
 /** First channel in `channelOptions` that isn't blocked for `contact` (see
@@ -631,10 +648,11 @@ function isChannelBlockedForContact(contact: CreateNewOutboundContact, channel: 
  *  `resolveOutboundDetailField` itself falls back to `""` for). */
 function firstAvailableChannel(
   channelOptions: CreateNewChannelOption[],
-  contact: CreateNewOutboundContact
+  contact: CreateNewOutboundContact,
+  phoneOptions: { value: string; label: string }[]
 ): ChannelType | null {
   return (
-    channelOptions.find((c) => !isChannelBlockedForContact(contact, c.id))?.id ??
+    channelOptions.find((c) => !isChannelBlockedForContact(contact, c.id, phoneOptions))?.id ??
     channelOptions[0]?.id ??
     null
   );
@@ -748,25 +766,73 @@ export interface OutboundAddButtonProps {
   onStartCall: (selection: { contact: CreateNewOutboundContact; channel: ChannelType; phone: string; skillId: string }) => void;
   /** Tooltip text and button `aria-label` (default: "Add Outbound"). */
   label?: string;
+  /** Shows `label` as visible text next to the icon (default: false —
+   *  icon-only, the original look every existing consumer, e.g.
+   *  `InteractionNavItem`'s compact card row, still gets). Turn on for a
+   *  standalone header action that needs a real text button rather than an
+   *  icon-only affordance leaning on its tooltip — the tooltip itself is
+   *  disabled whenever this is true, since the visible label already says
+   *  the same thing. */
+  showLabel?: boolean;
   className?: string;
+  /** Overrides the trigger's default `Plus` glyph — e.g. a specific
+   *  channel's own icon when this button is dedicated to just that one
+   *  channel (see `initialChannel` below), so the button reads as "add a
+   *  Call" rather than a generic "+". Re-sized to the trigger's own `h-4
+   *  w-4` regardless of whatever size the passed element's own `className`
+   *  specifies (channel icons in `channelOptions` are authored `h-5 w-5`
+   *  for their normal, larger home in the "Select Channel" radio group). */
+  icon?: React.ReactNode;
+  /** Locks the detail form to this one channel and hides the "Select
+   *  Channel" field entirely, rather than defaulting to it while leaving it
+   *  still editable (the normal, no-`initialChannel` behavior) — for a
+   *  trigger that already identifies its own channel (a per-channel icon
+   *  button, paired with `icon` above), re-showing a "Select Channel" field
+   *  with the choice already made would just be asking the same question
+   *  twice. Must be one of `channelOptions`; behaves exactly like today's
+   *  plain default otherwise (still editable) if omitted. */
+  initialChannel?: ChannelType;
 }
 
 const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonProps>(
-  ({ contact, channelOptions, phoneOptions, skillOptions, onStartCall, label = "Add Outbound", className }, ref) => {
+  (
+    {
+      contact,
+      channelOptions,
+      phoneOptions,
+      skillOptions,
+      onStartCall,
+      label = "Add Outbound",
+      showLabel = false,
+      className,
+      icon,
+      initialChannel,
+    },
+    ref
+  ) => {
     const [open, setOpen] = useState(false);
     // No more `null` "not picked yet" state — the popover is a single
     // screen now (see this component's own doc comment above), so this
     // always holds a real channel as long as the contact has at least one
-    // available (`channelOptions[0]` as the opening default), and only
-    // stays `null` in the true edge case of an empty `channelOptions`
-    // (nothing to default to — the "No channels available" branch below
-    // handles that). Kept local to this button, not routed through any
-    // shared "detail screen" state.
+    // available (`initialChannel`, when locked to one — see that prop's
+    // own doc comment — otherwise `channelOptions[0]` as the opening
+    // default), and only stays `null` in the true edge case of an empty
+    // `channelOptions` (nothing to default to — the "No channels
+    // available" branch below handles that). Kept local to this button,
+    // not routed through any shared "detail screen" state.
     const [detailChannel, setDetailChannel] = useState<ChannelType | null>(
-      firstAvailableChannel(channelOptions, contact)
+      initialChannel ?? firstAvailableChannel(channelOptions, contact, phoneOptions)
     );
     const [detailPhone, setDetailPhone] = useState("");
-    const [detailSkill, setDetailSkill] = useState("");
+    // Defaults to the FIRST skill in `skillOptions`, not `""` — per explicit
+    // request ("when a new channel is launched, default to the first skill
+    // in the list so the agent can immediately start the interaction
+    // without having to choose"). `skillOptions[0]?.value ?? ""` still
+    // falls back to blank for the true edge case of an empty list (nothing
+    // to default to — "Start Interaction" stays correctly disabled via its
+    // own `!detailSkill` check below in that case, same as before this
+    // change).
+    const [detailSkill, setDetailSkill] = useState(skillOptions[0]?.value ?? "");
 
     const selectChannel = (channel: ChannelType) => {
       setDetailChannel(channel);
@@ -789,12 +855,17 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
     useEffect(() => {
       if (open) return;
       const t = setTimeout(() => {
-        setDetailChannel(firstAvailableChannel(channelOptions, contact));
+        setDetailChannel(initialChannel ?? firstAvailableChannel(channelOptions, contact, phoneOptions));
         setDetailPhone("");
-        setDetailSkill("");
+        // Back to the first skill, not `""` — same reasoning as this
+        // state's own initializer above; `skillOptions` added to this
+        // effect's own dependency array below so a reset after the
+        // consumer's skill list itself changes still re-derives from the
+        // current list, not a stale one captured on an earlier render.
+        setDetailSkill(skillOptions[0]?.value ?? "");
       }, 200);
       return () => clearTimeout(t);
-    }, [open, channelOptions, contact]);
+    }, [open, channelOptions, contact, initialChannel, skillOptions, phoneOptions]);
 
     // "Select Channel" stays editable once on the detail form (matching
     // `CreateNew`'s own detail screen) — if the agent switches channel here,
@@ -826,6 +897,31 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
 
     const fieldMeta = detailChannel ? resolveOutboundDetailField(contact, detailChannel, phoneOptions) : null;
 
+    // Only meaningful when this button is locked to one channel
+    // (`initialChannel` — see that prop's own doc comment): with "Select
+    // Channel" hidden, there's no other channel the agent could switch to
+    // work around this one being exhausted, so the trigger itself needs to
+    // communicate that rather than opening onto a dead-end empty picker
+    // (`fieldMeta.options` would be `[]`) — per explicit request, confirmed
+    // live via screenshot (a "Select WhatsApp Handle" field stuck on "No
+    // results found" with no way to actually start anything). NOT checked
+    // for the multi-channel case (no `initialChannel`, e.g. this button's
+    // own default "+" trigger, or `InteractionNavItem`'s compact one): that
+    // popover's own "Select Channel" radio group already disables just the
+    // blocked option inline while leaving every other channel pickable,
+    // which is the right behavior there — disabling the whole trigger would
+    // block channels that are still perfectly available too.
+    const blockedForInitialChannel =
+      initialChannel !== undefined && isChannelBlockedForContact(contact, initialChannel, phoneOptions);
+    // Voice gets its own, more specific reason (matching
+    // `isChannelBlockedForContact`'s own doc comment) — every other channel
+    // shares the generic "nothing left to pick" phrasing, using `label`
+    // (this button's own tooltip text/aria-label, e.g. "Email"/"WhatsApp"
+    // for the record header's per-channel buttons) rather than re-deriving
+    // a channel display name from `initialChannel` a second time.
+    const blockedTooltip =
+      initialChannel === "voice" ? "Customer is already on a call" : `Every ${label} address is already open`;
+
     const handleStartCall = () => {
       if (!detailChannel || !detailSkill) return;
       onStartCall({ contact, channel: detailChannel, phone: detailPhone, skillId: detailSkill });
@@ -833,7 +929,11 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
     };
 
     return (
-      <Tooltip content={label} placement="top" disabled={open}>
+      <Tooltip
+        content={blockedForInitialChannel ? blockedTooltip : label}
+        placement="top"
+        disabled={open || (showLabel && !blockedForInitialChannel)}
+      >
         {/* Wrap the whole Popover (not just its trigger) in a plain span —
             same Tooltip+Popover composition as this component's own
             collapsed trigger below and AgentProfile's own trigger: Tooltip's
@@ -859,16 +959,23 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
             content={
               detailChannel && fieldMeta ? (
                 <div className="w-64 p-3 space-y-3">
-                  <RadioButtonGroup
-                    label="Select Channel"
-                    options={channelOptions.map((c) => ({
-                      value: c.id,
-                      label: c.selectLabel ?? c.label,
-                      disabled: isChannelBlockedForContact(contact, c.id),
-                    }))}
-                    value={detailChannel}
-                    onValueChange={(v) => selectChannel(v as ChannelType)}
-                  />
+                  {/* Omitted while `initialChannel` is locked — see that
+                      prop's own doc comment: the trigger itself (a
+                      dedicated per-channel icon/label) already answers
+                      "Select Channel", so asking again here would just be
+                      the same question twice. */}
+                  {!initialChannel && (
+                    <RadioButtonGroup
+                      label="Select Channel"
+                      options={channelOptions.map((c) => ({
+                        value: c.id,
+                        label: c.selectLabel ?? c.label,
+                        disabled: isChannelBlockedForContact(contact, c.id, phoneOptions),
+                      }))}
+                      value={detailChannel}
+                      onValueChange={(v) => selectChannel(v as ChannelType)}
+                    />
+                  )}
                   {/* `dropdownClassName="z-[10005]"` on both remaining
                       `Select`s: each one's dropdown portals to
                       document.body at its own default z-[9999] (the base
@@ -914,6 +1021,14 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
               ref={ref}
               type="button"
               aria-label={label}
+              // Native `disabled` — Radix's `Trigger asChild` (Popover.tsx)
+              // just clones its own `onClick` onto whatever child it wraps,
+              // so a disabled button never actually fires that click at all
+              // (standard DOM behavior), which is enough on its own to stop
+              // the popover from ever opening while
+              // `blockedForInitialChannel` — no separate `open`/
+              // `onOpenChange` gating needed.
+              disabled={blockedForInitialChannel}
               // Card rows that host this button (e.g. InteractionNavItem)
               // are themselves clickable — stop the click from also
               // bubbling up and selecting the whole card, same pattern
@@ -924,10 +1039,39 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
                 "text-lyra-fg-secondary transition-colors",
                 "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus",
+                // Same `disabled:pointer-events-none disabled:opacity-40`
+                // treatment `buttonVariants` (button.tsx) already applies to
+                // every other disabled button in this design system, kept
+                // in sync by hand here since this trigger is a plain
+                // `<button>`, not `Button` — see this component's own
+                // doc comment above for why (a card-selecting
+                // `stopPropagation` and per-consumer icon/label slot neither
+                // fit `Button`'s own API cleanly enough to be worth
+                // reimplementing on top of it).
+                "disabled:pointer-events-none disabled:opacity-40",
                 className
               )}
             >
-              <Plus className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+              {icon && React.isValidElement<{ className?: string }>(icon) ? (
+                // Re-sized to this trigger's own `h-4 w-4` regardless of
+                // whatever size `icon`'s own `className` specifies — see
+                // that prop's own doc comment. Original className goes
+                // FIRST in `cn()`, the size override LAST, so twMerge
+                // resolves the conflicting `h-*`/`w-*` utilities in favor
+                // of the override no matter what the caller passed.
+                React.cloneElement(icon, {
+                  className: cn(icon.props.className, "h-4 w-4 flex-shrink-0"),
+                })
+              ) : icon ? (
+                icon
+              ) : (
+                <Plus className="h-4 w-4 flex-shrink-0" strokeWidth={1.5} aria-hidden="true" />
+              )}
+              {/* Spacing lives on the label itself (`ml-2`), not a `gap-*`
+                  on the button — same convention this file's own expanding
+                  "New Outbound" trigger below uses for the identical
+                  icon+label pairing (see that button's own comment). */}
+              {showLabel && <span className="lyra-label ml-2">{label}</span>}
             </button>
           </Popover>
         </span>
@@ -980,8 +1124,43 @@ export interface UseOutboundAddButtonResult {
    *  of `ChannelToggle` pills and wants to match their height/outline
    *  treatment, rather than the compact `h-6 w-6` ghost icon every
    *  `InteractionNavItem` card uses this same button for. Omit it (every
-   *  other call site) to keep that original default untouched. */
-  getHeaderAction: (interactionId: string, className?: string) => React.ReactNode;
+   *  other call site) to keep that original default untouched.
+   *
+   *  `options.label`/`options.showLabel` forward straight to
+   *  `OutboundAddButton`'s own same-named props — e.g. the interaction
+   *  record page header wants a real "Add Channel" text button, not the
+   *  icon-only look every other call site keeps.
+   *
+   *  `options.icon`/`options.initialChannel` also forward straight through
+   *  — together they turn this into a dedicated single-channel button
+   *  (e.g. one call per entry in `getAvailableChannels` below, each with
+   *  that channel's own icon) instead of the default combined "pick any
+   *  channel" trigger. See `OutboundAddButtonProps`' own doc comments on
+   *  both. */
+  getHeaderAction: (
+    interactionId: string,
+    className?: string,
+    options?: { label?: string; showLabel?: boolean; icon?: React.ReactNode; initialChannel?: ChannelType }
+  ) => React.ReactNode;
+  /** Channels `interactionId`'s underlying contact supports at all — same
+   *  `contact.channels` support filter `getHeaderAction` itself applies
+   *  internally. Does NOT drop anything `isChannelBlockedForContact` would
+   *  grey out (e.g. Voice once already open, or any channel with every
+   *  possible address already open) the way it used to — per explicit
+   *  request, a channel the customer can't currently be reached on this
+   *  way should still show a button (so the agent can see it exists at
+   *  all) just DISABLED, not silently missing from the row entirely.
+   *  `getHeaderAction`'s own per-channel button (via `options.
+   *  initialChannel`) is what actually disables itself now, using this
+   *  same `isChannelBlockedForContact` check internally — see that
+   *  button's own `blockedForInitialChannel`, create-new.tsx. Returns `[]`
+   *  for the same "no matching contact" case `getHeaderAction` returns
+   *  `null` for. Built for a header that wants to show one icon button per
+   *  channel the contact supports (e.g. Call/Email/SMS) instead of a
+   *  single combined "+" trigger, falling back to that combined trigger
+   *  only once space runs out — see agent-next-gen-v2's own interaction
+   *  record header for the reference usage. */
+  getAvailableChannels: (interactionId: string) => CreateNewChannelOption[];
 }
 
 export function useOutboundAddButton(
@@ -993,7 +1172,11 @@ export function useOutboundAddButton(
   );
 
   const getHeaderAction = useCallback(
-    (interactionId: string, className?: string) => {
+    (
+      interactionId: string,
+      className?: string,
+      options?: { label?: string; showLabel?: boolean; icon?: React.ReactNode; initialChannel?: ChannelType }
+    ) => {
       const contact = contactsById.get(interactionId);
       if (!contact) return null;
       const channelOptions = outboundConfig.channelOptions.filter((c) => contact.channels.includes(c.id));
@@ -1005,13 +1188,26 @@ export function useOutboundAddButton(
           skillOptions={outboundConfig.skillOptions ?? []}
           onStartCall={(selection) => outboundConfig.onStartCall?.(selection)}
           className={className}
+          label={options?.label}
+          showLabel={options?.showLabel}
+          icon={options?.icon}
+          initialChannel={options?.initialChannel}
         />
       );
     },
     [contactsById, outboundConfig]
   );
 
-  return { getHeaderAction };
+  const getAvailableChannels = useCallback(
+    (interactionId: string): CreateNewChannelOption[] => {
+      const contact = contactsById.get(interactionId);
+      if (!contact) return [];
+      return outboundConfig.channelOptions.filter((c) => contact.channels.includes(c.id));
+    },
+    [contactsById, outboundConfig]
+  );
+
+  return { getHeaderAction, getAvailableChannels };
 }
 
 /* ── CreateNew ── */
@@ -1058,7 +1254,14 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     // pushScreen/popScreen.
     const [detailChannel, setDetailChannel] = useState<ChannelType | "">("");
     const [detailPhone, setDetailPhone] = useState("");
-    const [detailSkill, setDetailSkill] = useState("");
+    // Defaults to the FIRST skill in `outbound.skillOptions`, not `""` —
+    // same reasoning/request as `OutboundAddButton`'s own identical state
+    // above ("when a new channel is launched, default to the first skill in
+    // the list so the agent can immediately start the interaction without
+    // having to choose"). Falls back to `""` when `outbound` itself (or its
+    // `skillOptions`) is unset — this component is also used for the non-
+    // outbound drill-down flow, which has no skill concept at all.
+    const [detailSkill, setDetailSkill] = useState(outbound?.skillOptions?.[0]?.value ?? "");
     const searchInputRef = React.useRef<HTMLInputElement>(null);
     // Set right before the `launchRequest` effect below opens this popover
     // programmatically, and read (then cleared) inside `onOpenAutoFocus` on
@@ -1185,7 +1388,8 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     const goToDetail = (groupId: string, contact: CreateNewOutboundContact, channel: ChannelType) => {
       setDetailChannel(channel);
       setDetailPhone(defaultDetailValueFor(contact, channel));
-      setDetailSkill("");
+      // First skill, not `""` — see `detailSkill`'s own doc comment above.
+      setDetailSkill(outbound?.skillOptions?.[0]?.value ?? "");
       pushScreen({ kind: "detail", groupId, contactId: contact.id, channel });
     };
 
@@ -1370,7 +1574,8 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
       const t = setTimeout(() => {
         setDetailChannel(req.channel);
         setDetailPhone(defaultDetailValueFor(contact, req.channel));
-        setDetailSkill("");
+        // First skill, not `""` — see `detailSkill`'s own doc comment above.
+        setDetailSkill(outbound?.skillOptions?.[0]?.value ?? "");
         setSearch("");
         setStack([{ kind: "group", groupId }, { kind: "detail", groupId, contactId: contact.id, channel: req.channel }]);
         openedViaLaunchRequestRef.current = true;
@@ -1930,7 +2135,7 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                       options={availableChannelsForContact.map((c) => ({
                         value: c.id,
                         label: c.selectLabel ?? c.label,
-                        disabled: isChannelBlockedForContact(activeOutboundContact, c.id),
+                        disabled: isChannelBlockedForContact(activeOutboundContact, c.id, outbound?.phoneOptions ?? []),
                       }))}
                       value={detailChannel || undefined}
                       onValueChange={(v) => setDetailChannel(v as ChannelType)}

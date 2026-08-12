@@ -4,7 +4,6 @@ import { cn } from "../lib/utils";
 import { Button } from "./button";
 import { Checkbox } from "./checkbox";
 import { RadioGroup, RadioGroupItem } from "./radio";
-import { PhoneInput, PHONE_COUNTRIES, type PhoneValue } from "./phone-input";
 import { Separator } from "./separator";
 import { ConversationMessage } from "./conversation-message";
 import { Input } from "./input";
@@ -65,7 +64,15 @@ const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
     ref
   ) => {
     const [phoneSetup, setPhoneSetup] = React.useState<LoginCardPhoneSetup>(defaultPhoneSetup);
-    const [phone, setPhone] = React.useState<PhoneValue>({ countryCode: "us", number: "" });
+    // Plain, unformatted digits — was a masked `PhoneValue` (country selector
+    // + auto-formatted `PhoneInput`), per explicit request: a login field
+    // just needs a real, dialable number typed in as-is, not formatted or
+    // scoped to one country's mask. `phoneNumberTouched` mirrors the Station
+    // ID field's own "only show its error after the agent has actually left
+    // the field" pattern just below, rather than showing "not valid" before
+    // the agent has typed anything at all.
+    const [phoneNumber, setPhoneNumber] = React.useState("");
+    const [phoneNumberTouched, setPhoneNumberTouched] = React.useState(false);
     const [stationId, setStationId] = React.useState("");
     const [stationIdTouched, setStationIdTouched] = React.useState(false);
     const [savePreferences, setSavePreferences] = React.useState(false);
@@ -84,14 +91,23 @@ const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
 
     const needsPhoneNumber = phoneSetup === "phone-number";
     const needsStationId = phoneSetup === "work-station";
-    const selectedCountry = PHONE_COUNTRIES.find((c) => c.code === phone.countryCode) ?? PHONE_COUNTRIES[0];
-    const requiredDigits = selectedCountry.mask.replace(/[^#]/g, "").length;
-    const isPhoneValid = !needsPhoneNumber || phone.number.length === requiredDigits;
+    // At least 7 digits — per explicit request, a plain length/digit-count
+    // check rather than a country-mask-derived exact length (there's no
+    // country selector anymore for this field, so there's no one mask to
+    // validate against — see `phoneNumber`'s own state comment above).
+    // `replace(/\D/g, "")` strips any punctuation the agent happens to type
+    // (dashes/parens/spaces) before counting, so "555-123-4567" and
+    // "5551234567" validate the same.
+    const isPhoneValid = !needsPhoneNumber || phoneNumber.replace(/\D/g, "").length >= 7;
     const isStationIdValid = !needsStationId || stationId === VALID_STATION_ID;
     const isFormValid = isPhoneValid && isStationIdValid;
     const stationIdError =
       needsStationId && stationIdTouched && stationId !== VALID_STATION_ID
         ? "Invalid Station ID"
+        : undefined;
+    const phoneNumberError =
+      needsPhoneNumber && phoneNumberTouched && !isPhoneValid
+        ? "Phone number is not valid. Please enter a different number."
         : undefined;
 
     const launchSteps: AIProcessStep[] = LAUNCH_STEPS.map((s) => ({
@@ -182,12 +198,14 @@ const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
                   )}
                 />
 
-                <PhoneInput
+                <Input
                   label="Enter Phone Number"
-                  hideCountrySelector
+                  type="tel"
                   disabled={launching}
-                  value={phone}
-                  onChange={setPhone}
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  onBlur={() => setPhoneNumberTouched(true)}
+                  error={phoneNumberError}
                   className={cn(
                     "transition-all duration-200",
                     needsPhoneNumber

@@ -864,10 +864,28 @@
    gets this via a direct `className` override too, so this is a second,
    redundant guarantee of the same thing rather than the only source of
    it. */
-.lyra-tab-overflow-wrap .lyra-tab-overflow-collapsed > * {
+/* NOT scoped under `.lyra-tab-overflow-wrap` like the display-toggle rules
+   above/below — those are specifically the "wide" breakpoint's own
+   CSS-container-query mechanics (`.lyra-tab-overflow-collapsed` stays
+   mounted but CSS-hidden outside `@container (max-width: 400px)`), which
+   only ever applies inside a `.lyra-tab-overflow-wrap` ancestor in the
+   first place. This equal-width-children rule, though, needs to hold
+   whenever `.lyra-tab-overflow-collapsed` renders AT ALL, regardless of
+   which breakpoint mode produced it — `overflowBreakpoint="compact"`
+   (tabs.tsx) renders this exact same row too, conditionally via JS instead
+   of the CSS toggle, inside its OWN wrapper (`compactWrapRef`'s div, which
+   deliberately doesn't carry `.lyra-tab-overflow-wrap` — that class also
+   sets `container-type: inline-size`, "wide" mode's own container-query
+   root, which "compact" mode has no use for and doesn't want). Scoping
+   this rule to `.lyra-tab-overflow-wrap` left "compact" mode's own
+   collapsed row with NONE of this — confirmed live: the active tab and
+   "N More" trigger rendered at their own unequal content widths instead of
+   splitting the row evenly, leaving a visible gap between them and the
+   row's actual right edge. */
+.lyra-tab-overflow-collapsed > * {
   flex: 1 1 0%;
 }
-.lyra-tab-overflow-wrap .lyra-tab-overflow-collapsed [role="tab"] {
+.lyra-tab-overflow-collapsed [role="tab"] {
   max-width: none;
 }
 @container (max-width: 400px) {
@@ -1020,22 +1038,117 @@
    both share one line). Hidden in the same query: once `titleSuffix`
    wraps to its own row, that divider has nothing left to actually divide
    — a lone vertical bar floating above the wrapped content read as a
-   rendering glitch rather than a separator (confirmed via screenshot). */
-.lyra-page-header-suffix-wrap {
+   rendering glitch rather than a separator (confirmed via screenshot).
+
+   Every rule in the `@container` block below is additionally scoped under
+   `.lyra-page-header-has-suffix` — a modifier `PageHeader` itself only
+   adds when `titleSuffix` is actually passed (page-header.tsx). Originally
+   these fired off `.lyra-page-header-suffix-wrap` alone, i.e. on EVERY
+   `PageHeader`, `titleSuffix` or not: harmless for `.lyra-page-header-left`/
+   `-suffix`/`-suffix-divider` (those selectors simply match nothing without
+   `titleSuffix` in the tree), but `.lyra-page-header-actions` always
+   exists, so its `align-self: flex-start` fired for every consumer whose
+   header narrowed past 768px regardless — confirmed live on
+   agent-next-gen-v2's record header (no `titleSuffix`, just a title +
+   action buttons), whose `actions` visibly jumped from vertically centered
+   against the title to top-aligned at that width, with nothing on the left
+   actually wrapping to justify it. Scoping to `.lyra-page-header-has-suffix`
+   makes this container query a true no-op for any consumer that doesn't
+   use `titleSuffix`, matching what the rest of this comment already
+   describes it as being for. */
+/* `.lyra-page-header-container` — the OUTER wrapper `PageHeader` itself
+   renders (page-header.tsx) around the actual bordered/padded row
+   (`.lyra-page-header-suffix-wrap`) — is what carries `container-type:
+   inline-size` now, not `.lyra-page-header-suffix-wrap` itself. A CSS
+   query container can style its own DESCENDANTS based on its measured
+   size, but never itself — `.lyra-page-header-suffix-wrap` used to BE the
+   container AND the thing every rule below (plus the "actions wraps
+   below" rule further down) needed to restyle based on ITS OWN width,
+   which is exactly the self-referential case `@container` can't do
+   (confirmed live: a rule trying to flip `.lyra-page-header-suffix-wrap`'s
+   own `flex-direction` while it was also the container element itself
+   just silently never matched). Moving `container-type` one level up
+   turns `.lyra-page-header-suffix-wrap` into a genuine descendant of its
+   own query container, the same relationship `.lyra-page-header-left`/
+   `-actions`/etc. below already have — so it can finally be targeted the
+   same way they are. */
+.lyra-page-header-container {
   container-type: inline-size;
 }
 @container (max-width: 768px) {
-  .lyra-page-header-suffix-wrap .lyra-page-header-left {
+  .lyra-page-header-suffix-wrap.lyra-page-header-has-suffix .lyra-page-header-left {
     flex-wrap: wrap;
   }
-  .lyra-page-header-suffix-wrap .lyra-page-header-suffix {
+  .lyra-page-header-suffix-wrap.lyra-page-header-has-suffix .lyra-page-header-suffix {
     flex-basis: 100%;
   }
-  .lyra-page-header-suffix-wrap .lyra-page-header-actions {
+  .lyra-page-header-suffix-wrap.lyra-page-header-has-suffix .lyra-page-header-actions {
     align-self: flex-start;
   }
-  .lyra-page-header-suffix-wrap .lyra-page-header-suffix-divider {
+  .lyra-page-header-suffix-wrap.lyra-page-header-has-suffix .lyra-page-header-suffix-divider {
     display: none;
+  }
+}
+
+/* `actions` (the right-side badge/button cluster) drops to its own row
+   below the title/subtitle block once THIS header's own width crosses
+   400px (lowered from an initial 768px, then 480px, per explicit
+   follow-up requests) —
+   per explicit request/screenshot: a `PageHeader` with a longer
+   title + subtitle plus even a single `actions` `Badge` (agent-next-gen-v2's
+   dashboard — "Good afternoon, {name}" / the date, next to an "N
+   Assignments resolved today" chip, no `titleSuffix` at all) squeezed both
+   the title AND subtitle down to a couple of truncated characters each
+   ("Good a…" / "Tuesday, Au…") the moment `actions` had to share the row
+   with them below that width, rather than the title/subtitle simply
+   getting the row's full width to themselves and `actions` sitting on its
+   own line underneath.
+   Scoped to `:not(.lyra-page-header-has-suffix)` — the `titleSuffix` case
+   just above already has its own separate, previously-tuned "wrap" story
+   (that title's OWN suffix content — e.g. a `ChannelToggleGroup` — drops
+   below the title, `actions` stays pinned top-right on the ORIGINAL row);
+   this rule is deliberately a no-op there so it can't fight that already-
+   working behavior.
+
+   `flex-direction: column` (not `flex-wrap: wrap` — earlier passes at
+   this tried wrap-based techniques, confirmed BROKEN live: the title
+   collapsed to invisible instead of `actions` dropping below it, since
+   `.lyra-page-header-left` carries Tailwind's `flex-1`/`flex-basis: 0%`,
+   which fights any `flex-basis`-based wrap-forcing trick applied to its
+   sibling). Switching the row to a column outright sidesteps all of that:
+   with only one item per "row" now, there's no hypothetical-size
+   competition to get wrong — `.lyra-page-header-left` simply renders
+   first, full width, `.lyra-page-header-actions` renders directly under
+   it, and `align-items: flex-start` (overriding the row's own
+   `items-center`, which would otherwise center `actions` horizontally
+   under a `flex-direction: column` container) left-aligns it under the
+   title per explicit request. `gap-3` on `.lyra-page-header-suffix-wrap`
+   provides the vertical gap between the two stacked children the same way
+   it already provides horizontal gaps in the un-stacked row — overridden
+   to a flat 8px here (per explicit request/spec) rather than reusing that
+   12px, since a column-direction flex container's single `gap` applies
+   down the column regardless of what value it's set to. `justify-content:
+   flex-start` also overrides the row's own `justify-between` — main axis
+   is now VERTICAL under `flex-direction: column`, and `justify-between`
+   along that axis would spread the two stacked children apart to fill
+   this container's own `min-h-[68px]` floor (top child pinned to the very
+   top, bottom child pinned to the very bottom) instead of sitting snug
+   together with just the `gap` between them.
+
+   Selector targets `.lyra-page-header-container .lyra-page-header-suffix-
+   wrap` (a DESCENDANT combinator), not a bare `.lyra-page-header-suffix-
+   wrap` alone — see `.lyra-page-header-container`'s own doc comment above
+   for why: that element is the actual `container-type` query container
+   now, one level OUTSIDE `.lyra-page-header-suffix-wrap`, so this rule has
+   to reach down into it rather than trying to match it directly (the
+   self-referential version of this exact rule is what silently never
+   matched anything in the first place). */
+@container (max-width: 400px) {
+  .lyra-page-header-container .lyra-page-header-suffix-wrap:not(.lyra-page-header-has-suffix) {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 8px;
   }
 }
 
@@ -1146,34 +1259,14 @@
   }
 }
 
-/* ════════════════════════════════════════════════════
-   Transcript avatar collapse (CSS container query)
-   ════════════════════════════════════════════════════
-   agent-next-gen-v1's `InteractionTranscript` (conversation message list):
-   below 400px of its own available width, the 28px sender avatar next to
-   each message bubble is dropped — at that width it's competing directly
-   with the bubble text for room the avatar doesn't earn back (name/
-   timestamp/tags already identify the sender without it), same "react to
-   this component's own width, not the viewport" rationale as every other
-   family in this file (a docked side panel open next to the transcript, or
-   a narrow browser window, can each squeeze this width for unrelated
-   reasons). 400px reused rather than a new one-off threshold — matches
-   `.lyra-tab-overflow-wrap`'s own breakpoint above, both being "this is
-   genuinely cramped" thresholds for a content column, not something tuned
-   per-family.
-
-   `.lyra-transcript-wrap` goes on the transcript's own scrolling content
-   column (the ancestor whose width should be queried); `.lyra-transcript-
-   avatar` on each message's avatar `<span>`. Plain `display: none` (not a
-   width/opacity animation) — the avatar disappearing should read as "not
-   part of this layout below this width," the same one-step collapse
-   `.lyra-tab-overflow-wrap`'s two rows swap with, not something that
-   should visibly animate in/out as the container is resized. */
-.lyra-transcript-wrap {
-  container-type: inline-size;
-}
-@container (max-width: 400px) {
-  .lyra-transcript-wrap .lyra-transcript-avatar {
-    display: none;
-  }
-}
+/* agent-next-gen-v2's `InteractionTranscript` avatar-collapse/bubble-width
+   below 400px used to live here as a CSS `@container` query
+   (`.lyra-transcript-wrap`/`.lyra-transcript-avatar`/`.lyra-transcript-
+   bubble`) — removed after it stopped firing reliably for the agent
+   live-testing it, even after several rounds of review/hardening.
+   Replaced with a plain `ResizeObserver` reading on the transcript's own
+   scroll container (`transcriptNarrow`, AgentNextGenPage.tsx), the same
+   pattern `ScheduleToolbar`'s own `containerRef`/`isWide`/`isCompact`
+   already uses for its Add/Day/Week collapse (SchedulePanel.tsx) — an
+   established, working precedent in that codebase for "a component
+   collapses based on its own rendered width." */

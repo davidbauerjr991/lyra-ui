@@ -144,23 +144,57 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
     },
     ref
   ) => (
-    <div
-      ref={ref}
-      className={cn(
-        // min-h-[68px] = py-4 (32px) + a default (`lg`) Button's own 36px
-        // height — the tallest thing this row's `actions` slot typically
-        // holds. Without a fixed floor, the row's real height shrinks to
-        // just the title text whenever `actions` is empty/removed, which
-        // shifts the title vertically relative to any external sibling
-        // that assumes a constant PageHeader height (e.g. LeftNav's own
-        // toggle button, positioned via a hardcoded `top` offset — see its
-        // doc comment). Kept as a min-height, not a fixed height, so a
-        // future taller `actions` element can still grow the row.
-        "lyra-page-header-suffix-wrap flex min-h-[68px] items-center justify-between border-b border-lyra-border-subtle px-6 py-4",
-        className
-      )}
-      {...props}
-    >
+    // Outer wrapper is the actual `container-type: inline-size` query
+    // container (`.lyra-page-header-container`, lyra-tokens.css) — every
+    // `@container` rule below styles the INNER row (`.lyra-page-header-
+    // suffix-wrap`) as a genuine descendant of it, never the query
+    // container element itself. This split exists specifically because a
+    // CSS query container can't restyle ITS OWN box based on its own
+    // measured size (only descendants) — confirmed live: an earlier pass
+    // put `container-type` directly on this same bordered/padded row and
+    // tried to flip ITS OWN `flex-direction` to `column` once narrow, and
+    // the `@container` rule silently never matched anything (no ancestor
+    // container existed for it to resolve against), so the intended
+    // "actions wraps below the title" layout never took effect at all.
+    // `ref`/`...props` (and `className`) land on this outer wrapper — it's
+    // the real DOM root `React.forwardRef`'s consumers get back — rather
+    // than the inner row, so nothing behavioral about what `ref` points to
+    // changes for any future consumer.
+    <div ref={ref} className={cn("lyra-page-header-container", className)} {...props}>
+      <div
+        className={cn(
+          // min-h-[68px] = py-4 (32px) + a default (`lg`) Button's own 36px
+          // height — the tallest thing this row's `actions` slot typically
+          // holds. Without a fixed floor, the row's real height shrinks to
+          // just the title text whenever `actions` is empty/removed, which
+          // shifts the title vertically relative to any external sibling
+          // that assumes a constant PageHeader height (e.g. LeftNav's own
+          // toggle button, positioned via a hardcoded `top` offset — see its
+          // doc comment). Kept as a min-height, not a fixed height, so a
+          // future taller `actions` element can still grow the row.
+          "lyra-page-header-suffix-wrap flex min-h-[68px] items-center justify-between border-b border-lyra-border-subtle px-6 py-4",
+          // Scopes the container-query wrap/align-self behavior below
+          // (lyra-tokens.css) to consumers that actually pass `titleSuffix` —
+          // see that CSS block's own doc comment for why: it exists so
+          // `titleSuffix` content (e.g. a `ChannelToggleGroup`) can drop to
+          // its own row under the title once space gets tight, with
+          // `actions` re-pinned top-right against just the title's own line
+          // rather than sinking toward the middle of the now-taller
+          // title+wrapped-suffix block. Without `titleSuffix`, the title
+          // block only ever renders its own normal one-or-two-line
+          // title/subtitle stack (never a wrapped THIRD thing pushing it
+          // taller the way `titleSuffix` does) — so there's nothing for
+          // `actions` to need re-pinning against, and letting the query fire
+          // anyway just top-aligns `actions` for no reason the moment this
+          // header's own width crosses 768px, independent of anything about
+          // actually running out of room (confirmed live: agent-next-gen-v2's
+          // record header, which has no `titleSuffix`, saw its own
+          // `actions` buttons jump from centered to top-aligned against the
+          // title at that same width, with nothing on the left side actually
+          // wrapping to explain it).
+          titleSuffix && "lyra-page-header-has-suffix"
+        )}
+      >
       <div className="lyra-page-header-left flex flex-1 min-w-0 items-center gap-3">
         {(panelToggle === "left" || panelToggle === "both") && (
           <>
@@ -314,6 +348,7 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
             </div>
           </>
         )}
+      </div>
       </div>
     </div>
   )

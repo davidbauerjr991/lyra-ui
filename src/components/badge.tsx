@@ -52,7 +52,21 @@ export type BadgeColor =
  */
 export type BadgePillVariant = "subtle" | "solid";
 
-function getPillInlineStyles(
+/**
+ * Exported (was module-private) so other components needing this exact
+ * "soft-bg/strong-text" or "strong-bg/white-text" accent-color pairing —
+ * without wanting the rest of the pill shape (rounded-rect, text padding,
+ * etc.) — can reuse the same CSS-variable lookup instead of re-deriving
+ * it. First reused by `InteractionNavItem`'s single-open-channel `circle`
+ * badge (interaction-nav-item.tsx) to color that badge by channel type
+ * (the same purple/teal/pink `CHANNEL_TYPE_TAG_VARIANT` mapping,
+ * channel-row.tsx, already colors each channel's own `Tag` chip with) —
+ * `circle` shape's own `variant` only covers 6 semantic roles, not the 10
+ * accent color families, so an inline style override (via this same
+ * helper) was the correct way to reach a channel-appropriate color there
+ * without inventing a second, parallel color-resolution function.
+ */
+export function getPillInlineStyles(
   variant: BadgePillVariant,
   color: BadgeColor
 ): React.CSSProperties {

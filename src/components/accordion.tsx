@@ -77,7 +77,7 @@ export interface AccordionProps {
 
 /* ── Per-item row (trigger + content + divider) ── */
 
-function AccordionRow({ item }: { item: AccordionItem }) {
+function AccordionRow({ item, isOnlyItem }: { item: AccordionItem; isOnlyItem: boolean }) {
   return (
     <AccordionPrimitive.Item value={item.id} disabled={item.disabled}>
       <AccordionPrimitive.Header>
@@ -164,8 +164,20 @@ function AccordionRow({ item }: { item: AccordionItem }) {
         <div className="p-4">{item.content}</div>
       </AccordionPrimitive.Content>
 
-      {/* Divider — rendered after every item, including the last one */}
-      <div className="border-b border-lyra-border-subtle" />
+      {/* Divider — rendered after every item, including the last one, EXCEPT
+          when this Accordion only has one item total. A single-item
+          Accordion's own outer container already ends in a rounded border
+          right below the content (see `CUSTOMER_INFO_ACCORDION_CLASSNAME`
+          in AgentNextGenPage.tsx and similar single-item usages) — with
+          only one row, this divider sits directly above that border with
+          nothing below it to separate from, reading as a stray extra line
+          rather than an actual divider between rows. Multi-item Accordions
+          keep it after the last row too (unchanged) since removing it there
+          would make the last row visually stick to the container's bottom
+          edge closer than every other row sticks to its own divider above —
+          this is specifically about the single-item case having nothing to
+          divide in the first place. */}
+      {!isOnlyItem && <div className="border-b border-lyra-border-subtle" />}
     </AccordionPrimitive.Item>
   );
 }
@@ -201,7 +213,7 @@ const Accordion = React.forwardRef<HTMLDivElement, AccordionProps>(
           onValueChange={onValuesChange}
         >
           {items.map((item) => (
-            <AccordionRow key={item.id} item={item} />
+            <AccordionRow key={item.id} item={item} isOnlyItem={items.length === 1} />
           ))}
         </AccordionPrimitive.Root>
       );
@@ -218,7 +230,7 @@ const Accordion = React.forwardRef<HTMLDivElement, AccordionProps>(
         onValueChange={onValueChange}
       >
         {items.map((item) => (
-          <AccordionRow key={item.id} item={item} />
+          <AccordionRow key={item.id} item={item} isOnlyItem={items.length === 1} />
         ))}
       </AccordionPrimitive.Root>
     );

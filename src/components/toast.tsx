@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import * as RadixToast from "@radix-ui/react-toast";
 import { X } from "lucide-react";
 import { Tooltip } from "./tooltip";
@@ -114,6 +114,23 @@ interface ToastProps
   onDismiss?: () => void;
   /** Auto-dismiss after this many ms (0 = no auto-dismiss) */
   duration?: number;
+  /** Externally force this toast into its closed state/exit animation —
+   *  distinct from the dismiss button / swipe / auto-dismiss / Escape paths
+   *  above, all of which originate from Radix's own `onOpenChange`. This is
+   *  the "someone outside this component decided it should close" path
+   *  (see `useToast`'s own `dismissAllToasts`, toast.tsx below) — e.g. a
+   *  "Dismiss All" action closing every open toast AT ONCE, which
+   *  `dismissToast`-in-a-loop can't do: each call updates the SAME
+   *  `toasts` array in its own state update, sure, but there's no way to
+   *  ask an already-mounted `Toast` to play its own exit animation from
+   *  outside without a prop like this — simply removing every id from
+   *  `toasts` immediately would unmount them mid-frame with no animation
+   *  at all. Once set, this drives `open` to `false` the same way the
+   *  internal paths do, just skipping `handleOpenChange`'s own
+   *  `onDismiss` call (the consumer already knows it's closing everything;
+   *  see `dismissAllToasts`'s own comment for how removal is coordinated
+   *  separately, after every toast has had time to animate out together). */
+  forceClosed?: boolean;
 }
 
 const Toast = React.forwardRef<React.ElementRef<typeof RadixToast.Root>, ToastProps>(
@@ -124,6 +141,7 @@ const Toast = React.forwardRef<React.ElementRef<typeof RadixToast.Root>, ToastPr
       title,
       onDismiss,
       duration = 0,
+      forceClosed = false,
       children,
       ...props
     },
@@ -150,6 +168,16 @@ const Toast = React.forwardRef<React.ElementRef<typeof RadixToast.Root>, ToastPr
       },
       [onDismiss]
     );
+
+    // `forceClosed` flips `open` the same way `handleOpenChange` does —
+    // Radix's Root just reflects whichever value `open` reads and paints
+    // the matching `data-state`/exit-animation classes regardless of WHY
+    // it changed — but deliberately doesn't call `onDismiss` itself; see
+    // this prop's own doc comment above for why that's the consumer's job
+    // here, done once for every toast together instead of once per toast.
+    useEffect(() => {
+      if (forceClosed) setOpen(false);
+    }, [forceClosed]);
 
     return (
       <RadixToast.Root
@@ -265,7 +293,18 @@ interface ToastItem {
   variant: ToastVariant;
   title?: string;
   message?: string;
+  /** Auto-dismiss after this many ms — omit (or pass `0`) for a toast that
+   *  should stay open until the agent dismisses it (or the consumer removes
+   *  it programmatically) rather than timing out on its own. Passed straight
+   *  through to `Toast`'s own `duration` prop, which already treats `0` as
+   *  "no auto-dismiss" — see that prop's own doc comment. */
   duration?: number;
+  /** Set by `dismissAllToasts` below, read back by the consumer's own
+   *  `Toast` render loop as that toast's `forceClosed` prop — see `Toast`'s
+   *  own doc comment on `forceClosed` for why this exists instead of just
+   *  clearing `toasts` outright. Not meant to be set directly by a
+   *  consumer. */
+  closing?: boolean;
 }
 
 function useToast() {
@@ -285,7 +324,26 @@ function useToast() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  return { toasts, addToast, dismissToast };
+  // Per explicit request, backs a "Dismiss All" chip shown once more than
+  // one toast is stacked up (see `ToastContainer`'s own consumers) rather
+  // than making the agent close each one individually. Marks every toast
+  // `closing: true` — the consumer's own render loop reads that back as
+  // each `Toast`'s `forceClosed` prop, which flips its `open` state to
+  // `false` and lets Radix play the normal exit animation on ALL of them
+  // AT THE SAME TIME (see `Toast`'s own `forceClosed` doc comment for why
+  // a bare `setToasts([])` here — this function's original, pre-animation
+  // implementation — can't do that: it unmounts every toast immediately,
+  // with no animation at all). Actual removal from `toasts` is deferred by
+  // `ANIMATION_MS` (this file's own top-of-file constant, the same delay
+  // `Toast`'s own `handleOpenChange` already waits before calling
+  // `onDismiss` for a single toast) so the exit animation has time to
+  // finish before the DOM nodes disappear.
+  const dismissAllToasts = useCallback(() => {
+    setToasts((prev) => prev.map((t) => ({ ...t, closing: true })));
+    setTimeout(() => setToasts([]), ANIMATION_MS);
+  }, []);
+
+  return { toasts, addToast, dismissToast, dismissAllToasts };
 }
 
 export { Toast, ToastContainer, useToast, toastVariants };

@@ -143,6 +143,14 @@ function getResponsiveMaxWidth(maxWidth: number): number {
     : maxWidth;
 }
 
+/** Applies `getResponsiveMaxWidth` unless the consumer opted out via
+ *  `disableResponsiveMaxWidth` (see that prop's own doc comment) — in which
+ *  case `maxWidth` is returned as-is, letting the consumer's own computed
+ *  ceiling be the only cap. */
+function resolveMaxWidth(maxWidth: number, disableResponsiveMaxWidth: boolean): number {
+  return disableResponsiveMaxWidth ? maxWidth : getResponsiveMaxWidth(maxWidth);
+}
+
 /* ── Types ── */
 
 export type DraggableVariant = "float" | "docked";
@@ -210,6 +218,23 @@ export interface DraggableProps {
   /** Caps both float resize and docked width-resize (default: 1024 — override per-instance if a panel genuinely needs to go wider/narrower). */
   maxWidth?: number;
   minHeight?: number;
+  /**
+   * Opts out of the built-in "below 1440px viewport, tighten maxWidth to
+   * 800px" heuristic (see `getResponsiveMaxWidth` above) — default false,
+   * preserving that behavior for every existing consumer. Set true when a
+   * consumer computes its OWN, more precise `maxWidth` from real sibling
+   * layout (e.g. "how much room is left once a neighboring column's own
+   * min-width floor is reserved") — that per-render number already
+   * accounts for the actual available space, so the coarse viewport-width
+   * heuristic on top of it only gets in the way: it can cap the panel
+   * BELOW what the consumer's own arbitration already proved was safe,
+   * with no way for the consumer to override it. Confirmed live as a real
+   * bug: a consumer capping at `min(1024, maxDockedWidthForMainFloor)`
+   * (agent-next-gen-v2's shared docked panel) got stuck well under 1024
+   * even with its neighboring column sitting comfortably above its own
+   * floor, purely because the viewport happened to be under 1440px wide.
+   */
+  disableResponsiveMaxWidth?: boolean;
   /** Called when variant changes via the dock toggle button */
   onVariantChange?: (variant: DraggableVariant) => void;
   /**
@@ -257,6 +282,7 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
     minWidth              = 280,
     maxWidth              = 1024,
     minHeight             = 200,
+    disableResponsiveMaxWidth = false,
     onVariantChange,
     renderHeaderControls,
     showHeaderControls = true,
@@ -324,8 +350,8 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
     // on every render (not inside an effect) so the listener, which mounts
     // once, never reads stale values without needing to re-subscribe on
     // every offset/width change during a drag.
-    const latestRef = React.useRef({ variant, offset, width, height, minWidth, maxWidth, minHeight, onWidthChange });
-    latestRef.current = { variant, offset, width, height, minWidth, maxWidth, minHeight, onWidthChange };
+    const latestRef = React.useRef({ variant, offset, width, height, minWidth, maxWidth, minHeight, onWidthChange, disableResponsiveMaxWidth });
+    latestRef.current = { variant, offset, width, height, minWidth, maxWidth, minHeight, onWidthChange, disableResponsiveMaxWidth };
 
     // Shared by the window-resize handler right below AND the mount/
     // variant-change effect further down — given the panel's CURRENT
@@ -351,8 +377,8 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
       const handleResize = () => {
         const rect = rootRef.current?.getBoundingClientRect();
         if (!rect) return;
-        const { variant, offset, width, height, minWidth, maxWidth, minHeight, onWidthChange } = latestRef.current;
-        const effectiveMaxWidth = getResponsiveMaxWidth(maxWidth);
+        const { variant, offset, width, height, minWidth, maxWidth, minHeight, onWidthChange, disableResponsiveMaxWidth } = latestRef.current;
+        const effectiveMaxWidth = resolveMaxWidth(maxWidth, disableResponsiveMaxWidth);
         if (variant === "docked") {
           // Combines two independent reasons width might need to shrink:
           // the panel's right edge overflowing the (now narrower) viewport,
@@ -373,6 +399,32 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
       window.addEventListener("resize", handleResize);
       return () => window.removeEventListener("resize", handleResize);
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Re-clamp DOCKED `width` whenever `maxWidth`/`minWidth` THEMSELVES
+    // change — not just on an actual browser `resize` event (the handler
+    // just above) or an active drag (the resize handlers further down,
+    // both of which already read `maxWidth`/`minWidth` fresh via
+    // `latestRef` on every pointer-move). A consumer that computes
+    // `maxWidth` from its own layout — "how much room is left once a
+    // sibling's own min-width floor is reserved" — can have that number
+    // shrink for reasons that never fire a real `resize` event at all: a
+    // sibling nav rail expanding, another panel opening, anything that
+    // only changes THIS SAME window's internal layout rather than the
+    // window itself. Confirmed live as a real gap: `width` (seeded once
+    // from `defaultWidth`, otherwise only ever touched by an actual drag
+    // or the window-resize handler above) just kept rendering at its old,
+    // now-too-wide value in that case, overflowing past whatever newly-
+    // tightened space its consumer had actually reserved for it, with no
+    // `resize` event to ever correct it. Scoped to `"docked"` only — float
+    // has its own separate offset/viewport-containment concerns (the
+    // effect below) not exercised by this report.
+    React.useEffect(() => {
+      if (variant !== "docked") return;
+      const effectiveMaxWidth = resolveMaxWidth(maxWidth, disableResponsiveMaxWidth);
+      const newW = Math.max(minWidth, Math.min(effectiveMaxWidth, width));
+      if (newW !== width) { setWidth(newW); onWidthChange?.(newW); }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [variant, minWidth, maxWidth, disableResponsiveMaxWidth]);
 
     // Float position containment on mount / on every transition into float
     // — see "Viewport Containment" above. The window-resize handler just
@@ -472,7 +524,7 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
         const { left, top } = resizeStart.current;
         const maxWViewport = window.innerWidth  - left;
         const maxHViewport = window.innerHeight - top;
-        const newW = Math.min(getResponsiveMaxWidth(maxWidth), maxWViewport, Math.max(minWidth, resizeStart.current.w + ev.clientX - resizeStart.current.mx));
+        const newW = Math.min(resolveMaxWidth(maxWidth, disableResponsiveMaxWidth), maxWViewport, Math.max(minWidth, resizeStart.current.w + ev.clientX - resizeStart.current.mx));
         setWidth(newW); onWidthChange?.(newW);
         const newH = Math.min(maxHViewport, Math.max(minHeight, resizeStart.current.h + ev.clientY - resizeStart.current.my));
         setHeight(newH);
@@ -504,7 +556,7 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
       onResizeStateChange?.(true);
       const onMove = (ev: MouseEvent) => {
         if (!resizeStart.current) return;
-        const newW = Math.min(getResponsiveMaxWidth(maxWidth), rightEdge, Math.max(minWidth, resizeStart.current.w + resizeStart.current.mx - ev.clientX));
+        const newW = Math.min(resolveMaxWidth(maxWidth, disableResponsiveMaxWidth), rightEdge, Math.max(minWidth, resizeStart.current.w + resizeStart.current.mx - ev.clientX));
         setWidth(newW); onWidthChange?.(newW);
       };
       const onUp = () => {

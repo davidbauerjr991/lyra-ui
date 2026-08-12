@@ -184,7 +184,28 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
           ref={ref}
           role="region"
           aria-label={headerTitle || "Side panel"}
-          className={cn("shrink-0 overflow-hidden bg-lyra-bg-surface-container-subtle", open && border, className)}
+          // `h-full` — explicit, not left to this flex item's own default
+          // cross-axis `align-items: stretch` (which a plain flex-ROW
+          // parent, e.g. `AgentNextGenPage`'s "Customer Information panel +
+          // content column" row, would otherwise apply here implicitly).
+          // Confirmed live: relying on implicit stretch alone left `inner`
+          // below (and `PanelContent` inside it, both already `h-full`/
+          // `flex-1`) without a reliably DEFINITE height to resolve
+          // against in docked/pinned mode specifically — internal
+          // scrolling silently never engaged, while the unpinned/full-
+          // screen branch below (which reaches its height a completely
+          // different way — `position: absolute` against the nearest
+          // POSITIONED ancestor, a real flex-column `flex-1` box with an
+          // unambiguous MAIN-axis-grow height, not cross-axis stretch)
+          // worked correctly the whole time. An explicit `h-full` here
+          // makes this box's own height a plain, unambiguous percentage
+          // resolution against its parent instead of depending on
+          // implicit stretch ever being treated as "definite" for `inner`/
+          // `PanelContent` to build on — same fix mirrored on the
+          // `AgentNextGenPage` caller's own wrapper around this component,
+          // since that wrapper had the identical implicit-stretch gap one
+          // level higher.
+          className={cn("shrink-0 h-full overflow-hidden bg-lyra-bg-surface-container-subtle", open && border, className)}
           style={{ width: open ? currentWidth : 0, transition: widthTransition }}
           {...props}
         >
