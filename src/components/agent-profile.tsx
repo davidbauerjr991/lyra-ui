@@ -28,7 +28,19 @@ import { SearchInput } from "./search-input";
    getting a distinct glyph each — per that same request, they're meant to
    read as "flavors of Unavailable," not 15 new semantically-distinct
    states `StatusIcon`/`Avatar`/anything else in this file would need to
-   tell apart. Add a real per-reason icon later if that ever changes. */
+   tell apart. Add a real per-reason icon later if that ever changes.
+
+   `"working"`, per a later explicit request ("when an agent is in a call
+   the status should change to 'working' — do not add this as a selectable
+   status"): a SYSTEM-DRIVEN status, not a manual one. Deliberately left
+   OUT of `allStatuses` below (the list the status menu actually renders),
+   so it never appears in Favorites, "All Codes," or search results, and an
+   agent can never pick it by hand — only a consumer's own `status` prop
+   ever sets it (e.g. an effect watching for a live voice call, see
+   `AgentNextGenPage.tsx`'s own `isOnVoiceCall`). Still a completely normal
+   member of this union otherwise — `statusConfig`/`StatusIcon`/`Avatar`
+   all handle it exactly like every selectable status — the ONLY thing that
+   makes it unpickable is its absence from `allStatuses`. */
 
 export type AgentStatus =
   | "available"
@@ -47,7 +59,8 @@ export type AgentStatus =
   | "back-office"
   | "do-not-disturb"
   | "end-of-shift"
-  | "emergency";
+  | "emergency"
+  | "working";
 
 export interface AgentProfileProps {
   name: string;
@@ -147,6 +160,15 @@ const statusConfig: Record<AgentStatus, { label: string; color: string; textColo
   "do-not-disturb":     { label: "Do Not Disturb",          ...UNAVAILABLE_STATUS_STYLE },
   "end-of-shift":       { label: "End of Shift",            ...UNAVAILABLE_STATUS_STYLE },
   emergency:            { label: "Emergency",               ...UNAVAILABLE_STATUS_STYLE },
+  // Per explicit request ("the badge should be a warning with a dot"): NO
+  // `icon` field, unlike every other status above — `StatusIcon` below
+  // renders a plain colored dot (no glyph) for any status missing one, and
+  // this is deliberately the one status that wants that bare-dot look
+  // rather than a check/minus/whatever glyph. `badgeVariant: "warning"` is
+  // still set (previously that fallback path ignored `badgeVariant`
+  // entirely and always rendered `variant="neutral"` — see `StatusIcon`'s
+  // own fix) so the dot itself actually reads warning/orange, not gray.
+  working:              { label: "Working",                 color: "bg-lyra-status-warning-strong", textColor: "text-lyra-status-warning-strong", badgeVariant: "warning" },
 };
 
 /** Status menu row icon — circle-shape `Badge` with the status glyph as
@@ -162,8 +184,16 @@ function StatusIcon({ status, className }: { status: AgentStatus; className?: st
       </Badge>
     );
   }
+  // Was hardcoded `variant="neutral"` regardless of this status's OWN
+  // `badgeVariant` (only ever reachable before now via a status with
+  // neither `icon` nor `badgeVariant` set at all, so the two happened to
+  // never conflict) — per explicit request ("the badge should be a warning
+  // with a dot"), `"working"` (statusConfig above) sets `badgeVariant:
+  // "warning"` with NO `icon`, which needs this same bare-dot rendering
+  // but colored warning/orange, not gray. `badgeVariant ?? "neutral"` keeps
+  // the old gray-dot fallback for any status that genuinely has neither.
   return (
-    <Badge shape="circle" variant="neutral" size="sm" className={className} aria-label={statusConfig[status].label}>
+    <Badge shape="circle" variant={badgeVariant ?? "neutral"} size="sm" className={className} aria-label={statusConfig[status].label}>
       <span className="block h-2 w-2 rounded-full bg-white" aria-hidden="true" />
     </Badge>
   );

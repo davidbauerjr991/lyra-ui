@@ -13,18 +13,44 @@ import { cn } from "../lib/utils";
 
 /* ── Variants ── */
 
+// `bg-lyra-bg-surface-overlay` (base) is a solid color in BOTH themes — see
+// lyra-tokens.css (`#ffffff` / `#2e2e2e`). The variant tints below, though,
+// are alpha `rgba(...)` colors in dark mode specifically (`lyra-tokens.css`'s
+// dark-mode `--lyra-color-status-*-subtle` block — light mode's own
+// versions are opaque hex, which is why this bug only showed up in dark
+// mode). Per explicit request ("without updating the color palette... put a
+// background behind the toast container so it is not transparent"): rather
+// than touch those token values, each variant's tint is applied via
+// `bg-[linear-gradient(<tint>,<tint>)]` — a `background-image`, a DIFFERENT
+// CSS property from the base's `background-color` — instead of the
+// `bg-lyra-status-*-subtle` utility (`background-color`) that was here
+// before. Two `background-color` utilities on the same element conflict
+// under `cn`'s `tailwind-merge` (only the LAST one in the merged class list
+// actually survives), so the base's solid backdrop was being silently
+// dropped from the DOM entirely whenever a variant applied its own
+// `background-color` tint — there was no solid layer left underneath the
+// alpha tint at all, in any theme; it read fine in light mode purely
+// because light mode's own tint happens to already be an opaque hex.
+// `background-image` and `background-color` don't conflict (different
+// property, different `tailwind-merge` group), and `background-image`
+// always paints ON TOP of `background-color` for the same box (per the CSS
+// background-layering spec) — so the solid base survives, the alpha tint
+// paints over it, and the combined result is fully opaque in both themes,
+// with the exact same rendered color as before (same token, so light mode's
+// already-opaque look is pixel-identical; dark mode's is now backed by the
+// solid surface instead of the page/backdrop bleeding through).
 const toastVariants = cva(
   "flex min-h-[48px] w-[400px] items-start gap-3 rounded-lyra-lg border bg-lyra-bg-surface-overlay p-4 shadow-lg",
   {
     variants: {
       variant: {
         warning:
-          "border-lyra-status-warning-strong bg-lyra-status-warning-subtle",
+          "border-lyra-status-warning-strong bg-[linear-gradient(var(--lyra-color-status-warning-subtle),var(--lyra-color-status-warning-subtle))]",
         error:
-          "border-lyra-status-critical-strong bg-lyra-status-critical-subtle",
-        info: "border-lyra-status-info-strong bg-lyra-status-info-subtle",
+          "border-lyra-status-critical-strong bg-[linear-gradient(var(--lyra-color-status-critical-subtle),var(--lyra-color-status-critical-subtle))]",
+        info: "border-lyra-status-info-strong bg-[linear-gradient(var(--lyra-color-status-info-subtle),var(--lyra-color-status-info-subtle))]",
         success:
-          "border-lyra-status-success-strong bg-lyra-status-success-subtle",
+          "border-lyra-status-success-strong bg-[linear-gradient(var(--lyra-color-status-success-subtle),var(--lyra-color-status-success-subtle))]",
       },
     },
     defaultVariants: {

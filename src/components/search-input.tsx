@@ -50,7 +50,18 @@ const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
             "[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none",
             "placeholder:text-lyra-fg-disabled",
             !readonly && "hover:border-lyra-state-border-hover-neutral",
-            !readonly && "focus:outline-none focus:border-lyra-border-active focus:ring-2 focus:ring-lyra-border-active/20",
+            // Per explicit follow-up request — see input.tsx's own fuller
+            // comment on the mouse-vs-keyboard focus-ring split (and on why
+            // it has to be driven by our own tracked input-modality
+            // attribute, not `:focus-visible` — the exact bug a real user
+            // report caught right here, on this field: clicking into this
+            // search box with the mouse still showed the bold keyboard
+            // ring, since `:focus-visible` always matches a text `<input>`
+            // regardless of input method).
+            !readonly &&
+              "focus:border-lyra-border-active [html[data-lyra-input-modality=keyboard]_&:focus]:outline-none [html[data-lyra-input-modality=keyboard]_&:focus]:ring-2 [html[data-lyra-input-modality=keyboard]_&:focus]:ring-lyra-border-focus [html[data-lyra-input-modality=keyboard]_&:focus]:ring-offset-2",
+            !readonly &&
+              "[html:not([data-lyra-input-modality=keyboard])_&:focus]:outline-none [html:not([data-lyra-input-modality=keyboard])_&:focus]:ring-2 [html:not([data-lyra-input-modality=keyboard])_&:focus]:ring-lyra-border-active/20",
             readonly && "bg-lyra-bg-surface-canvas cursor-default pointer-events-none",
             "disabled:opacity-40 disabled:border-transparent disabled:hover:border-transparent disabled:cursor-not-allowed disabled:bg-lyra-bg-disabled"
           )}

@@ -199,7 +199,17 @@ const DateTimePicker = React.forwardRef<HTMLDivElement, DateTimePickerProps>(
       size === "sm" ? "h-8" : "h-9",
       "bg-lyra-bg-field text-lyra-fg-default",
       "border-lyra-border-strong hover:border-lyra-state-border-hover-neutral",
-      "focus-within:border-lyra-border-active focus-within:ring-2 focus-within:ring-lyra-border-active/20",
+      // ADA-compliance focus indicator: same focus-visible ring buttons/tabs
+      // use (see input.tsx for the fuller comment), applied focus-within
+      // since this wraps the trigger's inner content, not a real <input>.
+      // Per explicit follow-up request, split via our own tracked
+      // input-modality attribute (input-modality.ts), NOT
+      // `:has(:focus-visible)` — see input-modality.ts's own fuller
+      // comment on why that pseudo-class can't distinguish mouse from
+      // keyboard on a text field.
+      "focus-within:border-lyra-border-active",
+      "[html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-2 [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-lyra-border-focus [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-offset-2",
+      "[html:not([data-lyra-input-modality=keyboard])_&:focus-within]:ring-2 [html:not([data-lyra-input-modality=keyboard])_&:focus-within]:ring-lyra-border-active/20",
       disabled && "bg-lyra-bg-disabled border-transparent cursor-not-allowed pointer-events-none",
       readonly && "bg-lyra-bg-surface-canvas cursor-default pointer-events-none"
     );
@@ -361,7 +371,17 @@ const DateRangeTimePicker = React.forwardRef<HTMLDivElement, DateRangeTimePicker
       size === "sm" ? "h-8" : "h-9",
       "bg-lyra-bg-field text-lyra-fg-default",
       "border-lyra-border-strong hover:border-lyra-state-border-hover-neutral",
-      "focus-within:border-lyra-border-active focus-within:ring-2 focus-within:ring-lyra-border-active/20",
+      // ADA-compliance focus indicator: same focus-visible ring buttons/tabs
+      // use (see input.tsx for the fuller comment), applied focus-within
+      // since this wraps the trigger's inner content, not a real <input>.
+      // Per explicit follow-up request, split via our own tracked
+      // input-modality attribute (input-modality.ts), NOT
+      // `:has(:focus-visible)` — see input-modality.ts's own fuller
+      // comment on why that pseudo-class can't distinguish mouse from
+      // keyboard on a text field.
+      "focus-within:border-lyra-border-active",
+      "[html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-2 [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-lyra-border-focus [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-offset-2",
+      "[html:not([data-lyra-input-modality=keyboard])_&:focus-within]:ring-2 [html:not([data-lyra-input-modality=keyboard])_&:focus-within]:ring-lyra-border-active/20",
       disabled && "bg-lyra-bg-disabled border-transparent cursor-not-allowed pointer-events-none",
       readonly && "bg-lyra-bg-surface-canvas cursor-default pointer-events-none"
     );

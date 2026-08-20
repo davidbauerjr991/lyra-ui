@@ -64,7 +64,7 @@ function TransferBtn({ onClick, disabled, children, title }: {
         "flex items-center justify-center w-8 h-8 rounded-lyra-sm border border-lyra-border-default",
         "text-lyra-fg-action bg-lyra-bg-control transition-colors",
         "hover:bg-lyra-state-hover hover:text-lyra-fg-default",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
         "disabled:opacity-40 disabled:pointer-events-none"
       )}
     >{children}</button>
@@ -140,7 +140,7 @@ function Panel({ label, labelTooltip, items, highlighted, onToggle, onRangeToggl
           <Label label={label} disabled={disabled} readonly={readonly} />
           {labelTooltip && (
             <Tooltip content={labelTooltip} placement="top">
-              <button type="button" className="flex items-center text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors focus:outline-none">
+              <button type="button" className="flex items-center text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors rounded-lyra-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2">
                 <CircleHelp className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
               </button>
             </Tooltip>

@@ -110,15 +110,23 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
             "w-full rounded-lyra-sm border lyra-body-md transition-colors resize-y",
             "px-3 py-2",
             "placeholder:text-lyra-fg-disabled",
-            "focus:outline-none",
+            // ADA-compliance focus indicator: same focus-visible ring
+            // buttons/tabs use (see input.tsx for the fuller comment). Per
+            // explicit follow-up request, layered with the ORIGINAL
+            // pre-unification mouse/programmatic-focus ring — split on our
+            // own tracked input-modality attribute, NOT `:focus-visible`
+            // (see input.tsx's own fuller comment on why that pseudo-class
+            // can't distinguish mouse from keyboard on a text field).
+            "[html[data-lyra-input-modality=keyboard]_&:focus]:outline-none [html[data-lyra-input-modality=keyboard]_&:focus]:ring-2 [html[data-lyra-input-modality=keyboard]_&:focus]:ring-offset-2",
+            "[html:not([data-lyra-input-modality=keyboard])_&:focus]:outline-none [html:not([data-lyra-input-modality=keyboard])_&:focus]:ring-2",
             // States
             error
-              ? "border-lyra-status-critical-strong bg-lyra-status-critical-subtle text-lyra-fg-default focus:ring-2 focus:ring-lyra-status-critical-strong/20"
+              ? "border-lyra-status-critical-strong bg-lyra-status-critical-subtle text-lyra-fg-default [html[data-lyra-input-modality=keyboard]_&:focus]:ring-lyra-status-critical-strong [html:not([data-lyra-input-modality=keyboard])_&:focus]:ring-lyra-status-critical-strong/20"
               : readonly
               ? "border-lyra-border-strong bg-lyra-bg-surface-canvas text-lyra-fg-default cursor-default resize-none pointer-events-none"
               : disabled
               ? "border-transparent bg-lyra-bg-disabled text-lyra-fg-disabled cursor-not-allowed resize-none"
-              : "border-lyra-border-strong bg-lyra-bg-field text-lyra-fg-default hover:border-lyra-state-border-hover-neutral focus:border-lyra-border-active focus:ring-2 focus:ring-lyra-border-active/20"
+              : "border-lyra-border-strong bg-lyra-bg-field text-lyra-fg-default hover:border-lyra-state-border-hover-neutral focus:border-lyra-border-active [html[data-lyra-input-modality=keyboard]_&:focus]:ring-lyra-border-focus [html:not([data-lyra-input-modality=keyboard])_&:focus]:ring-lyra-border-active/20"
           )}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `${inputId}-error` : undefined}

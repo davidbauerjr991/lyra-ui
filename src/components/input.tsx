@@ -78,14 +78,35 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
               size === "sm" ? "h-8" : "h-9",
               "w-full rounded-lyra-sm border lyra-body-md transition-colors",
               "placeholder:text-lyra-fg-disabled",
-              "focus:outline-none",
+              // Per explicit follow-up request ("I want the focus state of
+              // the input to be what it was before BUT have the focus
+              // border when a user is not using the mouse (keyboard
+              // only)"): two DISTINCT focus treatments layered on top of
+              // each other. NOT split via `:focus-visible` — a real, shipped
+              // bug in a first attempt at this: `:focus-visible` ALWAYS
+              // matches on a text-type `<input>` regardless of whether
+              // focus came from a click or Tab (a documented browser
+              // heuristic — see input-modality.ts's own fuller comment for
+              // why), so `:not(:focus-visible)` never actually applied and
+              // a plain mouse click still showed the bold keyboard ring
+              // (confirmed via user report on `SearchInput`). Split instead
+              // on our own tracked `data-lyra-input-modality` attribute
+              // (input-modality.ts) — `html[data-lyra-input-modality=
+              // keyboard] &:focus` is the bold outer ring this session's
+              // earlier focus-ring unification added (ADA-compliance pass,
+              // same treatment Button/Tab use); `html:not([data-lyra-
+              // input-modality=keyboard]) &:focus` restores the ORIGINAL
+              // pre-unification ring this field had (a soft 20%-opacity
+              // inset ring) for mouse/programmatic focus.
+              "[html[data-lyra-input-modality=keyboard]_&:focus]:outline-none [html[data-lyra-input-modality=keyboard]_&:focus]:ring-2 [html[data-lyra-input-modality=keyboard]_&:focus]:ring-offset-2",
+              "[html:not([data-lyra-input-modality=keyboard])_&:focus]:outline-none [html:not([data-lyra-input-modality=keyboard])_&:focus]:ring-2",
               startIcon ? "pl-9" : "pl-3",
               endIcon ? "pr-9" : "pr-3",
               error
-                ? "border-lyra-status-critical-strong bg-lyra-status-critical-subtle text-lyra-fg-default focus:ring-2 focus:ring-lyra-status-critical-strong/20"
+                ? "border-lyra-status-critical-strong bg-lyra-status-critical-subtle text-lyra-fg-default [html[data-lyra-input-modality=keyboard]_&:focus]:ring-lyra-status-critical-strong [html:not([data-lyra-input-modality=keyboard])_&:focus]:ring-lyra-status-critical-strong/20"
                 : readonly
                 ? "border-lyra-border-strong bg-lyra-bg-surface-canvas text-lyra-fg-default cursor-default pointer-events-none"
-                : "border-lyra-border-strong bg-lyra-bg-field text-lyra-fg-default hover:border-lyra-state-border-hover-neutral focus:border-lyra-border-active focus:ring-2 focus:ring-lyra-border-active/20",
+                : "border-lyra-border-strong bg-lyra-bg-field text-lyra-fg-default hover:border-lyra-state-border-hover-neutral focus:border-lyra-border-active [html[data-lyra-input-modality=keyboard]_&:focus]:ring-lyra-border-focus [html:not([data-lyra-input-modality=keyboard])_&:focus]:ring-lyra-border-active/20",
               disabled &&
                 // `pointer-events-none` (matching the `readonly` branch
                 // above) blocks `:hover` from matching at all — without it,

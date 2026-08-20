@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Plus, X, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Plus, X, ChevronLeft, ChevronRight, Search, LayoutGrid } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Menu } from "./menu";
 import { Input } from "./input";
@@ -74,6 +74,24 @@ export interface CreateNewContact {
   /** Skill records only: current estimated wait time, in seconds — see
    *  `queueCount`. */
   waitTimeSeconds?: number;
+  /** Optional leading element shown to the left of the title/subtitle
+   *  column in `ContactRow` — e.g. a headset for an agent record, a
+   *  single person for a customer. Distinct from `CreateNewCategory.icon`
+   *  (that one labels the CATEGORY list itself, one icon per category);
+   *  this one labels each individual CONTACT row so a mixed list — e.g.
+   *  the Outbound picker's "All"/favorites group, which can show agents,
+   *  customers, teams, and skills side by side with no group heading
+   *  between them — still lets an agent tell what kind of record each row
+   *  is at a glance. Per explicit request, matches `ListItem`'s own
+   *  "With leading icon" story treatment (ListItem.stories.tsx) rather
+   *  than a bare icon: pass a fully-built node (typically the icon
+   *  wrapped in its own colored circle — same
+   *  `<div className="h-9 w-9 rounded-full ... flex items-center
+   *  justify-center ...">` shell every example in that story hand-builds),
+   *  not just the raw glyph — `ContactRow` renders it as-is, with no
+   *  sizing/color logic of its own. Omit for the plain, icon-less row
+   *  every existing consumer already renders. */
+  categoryIcon?: React.ReactNode;
 }
 
 /** "Queue: {N}   Wait Time: {M}m {S}s" — the skill-row secondary text. */
@@ -168,6 +186,18 @@ export interface CreateNewOutboundContact extends CreateNewContact {
    *  with no email on file (or no email concept at all, e.g. a team) just
    *  never match a search on this field. */
   email?: string;
+  /** Per explicit request: skips the "detail" screen (Select Channel/
+   *  Select Phone/Outbound Skill/Start Interaction) entirely for this
+   *  contact — picking any channel (row click, per-row hover flyout, or
+   *  the header's own "Select Channel" field when reached via
+   *  `OutboundAddButton`'s `initialChannel`) calls `onStartCall`
+   *  immediately with resolved defaults (first available phone/address
+   *  for that channel, first `skillOptions` entry) instead of pushing the
+   *  form. Meant for records with no real per-contact address to choose
+   *  (agents, skill queues) — a customer, which genuinely can have several
+   *  numbers/addresses on file worth picking between, should leave this
+   *  unset and keep the full detail screen. */
+  quickLaunch?: boolean;
 }
 
 export interface CreateNewOutboundGroup {
@@ -175,6 +205,11 @@ export interface CreateNewOutboundGroup {
   id: string;
   /** Select option label, e.g. "Agents". */
   label: string;
+  /** Optional leading icon shown to the left of `label` in the "Choose
+   *  group" dropdown (`Select`'s own `SelectOption.icon`, select.tsx) —
+   *  e.g. a person glyph for "Customers", a headset for "Agents". Omit for
+   *  the plain, icon-less row every existing consumer already renders. */
+  icon?: React.ReactNode;
   /** "contacts" (default when `contacts` is set) shows search + a paginated
    *  contact list. "dialpad" shows the phone quick-dial field instead of a
    *  list. "empty" always shows `emptyMessage`, with no favoriting concept.
@@ -231,21 +266,27 @@ export interface CreateNewOutboundConfig {
    *  the first entry in `groups`). */
   defaultGroupId?: string;
   /**
-   * Placeholder for the search field above the group `Select` — one
+   * Visible label for the search field above the group `Select` — one
    * string for the whole outbound flow (default: "Search..."), NOT
-   * per-group. This used to be a per-`CreateNewOutboundGroup` field (so
-   * switching the filter changed the placeholder to e.g. "Search Agents"),
-   * removed per explicit request/confirmed UX bug: `contactMatchesSearch`
-   * matches name, subtitle, phone, AND email the exact same way regardless
-   * of which group is selected — the filter only narrows which contacts
-   * that search runs against, it doesn't change what kind of query is
-   * accepted. A placeholder that changed per group implied the opposite
-   * (that switching to "Agents" somehow made the box name-only, or
-   * accepted different input than "All" did), which wasn't true and was
-   * confusing. One placeholder, always accurate regardless of the
-   * selected filter.
+   * per-group. This used to be a per-`CreateNewOutboundGroup` PLACEHOLDER
+   * (so switching the filter changed it to e.g. "Search Agents"), removed
+   * per explicit request/confirmed UX bug: `contactMatchesSearch` matches
+   * name, subtitle, phone, AND email the exact same way regardless of
+   * which group is selected — the filter only narrows which contacts that
+   * search runs against, it doesn't change what kind of query is accepted.
+   * Text that changed per group implied the opposite (that switching to
+   * "Agents" somehow made the box name-only, or accepted different input
+   * than "All" did), which wasn't true and was confusing. One label,
+   * always accurate regardless of the selected filter.
+   *
+   * Rendered as a real `<label>` above the field (`Input`'s own `label`
+   * prop), not placeholder text, per explicit follow-up request — a
+   * placeholder disappears the moment the user starts typing, so a real
+   * label is both more ADA-compliant and keeps the field's purpose visible
+   * while in use. Field renamed from `searchPlaceholder` to `searchLabel`
+   * to match.
    */
-  searchPlaceholder?: string;
+  searchLabel?: string;
   /** Call/Email/SMS/WhatsApp definitions — drives both the per-row hover
    *  flyout and the detail screen's "Select Channel" dropdown. */
   channelOptions: CreateNewChannelOption[];
@@ -405,6 +446,21 @@ function ContactRow({
         highlighted && "bg-lyra-state-hover"
       )}
     >
+      {/* Optional leading category icon (`CreateNewContact.categoryIcon`)
+          — per explicit request, matches `ListItem`'s own "With leading
+          icon" story treatment (ListItem.stories.tsx) rather than sitting
+          inline right before the name: a self-contained node (the
+          consumer builds its own colored circle shell, same as every
+          `leading` example in that story) rendered as its own flex item to
+          the LEFT of the whole title/subtitle column, not squeezed onto
+          the title's own line. Purely additive — a contact that doesn't
+          set one renders exactly as before, no empty leading slot
+          reserving space. */}
+      {contact.categoryIcon && (
+        <span aria-hidden="true" className="flex-shrink-0">
+          {contact.categoryIcon}
+        </span>
+      )}
       {(() => {
         const hasQueueText = contact.queueCount != null && contact.waitTimeSeconds != null;
         const secondaryText = hasQueueText
@@ -547,9 +603,14 @@ function OutboundContactRow({
 
 /** Loose "does this look like a real email address" check for the "Continue
  *  with" ad-hoc flow below — deliberately simple (no RFC 5322 edge cases)
- *  since this only ever gates a UI affordance, not actual delivery. */
+ *  since this only ever gates a UI affordance, not actual delivery.
+ *  Exported (not this-file-private) so any OTHER ad-hoc "type an address"
+ *  affordance elsewhere in a consuming app can reuse the exact same check
+ *  instead of re-deriving an equivalent regex locally — see
+ *  `agent-next-gen-add-channel-button.tsx` in agent-next-gen-v2 for the
+ *  consumer this was exported for. */
 const EMAIL_LOOKS_VALID_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-function looksLikeEmail(value: string): boolean {
+export function looksLikeEmail(value: string): boolean {
   return EMAIL_LOOKS_VALID_PATTERN.test(value);
 }
 
@@ -560,9 +621,10 @@ function looksLikeEmail(value: string): boolean {
  *  context at all, so this just checks the string is mostly digits/phone
  *  punctuation (`+`, spaces, parens, dashes, dots) and has a plausible
  *  digit count (7–15, the E.164 range) — good enough to gate a "Continue
- *  with" button, not meant to be a real phone-validation library. */
+ *  with" button, not meant to be a real phone-validation library. Exported
+ *  for the same reuse reason as `looksLikeEmail` above. */
 const PHONE_LOOKS_VALID_SHAPE_PATTERN = /^\+?[\d\s().-]+$/;
-function looksLikePhoneNumber(value: string): boolean {
+export function looksLikePhoneNumber(value: string): boolean {
   if (!PHONE_LOOKS_VALID_SHAPE_PATTERN.test(value)) return false;
   const digitCount = value.replace(/\D/g, "").length;
   return digitCount >= 7 && digitCount <= 15;
@@ -1296,6 +1358,21 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     // click simply replaces whatever was here before.
     const [adHocContact, setAdHocContact] = useState<CreateNewOutboundContact | null>(null);
 
+    // Which group to return to when backing out of the Dial Pad screen (see
+    // `handleBackFromDialpad`/the Dial Pad ghost button below) — captured
+    // at the moment the ghost button is clicked, since `setActiveGroup`
+    // (unlike `pushScreen`/`popScreen`) swaps screen 1's content in place
+    // rather than growing the back-stack, so there's no stack entry for a
+    // "back" press to naturally pop to. `null` (not defaulted to some
+    // group id up front) doubly serves as "the ghost button was never
+    // clicked this session" — `handleBackFromDialpad` below falls back to
+    // `initialOutboundGroupId` only if it's still null when back is
+    // pressed, which shouldn't normally happen (Dial Pad is only
+    // reachable BY clicking the ghost button, which always sets this
+    // first) but keeps the back button inert-safe rather than a no-op if
+    // it somehow is.
+    const [priorOutboundGroupId, setPriorOutboundGroupId] = useState<string | null>(null);
+
     const isDrillDown = !isOutboundFlow && !!categories && categories.length > 0;
     const screen = stack[stack.length - 1];
 
@@ -1319,6 +1396,7 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
           setSearch("");
           setPhone({ countryCode: "us", number: "" });
           setPage(1);
+          setPriorOutboundGroupId(null);
         }, 200);
         return () => clearTimeout(t);
       }
@@ -1386,6 +1464,25 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
       resolveOutboundDetailField(contact, channel, outbound?.phoneOptions ?? []).defaultValue;
 
     const goToDetail = (groupId: string, contact: CreateNewOutboundContact, channel: ChannelType) => {
+      // Per explicit request: a `quickLaunch` contact (agents/skill queues
+      // — see that field's own doc comment) skips this whole "detail"
+      // screen — there's no real per-contact address worth stopping to
+      // pick, so picking a channel launches immediately with the same
+      // defaults the detail screen's own fields would have opened to
+      // (first available address for this channel, first skill option).
+      // Mirrors `handleStartCall`'s own `outbound.onStartCall?.(...)` call
+      // below almost exactly, just fired straight from the channel pick
+      // instead of from a later "Start Interaction" press.
+      if (contact.quickLaunch) {
+        outbound?.onStartCall?.({
+          contact,
+          channel,
+          phone: defaultDetailValueFor(contact, channel),
+          skillId: outbound?.skillOptions?.[0]?.value ?? "",
+        });
+        setOpen(false);
+        return;
+      }
       setDetailChannel(channel);
       setDetailPhone(defaultDetailValueFor(contact, channel));
       // First skill, not `""` — see `detailSkill`'s own doc comment above.
@@ -1437,6 +1534,40 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     // CreateNewOutboundGroup.kind doc comment).
     const allOutboundContacts = React.useMemo(
       () => (outbound?.groups ?? []).flatMap((g) => g.contacts ?? []),
+      [outbound]
+    );
+    // Which group each contact belongs to — used only to render a section
+    // separator between groups once the "All"/favorites group's results
+    // span more than one underlying group (e.g. a search matching both
+    // Agents and Customers), just below. Kept separate from
+    // `allOutboundContacts` above rather than folded into it — every OTHER
+    // consumer of that list (plain contact-by-id lookups) has no use for
+    // which group a contact came from.
+    //
+    // Keyed by the contact OBJECT itself, not `contact.id` — a real,
+    // shipped bug: a contact's `id` is NOT guaranteed unique across
+    // groups. Once a "teams"-kind group's `subFilter` picks a team, that
+    // group's own `contacts` gets swapped to that team's real member
+    // roster (`OUTBOUND_TEAM_MEMBERS`, agent-next-gen-outbound-data.tsx) —
+    // the SAME underlying agent records already present in the "agents"
+    // group, just run through the same `tagOpenChannels` mapper a second
+    // time (a fresh object, same `id`). An id-keyed `Map` can't tell those
+    // two occurrences apart: every group after "agents" in iteration order
+    // silently overwrote that shared id's entry, so a team member's row —
+    // even the one genuinely rendered from the "agents" group's own
+    // contiguous block — read its label back as "Teams" instead of
+    // "Agents" (and, since `allOutboundContacts` now legitimately contains
+    // that same agent twice — once per group — a search matching both
+    // surfaced it twice too). Objects are unique per group by construction
+    // (each group maps its own contacts through `tagOpenChannels`
+    // independently, so no two groups ever share an object reference even
+    // when they share an id), so keying on the object itself makes each
+    // occurrence resolve to the group it actually, physically came from.
+    const contactGroupLabel = React.useMemo(
+      () =>
+        new Map<CreateNewOutboundContact, string>(
+          (outbound?.groups ?? []).flatMap((g) => (g.contacts ?? []).map((c) => [c, g.label] as const))
+        ),
       [outbound]
     );
     const activeGroupContacts =
@@ -1625,6 +1756,22 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
       setOpen(false);
     };
 
+    // Dial Pad's own "back" — returns to whichever group was active before
+    // the ghost button below switched to it (`priorOutboundGroupId`, set at
+    // that button's own `onClick`), falling back to `initialOutboundGroupId`
+    // in the (normally unreachable) case it's still null. Deliberately NOT
+    // `popScreen` — the outbound flow's "group" screen never grows the
+    // stack when the active group changes (`setActiveGroup` swaps it in
+    // place, see that function's own doc comment above), so there's no
+    // stack entry here for `popScreen` to pop; this is `setActiveGroup`
+    // again, just resolving to "the group before Dial Pad" instead of a
+    // fixed id.
+    const handleBackFromDialpad = () => {
+      setActiveGroup(priorOutboundGroupId ?? initialOutboundGroupId ?? "");
+    };
+
+    const isDialpadActive = isOutboundFlow && screen.kind === "group" && activeGroup?.kind === "dialpad";
+
     const headerTitle =
       screen.kind === "root"
         ? title
@@ -1633,17 +1780,25 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
         : screen.kind === "channels"
         ? activeContact?.name ?? title
         : screen.kind === "group"
-        ? outbound?.outboundTitle ?? "New Outbound"
+        ? // Dial Pad is the one "group" screen with its own real header
+          // title instead of the flow-wide "New Outbound" — it reads as
+          // its own destination (matches the back arrow `isDialpadActive`
+          // adds just below), not another filter of the same picker.
+          isDialpadActive
+          ? activeGroup?.label ?? "Dial Pad"
+          : outbound?.outboundTitle ?? "New Outbound"
         : /* screen.kind === "detail" */ activeOutboundContact?.name ?? outbound?.outboundTitle ?? "New Outbound";
 
-    // Back button shows on any drill-down sub-screen, and on the outbound
-    // flow's "detail" sub-screen — lets the user return to the contact list
-    // to pick a different channel/contact without closing and reopening the
-    // whole popover. The outbound flow's "group" screen is itself screen 1
-    // now (no action list above it to go back to), so it gets no back button.
+    // Back button shows on any drill-down sub-screen, on the outbound
+    // flow's "detail" sub-screen, and on the outbound flow's Dial Pad
+    // screen (`isDialpadActive`) — lets the user return to the contact
+    // list/group picker without closing and reopening the whole popover.
+    // Every OTHER "group" screen is still screen 1 with no action list
+    // above it to go back to, so it keeps getting no back button.
     const showBackButton =
       (isDrillDown && screen.kind !== "root") ||
-      (isOutboundFlow && screen.kind === "detail");
+      (isOutboundFlow && screen.kind === "detail") ||
+      isDialpadActive;
 
     // A single persistent button, not two JSX branches swapped by
     // `expanded` — its width/colors/padding and the label's reveal are all
@@ -1724,7 +1879,11 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
             <button
               type="button"
               aria-label="Back"
-              onClick={popScreen}
+              // Dial Pad's back arrow returns to the group it was opened
+              // from (`handleBackFromDialpad`) rather than popping the
+              // screen stack — see that handler's own doc comment for why
+              // `popScreen` alone can't do this for a "group" screen.
+              onClick={isDialpadActive ? handleBackFromDialpad : popScreen}
               className={cn(
                 "-ml-1.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lyra-sm",
                 "text-lyra-fg-secondary transition-colors",
@@ -1753,7 +1912,17 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
           </PopoverClose>
         </div>
 
-        {isOutboundFlow && screen.kind === "group" && activeGroup && (
+        {/* Not shown on the Dial Pad screen (`isDialpadActive`) — that
+            screen has nothing to search or filter (see `isDialpadActive`'s
+            own doc comment on `headerTitle`/`showBackButton` above for how
+            it gets its own back arrow + title instead), so this whole
+            search/Select/subFilter/ghost-button block would just be an
+            empty divider box floating above the phone field with nothing
+            in it. Skipping it entirely also matches the reference mockup
+            exactly: header, one divider, the phone field, one more
+            divider, "Dial Number" (the dialpad content/footer below
+            already supply both of those dividers on their own). */}
+        {isOutboundFlow && screen.kind === "group" && activeGroup && !isDialpadActive && (
           <div className="border-b border-lyra-border-subtle px-4 py-3 space-y-3">
             {/* Search above the group filter, per explicit request — a
                 typed query now survives a filter change (`setActiveGroup`
@@ -1766,15 +1935,23 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
               <div className="relative">
                 <Input
                   ref={searchInputRef}
+                  // Stable, explicit id (not the default auto-`useId()`
+                  // one) — app consumers of `CreateNew` locate this exact
+                  // field via `document.querySelector` to autofocus it once
+                  // the popover opens (see e.g. `AgentNextGenPage.tsx`'s own
+                  // `onDocumentClick` effect), so this needs to be a fixed,
+                  // predictable selector rather than an id that changes
+                  // between renders/consumers.
+                  id="new-outbound-search"
                   type="text"
-                  // One placeholder for the whole outbound flow
-                  // (`outbound?.searchPlaceholder`), NOT keyed off
-                  // `activeGroup` — see `CreateNewOutboundConfig.
-                  // searchPlaceholder`'s own doc comment for why a
-                  // per-group placeholder was a confirmed UX bug (implied
-                  // switching the filter changed what the search box
-                  // accepted, when it doesn't).
-                  placeholder={outbound?.searchPlaceholder ?? "Search..."}
+                  // One label for the whole outbound flow
+                  // (`outbound?.searchLabel`), NOT keyed off `activeGroup`
+                  // — see `CreateNewOutboundConfig.searchLabel`'s own doc
+                  // comment for why a per-group placeholder was a confirmed
+                  // UX bug (implied switching the filter changed what the
+                  // search box accepted, when it doesn't) AND for why this
+                  // is a real `label` now, not placeholder text.
+                  label={outbound?.searchLabel}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   startIcon={<Search className="h-4 w-4 text-lyra-fg-disabled" strokeWidth={1.4} aria-hidden="true" />}
@@ -1785,7 +1962,23 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                     type="button"
                     aria-label="Clear search"
                     onClick={() => setSearch("")}
-                    className="absolute right-2.5 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
+                    // `bottom-1.5` (not the previous `top-1/2
+                    // -translate-y-1/2`) — that centered against this whole
+                    // wrapper's height, which was fine when the wrapper
+                    // contained only the input row, but now that `Input`
+                    // renders a real `label` above the field (per explicit
+                    // follow-up — see `Input`'s own `label` prop below),
+                    // the wrapper's height includes the label too, so
+                    // centering against ALL of it would float this button
+                    // too high, roughly between the label and the field
+                    // instead of over the field. Anchoring from the bottom
+                    // instead is correct regardless of whether a label
+                    // renders above: the input row is always flush with the
+                    // wrapper's own bottom edge, and `bottom-1.5` (6px) is
+                    // exactly `(input row's h-9 − this button's own h-6) / 2`
+                    // — the same vertical centering the old approach
+                    // produced, just measured from the other edge.
+                    className="absolute right-2.5 bottom-1.5 h-6 w-6 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
                   />
                 )}
               </div>
@@ -1794,7 +1987,17 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
               aria-label="Choose group"
               value={activeGroup.id}
               onValueChange={setActiveGroup}
-              options={(outbound?.groups ?? []).map((g) => ({ value: g.id, label: g.label }))}
+              // `kind === "dialpad"` groups are deliberately left out of
+              // this list — per explicit request, Dial Pad is reachable via
+              // its own small ghost button below (see `dialpadGroup` just
+              // below) instead of living in this dropdown alongside the
+              // real contact-list groups. Still found via `outbound.groups`
+              // (not deleted from the app's own config), so `activeGroup`
+              // above and `setActiveGroup(dialpadGroup.id)` below both keep
+              // working exactly like any other group once picked.
+              options={(outbound?.groups ?? [])
+                .filter((g) => g.kind !== "dialpad")
+                .map((g) => ({ value: g.id, label: g.label, icon: g.icon }))}
               portalDropdown
             />
             {/* Per-group secondary picker — see `CreateNewOutboundGroup.
@@ -1812,6 +2015,50 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                 portalDropdown
               />
             )}
+            {/* Dial Pad quick-access button — per explicit request, a
+                small ghost button below the group Select/subFilter rather
+                than a dropdown entry (see the Select's own `options`
+                filter above for why it's excluded there). Looked up by
+                `kind` (not a hardcoded id) so any consumer's own Dial Pad
+                group — whatever `id` it picks — gets this treatment for
+                free, same as `activeGroup.kind === "dialpad"` elsewhere in
+                this file already keys off `kind` rather than a specific
+                id. Omitted entirely when the consumer has no dialpad-kind
+                group configured (e.g. `outbound.groups` doesn't include
+                one) rather than rendering a button that goes nowhere.
+                `variant="ghost"` has no underline of its own (see
+                button.tsx's own `ghost` class list — text color + hover/
+                active background only), so "don't underline" needed no
+                extra styling here, just not reaching for a link-styled
+                variant. */}
+            {(() => {
+              const dialpadGroup = (outbound?.groups ?? []).find((g) => g.kind === "dialpad");
+              return (
+                dialpadGroup && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      // Captured here (not derived later) — see
+                      // `priorOutboundGroupId`'s own doc comment above for
+                      // why `setActiveGroup` alone can't be backed out of
+                      // via `popScreen`/the stack. `activeGroup` at this
+                      // exact moment (the group showing when this button
+                      // was clicked) is exactly "whichever filter the
+                      // agent was on before switching to Dial Pad" — the
+                      // same value `handleBackFromDialpad` below reads
+                      // back out once the header's back arrow is pressed.
+                      if (activeGroup) setPriorOutboundGroupId(activeGroup.id);
+                      setActiveGroup(dialpadGroup.id);
+                    }}
+                  >
+                    {dialpadGroup.icon ?? <LayoutGrid className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />}
+                    Dial Pad
+                  </Button>
+                )
+              );
+            })()}
           </div>
         )}
 
@@ -2038,23 +2285,68 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                     // case to special-case around.
                     <div className="p-2">
                       {pagedGroupContacts.length > 0 ? (
-                        pagedGroupContacts.map((contact) => (
-                          <OutboundContactRow
-                            key={contact.id}
-                            contact={contact}
-                            channelOptions={outbound?.channelOptions ?? []}
-                            onSelect={(ch) => goToDetail(activeGroup.id, contact, ch)}
-                            favorited={favoriteIds.has(contact.id)}
-                            onToggleFavorite={() =>
-                              setFavoriteIds((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(contact.id)) next.delete(contact.id);
-                                else next.add(contact.id);
-                                return next;
-                              })
-                            }
-                          />
-                        ))
+                        pagedGroupContacts.map((contact, i) => {
+                          // Per explicit request: once "All"'s own results
+                          // mix contacts from more than one underlying group
+                          // (only possible while actively searching — see
+                          // `activeGroupContacts`'s own doc comment above on
+                          // why idle "All" only ever shows already-favorited
+                          // contacts, which stay in their normal per-group
+                          // row order but rarely span groups), a section
+                          // separator + that next group's own label marks
+                          // where it starts, same "small caps" treatment
+                          // `donut-chart.tsx`'s own legend already uses for
+                          // this kind of label. Compares against the
+                          // PRECEDING row's group, not a running "last seen"
+                          // ref, so this stays pure/derivable straight from
+                          // `pagedGroupContacts` — no extra state, and it
+                          // recomputes correctly if the page or search
+                          // changes. Scoped to `kind === "favorites"` only:
+                          // every other group is single-source by
+                          // definition (its own `contacts` list), so this
+                          // condition is never true there anyway, but
+                          // spelling it out avoids the map lookup running
+                          // pointlessly on every row of a single-group list.
+                          const showGroupHeader =
+                            activeGroup.kind === "favorites" &&
+                            !!search.trim() &&
+                            contactGroupLabel.get(contact) !==
+                              (i === 0 ? undefined : contactGroupLabel.get(pagedGroupContacts[i - 1]));
+                          const groupLabel = contactGroupLabel.get(contact);
+                          return (
+                            <React.Fragment key={contact.id}>
+                              {showGroupHeader && groupLabel && (
+                                <div
+                                  className={cn(
+                                    "px-3 pb-1.5 lyra-body-sm-emphasis text-lyra-fg-secondary uppercase tracking-wide",
+                                    // No leading border/margin on the very
+                                    // first section — the popover's own
+                                    // search field above already separates
+                                    // it from the list; only subsequent
+                                    // sections need their own divider.
+                                    i === 0 ? "pt-1" : "mt-2 border-t border-lyra-border-subtle pt-3"
+                                  )}
+                                >
+                                  {groupLabel}
+                                </div>
+                              )}
+                              <OutboundContactRow
+                                contact={contact}
+                                channelOptions={outbound?.channelOptions ?? []}
+                                onSelect={(ch) => goToDetail(activeGroup.id, contact, ch)}
+                                favorited={favoriteIds.has(contact.id)}
+                                onToggleFavorite={() =>
+                                  setFavoriteIds((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(contact.id)) next.delete(contact.id);
+                                    else next.add(contact.id);
+                                    return next;
+                                  })
+                                }
+                              />
+                            </React.Fragment>
+                          );
+                        })
                       ) : (
                         <div className="px-3 py-6 text-center">
                           <p className="lyra-body-sm text-lyra-fg-secondary">

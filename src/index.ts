@@ -1,3 +1,10 @@
+// Side-effect only — registers the document-level keyboard/pointer
+// listeners every text field's mouse-vs-keyboard focus ring depends on.
+// See input-modality.ts's own doc comment for why this can't just be
+// native `:focus-visible`. Imported here (the package entry point) so it's
+// live exactly once, automatically, for every consumer.
+import "./lib/input-modality";
+
 /* ── Components ── */
 export { Button, buttonVariants } from "./components/button";
 export { TagsInput } from "./components/tags-input";
@@ -54,7 +61,7 @@ export { AppHeader } from "./components/app-header";
 export type { AppHeaderProps } from "./components/app-header";
 export { AppMenu } from "./components/app-menu";
 export type { AppMenuItem, AppMenuGroup, AppMenuProps } from "./components/app-menu";
-export { CreateNew, OutboundAddButton, useOutboundAddButton } from "./components/create-new";
+export { CreateNew, OutboundAddButton, useOutboundAddButton, looksLikeEmail, looksLikePhoneNumber } from "./components/create-new";
 export type {
   CreateNewItem,
   CreateNewProps,
@@ -84,8 +91,12 @@ export {
   ChannelTab,
   ChannelToggle,
   ChannelToggleGroup,
+  PlainToggleTab,
+  useOutcomePopoverState,
+  buildOutcomePopoverSlots,
+  ConsultTransferIcon,
 } from "./components/channel-row";
-export type { ChannelRowInstanceProps, ChannelTabProps, ChannelToggleProps, ChannelToggleGroupProps, ChannelOutcomeConfig } from "./components/channel-row";
+export type { ChannelRowInstanceProps, ChannelTabProps, ChannelToggleProps, ChannelToggleGroupProps, PlainToggleTabProps, ChannelOutcomeConfig } from "./components/channel-row";
 export { ActionIconButton, ActionAvatarButton } from "./components/actions";
 export type { ActionIconButtonProps, ActionAvatarButtonProps } from "./components/actions";
 export { ShellIconButton, ShellAvatarButton } from "./components/shell-button";

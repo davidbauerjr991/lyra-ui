@@ -275,6 +275,29 @@
    From Figma: Lyra Foundations (Beta)
    ════════════════════════════════════════════════════ */
 
+/* Every class in this section sets font-size/line-height/font-weight/
+   letter-spacing but, until now, never font-family — despite this whole
+   section literally being titled "(Inter)" above. In practice every
+   consumer's text still rendered in Inter, but only because each consuming
+   app happens to also declare its own `body { font-family: "Inter", ... }`
+   (e.g. agent-next-gen-v2's index.css) and every element inherits it — a
+   fragile, easy-to-miss dependency that lives OUTSIDE this design system
+   rather than in it. Declaring it once, here, directly on every typography
+   class makes this the actual, self-contained "font used for the rest of
+   the UI in lyra-ui" (per explicit request) — any element using one of
+   these classes is correctly set in Inter regardless of whether (or how)
+   the consuming app happens to set body-level font-family, rather than
+   depending on inheritance. Same stack as tailwind-preset.ts's `fontFamily.
+   sans` (and this repo's own tailwind.config.js), so the computed value is
+   unchanged everywhere this already worked — this only closes the gap for
+   any element/context where inheritance was silently NOT reaching. */
+.lyra-heading-2xl, .lyra-heading-xl, .lyra-heading-lg, .lyra-heading-md,
+.lyra-heading-sm, .lyra-heading-xs, .lyra-label, .lyra-body-lg,
+.lyra-body-lg-emphasis, .lyra-body-md, .lyra-body-md-emphasis, .lyra-body-sm,
+.lyra-body-sm-emphasis, .lyra-body-xs, .lyra-body-xs-emphasis {
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
 /* Headings */
 /* 2xl added for DashboardCard's metric numbers — every existing heading
    tier (xl and below) was designed for section/card titles, not a large
@@ -1149,6 +1172,38 @@
     align-items: flex-start;
     justify-content: flex-start;
     gap: 8px;
+  }
+}
+
+/* Dashboard greeting `PageHeader` (`titleSize="2xl"`) — same container,
+   same 400px threshold as the `actions`-drops-below-title rule just above
+   (both exist for the same "Good afternoon, {name}" header). Per explicit
+   follow-up ("decrease the font size to heading-lg when the size of the
+   home container goes below 400px so the names don't get cut off if
+   they're long — also... wrap the name to the next line if it is super
+   long"): below 400px, the title's own 28px/32px/700/-0.02rem 2xl styling
+   steps down to `.lyra-heading-lg`'s 20px/24px/600/-0.01rem values (kept in
+   sync with that class's own declaration above, not re-derived), and the
+   `<h1>`'s baked-in Tailwind `truncate` utility (`overflow-hidden text-
+   ellipsis whitespace-nowrap`) is overridden to allow wrapping onto a
+   second line instead of clipping a long `{name}` outright. Scoped to
+   `.lyra-page-header-container .lyra-heading-2xl` — a descendant selector,
+   not a bare `.lyra-heading-2xl` override — so this only ever touches a
+   `PageHeader` title actually using the 2xl tier (currently only this
+   greeting, across all 3 tiers); `.lyra-heading-2xl`'s other real-world
+   consumer, `DashboardCard`'s metric numbers, isn't nested inside a
+   `.lyra-page-header-container` and is untouched. Every `titleSize="lg"`
+   `PageHeader` (record headers, section titles) keeps truncating exactly as
+   before, at every width — this query only ever matches the 2xl class. */
+@container (max-width: 400px) {
+  .lyra-page-header-container .lyra-heading-2xl {
+    font-size: 20px;
+    line-height: 24px;
+    font-weight: 600;
+    letter-spacing: -0.01rem;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
   }
 }
 

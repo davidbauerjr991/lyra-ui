@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useRef, useCallback, useState, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Trash2 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { KebabMenuButton } from "./kebab-menu-button";
 import { Menu, type MenuEntry } from "./menu";
@@ -149,6 +149,26 @@ interface TabListProps extends React.HTMLAttributes<HTMLDivElement> {
    * panel header with nothing beside them).
    */
   growToFillRow?: boolean;
+  /**
+   * Horizontal inset applied to each direct `[role="tab"]` child (default:
+   * `"5"`, i.e. `px-5`). `TabList` normally overrides `Tab`'s own smaller
+   * `px-3` base padding with `px-5` via a `[&>[role='tab']]:px-5` selector
+   * (see the `fullWidth` branch below) — that selector's specificity always
+   * wins over a plain utility class on `Tab` itself, so a consumer passing
+   * `className="px-3"` on `Tab`, or even `TabList`, can't override it; this
+   * prop is the only way to opt a specific `TabList` back down to `Tab`'s
+   * own tighter `px-3`.
+   *
+   * Opt-in, `"5"` by default — every existing `TabList` consumer keeps its
+   * current spacing unchanged. Turn on `"3"` for a tab row that needs to
+   * align flush-left with content above/below it that itself sits on a
+   * tighter inset (e.g. a record header's own channel tab row sitting
+   * directly under a `px-3`-ish trigger cluster) — per explicit request,
+   * NOT a blanket change to every `TabList` in the design system (that
+   * would ripple into the Customer Information panel's tabs, Dashboard
+   * tabs, and every other unrelated consumer of this shared component).
+   */
+  tabPaddingX?: "3" | "5";
 }
 
 // Below this width, `overflowBreakpoint="compact"`'s own content-measured
@@ -175,6 +195,7 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
       onKeyDown,
       children,
       growToFillRow = false,
+      tabPaddingX = "5",
       ...props
     },
     ref
@@ -642,7 +663,11 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
           // `fullWidth` is equal-width columns that stretch to fill the
           // row, which a fixed character cap would silently fight against
           // once a column's share of the row exceeds ~22 characters.
-          fullWidth ? "[&>*]:flex-1 [&>[role='tab']]:max-w-none" : "[&>[role='tab']]:px-5",
+          fullWidth
+            ? "[&>*]:flex-1 [&>[role='tab']]:max-w-none"
+            : tabPaddingX === "3"
+              ? "[&>[role='tab']]:px-3"
+              : "[&>[role='tab']]:px-5",
           // Stays in the DOM (just CSS-hidden below 400px, see
           // `.lyra-tab-overflow-full` in lyra-tokens.css) so its buttons
           // can still be `.click()`ed programmatically from the collapsed
@@ -1210,6 +1235,43 @@ interface TabProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   /** Accessible label for the remove button (default: "Remove tab") */
   removeLabel?: string;
   /**
+   * Was: which COLOR the `onRemove` button above renders — this tab's own
+   * active/inactive text color (`"close"`) or always-red (`"delete-draft"`,
+   * for a tab representing a genuine, never-launched draft thread). Per
+   * TWO explicit follow-up requests, this prop no longer changes anything
+   * about how `Tab` itself renders `onRemove` at all: first the ICON was
+   * unified to always `Trash2` regardless of variant ("the 'X' close icons
+   * in the tabs should be trash cans to match the other draft tab
+   * structure"), then the COLOR was unified too ("make all the delete
+   * trash icons in the tabs the same size and color as the tabs
+   * themselves (not red)") — every `onRemove` button now renders the exact
+   * same `Trash2` glyph in this tab's own plain active/inactive color,
+   * full stop. This prop still exists purely for CALLERS to read when
+   * building `removeLabel`'s own accessible text (`ChannelTabProps.
+   * removeVariant` in channel-row.tsx sets `removeLabel="Delete Draft"` vs.
+   * `"Close {label}"`) — a real, meaningful distinction for screen readers
+   * even though the two now look visually identical. Ignored while
+   * `onRemove` is unset. Default `"close"`.
+   */
+  removeVariant?: "close" | "delete-draft";
+  /**
+   * Opt-in override for the glyph the `onRemove` button (above) renders —
+   * default `undefined`, which keeps the standard `Trash2` glyph every
+   * other consumer already gets (see `removeVariant`'s own doc comment for
+   * why that's the fixed, non-negotiable default now). Per explicit
+   * request for one specific consumer ("make the trash icons 'x' for the
+   * customer info tabs so they don't look like delete") — a tab that's
+   * just a VIEW into a customer's profile, not a genuine draft that gets
+   * deleted when closed, reads as more misleading with a trash can than a
+   * closing "×" would. Scoped as an opt-in prop rather than a third
+   * `removeVariant` value so every existing consumer (record-header
+   * channel tabs, session-row Delete Draft, etc.) is completely
+   * unaffected — only a caller that explicitly passes this gets anything
+   * other than `Trash2`. Same size/color/click handling as the default —
+   * this only swaps which icon renders inside that same button.
+   */
+  removeIcon?: React.ReactNode;
+  /**
    * Renders a trailing kebab (⋮) menu on this tab — e.g. a channel tab's
    * "Unassign & Dismiss"/"Consult / Transfer"/etc. actions (see
    * `ChannelTab` in `channel-row.tsx`, the first consumer of this). Uses
@@ -1287,6 +1349,8 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
       rightIcon,
       onRemove,
       removeLabel = "Remove tab",
+      removeVariant = "close",
+      removeIcon,
       menuItems,
       menuAriaLabel = "More options",
       onMenuOpenChange,
@@ -1472,15 +1536,50 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
             onClick={(e) => { e.stopPropagation(); onRemove(e); }}
             onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onRemove(e as unknown as React.MouseEvent); } }}
             className={cn(
-              "flex h-4 w-4 items-center justify-center rounded-lyra-xs flex-shrink-0 transition-colors",
+              "flex h-5 w-5 items-center justify-center rounded-lyra-xs flex-shrink-0 transition-colors",
               "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
+              // Per explicit follow-up request ("make all the delete trash
+              // icons in the tabs the same size and color as the tabs
+              // themselves (not red)"): no more `removeVariant === "delete-
+              // draft"` red special-case — every remove button now uses
+              // this tab's own plain active/inactive color, the exact same
+              // fallback the leading `icon` slot's own `iconColorClass`
+              // falls back to above (`active ? activeTextClass :
+              // "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary"`)
+              // — so a neutral tab's trash icon now reads identically to
+              // its own leading icon and label text, not a fixed red
+              // regardless of state. `removeVariant` (see its own doc
+              // comment) still exists as a prop — it no longer changes
+              // anything IN THIS COMPONENT, but callers still read it for
+              // `removeLabel`'s own accessible text ("Delete Draft" vs.
+              // "Close {label}"), a meaningful distinction for screen
+              // readers even once the two look visually identical.
               active ? activeTextClass : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary"
             )}
           >
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
-              <line x1="1.5" y1="1.5" x2="8.5" y2="8.5" />
-              <line x1="8.5" y1="1.5" x2="1.5" y2="8.5" />
-            </svg>
+            {/* Per explicit follow-up request ("the 'X' close icons in the
+                tabs should be trash cans to match the other draft tab
+                structure"): always `Trash2` now, regardless of
+                `removeVariant` — was a hand-drawn "×" svg for the default
+                `"close"` variant, `Trash2` only for `"delete-draft"`.
+                Per a later explicit follow-up request ("the same size...
+                as the tabs themselves"): `h-4 w-4` (16px), matching the
+                leading `icon` slot's own size exactly (every real
+                `ChannelTab` icon — chat/email/SMS/WhatsApp/voice,
+                channel-row.tsx — is `h-4 w-4` too) — was a fixed
+                `width={11} height={11}` (11px), visibly smaller than that
+                leading icon. The wrapping button above grew from `h-4 w-4`
+                to `h-5 w-5` to give this now-larger icon the same couple
+                pixels of breathing room the `menuItems` kebab slot's own
+                `h-5 w-5` wrapper (just above) already has around ITS
+                icon — these two slots are mutually exclusive alternates
+                for the same trailing position, so matching their outer
+                footprint keeps a tab's overall height/alignment identical
+                regardless of which one actually renders.
+                `removeIcon` (see that prop's own doc comment) overrides
+                this default glyph for one specific opt-in caller — falls
+                back to `Trash2` exactly as before whenever it's unset. */}
+            {removeIcon ?? <Trash2 className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />}
           </span>
         )}
         {rightIcon && !onRemove && !menuItems && (

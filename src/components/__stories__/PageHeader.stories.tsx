@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
-import { User } from "lucide-react";
+import { User, Headphones } from "lucide-react";
 import { PageHeader } from "../page-header";
 import { SidePanel } from "../side-panel";
 import { InteriorPanel } from "../interior-panel";
 import { Button } from "../button";
 import { AiIcon } from "../icons/ai-icon";
+import { Icon } from "../icon";
 
 const meta: Meta<typeof PageHeader> = {
   title: "UI/PageHeader",
@@ -88,6 +89,70 @@ export const RecordHeader: Story = {
       </Button>
     ),
   },
+};
+
+export const RecordHeaderCircleAvatarNoDivider: Story = {
+  name: "Record Header (Circle Avatar, No Divider)",
+  args: {
+    // Per explicit request (agent-next-gen-v2's own interaction record
+    // header, once it needed to tell an agent-to-agent call apart from a
+    // real customer interaction): a colored circle avatar shell — `Icon`'s
+    // own `background`/`shape="circle"` combo (icon.tsx), same treatment
+    // the New Outbound "Choose group" Select's category rows already use —
+    // reads as a complete, self-contained unit on its own, so `iconDivider
+    // ={false}` drops the divider `icon` renders by default (see that
+    // prop's own doc comment, page-header.tsx) rather than doubling up on
+    // the separation the circle's own background already provides.
+    icon: <Icon icon={Headphones} background="info" shape="circle" size="md" />,
+    iconDivider: false,
+    title: "Jamie Torres",
+    subtitle: "CS-1239930",
+    actions: (
+      <Button variant="outline">
+        <AiIcon className="h-4 w-4" />
+        Ask AI
+      </Button>
+    ),
+  },
+};
+
+export const RecordHeaderCompactBorderless: Story = {
+  name: "Record Header (Compact, Borderless)",
+  parameters: { layout: "padded" },
+  render: () => (
+    // Per explicit request (agent-next-gen-v2's own interaction record
+    // header): `bordered={false}` + `compact` — a record header sitting
+    // directly above other content that already draws its own divider
+    // right underneath it (here, a plain mock "session row" standing in
+    // for `TranscriptSessionSeparator`'s own bottom border) no longer
+    // doubles that line up into two parallel ones with an empty gap
+    // between them, and shrinks from the default `min-h-[68px]`/`py-4` to
+    // `min-h-[54px]` with the bottom padding dropped — both together read
+    // as one continuous, tightly-packed header instead of two stacked
+    // bordered rows.
+    <div className="rounded-lyra-lg border border-lyra-border-subtle overflow-hidden bg-lyra-bg-surface-base">
+      <PageHeader
+        title="Priya Shah"
+        subtitle="Email | 7/19/2025 03:41 PM"
+        bordered={false}
+        compact
+        actions={
+          <Button variant="outline">
+            <AiIcon className="h-4 w-4" />
+            Ask AI
+          </Button>
+        }
+      />
+      <div className="flex items-center justify-between border-b border-lyra-border-subtle px-6 py-2">
+        <span className="lyra-body-sm text-lyra-fg-secondary">
+          # CTX-20250719-05532 · July 19, 2025
+        </span>
+      </div>
+      <div className="p-6">
+        <p className="lyra-body-md text-lyra-fg-secondary">Transcript content goes here.</p>
+      </div>
+    </div>
+  ),
 };
 
 export const WithBreadcrumb: Story = {

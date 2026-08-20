@@ -17,6 +17,7 @@ import {
   Languages,
   PlayCircle,
   X,
+  Trash2,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Tag, tagVariants, type TagVariant } from "./tag";
@@ -130,6 +131,17 @@ export interface InteractionChannel {
   awaitingSeverity?: "success" | "warning" | "critical";
   /** Show the trailing kebab (⋮) menu for this channel row. Default: true. */
   removable?: boolean;
+  /** When `removable` is `false` (see that prop's own doc comment), which
+   *  close-button treatment `ChannelRow`'s fallback renders in the kebab's
+   *  place — plain "×"/"Close" (default, `"close"`) for an already-closed
+   *  channel/interaction, or a red trash icon reading "Delete Draft"
+   *  instead, for a genuine, never-launched draft thread (an agent-
+   *  initiated channel with no messages sent yet — the same signal that
+   *  sets `removable={false}` for it in the first place). Ignored while
+   *  `removable` isn't `false`. Default `"close"` — every existing caller
+   *  (previously the only case this fallback ever rendered for) renders
+   *  exactly as before without passing this. */
+  removeVariant?: "close" | "delete-draft";
   /** Override this row's default (per-`type`) kebab menu items. */
   menuItems?: MenuEntry[];
   /** Wires this channel's "Outcome" button to a real popover — see
@@ -547,6 +559,10 @@ interface ChannelRowProps {
    *  false just leaves the trailing cluster empty, same as before this
    *  close button existed. */
   onDismiss?: () => void;
+  /** See `InteractionChannel.removeVariant`'s own doc comment — same
+   *  meaning, just threaded down to this row's own close-button fallback
+   *  rendering. Default `"close"`. */
+  removeVariant?: "close" | "delete-draft";
   /** Marks this channel "current" (see `InteractionNavItem`'s own doc
    *  comment on its internal current-channel state) — lets an agent toggle
    *  which open channel is highlighted within a multi-channel card. Doesn't
@@ -597,6 +613,7 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
   menuItems,
   showMenu = true,
   onDismiss,
+  removeVariant = "close",
   onSelect,
   onMenuOpenChange,
   outcome,
@@ -799,26 +816,50 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
       ) : (
         onDismiss && (
           // Replaces the kebab entirely (not an addition alongside it —
-          // `showMenu` is false here) for a closed channel/interaction: per
-          // explicit request, this row still needs a way to close/remove
-          // itself even with nothing left to open a kebab menu FOR. Same
-          // plain `variant="icon"` ghost button as Consult/Transfer/Outcome
+          // `showMenu` is false here) for a closed channel/interaction, OR
+          // for a genuine never-launched draft thread: per explicit
+          // request, this row still needs a way to close/remove itself
+          // even with nothing left to open a kebab menu FOR. Same plain
+          // `variant="icon"` ghost button as Consult/Transfer/Outcome
           // above, always visible (no hover-reveal — unlike those two,
           // there's no separate resting-state element here for it to
           // overlay/collide with), so an agent doesn't have to hover the
-          // row first just to find it.
-          <Button
-            variant="icon"
-            size="icon-sm"
-            title="Close"
-            className="ml-auto h-6 shrink-0 text-lyra-fg-secondary"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDismiss();
-            }}
-          >
-            <X className="h-4 w-4" strokeWidth={1.5} />
-          </Button>
+          // row first just to find it. Two treatments, keyed off
+          // `removeVariant` (see that prop's own doc comment): a plain
+          // neutral "×"/"Close" for an already-closed channel/interaction
+          // (the pre-existing, still-default look), or a red trash icon
+          // reading "Delete Draft" for a draft — per explicit request, so
+          // an agent can tell at a glance that closing an untouched draft
+          // actually DELETES it (no Contact History entry gets logged for
+          // it — see the consumer's own dismiss-handler doc comment for
+          // that split) rather than merely dismissing a live assignment.
+          removeVariant === "delete-draft" ? (
+            <Button
+              variant="icon"
+              size="icon-sm"
+              title="Delete Draft"
+              className="ml-auto h-6 shrink-0 text-lyra-status-critical-strong hover:text-lyra-status-critical-strong"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDismiss();
+              }}
+            >
+              <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+            </Button>
+          ) : (
+            <Button
+              variant="icon"
+              size="icon-sm"
+              title="Close"
+              className="ml-auto h-6 shrink-0 text-lyra-fg-secondary"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDismiss();
+              }}
+            >
+              <X className="h-4 w-4" strokeWidth={1.5} />
+            </Button>
+          )
         )
       )}
     </div>
@@ -884,6 +925,9 @@ export interface ChannelRowInstanceProps {
    *  Props.onDismiss`'s) — one callback, two possible triggers depending on
    *  whether this row still has a kebab to fire it from. */
   onDismiss?: () => void;
+  /** Passed straight through to `ChannelRow` — see `InteractionChannel.
+   *  removeVariant`'s own doc comment. Default `"close"`. */
+  removeVariant?: "close" | "delete-draft";
   /** Passed straight through to `ChannelRow` — see its own doc comment. */
   onSelect?: () => void;
   /** Passed straight through to `ChannelRow` — see its own doc comment. */
@@ -1103,6 +1147,14 @@ export interface ChannelTabProps {
    *  `onDismissChannel` split) whether that should end just this channel or
    *  the whole interaction, based on how many channels are open. */
   onDismiss?: () => void;
+  /** Same meaning as `InteractionChannel.removeVariant` (channel-row.tsx's
+   *  LeftNav-card counterpart) — which close-button treatment `showMenu={
+   *  false}`'s fallback below renders: plain "×"/"Close {type}" (default,
+   *  `"close"`) for an already-closed channel/interaction's tab, or a red
+   *  trash icon reading "Delete Draft" for a genuine, never-launched draft
+   *  thread's tab instead. Ignored while `showMenu` is true. Default
+   *  `"close"` — every existing caller renders exactly as before. */
+  removeVariant?: "close" | "delete-draft";
   /** Override this tab's default (per-`type`) kebab menu items. */
   menuItems?: MenuEntry[];
   /** Hide the trailing kebab. Default: true (kebab shown). `false` doesn't
@@ -1157,6 +1209,7 @@ const ChannelTab: React.FC<ChannelTabProps> = ({
   active,
   onClick,
   onDismiss,
+  removeVariant = "close",
   menuItems,
   showMenu = true,
   outcome,
@@ -1310,7 +1363,12 @@ const ChannelTab: React.FC<ChannelTabProps> = ({
       // tab's trailing slot is unaffected — only a closed tab with no kebab
       // gets this.
       onRemove={!showMenu ? onDismiss : undefined}
-      removeLabel={`Close ${meta.label}`}
+      // See `ChannelTabProps.removeVariant`'s own doc comment — a genuine
+      // draft's tab reads "Delete Draft" (matching the red trash icon
+      // `Tab` itself renders for this variant) instead of the plain
+      // "Close {type}" every other close-only tab still uses.
+      removeLabel={removeVariant === "delete-draft" ? "Delete Draft" : `Close ${meta.label}`}
+      removeVariant={!showMenu ? removeVariant : undefined}
       // This outer `Tooltip` already shows "{type} | {address}" (a
       // superset of this tab's own face text below) plus the status/last-
       // contact line — `Tab`'s own built-in truncation tooltip was firing
@@ -1491,35 +1549,131 @@ export interface ChannelToggleProps extends ChannelTabProps {
   isFirst?: boolean;
 }
 
+/**
+ * Per explicit follow-up request ("let's make the interaction tabs a toggle
+ * group instead of tabs but keep the same functionality"): this now carries
+ * full `ChannelTab` parity, not just the compact `titlePrefix`-slot subset
+ * it originally shipped with (icon + type label + kebab only). Every prop
+ * `ChannelTabProps` defines now actually does something here — same
+ * severity-driven icon swap, same two-line tooltip, same close/delete-draft
+ * fallback when `showMenu` is off, same Outcome popover wiring — built by
+ * duplicating `ChannelTab`'s own logic for each rather than re-deriving it
+ * (see each block's comment below for exactly which `ChannelTab` section it
+ * mirrors). `address` is still deliberately never shown on the pill FACE
+ * itself (unlike `ChannelTab`'s full-width row) — this toggle's compact
+ * segmented-pill shape has no room for it without crowding neighboring
+ * pills; it's still fully reachable in the `Tooltip`, same as before.
+ */
 const ChannelToggle: React.FC<ChannelToggleProps> = ({
   type,
   address,
-  messageCount,
+  statusLabel,
+  lastCustomerContactLabel,
   interactionId,
   active,
   onClick,
   onDismiss,
+  removeVariant = "close",
   menuItems,
   showMenu = true,
+  outcome,
+  awaitingResponse,
+  awaitingSeverity,
   className,
   isFirst,
 }) => {
   const meta = CHANNEL_TYPE_META[type];
+  // Mirrors `ChannelTab`'s own `severity`/`tabIcon` derivation verbatim —
+  // see that component's doc comments (above) for the full "success/
+  // warning/critical, escalating icon" reasoning; not re-explained here.
+  const severity: "success" | "warning" | "critical" | undefined = awaitingResponse ? awaitingSeverity ?? "critical" : undefined;
+  const tabIcon =
+    severity === "critical" ? (
+      <CircleAlert className="h-4 w-4" strokeWidth={1.5} />
+    ) : severity === "warning" ? (
+      <TriangleAlert className="h-4 w-4" strokeWidth={1.5} />
+    ) : (
+      meta.icon
+    );
   const defaultMenuItems = type === "voice" ? buildVoiceMenuItems(onDismiss) : buildDigitalMenuItems(onDismiss);
-  // Same tooltip-vs-kebab-dropdown coordination `ChannelTab` needs — see
-  // that component's own `menuOpen` comment for the full explanation.
+  // Same tooltip-vs-kebab-dropdown/outcome-popover coordination `ChannelTab`
+  // needs — see that component's own `menuOpen`/`outcomePopoverState`/
+  // `anchorRef` comments for the full explanation of each.
   const [menuOpen, setMenuOpen] = React.useState(false);
-  const metaLine = [
-    messageCount !== undefined ? `${messageCount} Message${messageCount === 1 ? "" : "s"}` : undefined,
-    interactionId ? `#${interactionId}` : undefined,
-  ]
+  const outcomePopoverState = useOutcomePopoverState();
+  const anchorRef = React.useRef<HTMLSpanElement>(null);
+  // Mirrors `ChannelTab`'s own `effectiveMenuItems` — rewrites the kebab's
+  // "Outcome" entry to open the real popover, deferred a tick past Radix's
+  // own dropdown-close/focus-return cycle for the identical reason that
+  // component's comment explains.
+  const rawMenuItems = menuItems ?? defaultMenuItems;
+  const effectiveMenuItems = outcome
+    ? rawMenuItems.map((item) =>
+        typeof item === "string" || "sectionLabel" in item || item.id !== "outcome"
+          ? item
+          : { ...item, onClick: () => setTimeout(() => outcome.onOpenChange(true), 0) }
+      )
+    : rawMenuItems;
+  // Mirrors `ChannelTab`'s own `metaLine`/`tooltipContent` verbatim — same
+  // "{type} | {address}" top line, same "{status} | Last contact {label}"
+  // second line, same omit-entirely-when-empty rule.
+  const metaLine = [statusLabel, lastCustomerContactLabel ? `Last contact ${lastCustomerContactLabel}` : undefined]
     .filter(Boolean)
     .join(" | ");
   const tooltipContent = (
     <div className="flex flex-col gap-0.5">
-      <span>{address ? `${meta.label} ${address}` : meta.label}</span>
+      <span>{address ? `${meta.label} | ${address}` : meta.label}</span>
       {metaLine && <span className="lyra-body-sm text-lyra-fg-secondary">{metaLine}</span>}
     </div>
+  );
+  const activeTextClass = "text-lyra-fg-active-strong";
+  const toggleElement = (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={active}
+      onClick={onClick}
+      className={cn(
+        "relative inline-flex items-center gap-1.5 px-3 py-1.5 lyra-body-md rounded-lyra-sm transition-colors select-none",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-1",
+        active
+          ? "bg-lyra-bg-active-subtle border border-lyra-border-active text-lyra-fg-active-strong hover:bg-lyra-state-hover-active-subtle active:bg-lyra-state-pressed-active-subtle"
+          : "text-lyra-fg-default border border-transparent hover:bg-lyra-bg-surface-shell hover:border-lyra-border-default active:bg-lyra-bg-disabled active:border-lyra-border-default",
+        className
+      )}
+    >
+      <span className={cn("shrink-0", active ? activeTextClass : "text-lyra-fg-secondary")} aria-hidden="true">
+        {tabIcon}
+      </span>
+      <span>{meta.label}</span>
+      {showMenu ? (
+        <KebabMenuButton
+          as="span"
+          items={effectiveMenuItems}
+          ariaLabel={`More options for ${meta.label}`}
+          onOpenChange={setMenuOpen}
+        />
+      ) : onDismiss ? (
+        // Mirrors `Tab`'s own `onRemove` rendering (tabs.tsx) verbatim —
+        // same always-`Trash2`, same active/inactive (never fixed-red)
+        // color, same `h-5 w-5` wrapper around an `h-4 w-4` icon, same
+        // `stopPropagation` so this click never also selects the toggle.
+        <span
+          role="button"
+          tabIndex={0}
+          aria-label={removeVariant === "delete-draft" ? "Delete Draft" : `Close ${meta.label}`}
+          onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onDismiss(); } }}
+          className={cn(
+            "flex h-5 w-5 items-center justify-center rounded-lyra-xs flex-shrink-0 transition-colors",
+            "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
+            active ? activeTextClass : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary"
+          )}
+        >
+          <Trash2 className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+        </span>
+      ) : null}
+    </button>
   );
 
   return (
@@ -1530,49 +1684,117 @@ const ChannelToggle: React.FC<ChannelToggleProps> = ({
       {!isFirst && (
         <span aria-hidden="true" className={cn("w-px h-4 bg-lyra-border-subtle flex-shrink-0", active && "opacity-0")} />
       )}
-      <Tooltip content={tooltipContent} placement="bottom" disabled={menuOpen}>
-        <button
-          type="button"
-          role="radio"
-          aria-checked={active}
-          onClick={onClick}
-          className={cn(
-            "relative inline-flex items-center gap-1.5 px-3 py-1.5 lyra-body-md rounded-lyra-sm transition-colors select-none",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-1",
-            active
-              ? "bg-lyra-bg-active-subtle border border-lyra-border-active text-lyra-fg-active-strong hover:bg-lyra-state-hover-active-subtle active:bg-lyra-state-pressed-active-subtle"
-              : "text-lyra-fg-default border border-transparent hover:bg-lyra-bg-surface-shell hover:border-lyra-border-default active:bg-lyra-bg-disabled active:border-lyra-border-default",
-            className
-          )}
-        >
-          <span className={cn("shrink-0", active ? "text-lyra-fg-active-strong" : "text-lyra-fg-secondary")} aria-hidden="true">
-            {meta.icon}
+      <Tooltip content={tooltipContent} placement="bottom" disabled={menuOpen || Boolean(outcome?.open)}>
+        {outcome ? (
+          // Same plain-`<span>`-as-Popover-anchor approach `ChannelTab` uses
+          // and the same reasoning for it — see that component's own
+          // `anchorRef`/`asAnchor`/`modal`/`onInteractOutside` comments for
+          // the full explanation, not re-derived here.
+          <span ref={anchorRef} className="inline-flex">
+            <Popover
+              open={outcome.open}
+              onOpenChange={outcome.onOpenChange}
+              placement="bottom"
+              align="start"
+              className="z-[10003] w-80"
+              onCloseAutoFocus={(e) => e.preventDefault()}
+              asAnchor
+              modal
+              onInteractOutside={(e) => {
+                if (anchorRef.current?.contains(e.target as Node)) {
+                  e.preventDefault();
+                }
+              }}
+              {...buildOutcomePopoverSlots(outcome, outcomePopoverState)}
+            >
+              {toggleElement}
+            </Popover>
           </span>
-          {/* `address` is deliberately NOT shown on the pill face here —
-              unlike `ChannelTab` (a full-width row with real room for
-              "Email noah.bennett@example.com"), this toggle sits in a
-              compact strip next to the page title, where the full address
-              would dominate the pill and crowd the customer name beside
-              it. It's still surfaced in full in the `Tooltip` above (see
-              `tooltipContent`) — just icon + type label on the pill
-              itself, per explicit request. */}
-          <span>{meta.label}</span>
-          {showMenu && (
-            <KebabMenuButton
-              as="span"
-              items={menuItems ?? defaultMenuItems}
-              ariaLabel={`More options for ${meta.label}`}
-              onOpenChange={setMenuOpen}
-            />
-          )}
-        </button>
+        ) : (
+          toggleElement
+        )}
       </Tooltip>
     </>
   );
 };
 
+export interface PlainToggleTabProps {
+  /** Leading icon, e.g. `<History className="h-4 w-4" />` — this component
+   *  has no per-`ChannelType` icon of its own to fall back to (unlike
+   *  `ChannelToggle`), so the caller always supplies one. */
+  icon: React.ReactNode;
+  active?: boolean;
+  onClick?: () => void;
+  /** Same trailing-kebab slot `ChannelToggle` renders when `showMenu` is on
+   *  — omit for no trailing control at all (this component has no close/
+   *  delete-draft fallback; it's for non-channel items that are always
+   *  either menu-less or kebab-driven). */
+  menuItems?: MenuEntry[];
+  /** Accessible label for the kebab, when `menuItems` is passed. */
+  menuAriaLabel?: string;
+  className?: string;
+  /** Set automatically by `ChannelToggleGroup` — see `ChannelToggleProps
+   *  .isFirst`'s own doc comment. */
+  isFirst?: boolean;
+  children: React.ReactNode;
+}
+
+/**
+ * A non-channel sibling for `ChannelToggle` inside the same
+ * `ChannelToggleGroup` — same selectable pill shell (icon + label +
+ * optional kebab, `role="radio"`, same divider handling), just without any
+ * of `ChannelToggle`'s channel-specific behavior (address/tooltip/severity/
+ * outcome/close-fallback). Built for `ChannelToggleGroup`'s one legitimate
+ * non-`ChannelType` member today — a past-session "history conversation"
+ * tab opened via a Customer Information deep link, which still needs to sit
+ * in the same "one selected item" strip and look identical to its
+ * `ChannelToggle` neighbors, just isn't itself an open channel. Kept as its
+ * own tiny component rather than stretching `ChannelToggle` to cover a
+ * non-`ChannelType` case with optional/undefined `type`.
+ */
+const PlainToggleTab: React.FC<PlainToggleTabProps> = ({ icon, active, onClick, menuItems, menuAriaLabel, className, isFirst, children }) => {
+  return (
+    <>
+      {!isFirst && (
+        <span aria-hidden="true" className={cn("w-px h-4 bg-lyra-border-subtle flex-shrink-0", active && "opacity-0")} />
+      )}
+      <button
+        type="button"
+        role="radio"
+        aria-checked={active}
+        onClick={onClick}
+        className={cn(
+          "relative inline-flex items-center gap-1.5 px-3 py-1.5 lyra-body-md rounded-lyra-sm transition-colors select-none",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-1",
+          active
+            ? "bg-lyra-bg-active-subtle border border-lyra-border-active text-lyra-fg-active-strong hover:bg-lyra-state-hover-active-subtle active:bg-lyra-state-pressed-active-subtle"
+            : "text-lyra-fg-default border border-transparent hover:bg-lyra-bg-surface-shell hover:border-lyra-border-default active:bg-lyra-bg-disabled active:border-lyra-border-default",
+          className
+        )}
+      >
+        <span className={cn("shrink-0", active ? "text-lyra-fg-active-strong" : "text-lyra-fg-secondary")} aria-hidden="true">
+          {icon}
+        </span>
+        <span>{children}</span>
+        {menuItems && <KebabMenuButton as="span" items={menuItems} ariaLabel={menuAriaLabel ?? "More options"} />}
+      </button>
+    </>
+  );
+};
+
 export interface ChannelToggleGroupProps {
-  children: React.ReactElement<ChannelToggleProps>[] | React.ReactElement<ChannelToggleProps>;
+  /**
+   * One or more `ChannelToggle`/`PlainToggleTab` elements — typed as plain
+   * `React.ReactNode` (not a strict `ReactElement<...>[]` union) because a
+   * real caller's children are usually `{items.map(...)}` mixed with a
+   * conditional trailing item (e.g. `{extra && <PlainToggleTab>...}`),
+   * which TypeScript's JSX children-checking doesn't structurally match
+   * against an explicit array-of-`ReactElement` union even though every
+   * actual element in it really is one — `React.Children.toArray` below
+   * does the real runtime normalization/validation instead of the type
+   * system.
+   */
+  children: React.ReactNode;
   /**
    * Trailing content rendered inside this same bordered/rounded shell,
    * after the last toggle (e.g. an "Add Channel" `+` button). Passed
@@ -1589,14 +1811,15 @@ export interface ChannelToggleGroupProps {
   className?: string;
 }
 
-/** Outer pill-strip shell for one or more `ChannelToggle`s — same
- *  `role="radiogroup"` + bordered/rounded/padded container `ToggleGroup`
- *  itself renders (see that component's root `className`), reused
- *  verbatim rather than re-guessed so the two controls are visually
+/** Outer pill-strip shell for one or more `ChannelToggle`/`PlainToggleTab`s
+ *  — same `role="radiogroup"` + bordered/rounded/padded container
+ *  `ToggleGroup` itself renders (see that component's root `className`),
+ *  reused verbatim rather than re-guessed so the two controls are visually
  *  identical. Sets each child's `isFirst` automatically — consumers just
- *  `.map()` their channels into `ChannelToggle`s like any other list. */
+ *  `.map()` their channels into `ChannelToggle`s (plus, at most, one trailing
+ *  `PlainToggleTab` for a non-channel item) like any other list. */
 const ChannelToggleGroup: React.FC<ChannelToggleGroupProps> = ({ children, action, className }) => {
-  const items = React.Children.toArray(children) as React.ReactElement<ChannelToggleProps>[];
+  const items = React.Children.toArray(children) as React.ReactElement<ChannelToggleProps | PlainToggleTabProps>[];
   return (
     <div
       role="radiogroup"
@@ -1623,5 +1846,21 @@ export {
   ChannelTab,
   ChannelToggle,
   ChannelToggleGroup,
+  PlainToggleTab,
   WhatsAppIcon,
+  // Exported so a consumer that needs the Outcome popover's exact
+  // Resolution/Tags/Disposition/Summary form OUTSIDE of `ChannelRow`/
+  // `ChannelTab` themselves (e.g. a standalone header button, not tied to
+  // either component) can reuse it verbatim from just a `ChannelOutcomeConfig`
+  // — see this pair's own doc comments (`useOutcomePopoverState`/
+  // `buildOutcomePopoverSlots`, above) for the split between "is the
+  // Resolution dropdown open, and which body" (local, per-instance) and
+  // the actual resolution VALUE (fully lifted through `ChannelOutcomeConfig`
+  // itself). `ConsultTransferIcon` alongside it for the same reason — the
+  // "Consult / Transfer" entry's own composite icon (no single Lucide glyph
+  // covers "transfer") has no reason to be redrawn a third time by a
+  // consumer building its own decorative version of that same button.
+  useOutcomePopoverState,
+  buildOutcomePopoverSlots,
+  ConsultTransferIcon,
 };

@@ -556,6 +556,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                   awaitingResponse={ch.awaitingResponse}
                   awaitingSeverity={ch.awaitingSeverity}
                   removable={ch.removable}
+                  removeVariant={ch.removeVariant}
                   menuItems={ch.menuItems}
                   // Keeps the hover-preview popover open (and its close
                   // timer disarmed) for as long as this row's own kebab

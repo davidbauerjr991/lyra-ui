@@ -57,7 +57,16 @@ const inputClass = cn(
   "data-[size=sm]:h-8",
   "bg-lyra-bg-field text-lyra-fg-default cursor-text",
   "border-lyra-border-strong hover:border-lyra-state-border-hover-neutral",
-  "focus-within:border-lyra-border-active focus-within:ring-2 focus-within:ring-lyra-border-active/20",
+  // ADA-compliance focus indicator: same focus-visible ring buttons/tabs
+  // use (see input.tsx for the fuller comment), applied focus-within
+  // since this wraps the trigger's inner content, not a real <input>. Per
+  // explicit follow-up request, split via our own tracked input-modality
+  // attribute (input-modality.ts), NOT `:has(:focus-visible)` — see
+  // input-modality.ts's own fuller comment on why that pseudo-class can't
+  // distinguish mouse from keyboard on a text field.
+  "focus-within:border-lyra-border-active",
+  "[html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-2 [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-lyra-border-focus [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-offset-2",
+  "[html:not([data-lyra-input-modality=keyboard])_&:focus-within]:ring-2 [html:not([data-lyra-input-modality=keyboard])_&:focus-within]:ring-lyra-border-active/20",
   "data-[disabled=true]:bg-lyra-bg-disabled data-[disabled=true]:border-transparent",
   "data-[disabled=true]:text-lyra-fg-disabled data-[disabled=true]:cursor-not-allowed",
   // `pointer-events-none` blocks `:hover` from matching at all — without

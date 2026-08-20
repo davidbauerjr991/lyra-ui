@@ -236,9 +236,20 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
       "flex w-full rounded-lyra-sm border lyra-body-md transition-colors overflow-hidden",
       size === "sm" ? "h-8" : "h-9",
       "bg-lyra-bg-field text-lyra-fg-default",
+      // ADA-compliance focus indicator: same focus-visible ring
+      // buttons/tabs use (see input.tsx for the fuller comment), applied
+      // focus-within since the shell wraps the country button + <input>.
+      // Per explicit follow-up request, split via our own tracked
+      // input-modality attribute (input-modality.ts), NOT
+      // `:has(:focus-visible)` — a real, shipped bug in a first attempt at
+      // this: `:focus-visible` always matches a text `<input>` regardless
+      // of input method (confirmed via user report), so
+      // `:has(:focus-visible)` on this wrapper was ALWAYS true whenever its
+      // inner `<input>` had focus at all, mouse click included — see
+      // input-modality.ts's own fuller comment.
       error
-        ? "border-lyra-status-critical-strong hover:border-lyra-status-critical-strong focus-within:border-lyra-status-critical-strong focus-within:ring-2 focus-within:ring-lyra-status-critical-strong/20"
-        : "border-lyra-border-strong hover:border-lyra-state-border-hover-neutral focus-within:border-lyra-border-active focus-within:ring-2 focus-within:ring-lyra-border-active/20",
+        ? "[html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-2 [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-lyra-status-critical-strong [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-offset-2 [html:not([data-lyra-input-modality=keyboard])_&:focus-within]:ring-2 [html:not([data-lyra-input-modality=keyboard])_&:focus-within]:ring-lyra-status-critical-strong/20 focus-within:border-lyra-status-critical-strong border-lyra-status-critical-strong hover:border-lyra-status-critical-strong"
+        : "[html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-2 [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-lyra-border-focus [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-offset-2 [html:not([data-lyra-input-modality=keyboard])_&:focus-within]:ring-2 [html:not([data-lyra-input-modality=keyboard])_&:focus-within]:ring-lyra-border-active/20 focus-within:border-lyra-border-active border-lyra-border-strong hover:border-lyra-state-border-hover-neutral",
       // `pointer-events-none` blocks `:hover` from matching at all — without
       // it, the hover border above would still show on a disabled field.
       disabled && "bg-lyra-bg-disabled border-transparent pointer-events-none",
@@ -288,7 +299,7 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
                     aria-expanded={open} aria-haspopup="listbox"
                     onClick={() => !disabled && !readonly && setOpen((v) => !v)}
                     className={cn(
-                      "flex items-center gap-1.5 pl-3 pr-2 border-r shrink-0 transition-colors focus:outline-none",
+                      "flex items-center gap-1.5 pl-3 pr-2 border-r shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
                       error ? "border-lyra-status-critical-strong" : "border-lyra-border-strong",
                       "hover:bg-lyra-state-hover disabled:cursor-not-allowed disabled:opacity-40"
                     )}
@@ -331,7 +342,11 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
                       className={cn(
                         "w-full h-8 pl-3 pr-8 rounded-lyra-sm border lyra-body-md",
                         "bg-lyra-bg-field border-lyra-border-strong",
-                        "focus:outline-none focus:border-lyra-border-active focus:ring-2 focus:ring-lyra-border-active/20",
+                        // Per explicit follow-up request — see input.tsx's
+                        // own fuller comment (input-modality-attribute
+                        // split, not `:focus-visible`).
+                        "focus:border-lyra-border-active [html[data-lyra-input-modality=keyboard]_&:focus]:outline-none [html[data-lyra-input-modality=keyboard]_&:focus]:ring-2 [html[data-lyra-input-modality=keyboard]_&:focus]:ring-lyra-border-focus [html[data-lyra-input-modality=keyboard]_&:focus]:ring-offset-2",
+                        "[html:not([data-lyra-input-modality=keyboard])_&:focus]:outline-none [html:not([data-lyra-input-modality=keyboard])_&:focus]:ring-2 [html:not([data-lyra-input-modality=keyboard])_&:focus]:ring-lyra-border-active/20",
                         "placeholder:text-lyra-fg-disabled"
                       )}
                     />

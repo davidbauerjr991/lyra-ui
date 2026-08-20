@@ -304,10 +304,64 @@ TableHeader.displayName = "TableHeader";
 const TableBody = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
->(({ className, ...props }, ref) => (
+>(({ className, onKeyDown, ...props }, ref) => (
   <tbody
     ref={ref}
     role="rowgroup"
+    // Built-in ArrowUp/ArrowDown row-to-row keyboard navigation — moves
+    // focus to the row directly above/below the one the key originated in
+    // (or one of ITS OWN descendants — `closest('tr[role="row"]')` resolves
+    // either case to the same row), regardless of which element inside that
+    // row currently has focus. Delegated once here via bubbling rather than
+    // wired per-row.
+    //
+    // Two landing targets, tried in order:
+    //  1. The target row itself, IF it's a real focus target (`tabIndex`
+    //     resolves to 0+, i.e. `TableRow`'s own `selectable` prop is on) —
+    //     lands the user back on a row that can itself be Enter/Space-
+    //     selected, matching `selectable`'s whole point.
+    //  2. Otherwise, the SAME-POSITION focusable element in the target row
+    //     (e.g. checkbox-column → checkbox-column, kebab-menu → kebab-menu)
+    //     — for tables that put their own real controls directly in cells
+    //     (a leading bulk-select checkbox, a trailing kebab/"more options"
+    //     button) without making the row itself a `selectable` unit. Without
+    //     this fallback, arrow keys would silently do nothing the moment
+    //     focus was on one of those controls, since a non-`selectable` `<tr>`
+    //     was never given a `tabIndex` to `.focus()` in the first place —
+    //     exactly the bug report this fallback fixes ("for rows with
+    //     interactive elements - the checkbox... does not allow the up/down
+    //     of the rows").
+    // Both are inert (no-ops, key falls through to default) for any table
+    // that neither opts into `selectable` nor puts focusable elements in
+    // its rows at all.
+    onKeyDown={(e) => {
+      onKeyDown?.(e);
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      const target = e.target as HTMLElement;
+      const currentRow = target.closest('tr[role="row"]');
+      if (!(currentRow instanceof HTMLElement)) return;
+      const rows = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('tr[role="row"]'));
+      const rowIdx = rows.indexOf(currentRow);
+      if (rowIdx === -1) return;
+      const targetRow = rows[e.key === "ArrowDown" ? rowIdx + 1 : rowIdx - 1];
+      if (!targetRow) return;
+
+      if (targetRow.tabIndex >= 0) {
+        e.preventDefault();
+        targetRow.focus();
+        return;
+      }
+
+      const focusableSelector =
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      const targetFocusables = Array.from(targetRow.querySelectorAll<HTMLElement>(focusableSelector));
+      if (targetFocusables.length === 0) return;
+      const currentFocusables = Array.from(currentRow.querySelectorAll<HTMLElement>(focusableSelector));
+      const currentIdx = currentFocusables.indexOf(target);
+      const clampedIdx = Math.min(Math.max(currentIdx, 0), targetFocusables.length - 1);
+      e.preventDefault();
+      targetFocusables[clampedIdx]?.focus();
+    }}
     // Same reasoning as `TableHeader` above — explicit `flex flex-col`
     // instead of relying on `table-row-group`'s behavior with no real
     // `display:table` ancestor to belong to, and no `min-w-full`/`w-full`
@@ -318,48 +372,81 @@ const TableBody = React.forwardRef<
 ));
 TableBody.displayName = "TableBody";
 
-const TableRow = React.forwardRef<
-  HTMLTableRowElement,
-  React.HTMLAttributes<HTMLTableRowElement>
->(({ className, ...props }, ref) => (
-  <tr
-    ref={ref}
-    role="row"
-    className={cn(
-      // No `width`/`min-width` class here — neither `w-full` (the original)
-      // nor `min-w-full` (a previous, insufficient attempt at fixing this)
-      // is correct. Both pin this row's own box to exactly 100% of its
-      // container: `w-full` obviously (a hard `width: 100%`), but
-      // `min-w-full` too — setting an explicit `min-width` *replaces* the
-      // browser's automatic, content-aware minimum size for a flex item
-      // rather than adding a floor on top of it, so it doesn't actually let
-      // the row grow when a resized cell inside needs more than 100%; it
-      // just pins the floor to 100% by a different property. Either way,
-      // cells inside can render wider than the row's own (capped) box
-      // without being clipped (`overflow: visible` is the default) — so a
-      // resized-wide row would visually spill past its right edge while
-      // `border-bottom`, painted at the row's own box edge, stayed at the
-      // old 100% boundary, looking like the separator "disappeared" under
-      // whichever columns rendered past that point.
-      // Leaving both properties at their default (`auto`) is what actually
-      // works: `align-items: stretch` (this row's flex-column ancestors'
-      // default) sizes it to 100% as a baseline, and flexbox's *own*
-      // automatic minimum size — which explicitly does account for
-      // descendant content, including a non-shrinking resized cell — grows
-      // it further if needed. No manual width class should be added back
-      // here for this reason.
-      "flex border-b border-lyra-border-subtle transition-colors",
-      /* default row states */
-      "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
-      /* selected row states */
-      "data-[state=selected]:bg-lyra-bg-active-subtle",
-      "data-[state=selected]:hover:bg-lyra-state-hover-active-subtle",
-      "data-[state=selected]:active:bg-lyra-state-pressed-active-subtle",
-      className
-    )}
-    {...props}
-  />
-));
+interface TableRowProps extends React.HTMLAttributes<HTMLTableRowElement> {
+  /** Makes this row a real, independent keyboard tab stop and selectable
+   *  unit, not just a hover/click target for mouse users — `tabIndex={0}`,
+   *  the same ADA focus-visible ring every other interactive lyra-ui
+   *  component uses, and Enter/Space triggering the row's own `onClick`
+   *  (via a real native `.click()`, so it behaves exactly like a mouse
+   *  click rather than a hand-rolled re-implementation). Off by default:
+   *  not every table row is a clickable unit (plenty are purely
+   *  presentational, e.g. a static data table with no row-level action),
+   *  so this is opt-in per-row rather than automatic.
+   *
+   *  Pairs with `TableBody`'s own built-in ArrowUp/ArrowDown handling
+   *  above — once a row has focus (landed on via Tab, arrow keys, or a
+   *  click), Up/Down moves to the row directly above/below it, and Tab
+   *  continues on into that row's own interactive descendants (native
+   *  DOM-order tab sequencing, no extra code needed) before reaching the
+   *  next row. */
+  selectable?: boolean;
+}
+
+const TableRow = React.forwardRef<HTMLTableRowElement, TableRowProps>(
+  ({ className, selectable = false, tabIndex, onKeyDown, ...props }, ref) => (
+    <tr
+      ref={ref}
+      role="row"
+      tabIndex={selectable ? tabIndex ?? 0 : tabIndex}
+      onKeyDown={(e) => {
+        onKeyDown?.(e);
+        if (
+          selectable &&
+          (e.key === "Enter" || e.key === " ") &&
+          e.target === e.currentTarget
+        ) {
+          e.preventDefault();
+          e.currentTarget.click();
+        }
+      }}
+      className={cn(
+        // No `width`/`min-width` class here — neither `w-full` (the original)
+        // nor `min-w-full` (a previous, insufficient attempt at fixing this)
+        // is correct. Both pin this row's own box to exactly 100% of its
+        // container: `w-full` obviously (a hard `width: 100%`), but
+        // `min-w-full` too — setting an explicit `min-width` *replaces* the
+        // browser's automatic, content-aware minimum size for a flex item
+        // rather than adding a floor on top of it, so it doesn't actually let
+        // the row grow when a resized cell inside needs more than 100%; it
+        // just pins the floor to 100% by a different property. Either way,
+        // cells inside can render wider than the row's own (capped) box
+        // without being clipped (`overflow: visible` is the default) — so a
+        // resized-wide row would visually spill past its right edge while
+        // `border-bottom`, painted at the row's own box edge, stayed at the
+        // old 100% boundary, looking like the separator "disappeared" under
+        // whichever columns rendered past that point.
+        // Leaving both properties at their default (`auto`) is what actually
+        // works: `align-items: stretch` (this row's flex-column ancestors'
+        // default) sizes it to 100% as a baseline, and flexbox's *own*
+        // automatic minimum size — which explicitly does account for
+        // descendant content, including a non-shrinking resized cell — grows
+        // it further if needed. No manual width class should be added back
+        // here for this reason.
+        "flex border-b border-lyra-border-subtle transition-colors",
+        /* default row states */
+        "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
+        /* selected row states */
+        "data-[state=selected]:bg-lyra-bg-active-subtle",
+        "data-[state=selected]:hover:bg-lyra-state-hover-active-subtle",
+        "data-[state=selected]:active:bg-lyra-state-pressed-active-subtle",
+        selectable &&
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lyra-border-focus",
+        className
+      )}
+      {...props}
+    />
+  )
+);
 TableRow.displayName = "TableRow";
 
 interface TableHeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {

@@ -71,6 +71,13 @@ const TagsInput = React.forwardRef<HTMLDivElement, TagsInputProps>(
 
     const [inputVal, setInputVal] = React.useState("");
     const [focused, setFocused] = React.useState(false);
+    // Per explicit follow-up request — see number-field.tsx's own fuller
+    // comment on why this is tracked separately from `focused`, and on why
+    // it reads our own tracked input-modality attribute rather than
+    // `e.target.matches(":focus-visible")` (that has the same root-cause
+    // bug native `:focus-visible` has everywhere else in the library — see
+    // input-modality.ts's own fuller comment).
+    const [keyboardFocused, setKeyboardFocused] = React.useState(false);
 
     const updateTags = (next: string[]) => {
       if (!isControlled) setInternalTags(next);
@@ -102,6 +109,7 @@ const TagsInput = React.forwardRef<HTMLDivElement, TagsInputProps>(
 
     const handleBlur = () => {
       setFocused(false);
+      setKeyboardFocused(false);
       // Add tag on blur if there's text
       if (inputVal.trim()) addTag(inputVal);
     };
@@ -133,7 +141,22 @@ const TagsInput = React.forwardRef<HTMLDivElement, TagsInputProps>(
               : disabled
               ? "border-transparent bg-lyra-bg-disabled cursor-not-allowed"
               : focused
-              ? "border-lyra-border-active ring-2 ring-lyra-border-active/20 bg-lyra-bg-field"
+              ? // ADA-compliance focus indicator: same focus-visible ring
+                // buttons/tabs use (see input.tsx for the fuller comment).
+                // Driven by the `focused`/`keyboardFocused` state (set
+                // from the real <input>'s onFocus/onBlur below) since this
+                // container isn't itself focusable. Per explicit follow-up
+                // request, the bold outer ring is keyboard-only — see
+                // number-field.tsx's own fuller comment; there's no
+                // pre-unification mouse-focus ring to restore here (this
+                // field had none before), so mouse focus goes back to just
+                // the plain border-color change.
+                cn(
+                  "bg-lyra-bg-field",
+                  keyboardFocused
+                    ? "border-lyra-border-active ring-2 ring-lyra-border-focus ring-offset-2"
+                    : "border-lyra-border-active"
+                )
               : "border-lyra-border-strong bg-lyra-bg-field hover:border-lyra-state-border-hover-neutral"
           )}
           onClick={() => !disabled && !readonly && inputRef.current?.focus()}
@@ -179,7 +202,10 @@ const TagsInput = React.forwardRef<HTMLDivElement, TagsInputProps>(
               value={inputVal}
               onChange={(e) => setInputVal(e.target.value)}
               onKeyDown={handleKeyDown}
-              onFocus={() => setFocused(true)}
+              onFocus={() => {
+                setFocused(true);
+                setKeyboardFocused(document.documentElement.dataset.lyraInputModality === "keyboard");
+              }}
               onBlur={handleBlur}
               placeholder={tags.length === 0 ? placeholder : ""}
               className="flex-1 min-w-[120px] bg-transparent outline-none lyra-body-md text-lyra-fg-default placeholder:text-lyra-fg-disabled py-0.5"

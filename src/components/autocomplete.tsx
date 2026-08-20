@@ -151,7 +151,25 @@ const Autocomplete = React.forwardRef<HTMLDivElement, AutocompleteProps>(
       size === "sm" ? "h-8" : "h-9",
       "bg-lyra-bg-field text-lyra-fg-default",
       "border-lyra-border-strong hover:border-lyra-state-border-hover-neutral",
-      open && "border-lyra-border-active ring-2 ring-lyra-border-active/20",
+      // ADA-compliance focus indicator: same focus-visible ring
+      // buttons/tabs use (see input.tsx for the fuller comment).
+      // `focus-within` covers real keyboard focus on the <input>;
+      // `open` is kept alongside it so the ring also shows while the
+      // dropdown itself is open (e.g. right after a mouse-driven open).
+      // Per explicit follow-up request, the `focus-within` ring is scoped
+      // to keyboard-only via our own tracked input-modality attribute
+      // (input-modality.ts), NOT `:has(:focus-visible)` — that pseudo-class
+      // can't distinguish mouse from keyboard focus on a text field (see
+      // input-modality.ts's own fuller comment) — unlike the other fields
+      // touched by that follow-up, there's no PRE-unification mouse-focus
+      // ring to restore here (this field had none — see task history), so
+      // mouse focus on its own still shows nothing, matching that true
+      // "before". `open`'s own ring is untouched — it's a distinct
+      // "dropdown is open" indicator, not a focus-quality one, per its own
+      // comment.
+      "focus-within:border-lyra-border-active",
+      "[html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-2 [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-lyra-border-focus [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-offset-2",
+      open && "border-lyra-border-active ring-2 ring-lyra-border-focus ring-offset-2",
       disabled && "bg-lyra-bg-disabled border-transparent cursor-not-allowed pointer-events-none",
       readonly && "bg-lyra-bg-surface-canvas cursor-default pointer-events-none"
     );

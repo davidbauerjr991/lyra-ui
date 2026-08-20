@@ -121,9 +121,16 @@ const PasswordInput = React.forwardRef<HTMLDivElement, PasswordInputProps>(
       "relative flex w-full items-center rounded-lyra-sm border lyra-body-md transition-colors",
       size === "sm" ? "h-8" : "h-9",
       "bg-lyra-bg-field text-lyra-fg-default",
+      // ADA-compliance focus indicator: same focus-visible ring
+      // buttons/tabs use (see input.tsx for the fuller comment), applied
+      // focus-within since the shell wraps the actual <input>. Per
+      // explicit follow-up request — see email-input.tsx's own fuller
+      // comment on the input-modality-attribute mouse-vs-keyboard split
+      // (NOT `:has(:focus-visible)`, which had the same bug native
+      // `:focus-visible` does on text fields).
       error
-        ? "border-lyra-status-critical-strong focus-within:ring-2 focus-within:ring-lyra-status-critical-strong/20"
-        : "border-lyra-border-strong hover:border-lyra-state-border-hover-neutral focus-within:border-lyra-border-active focus-within:ring-2 focus-within:ring-lyra-border-active/20",
+        ? "[html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-2 [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-lyra-status-critical-strong [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-offset-2 [html:not([data-lyra-input-modality=keyboard])_&:focus-within]:ring-2 [html:not([data-lyra-input-modality=keyboard])_&:focus-within]:ring-lyra-status-critical-strong/20 border-lyra-status-critical-strong"
+        : "[html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-2 [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-lyra-border-focus [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-offset-2 [html:not([data-lyra-input-modality=keyboard])_&:focus-within]:ring-2 [html:not([data-lyra-input-modality=keyboard])_&:focus-within]:ring-lyra-border-active/20 border-lyra-border-strong hover:border-lyra-state-border-hover-neutral focus-within:border-lyra-border-active",
       // `pointer-events-none` blocks `:hover` from matching at all — without
       // it, the hover border above would still show on a disabled field.
       disabled  && "bg-lyra-bg-disabled border-transparent cursor-not-allowed pointer-events-none",
@@ -141,7 +148,7 @@ const PasswordInput = React.forwardRef<HTMLDivElement, PasswordInputProps>(
                 placement="right"
                 content={<RequirementsTooltip requirements={requirements} value={value} />}
               >
-                <button type="button" className="flex items-center text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors focus:outline-none">
+                <button type="button" className="flex items-center text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors rounded-lyra-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2">
                   <CircleHelp className="h-3.5 w-3.5" strokeWidth={1.5} />
                 </button>
               </Tooltip>
@@ -174,7 +181,7 @@ const PasswordInput = React.forwardRef<HTMLDivElement, PasswordInputProps>(
               // no visible text content — no need to set it manually.
               <PasswordToggleField.Toggle
                 id={`${inputId}-toggle`}
-                className="pr-3 flex items-center text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors shrink-0 rounded-lyra-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
+                className="pr-3 flex items-center text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors shrink-0 rounded-lyra-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
               >
                 <PasswordToggleField.Icon
                   visible={<EyeOff className="h-4 w-4" strokeWidth={1.5} />}

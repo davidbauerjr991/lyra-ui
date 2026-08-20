@@ -53,6 +53,16 @@ interface SelectOption {
   label: string;
   /** Disable this option */
   disabled?: boolean;
+  /** Optional leading icon shown to the left of `label` in the dropdown
+   *  list (both single- and multi-select). Rendered at a fixed `h-4 w-4`
+   *  regardless of the size it's authored at, so a consumer's icon doesn't
+   *  need to hand-tune its own className to line up with this component's
+   *  own row height. Omit for the plain, icon-less row every existing
+   *  consumer already renders — this is purely additive. Not shown on the
+   *  closed trigger's own selected-value text (Radix's `Select.Value` in
+   *  single-select mode only accepts a placeholder node, not the live
+   *  selection's icon) — only inside the open dropdown's rows. */
+  icon?: React.ReactNode;
 }
 
 /* ── Select ── */
@@ -302,10 +312,20 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
     const triggerClassName = cn(
       "group flex w-full items-center justify-between rounded-lyra-sm border px-3 lyra-body-md transition-colors",
       size === "sm" ? "h-8" : "h-9",
-      "focus:outline-none",
+      // ADA-compliance focus indicator: same focus-visible ring
+      // buttons/tabs use (see input.tsx for the fuller comment). Per
+      // explicit follow-up request, layered with the ORIGINAL pre-
+      // unification mouse/programmatic-focus ring — split on our own
+      // tracked input-modality attribute, not `:focus-visible` (this
+      // trigger is a real `<button>`, so `:focus-visible` alone would
+      // actually have worked correctly here — but kept consistent with
+      // every text-entry field, where it does NOT work, per input.tsx's
+      // own fuller comment on that bug).
+      "[html[data-lyra-input-modality=keyboard]_&:focus]:outline-none [html[data-lyra-input-modality=keyboard]_&:focus]:ring-2 [html[data-lyra-input-modality=keyboard]_&:focus]:ring-offset-2",
+      "[html:not([data-lyra-input-modality=keyboard])_&:focus]:outline-none [html:not([data-lyra-input-modality=keyboard])_&:focus]:ring-2",
       error
-        ? "border-lyra-status-critical-strong bg-lyra-status-critical-subtle text-lyra-fg-default focus:ring-2 focus:ring-lyra-status-critical-strong/20"
-        : "border-lyra-border-strong bg-lyra-bg-field text-lyra-fg-default hover:border-lyra-state-border-hover-neutral focus:border-lyra-border-active focus:ring-2 focus:ring-lyra-border-active/20",
+        ? "border-lyra-status-critical-strong bg-lyra-status-critical-subtle text-lyra-fg-default [html[data-lyra-input-modality=keyboard]_&:focus]:ring-lyra-status-critical-strong [html:not([data-lyra-input-modality=keyboard])_&:focus]:ring-lyra-status-critical-strong/20"
+        : "border-lyra-border-strong bg-lyra-bg-field text-lyra-fg-default hover:border-lyra-state-border-hover-neutral focus:border-lyra-border-active [html[data-lyra-input-modality=keyboard]_&:focus]:ring-lyra-border-focus [html:not([data-lyra-input-modality=keyboard])_&:focus]:ring-lyra-border-active/20",
       disabled &&
         "bg-lyra-bg-disabled border-transparent text-lyra-fg-disabled cursor-not-allowed pointer-events-none",
       readonly &&
@@ -386,7 +406,10 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                             "h-9 w-full rounded-lyra-sm border border-lyra-border-strong bg-lyra-bg-field pl-9 pr-9 lyra-body-md text-lyra-fg-default transition-colors",
                             "placeholder:text-lyra-fg-disabled",
                             "hover:border-lyra-state-border-hover-neutral",
-                            "focus:outline-none focus:border-lyra-border-active focus:ring-2 focus:ring-lyra-border-active/20"
+                            // Per explicit follow-up request — see
+                            // input.tsx's own fuller comment.
+                            "focus:border-lyra-border-active [html[data-lyra-input-modality=keyboard]_&:focus]:outline-none [html[data-lyra-input-modality=keyboard]_&:focus]:ring-2 [html[data-lyra-input-modality=keyboard]_&:focus]:ring-lyra-border-focus [html[data-lyra-input-modality=keyboard]_&:focus]:ring-offset-2",
+                            "[html:not([data-lyra-input-modality=keyboard])_&:focus]:outline-none [html:not([data-lyra-input-modality=keyboard])_&:focus]:ring-2 [html:not([data-lyra-input-modality=keyboard])_&:focus]:ring-lyra-border-active/20"
                           )}
                         />
                         {search && (
@@ -505,6 +528,17 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                           tabIndex={-1}
                           className="pointer-events-none"
                         />
+                        {/* Optional leading icon (`SelectOption.icon`) —
+                            same purely-additive treatment as the
+                            single-select row above. */}
+                        {option.icon && (
+                          <span
+                            aria-hidden="true"
+                            className="flex-shrink-0 [&_svg]:h-4 [&_svg]:w-4 text-lyra-fg-secondary"
+                          >
+                            {option.icon}
+                          </span>
+                        )}
                         <span className="flex-1 min-w-0 truncate text-lyra-fg-default">{option.label}</span>
                       </button>
                     );
@@ -745,6 +779,18 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                         "group-data-[disabled]:opacity-0"
                       )}
                     />
+                    {/* Optional leading icon (`SelectOption.icon`) — purely
+                        additive, so an option that doesn't set one renders
+                        exactly as before (no empty icon slot reserving
+                        space). */}
+                    {option.icon && (
+                      <span
+                        aria-hidden="true"
+                        className="flex-shrink-0 [&_svg]:h-4 [&_svg]:w-4 text-lyra-fg-secondary group-data-[state=checked]:text-lyra-fg-active-strong"
+                      >
+                        {option.icon}
+                      </span>
+                    )}
                     <span className="flex-1 min-w-0">
                       <SelectPrimitive.ItemText>
                         <span className="block truncate">{option.label}</span>

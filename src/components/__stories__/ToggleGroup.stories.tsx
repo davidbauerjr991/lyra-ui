@@ -34,6 +34,34 @@ export const Default: Story = {
   },
 };
 
+export const FullWidth: Story = {
+  name: "Full Width",
+  parameters: { layout: "padded" },
+  render: () => {
+    const [value, setValue] = useState("main");
+    return (
+      // Narrow fixed-width wrapper (not full-viewport) so the truncation
+      // this story exists to demonstrate is actually forced, matching the
+      // real-world case that prompted `fullWidth` — a combined-panel-mode
+      // region switch sharing a narrow (<768px) row with a long interaction
+      // title, e.g. "Alex Kowalski (CST-10000)" — per explicit follow-up
+      // request ("add a fullwidth story for toggle buttons... have the text
+      // truncate instead of wrap for this story").
+      <div className="w-80 rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-base p-3">
+        <ToggleGroup
+          fullWidth
+          items={[
+            { value: "main", label: "Alex Kowalski (CST-10000)" },
+            { value: "panel", label: "Search" },
+          ]}
+          value={value}
+          onValueChange={(next) => next && setValue(next)}
+        />
+      </div>
+    );
+  },
+};
+
 export const MultipleSelection: Story = {
   name: "Multiple Selection",
   render: () => {

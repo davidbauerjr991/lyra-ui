@@ -239,21 +239,21 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
     const [parentWidth, setParentWidth] = useState(9999);
     const isNarrow = parentWidth < 1024;
 
-    /* Auto full-screen below 768px of the parent container's own width — a
+    /* Auto full-screen below 400px of the parent container's own width — a
        dedicated, tighter breakpoint than `isNarrow`'s 1024px above (which
        only switches to an absolute overlay, still at the panel's normal
-       ~350-425px width). Below 768px there simply isn't room for both the
+       ~350-425px width). Below 400px there simply isn't room for both the
        panel and whatever sits beside it at ANY width, so the panel takes
        over entirely — same visual result as the user clicking
        `allowFullScreen`'s own toggle (`displayWidth`/the overlay branch
        below both key off this too, alongside `isFullScreen`), just
        automatic. The toggle itself hides at this width (`fullScreenToggle`
-       below) — there's nothing to "exit" to below 768px, so a control
+       below) — there's nothing to "exit" to below 400px, so a control
        that can't do anything would just be confusing chrome. Independent
        of `allowFullScreen`: this breakpoint applies to every `InteriorPanel`
        regardless of whether that panel opts into the user-triggered
-       toggle. */
-    const isAutoFullScreen = parentWidth < 768;
+       toggle. Was 768px — lowered per explicit request. */
+    const isAutoFullScreen = parentWidth < 400;
 
     const stableOuterRef = useCallback((el: HTMLDivElement | null) => {
       (outerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
@@ -278,7 +278,7 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
     // remembered across a close/reopen (just per-mount rather than via a
     // `storageKey` cookie) — confirmed as the wanted behavior over
     // "always reopens at the pre-full-screen size." Hidden entirely below
-    // 768px (`isAutoFullScreen`) — see that flag's own doc comment above.
+    // 400px (`isAutoFullScreen`) — see that flag's own doc comment above.
     const [isFullScreen, setIsFullScreen] = useState(false);
 
     // `exitFullScreenSignal` escape hatch (see its own doc comment above) —

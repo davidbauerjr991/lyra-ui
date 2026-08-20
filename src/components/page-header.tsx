@@ -18,12 +18,26 @@ interface PageHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string;
   /**
    * Leading icon rendered before the title, with a vertical divider between
-   * them — switches the header into a "record header" layout (icon | title
-   * stacked above `subtitle`), for pages about a specific customer, agent,
-   * case, etc. rather than a static section title. Mutually exclusive with
-   * `breadcrumb` — when both are passed, `icon` takes precedence.
+   * them by default (see `iconDivider` to drop it) — switches the header
+   * into a "record header" layout (icon | title stacked above `subtitle`),
+   * for pages about a specific customer, agent, case, etc. rather than a
+   * static section title. Mutually exclusive with `breadcrumb` — when both
+   * are passed, `icon` takes precedence.
    */
   icon?: React.ReactNode;
+  /**
+   * Set `false` to drop the vertical divider `icon` renders between itself
+   * and the title block — for an `icon` that already reads as a complete,
+   * self-contained unit (e.g. a colored circle avatar shell built from
+   * `Icon`'s own `background`/`shape="circle"`, icon.tsx) rather than a
+   * bare glyph that needs the divider to visually separate it from the
+   * text next to it. Per explicit request (agent-next-gen-v2's own
+   * interaction record header, once its `icon` became exactly that kind of
+   * circle avatar) — default `true` (the divider lyra-ui's own `PageHeader`
+   * "Record Header" story demonstrates) keeps every existing bare-icon
+   * consumer unchanged. No effect when `icon` isn't set.
+   */
+  iconDivider?: boolean;
   /**
    * Arbitrary content rendered immediately after the title/subtitle block
    * (before `actions`) — e.g. a compact `ChannelToggleGroup` distinguishing
@@ -115,6 +129,42 @@ interface PageHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   badgeColor?: BadgeColor;
   /** Badge variant — defaults to "subtle" */
   badgeVariant?: BadgePillVariant;
+  /**
+   * Whether the row draws its own `border-b` (default: `true`). Turn off
+   * for a header sitting directly above content that already establishes
+   * its own visual separation right underneath it (e.g. a tab row, or a
+   * session/record separator with its own divider) — per explicit
+   * request, for a record header like agent-next-gen-v2's interaction
+   * view, where the channel tab row / session separator directly below
+   * already draws its own line, this header's own border just doubled it
+   * up into two parallel lines with an odd, empty-looking gap between
+   * them.
+   */
+  bordered?: boolean;
+  /**
+   * Shrinks the row from its default `min-h-[68px]`/`py-4` (sized for a
+   * default `lg` Button, 36px tall, in `actions`) down to `min-h-[54px]`
+   * with the BOTTOM padding removed (top padding unchanged) — per explicit
+   * request, for a record header whose own `actions` never grow past a
+   * smaller icon-sized control and which sits directly above other
+   * tightly-packed content (see `bordered`'s own doc comment for the same
+   * "sits directly above other content" reasoning). Off by default — every
+   * other existing consumer keeps the taller, evenly-padded default row.
+   */
+  compact?: boolean;
+  /**
+   * Title's own heading size — default `"lg"` (`.lyra-heading-lg`, 20px/
+   * 600), the tier every existing consumer (record headers, section
+   * titles) already renders at. Set to `"2xl"` (`.lyra-heading-2xl`,
+   * 28px/700 — the same tier `DashboardCard`'s own metric numbers use, see
+   * that class's own doc comment in lyra-tokens.css) for a header that
+   * needs to read as a large standalone greeting/stat rather than a
+   * page/record title — per explicit request, agent-next-gen-v2's
+   * dashboard "Good {period}, {name}" greeting. Applies to the `<h1>` in
+   * every title layout (`icon`/`breadcrumb`/plain) so it's consistent
+   * regardless of which one a given consumer happens to use.
+   */
+  titleSize?: "lg" | "2xl";
 }
 
 const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
@@ -123,6 +173,7 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
       className,
       title,
       icon,
+      iconDivider = true,
       titleSuffix,
       titleSuffixGrow = false,
       iconAriaHidden = true,
@@ -140,6 +191,9 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
       badge,
       badgeColor = "green",
       badgeVariant = "subtle",
+      bordered = true,
+      compact = false,
+      titleSize = "lg",
       ...props
     },
     ref
@@ -172,7 +226,14 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
           // toggle button, positioned via a hardcoded `top` offset — see its
           // doc comment). Kept as a min-height, not a fixed height, so a
           // future taller `actions` element can still grow the row.
-          "lyra-page-header-suffix-wrap flex min-h-[68px] items-center justify-between border-b border-lyra-border-subtle px-6 py-4",
+          "lyra-page-header-suffix-wrap flex items-center justify-between px-6",
+          // `compact` — see that prop's own doc comment. `pt-4 pb-0` keeps
+          // the same top inset the default `py-4` already has, dropping
+          // only the bottom half — a plain `py-0`/`p-0` would also yank the
+          // title away from the top edge, not just close the gap below it.
+          compact ? "min-h-[54px] pt-4 pb-0" : "min-h-[68px] py-4",
+          // `bordered` — see that prop's own doc comment.
+          bordered && "border-b border-lyra-border-subtle",
           // Scopes the container-query wrap/align-self behavior below
           // (lyra-tokens.css) to consumers that actually pass `titleSuffix` —
           // see that CSS block's own doc comment for why: it exists so
@@ -239,10 +300,10 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
             >
               {icon}
             </span>
-            <div className="h-8 w-px bg-lyra-border-subtle shrink-0" />
+            {iconDivider && <div className="h-8 w-px bg-lyra-border-subtle shrink-0" />}
             <div className="flex flex-col justify-center min-w-0">
               <div className="flex items-center gap-2 min-w-0">
-                <h1 className="lyra-heading-lg text-lyra-fg-default leading-tight truncate min-w-0">{title}</h1>
+                <h1 className={cn(titleSize === "2xl" ? "lyra-heading-2xl" : "lyra-heading-lg", "text-lyra-fg-default leading-tight truncate min-w-0")}>{title}</h1>
                 {badge && <Badge color={badgeColor} variant={badgeVariant}>{badge}</Badge>}
               </div>
               {subtitle && <span className="lyra-body-sm text-lyra-fg-secondary truncate">{subtitle}</span>}
@@ -287,7 +348,7 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
                   </React.Fragment>
                 ))}
                 <BreadcrumbItem aria-current="page" className="gap-2 min-w-0 flex-1">
-                  <h1 className="lyra-heading-lg text-lyra-fg-default truncate min-w-0">{title}</h1>
+                  <h1 className={cn(titleSize === "2xl" ? "lyra-heading-2xl" : "lyra-heading-lg", "text-lyra-fg-default truncate min-w-0")}>{title}</h1>
                   {badge && <Badge color={badgeColor} variant={badgeVariant}>{badge}</Badge>}
                 </BreadcrumbItem>
               </BreadcrumbList>
@@ -306,7 +367,7 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="shrink-0" />
                 <BreadcrumbItem aria-current="page" className="gap-2 min-w-0 flex-1">
-                  <h1 className="lyra-heading-lg text-lyra-fg-default truncate min-w-0">{title}</h1>
+                  <h1 className={cn(titleSize === "2xl" ? "lyra-heading-2xl" : "lyra-heading-lg", "text-lyra-fg-default truncate min-w-0")}>{title}</h1>
                   {badge && <Badge color={badgeColor} variant={badgeVariant}>{badge}</Badge>}
                 </BreadcrumbItem>
               </BreadcrumbList>
@@ -315,7 +376,7 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
         ) : (
           <div className="flex flex-col justify-center min-w-0">
             <div className="flex items-center gap-2 min-w-0">
-              <h1 className="lyra-heading-lg text-lyra-fg-default truncate min-w-0">{title}</h1>
+              <h1 className={cn(titleSize === "2xl" ? "lyra-heading-2xl" : "lyra-heading-lg", "text-lyra-fg-default truncate min-w-0")}>{title}</h1>
               {badge && <Badge color={badgeColor} variant={badgeVariant}>{badge}</Badge>}
             </div>
             {subtitle && <span className="lyra-body-sm text-lyra-fg-secondary truncate">{subtitle}</span>}

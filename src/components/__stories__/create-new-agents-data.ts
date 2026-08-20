@@ -21,13 +21,27 @@ export interface CreateNewAgentRecord {
   status: AgentPresenceStatus;
 }
 
+// Disjoint from `create-new-customers-data.ts`'s own FIRST_NAMES/LAST_NAMES
+// — per explicit request ("de-dupe the database so customers and agent
+// records are unique"), an agent record and a customer record must never
+// be able to land on the same full name. Both pools used to draw from
+// nearly the same 20 first names/20 last names (just reordered), which
+// with 100 agents cycling against 60 customers produced 47 exact-duplicate
+// full names between the two lists — e.g. "Alex Kowalski" existed as both
+// an agent and a customer, which is exactly the confusing overlap this
+// fixes. Disjoint FIRST_NAMES alone is sufficient to guarantee zero
+// cross-list duplicates (a shared last name can't produce a matching full
+// name if the first name never matches), but LAST_NAMES is kept disjoint
+// too so the two rosters don't even *read* as related when scanned side
+// by side. See that file's own identical comment for the customer side of
+// this pairing.
 const FIRST_NAMES = [
-  "Jamie", "Priya", "Wei", "Alex", "Sarah", "David", "Miguel", "Elena", "Omar", "Grace",
-  "Noah", "Fatima", "Liam", "Sofia", "Kenji", "Amara", "Lucas", "Ingrid", "Diego", "Yuki",
+  "Jamie", "Priya", "Wei", "Marcus", "Elena", "Omar", "Grace", "Fatima", "Kenji", "Amara",
+  "Ingrid", "Diego", "Hannah", "Tariq", "Aisha", "Viktor", "Naomi", "Rafael", "Chidi", "Petra",
 ];
 const LAST_NAMES = [
-  "Torres", "Nair", "Chen", "Kowalski", "Miller", "Brown", "Santos", "Petrov", "Haddad", "Okafor",
-  "Bennett", "Rahman", "Sullivan", "Alvarez", "Tanaka", "Mensah", "Fontaine", "Larsen", "Reyes", "Mori",
+  "Torres", "Nair", "Chen", "Kowalski", "Petrov", "Haddad", "Okafor", "Bennett", "Rahman", "Tanaka",
+  "Mensah", "Fontaine", "Larsen", "Mori", "Novak", "Osei", "Lindqvist", "Abara", "Suzuki", "Kessler",
 ];
 const AVATAR_COLORS = [
   "blue", "orange", "teal", "purple", "green", "red", "pink", "yellow", "lime", "slate",

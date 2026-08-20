@@ -59,13 +59,19 @@ export interface CreateNewCustomerRecord {
   paymentBalance: string;
 }
 
+// Disjoint from `create-new-agents-data.ts`'s own FIRST_NAMES/LAST_NAMES —
+// see that file's identical comment for why (per explicit request, "de-dupe
+// the database so customers and agent records are unique" — these two
+// pools used to share ~18 of 20 first/last names each, producing 47
+// exact-duplicate full names between the 100 generated agents and 60
+// generated customers).
 const FIRST_NAMES = [
-  "Alex", "Sarah", "David", "Priya", "Miguel", "Elena", "Omar", "Grace", "Noah", "Fatima",
-  "Liam", "Sofia", "Kenji", "Amara", "Lucas", "Ingrid", "Diego", "Yuki", "Hannah", "Tariq",
+  "Alex", "Sarah", "David", "Miguel", "Sofia", "Lucas", "Yuki", "Noah", "Liam", "Isabella",
+  "Ethan", "Maya", "Caleb", "Zara", "Owen", "Meera", "Julian", "Ana", "Ravi", "Camille",
 ];
 const LAST_NAMES = [
-  "Kowalski", "Miller", "Brown", "Nair", "Santos", "Petrov", "Haddad", "Okafor", "Bennett", "Rahman",
-  "Sullivan", "Alvarez", "Tanaka", "Mensah", "Fontaine", "Larsen", "Reyes", "Mori", "Costa", "Ibrahim",
+  "Miller", "Brown", "Santos", "Alvarez", "Sullivan", "Castillo", "Costa", "Ibrahim", "Whitfield", "Delgado",
+  "Park", "Nkemelu", "Fischer", "Duarte", "Novello", "Grant", "Barros", "Halvorsen", "Yamada", "Silva",
 ];
 const AVATAR_COLORS = [
   "blue", "purple", "green", "orange", "teal", "red", "pink", "yellow", "lime", "slate",

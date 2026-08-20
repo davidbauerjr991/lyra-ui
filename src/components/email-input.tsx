@@ -71,9 +71,19 @@ const EmailInput = React.forwardRef<HTMLInputElement, EmailInputProps>(
       "relative flex w-full items-center rounded-lyra-sm border lyra-body-md transition-colors",
       size === "sm" ? "h-8" : "h-9",
       "bg-lyra-bg-field text-lyra-fg-default",
+      // ADA-compliance focus indicator: same focus-visible ring
+      // buttons/tabs use (see input.tsx for the fuller comment), applied
+      // focus-within since the shell wraps the actual <input>. Per explicit
+      // follow-up request, split via our own tracked input-modality
+      // attribute (input-modality.ts), NOT `:has(:focus-visible)` — a real,
+      // shipped bug in a first attempt at this: `:focus-visible` always
+      // matches a text `<input>` regardless of input method (confirmed via
+      // user report), so `:has(:focus-visible)` on this wrapper was
+      // ALWAYS true whenever its inner `<input>` had focus at all, mouse
+      // click included — see input-modality.ts's own fuller comment.
       error
-        ? "border-lyra-status-critical-strong hover:border-lyra-status-critical-strong focus-within:ring-2 focus-within:ring-lyra-status-critical-strong/20"
-        : "border-lyra-border-strong hover:border-lyra-state-border-hover-neutral focus-within:border-lyra-border-active focus-within:ring-2 focus-within:ring-lyra-border-active/20",
+        ? "[html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-2 [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-lyra-status-critical-strong [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-offset-2 [html:not([data-lyra-input-modality=keyboard])_&:focus-within]:ring-2 [html:not([data-lyra-input-modality=keyboard])_&:focus-within]:ring-lyra-status-critical-strong/20 border-lyra-status-critical-strong hover:border-lyra-status-critical-strong"
+        : "[html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-2 [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-lyra-border-focus [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-offset-2 [html:not([data-lyra-input-modality=keyboard])_&:focus-within]:ring-2 [html:not([data-lyra-input-modality=keyboard])_&:focus-within]:ring-lyra-border-active/20 border-lyra-border-strong hover:border-lyra-state-border-hover-neutral focus-within:border-lyra-border-active",
       // `pointer-events-none` blocks `:hover` from matching at all — without
       // it, the hover border above would still show on a disabled field.
       disabled && "bg-lyra-bg-disabled border-transparent cursor-not-allowed pointer-events-none",

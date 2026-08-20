@@ -804,7 +804,14 @@ function AutoFitDemo() {
           </TableHeader>
           <TableBody>
             {visibleRows.map((row) => (
-              <TableRow key={row.id}>
+              // `selectable` — demonstrates `TableRow`'s own built-in
+              // keyboard support (tabIndex/focus ring/Enter-Space,
+              // paired with `TableBody`'s own ArrowUp/ArrowDown row
+              // navigation) now that this row has a real per-row action
+              // (`onClick` below) worth reaching by keyboard, not just
+              // mouse. See `TableRow`'s own `selectable` doc comment
+              // (table.tsx) for the full behavior.
+              <TableRow key={row.id} selectable onClick={() => alert(`Opening ${row.name}`)}>
                 <TableCell className="flex-[2] text-lyra-fg-link cursor-pointer hover:underline">
                   {row.name}
                 </TableCell>
