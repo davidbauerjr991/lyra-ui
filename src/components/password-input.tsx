@@ -4,7 +4,7 @@ import { Eye, EyeOff, CircleHelp, Check, X } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Label } from "./label";
 import { Tooltip } from "./tooltip";
-import { ErrorIcon } from "./icons/error-icon";
+import { ErrorIconSolid } from "./icons/error-icon-solid";
 
 /* Was a fully hand-rolled show/hide password field (local `useState` +
    a plain `<button>` flipping `type="password"`/`"text"`). Rebuilt on
@@ -194,7 +194,7 @@ const PasswordInput = React.forwardRef<HTMLDivElement, PasswordInputProps>(
 
         {error && (
           <p id={errorId} role="alert" className="mt-1.5 lyra-body-sm text-lyra-status-critical-strong flex items-center gap-1">
-            <ErrorIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <ErrorIconSolid className="h-4 w-4 shrink-0" aria-hidden="true" />
             {error}
           </p>
         )}

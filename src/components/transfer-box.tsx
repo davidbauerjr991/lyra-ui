@@ -10,7 +10,7 @@ import { cn } from "../lib/utils";
 import { SearchInput } from "./search-input";
 import { Label } from "./label";
 import { Tooltip } from "./tooltip";
-import { ErrorIcon } from "./icons/error-icon";
+import { ErrorIconSolid } from "./icons/error-icon-solid";
 import { TableFooter } from "./table";
 
 /* ── Types ── */
@@ -151,7 +151,7 @@ function Panel({ label, labelTooltip, items, highlighted, onToggle, onRangeToggl
         {/* Error message — always visible below search */}
         {error && typeof error === "string" && (
           <p className="mt-2 lyra-body-sm text-lyra-status-critical-strong flex items-center gap-1">
-            <ErrorIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <ErrorIconSolid className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             {error}
           </p>
         )}
@@ -161,7 +161,7 @@ function Panel({ label, labelTooltip, items, highlighted, onToggle, onRangeToggl
             selectedCount >= max ? "text-lyra-status-critical-strong" : "text-lyra-fg-secondary"
           )}>
             {selectedCount >= max && (
-              <ErrorIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <ErrorIconSolid className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             )}
             {selectedCount >= max
               ? `Maximum of ${max} items reached — remove items to add more`

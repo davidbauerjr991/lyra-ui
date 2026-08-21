@@ -31,6 +31,18 @@ export interface LoginCardProps {
   defaultLaunching?: boolean;
   /** Called once the launch sequence finishes and the card has fully faded out */
   onLaunch?: () => void;
+  /**
+   * Idle-state label for the launch button — defaults to `Launch ${appName}`
+   * (unchanged from before this prop existed). Per explicit request
+   * (agent-next-gen-v2's own `LoginPage.tsx`, whose card already shows its
+   * app name once in the header just above), pass a plain `"Launch"` here
+   * to drop the app-name repetition from the button specifically, without
+   * touching `appName` itself (still used for the header title and for the
+   * in-progress `"Launching {appName}…"` status text below, which is
+   * genuinely informative during the wait rather than a repeat of the
+   * header).
+   */
+  launchButtonLabel?: string;
   className?: string;
 }
 
@@ -59,6 +71,7 @@ const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
       defaultPhoneSetup = "soft-phone",
       defaultLaunching = false,
       onLaunch,
+      launchButtonLabel,
       className,
     },
     ref
@@ -257,7 +270,7 @@ const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
             disabled={!isFormValid || launching}
             onClick={handleLaunch}
           >
-            {launching ? `Launching ${appName}…` : `Launch ${appName}`}
+            {launching ? `Launching ${appName}…` : launchButtonLabel ?? `Launch ${appName}`}
           </Button>
 
           {/* ── Save preferences ── */}

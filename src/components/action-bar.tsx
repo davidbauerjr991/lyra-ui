@@ -1,9 +1,9 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/utils";
-import { InfoIcon } from "./icons/info-icon";
-import { WarningIcon } from "./icons/warning-icon";
-import { ErrorIcon } from "./icons/error-icon";
+import { InfoIconSolid } from "./icons/info-icon-solid";
+import { WarningIconSolid } from "./icons/warning-icon-solid";
+import { ErrorIconSolid } from "./icons/error-icon-solid";
 
 /* ── Variants ── */
 
@@ -53,12 +53,19 @@ export interface ActionBarProps
   actions?: React.ReactNode;
 }
 
-/* ── Icon map ── */
-
+/* ── Icon map ──
+   Solid/filled glyphs (`*IconSolid`) — `fill="currentColor"` on the shape
+   instead of a hardcoded hex, so the `text-lyra-status-*-strong` token
+   class already applied below via `iconVariants({ variant })` actually
+   reaches the icon's color (previously a no-op: the original `WarningIcon`/
+   `InfoIcon`/`ErrorIcon` assets ignore `className` color and always paint
+   their fixed light-mode hex, so this className had no visible effect and
+   the icon never shifted in dark mode). Same pattern as `Toast` and
+   `InlineNotification`. */
 const IconMap: Record<string, React.FC<{ className?: string }>> = {
-  info:    (p) => <InfoIcon  {...p} />,
-  warning: (p) => <WarningIcon {...p} />,
-  error:   (p) => <ErrorIcon {...p} />,
+  info:    (p) => <InfoIconSolid  {...p} />,
+  warning: (p) => <WarningIconSolid {...p} />,
+  error:   (p) => <ErrorIconSolid {...p} />,
 };
 
 /* ── Component ── */

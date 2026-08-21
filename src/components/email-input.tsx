@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Mail } from "lucide-react";
-import { ErrorIcon } from "./icons/error-icon";
+import { ErrorIconSolid } from "./icons/error-icon-solid";
 import { cn } from "../lib/utils";
 import { Label } from "./label";
 
@@ -129,7 +129,7 @@ const EmailInput = React.forwardRef<HTMLInputElement, EmailInputProps>(
 
         {error && (
           <p id={errorId} role="alert" className="mt-1.5 lyra-body-sm text-lyra-status-critical-strong flex items-start gap-1">
-            <ErrorIcon className="h-4 w-4 shrink-0 mt-px" aria-hidden="true" />
+            <ErrorIconSolid className="h-4 w-4 shrink-0 mt-px" aria-hidden="true" />
             {error}
           </p>
         )}

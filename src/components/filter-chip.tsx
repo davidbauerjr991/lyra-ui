@@ -2,7 +2,7 @@ import * as React from "react";
 import { useState } from "react";
 import { ChevronDown, X } from "lucide-react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { ErrorIcon } from "./icons/error-icon";
+import { ErrorIconSolid } from "./icons/error-icon-solid";
 import { Select } from "./select";
 import { Tooltip } from "./tooltip";
 import { cn } from "../lib/utils";
@@ -207,7 +207,7 @@ const FilterChip = React.forwardRef<HTMLButtonElement, FilterChipProps>(
       >
         {/* Error icon */}
         {variant === "error" && (
-          <ErrorIcon className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+          <ErrorIconSolid className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
         )}
 
         {/* Label + value — when no operators, include label inline */}

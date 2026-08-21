@@ -1,13 +1,13 @@
 import * as React from "react";
 import { X } from "lucide-react";
-import { Icon } from "./icon";
+import { Icon, type IconColor } from "./icon";
 import { Tooltip } from "./tooltip";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/utils";
-import { WarningIcon } from "./icons/warning-icon";
-import { ErrorIcon } from "./icons/error-icon";
-import { InfoIcon } from "./icons/info-icon";
-import { SuccessIcon } from "./icons/success-icon";
+import { WarningIconSolid } from "./icons/warning-icon-solid";
+import { ErrorIconSolid } from "./icons/error-icon-solid";
+import { InfoIconSolid } from "./icons/info-icon-solid";
+import { SuccessIconSolid } from "./icons/success-icon-solid";
 
 /* ── Variants ── */
 
@@ -28,12 +28,26 @@ const notificationVariants = cva(
   }
 );
 
+// Solid/filled glyphs (`*IconSolid`, `src/components/icons/*-icon-solid.tsx`)
+// — `fill="currentColor"` on the shape instead of a hardcoded hex, so
+// `Icon`'s `color` prop (below, `iconColorMap`) drives the color through the
+// `text-lyra-status-*-strong` tokens, which shift automatically in dark
+// mode. Same pattern already used by `Toast` — see that file's matching
+// comment. Deliberately the `-solid` files, not the original 4 (`WarningIcon`
+// etc.), which stay hardcoded-hex for their other ~13 call sites.
 const iconMap = {
-  warning: WarningIcon,
-  error: ErrorIcon,
-  info: InfoIcon,
-  success: SuccessIcon,
+  warning: WarningIconSolid,
+  error: ErrorIconSolid,
+  info: InfoIconSolid,
+  success: SuccessIconSolid,
 } as const;
+
+const iconColorMap: Record<NonNullable<InlineNotificationProps["variant"]>, IconColor> = {
+  warning: "status-warning",
+  error: "status-critical",
+  info: "status-info",
+  success: "status-success",
+};
 
 /* ── Component ── */
 
@@ -57,7 +71,13 @@ const InlineNotification = React.forwardRef<
       role="alert"
       {...props}
     >
-      <Icon icon={StatusIcon} size="md" decorative className="shrink-0 pt-0.5" />
+      <Icon
+        icon={StatusIcon}
+        size="md"
+        color={iconColorMap[variant!]}
+        decorative
+        className="shrink-0 pt-0.5"
+      />
       <p className="flex-1 lyra-body-md text-lyra-fg-default">{children}</p>
       {onDismiss && (
         <Tooltip content="Dismiss alert" placement="left" asLabel>

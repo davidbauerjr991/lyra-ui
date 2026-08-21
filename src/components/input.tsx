@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ErrorIcon } from "./icons/error-icon";
+import { ErrorIconSolid } from "./icons/error-icon-solid";
 import { cn } from "../lib/utils";
 import { Label } from "./label";
 
@@ -133,7 +133,10 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             role="alert"
             className="flex items-center gap-1 mt-1.5"
           >
-            <ErrorIcon className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+            <ErrorIconSolid
+              className="h-3.5 w-3.5 flex-shrink-0 text-lyra-status-critical-strong"
+              aria-hidden="true"
+            />
             <span className="lyra-body-sm text-lyra-status-critical-strong">
               {error}
             </span>

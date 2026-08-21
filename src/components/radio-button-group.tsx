@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ErrorIcon } from "./icons/error-icon";
+import { ErrorIconSolid } from "./icons/error-icon-solid";
 import { cn } from "../lib/utils";
 import { RadioGroup, RadioGroupItem } from "./radio";
 import { Label } from "./label";
@@ -103,8 +103,8 @@ const RadioButtonGroup = React.forwardRef<HTMLDivElement, RadioButtonGroupProps>
         {/* Error message */}
         {error && (
           <div role="alert" className="flex items-center gap-1 mt-2">
-            <ErrorIcon
-              className="h-3.5 w-3.5 flex-shrink-0"
+            <ErrorIconSolid
+              className="h-3.5 w-3.5 flex-shrink-0 text-lyra-status-critical-strong"
               aria-hidden="true"
             />
             <span className="lyra-body-sm text-lyra-status-critical-strong">
