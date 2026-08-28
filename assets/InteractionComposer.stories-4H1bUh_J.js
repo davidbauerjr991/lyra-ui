@@ -1,0 +1,27 @@
+import{j as e}from"./jsx-runtime-D_zvdyIk.js";import{r as u}from"./index-CXOcBcs0.js";import{I as i}from"./interaction-composer-w3ry9oSX.js";import"./_commonjsHelpers-CqkleIqs.js";import"./utils-BLSKlp9E.js";import"./textarea-CnHCea8z.js";import"./error-icon-solid-C6_pXXD0.js";import"./label-KUce3kYB.js";import"./index-DWcjTdiE.js";import"./index-DujEZ9g2.js";import"./tooltip-C4O8ztA7.js";import"./index-DNfP5j1O.js";import"./floating-ui.react-dom-B7A2Lg_k.js";import"./circle-help-Bj2MpUE2.js";import"./createLucideIcon-DEcfmm_F.js";import"./actions-DkdZgc0e.js";import"./button-ZUdeimtK.js";import"./index-BDkVnVO1.js";import"./index-1evVQkiP.js";import"./badge-BsM2Tnvd.js";import"./chevron-down-BRCsRsv-.js";import"./tag-DwTh1BeL.js";import"./x-N8aIqrq2.js";import"./select-lVxCG5cr.js";import"./Combination-CgjdYmp6.js";import"./tslib.es6-Ytcc2UEA.js";import"./popover-CkWYpFl7.js";import"./index-5D2bSGQf.js";import"./index-D1UBFIOe.js";import"./container-header-DS16puu8.js";import"./checkbox-ZgFdemN7.js";import"./index-CoT6TaLL.js";import"./minus-DYrWPnXn.js";import"./check-DrRFj5bn.js";import"./scroll-chevron-DwoFwDLx.js";import"./chevron-right-DZKRY3zX.js";import"./chevron-left-C6DiQdwt.js";import"./chevron-up-DaHnz2kU.js";import"./search-aUstRSOi.js";import"./input-BJ6MeIKE.js";import"./date-picker-cyEmZgBi.js";import"./calendar-CixyQgsK.js";import"./calendar-BHEDU7EC.js";import"./time-picker-Cfknfa0B.js";import"./number-field-DqhhgVe8.js";import"./clock-xCVatdV-.js";import"./paperclip-B8lN3ozv.js";import"./file-text-D-AW36xm.js";import"./send-DPaJS59W.js";const y=[{id:"greeting",title:"Greeting",template:"Thank you for contacting us. How can I assist you today?"},{id:"acknowledge",title:"Acknowledge",template:"I understand your concern. Let me look into that for you."},{id:"escalate",title:"Escalate",template:"I'm escalating this to our specialist team right away."},{id:"timeline",title:"Processing Time",template:"Please allow {days} business days for this to take effect.",rich:!0,fields:[{key:"days",label:"Business Days",type:"select",options:[{value:"1–2",label:"1–2"},{value:"3–5",label:"3–5"},{value:"5–7",label:"5–7"},{value:"7–10",label:"7–10"}]}]},{id:"callback",title:"Schedule Callback",template:"I'll arrange a callback on {date} at {time} for you.",rich:!0,fields:[{key:"date",label:"Date",type:"date"},{key:"time",label:"Time",type:"time"}]},{id:"closing",title:"Closing",template:"Is there anything else I can help you with today?"}],de={title:"UI/InteractionComposer",component:i,parameters:{layout:"padded",backgrounds:{default:"lyra-shell"}},tags:["autodocs"]},s={name:"Default — With Quick Replies",render:()=>{const[r,o]=u.useState([]);return e.jsxs("div",{className:"flex w-[420px] flex-col gap-3",children:[r.length>0&&e.jsx("div",{className:"flex flex-col gap-2 rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-canvas p-3",children:r.map((t,a)=>e.jsx("div",{className:"ml-auto max-w-[85%] rounded-lyra-lg bg-lyra-bg-active-subtle px-3 py-2 lyra-body-md text-lyra-fg-default",children:t},a))}),e.jsx(i,{quickReplies:y,onSend:t=>o(a=>[...a,t])})]})}},l={name:"Plain — No Quick Replies",render:()=>{const[r,o]=u.useState([]);return e.jsxs("div",{className:"flex w-[420px] flex-col gap-3",children:[r.length>0&&e.jsx("div",{className:"flex flex-col gap-2 rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-canvas p-3",children:r.map((t,a)=>e.jsx("div",{className:"ml-auto max-w-[85%] rounded-lyra-lg bg-lyra-bg-active-subtle px-3 py-2 lyra-body-md text-lyra-fg-default",children:t},a))}),e.jsx(i,{onSend:t=>o(a=>[...a,t])})]})}};var m,n,p;s.parameters={...s.parameters,docs:{...(m=s.parameters)==null?void 0:m.docs,source:{originalSource:`{
+  name: "Default — With Quick Replies",
+  render: () => {
+    const [messages, setMessages] = useState<string[]>([]);
+    return <div className="flex w-[420px] flex-col gap-3">
+        {messages.length > 0 && <div className="flex flex-col gap-2 rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-canvas p-3">
+            {messages.map((msg, i) => <div key={i} className="ml-auto max-w-[85%] rounded-lyra-lg bg-lyra-bg-active-subtle px-3 py-2 lyra-body-md text-lyra-fg-default">
+                {msg}
+              </div>)}
+          </div>}
+        <InteractionComposer quickReplies={DEMO_QUICK_REPLIES} onSend={text => setMessages(prev => [...prev, text])} />
+      </div>;
+  }
+}`,...(p=(n=s.parameters)==null?void 0:n.docs)==null?void 0:p.source}}};var d,c,g;l.parameters={...l.parameters,docs:{...(d=l.parameters)==null?void 0:d.docs,source:{originalSource:`{
+  name: "Plain — No Quick Replies",
+  render: () => {
+    const [messages, setMessages] = useState<string[]>([]);
+    return <div className="flex w-[420px] flex-col gap-3">
+        {messages.length > 0 && <div className="flex flex-col gap-2 rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-canvas p-3">
+            {messages.map((msg, i) => <div key={i} className="ml-auto max-w-[85%] rounded-lyra-lg bg-lyra-bg-active-subtle px-3 py-2 lyra-body-md text-lyra-fg-default">
+                {msg}
+              </div>)}
+          </div>}
+        <InteractionComposer onSend={text => setMessages(prev => [...prev, text])} />
+      </div>;
+  }
+}`,...(g=(c=l.parameters)==null?void 0:c.docs)==null?void 0:g.source}}};const ce=["WithQuickReplies","Basic"];export{l as Basic,s as WithQuickReplies,ce as __namedExportsOrder,de as default};
