@@ -22,7 +22,7 @@ Then run the render smoke test and copy the output to the user's `Prototypes/` f
 node prototype-kit/smoke-test.mjs --file <built.html> --expect "<the product name>" --expect "<a known page title>"
 ```
 
-Done. Both scripts' exit codes are the acceptance test — never deliver on failure. **Never attempt to install Chromium/Playwright/system libraries for verification** — the sandbox has no root, it always fails, and smoke-test.mjs is the supported render check (jsdom: mounts the app, fails on runtime errors or missing text).
+Done. Both scripts' exit codes are the acceptance test — never deliver on failure. Pick `--expect` strings that are STATIC visible page text (the product name, a page title like "Campaigns", "New Outbound") — never nav rail labels, tooltip copy, or aria-labels: the rail auto-collapses below 1280px (jsdom's default window is 1024px), so its labels legitimately leave the DOM and make the test flaky. **Never attempt to install Chromium/Playwright/system libraries for verification** — the sandbox has no root, it always fails, and smoke-test.mjs is the supported render check (jsdom: mounts the app, fails on runtime errors or missing text).
 
 What the script does: injects the product name into the template story (sandbox copy only), bundles with esbuild, compiles `src/storybook.css` with Tailwind (which already inlines the FULL lyra tokens — light and dark — via `@import`; never add a second tokens copy), assembles one self-contained html (data-theme, commit stamp, update-notice script, shell-token body background), and verifies dark-mode integrity programmatically.
 

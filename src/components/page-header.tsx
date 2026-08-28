@@ -75,6 +75,28 @@ interface PageHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
    */
   titleSuffixGrow?: boolean;
   /**
+   * Vertical alignment/placement of `titleSuffix` against the header row —
+   * `"center"` (default) renders it as a sibling AFTER the whole
+   * title+subtitle block, centered against that block's full height (the
+   * original/every-other-existing-consumer behavior); `"start"` renders it
+   * INSIDE the title row itself instead — a real DOM sibling of the `<h1>`
+   * (and `badge`, if passed), right after them and before `subtitle` — so it
+   * sits flush against the title's own line, directly beside the title and
+   * above `subtitle`, rather than drifting down toward the middle of the
+   * taller title+subtitle block once a subtitle is present. Per explicit
+   * follow-up requests for `AgentDashboardHeader`'s "Personal Queue" chip
+   * ("directly to the right of the page header and above the subhead", then
+   * "put the span after the h1 inside the parent div"). Only takes effect
+   * on the `icon`/plain title branches, which share that title-row shape —
+   * a `breadcrumb` header falls back to the `"center"` branch's placement
+   * (still top-aligned via CSS there, just not structurally inline; see
+   * this component's own "trade-off" comment further down). Scoped to this
+   * one prop rather than changing the shared default, since every other
+   * `titleSuffix` consumer (e.g. `agent-next-gen-v1`'s `ChannelToggleGroup`)
+   * already relies on the centered, after-block behavior.
+   */
+  titleSuffixAlign?: "center" | "start";
+  /**
    * Whether the `icon` slot's wrapper span is `aria-hidden` (default: true).
    * The wrapper is hidden from assistive tech by default because `icon` is
    * normally purely decorative — set this to `false` when `icon` itself is
@@ -176,6 +198,7 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
       iconDivider = true,
       titleSuffix,
       titleSuffixGrow = false,
+      titleSuffixAlign = "center",
       iconAriaHidden = true,
       subtitle,
       actions,
@@ -197,7 +220,31 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
       ...props
     },
     ref
-  ) => (
+  ) => {
+    // `titleSuffixAlign="start"` (see that prop's own doc comment) renders
+    // `titleSuffix` INSIDE the title row itself — right after the title/
+    // `badge`, before `subtitle` — instead of as a sibling of the whole
+    // title+subtitle block, so it sits literally next to the `<h1>` in the
+    // DOM rather than just visually top-aligned via CSS. Only the `icon`/
+    // plain branches share that title-row shape; `breadcrumb` doesn't (see
+    // its own "trade-off" comment below), so a `breadcrumb` header with
+    // `titleSuffixAlign="start"` still falls back to the after-block
+    // placement (still top-aligned via `self-start` below, just not
+    // structurally inline).
+    const usesBreadcrumbBranch = !icon && !!breadcrumb;
+    const suffixInline = titleSuffixAlign === "start" && !!titleSuffix && !usesBreadcrumbBranch;
+    const titleSuffixSpan = titleSuffix ? (
+      <span
+        className={cn(
+          "lyra-page-header-suffix",
+          titleSuffixGrow ? "flex-1 min-w-0" : "shrink-0",
+          titleSuffixAlign === "start" && "self-start"
+        )}
+      >
+        {titleSuffix}
+      </span>
+    ) : null;
+    return (
     // Outer wrapper is the actual `container-type: inline-size` query
     // container (`.lyra-page-header-container`, lyra-tokens.css) — every
     // `@container` rule below styles the INNER row (`.lyra-page-header-
@@ -305,6 +352,7 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
               <div className="flex items-center gap-2 min-w-0">
                 <h1 className={cn(titleSize === "2xl" ? "lyra-heading-2xl" : "lyra-heading-lg", "text-lyra-fg-default leading-tight truncate min-w-0")}>{title}</h1>
                 {badge && <Badge color={badgeColor} variant={badgeVariant}>{badge}</Badge>}
+                {suffixInline && titleSuffixSpan}
               </div>
               {subtitle && <span className="lyra-body-sm text-lyra-fg-secondary truncate">{subtitle}</span>}
             </div>
@@ -378,15 +426,12 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
             <div className="flex items-center gap-2 min-w-0">
               <h1 className={cn(titleSize === "2xl" ? "lyra-heading-2xl" : "lyra-heading-lg", "text-lyra-fg-default truncate min-w-0")}>{title}</h1>
               {badge && <Badge color={badgeColor} variant={badgeVariant}>{badge}</Badge>}
+              {suffixInline && titleSuffixSpan}
             </div>
             {subtitle && <span className="lyra-body-sm text-lyra-fg-secondary truncate">{subtitle}</span>}
           </div>
         )}
-        {titleSuffix && (
-          <span className={cn("lyra-page-header-suffix", titleSuffixGrow ? "flex-1 min-w-0" : "shrink-0")}>
-            {titleSuffix}
-          </span>
-        )}
+        {!suffixInline && titleSuffixSpan}
       </div>
       <div className="lyra-page-header-actions flex items-center gap-2">
         {actions}
@@ -412,7 +457,8 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
       </div>
       </div>
     </div>
-  )
+    );
+  }
 );
 PageHeader.displayName = "PageHeader";
 

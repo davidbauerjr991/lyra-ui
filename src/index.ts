@@ -79,6 +79,32 @@ export type {
 export { InteractionNavItem } from "./components/interaction-nav-item";
 export type { InteractionNavItemProps, InteractionChannel, ChannelType } from "./components/interaction-nav-item";
 export {
+  AssignmentsSectionCaption,
+  AssignmentsSortButton,
+  AssignmentsExpandCollapseAllButton,
+  ASSIGNMENT_SORT_OPTIONS,
+} from "./components/assignments-section-caption";
+export type { AssignmentSortValue } from "./components/assignments-section-caption";
+export {
+  InteractionComposer,
+  fillQuickReplyTemplate,
+  QUICK_REPLY_TRIGGER_CHAR,
+} from "./components/interaction-composer";
+export type {
+  InteractionComposerProps,
+  InteractionComposerQuickReplyItem,
+  InteractionComposerQuickReplyField,
+} from "./components/interaction-composer";
+export { SessionDetailsCard, SessionDetailsSection } from "./components/session-details";
+export type {
+  SessionDetailsCardProps,
+  SessionDetailsSectionProps,
+  SessionDetailsInfo,
+  SessionDetailsFingerprint,
+} from "./components/session-details";
+export { ChatMessage } from "./components/chat-message";
+export type { ChatMessageProps, ChatMessageTag } from "./components/chat-message";
+export {
   ChannelRow,
   ChatChannelRow,
   EmailChannelRow,
@@ -313,6 +339,14 @@ export { ListItem } from "./components/list-item";
 export type { ListItemProps } from "./components/list-item";
 export { AgentNotifications, useAgentNotificationsContent } from "./components/agent-notifications";
 export type { AgentNotification, NotificationType, AgentNotificationsProps, AgentNotificationsContentProps } from "./components/agent-notifications";
+export { AgentSearch, useAgentSearchContent } from "./components/agent-search";
+export type { AgentSearchProps, AgentSearchContentProps } from "./components/agent-search";
+export { AgentChat } from "./components/agent-chat";
+export type { AgentChatProps } from "./components/agent-chat";
+export { ScreenPop, useScreenPopContent, SCREEN_POP_APPS } from "./components/screen-pop";
+export type { ScreenPopProps, ScreenPopContentProps } from "./components/screen-pop";
+export { SchedulePanel, useScheduleContent } from "./components/schedule-panel";
+export type { SchedulePanelProps, ScheduleContentProps, ScheduleView } from "./components/schedule-panel";
 export { AgentProfile } from "./components/agent-profile";
 export type { AgentStatus, AgentProfileProps } from "./components/agent-profile";
 export { NotificationsBell } from "./components/notifications-bell";

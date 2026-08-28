@@ -154,4 +154,40 @@ function buildCustomers(count: number): CreateNewCustomerRecord[] {
   return customers;
 }
 
-export const CREATE_NEW_CUSTOMERS: CreateNewCustomerRecord[] = buildCustomers(60);
+// One hand-authored record appended after the 60 generated ones above —
+// backs agent-next-gen-v2's own scripted "Marcus Webb" inbound-chat demo
+// (`AgentWorkspace2WithDeskPage.tsx`/`agent-next-gen-marcus-webb-scenario.ts`,
+// Premium tier only), added here per explicit request ("add marcus webb to
+// the customer database"). `id`/`customerId`/`emailAddress` below MUST stay
+// in sync with that module's own `MARCUS_WEBB_ID`/`MARCUS_WEBB_CUSTOMER_ID`/
+// `MARCUS_WEBB_EMAIL_ADDRESS` constants — duplicated as plain string
+// literals rather than a shared import since lyra-ui doesn't (and
+// shouldn't) depend on one specific consuming app's own scenario data.
+// Every other field below is ordinary invented-but-plausible demo data,
+// same treatment `buildCustomers` already gives the other 60.
+const MARCUS_WEBB_CUSTOMER_RECORD: CreateNewCustomerRecord = {
+  id: "marcus-webb-scenario",
+  name: "Marcus Webb",
+  customerId: "MW-DEMO-0001",
+  channels: ["chat", "email"],
+  avatarClassName: "bg-lyra-accent-green-soft text-lyra-accent-green-strong",
+  firstName: "Marcus",
+  lastName: "Webb",
+  group: "Standard",
+  firstPhone: "(503) 555-0142",
+  emailAddress: "marcus.webb@personalmail.com",
+  address1: "482 Birchwood Ter",
+  city: "Portland",
+  state: "OR",
+  postalCode: "97201",
+  originalCustomerId: "ORIG-500001",
+  dateOfBirth: "08/14/1991",
+  agent: "Jordan Blake",
+  agentTeam: "Tier 1 Support",
+  paymentBalance: "$0.00",
+};
+
+export const CREATE_NEW_CUSTOMERS: CreateNewCustomerRecord[] = [
+  ...buildCustomers(60),
+  MARCUS_WEBB_CUSTOMER_RECORD,
+];

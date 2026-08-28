@@ -139,7 +139,7 @@ export const Usage: Story = {
             <div className="inline-flex items-center justify-center h-9 px-4 bg-lyra-bg-primary text-lyra-fg-on-primary rounded-lyra-sm lyra-label" style={{ boxShadow: shadows.sm }}>
               shadow-sm
             </div>
-            <div className="inline-flex items-center justify-center h-9 px-4 bg-lyra-bg-control text-lyra-fg-default border border-lyra-border-default rounded-lyra-sm lyra-label" style={{ boxShadow: shadows.xs }}>
+            <div className="inline-flex items-center justify-center h-9 px-4 bg-lyra-bg-control text-lyra-fg-default border border-lyra-border-soft rounded-lyra-sm lyra-label" style={{ boxShadow: shadows.xs }}>
               Outline + shadow-xs
             </div>
           </div>
@@ -168,7 +168,7 @@ export const Usage: Story = {
               <div className="lyra-body-md text-lyra-fg-secondary mb-6">This action cannot be undone. Are you sure you want to continue?</div>
               {/* gap-3 = 12px (lyra-spacing-3) */}
               <div className="flex gap-3 justify-center">
-                <div className="inline-flex items-center justify-center h-9 px-4 bg-lyra-bg-control text-lyra-fg-default border border-lyra-border-default rounded-lyra-sm lyra-label">
+                <div className="inline-flex items-center justify-center h-9 px-4 bg-lyra-bg-control text-lyra-fg-default border border-lyra-border-soft rounded-lyra-sm lyra-label">
                   Cancel
                 </div>
                 <div className="inline-flex items-center justify-center h-9 px-4 bg-lyra-bg-destructive text-lyra-fg-on-primary rounded-lyra-sm lyra-label">

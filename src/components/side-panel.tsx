@@ -139,7 +139,7 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
         style={{ [side === "right" ? "left" : "right"]: -4, width: 8, cursor: "col-resize" }}
         aria-hidden="true"
       >
-        <div className="w-0.5 h-8 rounded-full bg-lyra-border-default opacity-0 group-hover:bg-lyra-bg-primary group-hover:opacity-100 transition-opacity" />
+        <div className="w-0.5 h-8 rounded-full bg-lyra-border-soft opacity-0 group-hover:bg-lyra-bg-primary group-hover:opacity-100 transition-opacity" />
       </div>
     ) : null;
 

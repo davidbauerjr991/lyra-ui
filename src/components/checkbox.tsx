@@ -43,10 +43,10 @@ const Checkbox = React.forwardRef<
 
         /* Readonly — muted, no hover/active effects, cursor default */
         readonly && [
-          "border-lyra-border-default bg-lyra-bg-disabled cursor-default",
-          "data-[state=checked]:bg-lyra-border-default data-[state=checked]:border-lyra-border-default data-[state=checked]:text-lyra-fg-inverse",
-          "data-[state=indeterminate]:bg-lyra-border-default data-[state=indeterminate]:border-lyra-border-default data-[state=indeterminate]:text-lyra-fg-inverse",
-          "hover:border-lyra-border-default active:border-lyra-border-default active:bg-transparent",
+          "border-lyra-border-soft bg-lyra-bg-disabled cursor-default",
+          "data-[state=checked]:bg-lyra-border-soft data-[state=checked]:border-lyra-border-soft data-[state=checked]:text-lyra-fg-inverse",
+          "data-[state=indeterminate]:bg-lyra-border-soft data-[state=indeterminate]:border-lyra-border-soft data-[state=indeterminate]:text-lyra-fg-inverse",
+          "hover:border-lyra-border-soft active:border-lyra-border-soft active:bg-transparent",
           "focus-visible:ring-0",
         ],
 
@@ -89,7 +89,7 @@ const Checkbox = React.forwardRef<
         ],
 
         /* Disabled (applies on top of everything) */
-        "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-lyra-border-default",
+        "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-lyra-border-soft",
 
         className
       )}

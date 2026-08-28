@@ -61,7 +61,7 @@ function TransferBtn({ onClick, disabled, children, title }: {
     <button
       type="button" title={title} onClick={onClick} disabled={disabled}
       className={cn(
-        "flex items-center justify-center w-8 h-8 rounded-lyra-sm border border-lyra-border-default",
+        "flex items-center justify-center w-8 h-8 rounded-lyra-sm border border-lyra-border-soft",
         "text-lyra-fg-action bg-lyra-bg-control transition-colors",
         "hover:bg-lyra-state-hover hover:text-lyra-fg-default",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",

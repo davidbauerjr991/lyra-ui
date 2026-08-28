@@ -47,7 +47,7 @@ function ResizeBox({
 }) {
   return (
     <div
-      className="resize-x overflow-auto rounded-lyra-md border border-dashed border-lyra-border-default p-4"
+      className="resize-x overflow-auto rounded-lyra-md border border-dashed border-lyra-border-soft p-4"
       style={{ width, maxWidth: "100%" }}
     >
       {children}
@@ -711,7 +711,7 @@ export const ViewportMediaQuery: Story = {
         the toolbar's Viewport addon) to see its layout switch from a row of
         two lists to a stacked column.
       </p>
-      <div className="rounded-lyra-md border border-dashed border-lyra-border-default p-4 lyra-body-sm text-lyra-fg-secondary">
+      <div className="rounded-lyra-md border border-dashed border-lyra-border-soft p-4 lyra-body-sm text-lyra-fg-secondary">
         See <span className="font-mono">Custom Primitives/TransferBox</span> for
         the live component.
       </div>

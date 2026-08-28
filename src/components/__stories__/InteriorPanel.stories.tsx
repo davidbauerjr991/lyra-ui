@@ -70,7 +70,7 @@ export const Right: Story = {
           className="bg-lyra-bg-surface-base"
         />
         {/* `relative` here matters: `InteriorPanel` switches to `position:
-            absolute; top: 0; height: 100%` below 1024px of THIS row's own
+            absolute; top: 0; height: 100%` below 1440px of THIS row's own
             width (see interior-panel.tsx's `isNarrow` check against its
             parent element) — without a positioned ancestor of its own, it
             anchors to the next positioned ancestor up the tree (or the
@@ -191,7 +191,7 @@ export const Left: Story = {
           className="bg-lyra-bg-surface-base"
         />
         {/* `relative` here matters: `InteriorPanel` switches to `position:
-            absolute; top: 0; height: 100%` below 1024px of THIS row's own
+            absolute; top: 0; height: 100%` below 1440px of THIS row's own
             width (see interior-panel.tsx's `isNarrow` check against its
             parent element) — without a positioned ancestor of its own, it
             anchors to the next positioned ancestor up the tree (or the

@@ -76,9 +76,33 @@ const updateNotice = `
     .then(function (r) { return r.json(); })
     .then(function (d) {
       if (!d || !d.sha || d.sha === m.content) return;
+      var file = decodeURIComponent((location.pathname.split("/").pop() || "this-prototype.html"));
+      var rebuildPrompt =
+        "Update this Lyra UI prototype to the latest components.\\n" +
+        "- File: Prototypes/" + file + " in my connected folder (built at lyra-ui commit " + m.content + "; latest main is " + d.sha + ").\\n" +
+        "- Follow CLAUDE-INSTRUCTIONS.md Scenario C: clone the latest lyra-ui, rebuild this prototype on it (run the component-drift audit for every component used), verify (integrity checks + smoke test), overwrite the same file in place, and tell me to refresh. Never ask me to run commands.";
       var b = document.createElement("div");
       b.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;background:#ecf5fe;border-bottom:1px solid #D3E6FD;color:#185ba4;font:13px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:8px 40px 8px 16px;text-align:center;";
-      b.textContent = "Lyra UI has been updated since this prototype was built. Ask Claude to rebuild it to pick up the latest components.";
+      var msg = document.createElement("span");
+      msg.textContent = "Lyra UI has been updated since this prototype was built. ";
+      b.appendChild(msg);
+      var act = document.createElement("button");
+      act.textContent = "Update components?";
+      act.style.cssText = "border:none;background:none;color:#185ba4;font:inherit;font-weight:700;text-decoration:underline;cursor:pointer;padding:0;";
+      act.onclick = function () {
+        var done = function () {
+          msg.textContent = "Prompt copied — paste it into Claude Cowork to update this prototype. ";
+          act.textContent = "Copy again";
+        };
+        try {
+          navigator.clipboard.writeText(rebuildPrompt).then(done, function () {
+            window.prompt("Copy this prompt, then paste it into Claude Cowork:", rebuildPrompt); done();
+          });
+        } catch (e) {
+          window.prompt("Copy this prompt, then paste it into Claude Cowork:", rebuildPrompt); done();
+        }
+      };
+      b.appendChild(act);
       var x = document.createElement("button");
       x.textContent = "\\u00d7";
       x.style.cssText = "position:absolute;right:10px;top:4px;border:none;background:none;font-size:18px;cursor:pointer;color:inherit;";

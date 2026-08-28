@@ -46,8 +46,8 @@ const containerVariants = cva("rounded-lyra-lg", {
       /* ── Neutral ── */
       "neutral-none":   "bg-lyra-bg-surface-container-subtle",
       "neutral-subtle": "bg-lyra-bg-surface-container-subtle border border-lyra-border-subtle",
-      "neutral-strong": "bg-lyra-bg-surface-container-subtle border border-lyra-border-default",
-      "neutral-dotted": "bg-lyra-bg-surface-container-subtle border border-dashed border-lyra-border-default",
+      "neutral-strong": "bg-lyra-bg-surface-container-subtle border border-lyra-border-soft",
+      "neutral-dotted": "bg-lyra-bg-surface-container-subtle border border-dashed border-lyra-border-soft",
 
       /* ── Legacy aliases (kept for backwards compatibility) ── */
       info:             "bg-lyra-bg-active-subtle border border-lyra-bg-active-moderate",

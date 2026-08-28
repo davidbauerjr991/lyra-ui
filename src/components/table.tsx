@@ -506,7 +506,7 @@ const TableHead = React.forwardRef<HTMLTableCellElement, TableHeadProps>(
         title={title ?? (typeof children === "string" ? children : undefined)}
         style={resizedWidth !== undefined ? { ...style, flex: `0 0 ${resizedWidth}px` } : style}
         className={cn(
-          "relative flex items-center h-10 px-3 text-left lyra-label text-lyra-fg-default border-b border-lyra-border-default [&:has([role=checkbox])]:pr-0 [&:has([role=checkbox])]:w-[40px] min-w-0",
+          "relative flex items-center h-10 px-3 text-left lyra-label text-lyra-fg-default border-b border-lyra-border-soft [&:has([role=checkbox])]:pr-0 [&:has([role=checkbox])]:w-[40px] min-w-0",
           resizable && "pr-4",
           className
         )}
@@ -639,7 +639,7 @@ const SortableTableHead = React.forwardRef<HTMLTableCellElement, SortableTableHe
         onDragLeave={draggable ? dragHandlers.onDragLeave : undefined}
         style={resizedWidth !== undefined ? { ...style, flex: `0 0 ${resizedWidth}px` } : style}
         className={cn(
-          "flex items-center h-10 px-3 text-left lyra-label text-lyra-fg-default border-b border-lyra-border-default whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&:has([role=checkbox])]:w-[40px] min-w-0 relative",
+          "flex items-center h-10 px-3 text-left lyra-label text-lyra-fg-default border-b border-lyra-border-soft whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&:has([role=checkbox])]:w-[40px] min-w-0 relative",
           "group/sort cursor-pointer select-none hover:bg-lyra-state-hover active:bg-lyra-state-pressed transition-colors",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-inset",
           sortDirection && "border-b-2 border-b-lyra-bg-primary",
@@ -1075,7 +1075,7 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
             "inline-flex items-center gap-1.5 h-8 px-3 rounded-lyra-md lyra-body-md-emphasis border transition-colors whitespace-nowrap",
             activeFilterCount > 0
               ? "bg-lyra-bg-active-subtle border-lyra-border-active text-lyra-fg-active-strong"
-              : "bg-lyra-bg-control border-lyra-border-default text-lyra-fg-default hover:bg-lyra-state-hover"
+              : "bg-lyra-bg-control border-lyra-border-soft text-lyra-fg-default hover:bg-lyra-state-hover"
           )}
         >
           Filters{activeFilterCount > 0 ? `: ${activeFilterCount} Active` : ""}
@@ -1133,7 +1133,7 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
             "inline-flex items-center gap-1 h-8 px-2.5 rounded-lyra-md lyra-body-md-emphasis border transition-colors whitespace-nowrap",
             overflowFilterDefs.some((f) => (filterValues?.[f.key]?.length ?? 0) > 0)
               ? "bg-lyra-bg-active-subtle border-lyra-border-active text-lyra-fg-active-strong"
-              : "bg-lyra-bg-control border-lyra-border-default text-lyra-fg-default hover:bg-lyra-state-hover"
+              : "bg-lyra-bg-control border-lyra-border-soft text-lyra-fg-default hover:bg-lyra-state-hover"
           )}
           aria-label={`${overflowFilterDefs.length} more filters`}
           aria-expanded={filterOverflowOpen}
@@ -1185,7 +1185,7 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
           ref={filterChipsMeasureRef}
           aria-hidden="true"
           inert
-          style={{ position: "absolute", top: 0, left: 0, visibility: "hidden", pointerEvents: "none", whiteSpace: "nowrap", display: "flex", gap: 8 }}
+          style={{ position: "absolute", top: 0, left: 0, visibility: "hidden", pointerEvents: "none", whiteSpace: "nowrap", display: "flex", gap: "var(--lyra-spacing-2)" }}
         >
           {filterDefs.map((f) => (
             <div key={f.key} data-measure-chip>
@@ -1649,14 +1649,14 @@ const TableFooter = React.forwardRef<HTMLDivElement, TableFooterProps>(
           )}
           {showRowsPerPage && onRowsPerPageChange && (
             <>
-              {showDisplayCount && <span className="text-lyra-border-default">|</span>}
+              {showDisplayCount && <span className="text-lyra-border-soft">|</span>}
               <span>Rows per page:</span>
               <div className="relative inline-flex items-center">
                 <select
                   value={rowsPerPage}
                   onChange={(e) => onRowsPerPageChange(Number(e.target.value))}
                   aria-label="Rows per page"
-                  className="appearance-none rounded-lyra-sm border border-lyra-border-default bg-lyra-bg-control px-2 py-0.5 pr-6 lyra-body-sm text-lyra-fg-default hover:bg-lyra-bg-surface-shell transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-lyra-border-active"
+                  className="appearance-none rounded-lyra-sm border border-lyra-border-soft bg-lyra-bg-control px-2 py-0.5 pr-6 lyra-body-sm text-lyra-fg-default hover:bg-lyra-bg-surface-shell transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-lyra-border-active"
                 >
                   {rowsPerPageOptions.map((opt) => (
                     <option key={opt} value={opt}>{opt}</option>
@@ -1699,7 +1699,7 @@ const TableFooter = React.forwardRef<HTMLDivElement, TableFooterProps>(
               }
             }}
             aria-label="Current page"
-            className="h-6 w-8 rounded-lyra-sm border border-lyra-border-default bg-lyra-bg-field text-center lyra-body-sm text-lyra-fg-default focus:outline-none focus:ring-1 focus:ring-lyra-border-active"
+            className="h-6 w-8 rounded-lyra-sm border border-lyra-border-soft bg-lyra-bg-field text-center lyra-body-sm text-lyra-fg-default focus:outline-none focus:ring-1 focus:ring-lyra-border-active"
           />
           <span>of {totalPages}</span>
           <button

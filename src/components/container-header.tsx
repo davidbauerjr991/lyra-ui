@@ -19,6 +19,14 @@ export interface ContainerHeaderProps extends React.HTMLAttributes<HTMLDivElemen
   actions?: React.ReactNode;
   /** Renders a built-in close button and calls this when clicked */
   onClose?: () => void;
+  /**
+   * Icon rendered inside the built-in close button (only meaningful when
+   * `onClose` is set). Default: lucide `X`, unchanged for every existing
+   * consumer. Lets a caller swap in a more specific glyph — e.g. `PanelRightClose`
+   * for a panel that's genuinely being dismissed/closed as a docked panel,
+   * as opposed to a plain "X" which reads more like closing a tab/dialog.
+   */
+  closeIcon?: React.ReactNode;
   /** Typography class for the title (default: "lyra-heading-md") */
   titleClassName?: string;
   /** Optional subtitle displayed below the title in body-sm secondary */
@@ -105,6 +113,7 @@ const ContainerHeader = React.forwardRef<HTMLDivElement, ContainerHeaderProps>(
     icon,
     actions,
     onClose,
+    closeIcon = <X className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />,
     titleClassName = "lyra-heading-md",
     subhead,
     titleBadge,
@@ -256,7 +265,7 @@ const ContainerHeader = React.forwardRef<HTMLDivElement, ContainerHeaderProps>(
               onClick={onClose}
               className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-action hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
             >
-              <X className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />
+              {closeIcon}
             </button>
           </Tooltip>
         )}

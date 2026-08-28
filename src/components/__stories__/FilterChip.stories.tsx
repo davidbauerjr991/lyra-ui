@@ -317,7 +317,7 @@ function BasicGroupDemo({ size = "md" }: { size?: "sm" | "md" }) {
             type="button"
             onClick={() => setOverflowOpen((v) => !v)}
             className={cn(
-              "inline-flex items-center justify-center rounded-lyra-md border border-lyra-border-default bg-lyra-bg-control text-lyra-fg-action hover:bg-lyra-state-hover active:bg-lyra-state-pressed transition-colors",
+              "inline-flex items-center justify-center rounded-lyra-md border border-lyra-border-soft bg-lyra-bg-control text-lyra-fg-action hover:bg-lyra-state-hover active:bg-lyra-state-pressed transition-colors",
               size === "sm" ? "h-6 px-2 lyra-body-sm-emphasis" : "h-8 px-3 lyra-body-md-emphasis"
             )}
           >
@@ -592,7 +592,7 @@ function RemovableDemo() {
           <button
             type="button"
             onClick={() => setOverflowOpen((v) => !v)}
-            className="inline-flex items-center justify-center h-8 px-3 rounded-lyra-md border border-lyra-border-default bg-lyra-bg-control text-lyra-fg-action lyra-body-md-emphasis hover:bg-lyra-state-hover active:bg-lyra-state-pressed transition-colors"
+            className="inline-flex items-center justify-center h-8 px-3 rounded-lyra-md border border-lyra-border-soft bg-lyra-bg-control text-lyra-fg-action lyra-body-md-emphasis hover:bg-lyra-state-hover active:bg-lyra-state-pressed transition-colors"
           >
             +{overflowFilters.length}
           </button>
@@ -627,7 +627,7 @@ function RemovableDemo() {
         trigger={
           <button
             type="button"
-            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lyra-sm lyra-label transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2 border border-lyra-border-default bg-lyra-bg-control text-lyra-fg-action hover:bg-lyra-state-hover active:bg-lyra-state-pressed h-8 px-3"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lyra-sm lyra-label transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2 border border-lyra-border-soft bg-lyra-bg-control text-lyra-fg-action hover:bg-lyra-state-hover active:bg-lyra-state-pressed h-8 px-3"
           >
             <Plus className="h-4 w-4" />Filter
           </button>
@@ -664,7 +664,7 @@ function AllStatesDemo() {
           trigger={
             <button
               type="button"
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lyra-sm lyra-label transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2 border border-lyra-border-default bg-lyra-bg-control text-lyra-fg-action hover:bg-lyra-state-hover active:bg-lyra-state-pressed h-8 px-3"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lyra-sm lyra-label transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2 border border-lyra-border-soft bg-lyra-bg-control text-lyra-fg-action hover:bg-lyra-state-hover active:bg-lyra-state-pressed h-8 px-3"
             >
               <Plus className="h-4 w-4" />Filter
             </button>

@@ -109,3 +109,56 @@ export const Disabled: Story = {
     </div>
   ),
 };
+
+export const SingleLineCopilotInput: Story = {
+  name: "Single line (Copilot input)",
+  render: () => {
+    const [value, setValue] = useState("");
+    const [submitted, setSubmitted] = useState<string[]>([]);
+    return (
+      <div className="w-[480px] flex flex-col gap-3">
+        {submitted.length > 0 && (
+          <div className="flex flex-col gap-2">
+            {submitted.map((msg, i) => (
+              <ConversationMessage key={i} role="user">{msg}</ConversationMessage>
+            ))}
+          </div>
+        )}
+        {/* `singleLine` lays the attach button, input, and submit/mic button
+            out in one row instead of the default textarea-above/toolbar-
+            below stack — a compact search-bar affordance for spaces like a
+            Copilot side-panel footer, where a full multi-line composer
+            would be too tall. No `helperText` here on purpose: this
+            variant is meant to read as a slim single row, not a stacked
+            composer with a caption underneath (pass `helperText` yourself
+            if a given usage still wants one). */}
+        <AIInput
+          singleLine
+          placeholder="Ask anything..."
+          helperText=""
+          value={value}
+          onChange={setValue}
+          onSubmit={(v) => { setSubmitted((s) => [...s, v]); setValue(""); }}
+        />
+      </div>
+    );
+  },
+};
+
+export const WithClearButton: Story = {
+  name: "With clear button",
+  render: () => {
+    // Pre-filled so the "x" clear button — which only renders once there's
+    // text to clear — is visible immediately without having to type first.
+    const [value, setValue] = useState("Draft reply to the customer...");
+    return (
+      <div className="w-[480px]">
+        <AIInput
+          placeholder="Ask anything..."
+          value={value}
+          onChange={setValue}
+        />
+      </div>
+    );
+  },
+};

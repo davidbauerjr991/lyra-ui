@@ -1638,7 +1638,7 @@ const ChannelToggle: React.FC<ChannelToggleProps> = ({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-1",
         active
           ? "bg-lyra-bg-active-subtle border border-lyra-border-active text-lyra-fg-active-strong hover:bg-lyra-state-hover-active-subtle active:bg-lyra-state-pressed-active-subtle"
-          : "text-lyra-fg-default border border-transparent hover:bg-lyra-bg-surface-shell hover:border-lyra-border-default active:bg-lyra-bg-disabled active:border-lyra-border-default",
+          : "text-lyra-fg-default border border-transparent hover:bg-lyra-bg-surface-shell hover:border-lyra-border-soft active:bg-lyra-bg-disabled active:border-lyra-border-soft",
         className
       )}
     >
@@ -1768,7 +1768,7 @@ const PlainToggleTab: React.FC<PlainToggleTabProps> = ({ icon, active, onClick, 
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-1",
           active
             ? "bg-lyra-bg-active-subtle border border-lyra-border-active text-lyra-fg-active-strong hover:bg-lyra-state-hover-active-subtle active:bg-lyra-state-pressed-active-subtle"
-            : "text-lyra-fg-default border border-transparent hover:bg-lyra-bg-surface-shell hover:border-lyra-border-default active:bg-lyra-bg-disabled active:border-lyra-border-default",
+            : "text-lyra-fg-default border border-transparent hover:bg-lyra-bg-surface-shell hover:border-lyra-border-soft active:bg-lyra-bg-disabled active:border-lyra-border-soft",
           className
         )}
       >

@@ -79,7 +79,7 @@ const QuickReplyMenu = React.forwardRef<HTMLDivElement, QuickReplyMenuProps>(
         role="listbox"
         aria-label="Quick replies"
         className={cn(
-          "flex flex-col overflow-hidden rounded-lyra-lg border border-lyra-border-default bg-lyra-bg-surface-overlay shadow-lg",
+          "flex flex-col overflow-hidden rounded-lyra-lg border border-lyra-border-soft bg-lyra-bg-surface-overlay shadow-lg",
           className
         )}
       >

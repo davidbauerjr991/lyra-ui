@@ -304,7 +304,7 @@ const OVERFLOW_DEMO_TABS = [
 function OverflowMenuDemo() {
   const [active, setActive] = useState(OVERFLOW_DEMO_TABS[0]);
   return (
-    <div className="resize-x overflow-auto rounded-lyra-md border border-dashed border-lyra-border-default p-4" style={{ width: 1200, maxWidth: "100%" }}>
+    <div className="resize-x overflow-auto rounded-lyra-md border border-dashed border-lyra-border-soft p-4" style={{ width: 1200, maxWidth: "100%" }}>
       <TabList overflowMenu aria-label="Agent record tabs">
         {OVERFLOW_DEMO_TABS.map((label) => (
           <Tab key={label} active={active === label} onClick={() => setActive(label)}>

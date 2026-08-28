@@ -25,7 +25,7 @@ const filterChipVariants = cva(
   {
     variants: {
       variant: {
-        default:  "border-lyra-border-default bg-lyra-bg-control-subtle text-lyra-fg-default hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
+        default:  "border-lyra-border-soft bg-lyra-bg-control-subtle text-lyra-fg-default hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
         active:   "border-lyra-border-active bg-lyra-bg-active-subtle text-lyra-fg-active-strong hover:bg-lyra-state-hover-active-subtle active:bg-lyra-state-pressed-active-subtle",
         error:    "border-lyra-status-critical-strong bg-lyra-status-critical-subtle text-lyra-status-critical-strong hover:bg-lyra-state-hover-critical-subtle active:bg-lyra-state-pressed-critical-subtle",
         disabled: "border-lyra-border-disabled bg-lyra-bg-disabled text-lyra-fg-disabled cursor-not-allowed",
@@ -61,7 +61,7 @@ const filterChipSegmentColorVariants = cva("", {
 const filterChipOuterBorderVariants = cva("", {
   variants: {
     variant: {
-      default:  "border-lyra-border-default",
+      default:  "border-lyra-border-soft",
       active:   "border-lyra-border-active",
       error:    "border-lyra-status-critical-strong",
       disabled: "border-lyra-border-disabled",
@@ -79,7 +79,7 @@ const filterChipRemoveButtonVariants = cva(
   {
     variants: {
       variant: {
-        default:  "border-lyra-border-default bg-lyra-bg-control-subtle text-lyra-fg-secondary hover:bg-lyra-state-hover hover:text-lyra-fg-default active:bg-lyra-state-pressed",
+        default:  "border-lyra-border-soft bg-lyra-bg-control-subtle text-lyra-fg-secondary hover:bg-lyra-state-hover hover:text-lyra-fg-default active:bg-lyra-state-pressed",
         active:   "border-lyra-border-active bg-lyra-bg-active-subtle text-lyra-fg-active-strong hover:bg-lyra-state-hover-active-subtle active:bg-lyra-state-pressed-active-subtle",
         // Text/icon color is intentionally the same neutral secondary color
         // as the `default` variant's remove button, NOT the error/critical

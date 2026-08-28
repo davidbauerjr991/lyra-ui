@@ -102,7 +102,7 @@ export const AllStates: Story = {
         <div className="inline-flex items-center rounded-lyra-md border border-lyra-border-subtle bg-lyra-bg-surface-base p-0.5">
           <button
             type="button"
-            className="px-4 py-1.5 lyra-body-md rounded-lyra-sm text-lyra-fg-default bg-lyra-bg-surface-shell border border-lyra-border-default transition-colors"
+            className="px-4 py-1.5 lyra-body-md rounded-lyra-sm text-lyra-fg-default bg-lyra-bg-surface-shell border border-lyra-border-soft transition-colors"
           >
             Toggle
           </button>
@@ -115,7 +115,7 @@ export const AllStates: Story = {
         <div className="inline-flex items-center rounded-lyra-md border border-lyra-border-subtle bg-lyra-bg-surface-base p-0.5">
           <button
             type="button"
-            className="px-4 py-1.5 lyra-body-md rounded-lyra-sm text-lyra-fg-default bg-lyra-bg-disabled border border-lyra-border-default transition-colors"
+            className="px-4 py-1.5 lyra-body-md rounded-lyra-sm text-lyra-fg-default bg-lyra-bg-disabled border border-lyra-border-soft transition-colors"
           >
             Toggle
           </button>

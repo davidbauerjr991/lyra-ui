@@ -182,7 +182,7 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
           aria-expanded={open}
           aria-label={open ? "Collapse sidebar" : "Expand sidebar"}
           className={cn(
-            "absolute -right-3 top-[25px] z-10 flex h-5 w-5 items-center justify-center rounded-full border border-lyra-border-default bg-lyra-bg-surface-base text-lyra-fg-secondary shadow-sm hover:bg-lyra-bg-surface-shell transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+            "absolute -right-3 top-[25px] z-10 flex h-5 w-5 items-center justify-center rounded-full border border-lyra-border-soft bg-lyra-bg-surface-base text-lyra-fg-secondary shadow-sm hover:bg-lyra-bg-surface-shell transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
             // Fixed regardless of `header` — this button must stay aligned
             // with the page's PageHeader row (an external, constant-height
             // sibling elsewhere in the layout), not shift based on whatever

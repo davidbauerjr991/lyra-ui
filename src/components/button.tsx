@@ -19,7 +19,7 @@ const buttonVariants = cva(
         success:
           "bg-lyra-status-success-strong text-lyra-fg-on-primary hover:bg-lyra-status-success-strong/90 active:bg-lyra-status-success-strong/80",
         outline:
-          "border border-lyra-border-default bg-lyra-bg-control text-lyra-fg-action hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
+          "border border-lyra-border-soft bg-lyra-bg-control text-lyra-fg-action hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
         ghost:
           "text-lyra-fg-action hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
         icon: "text-lyra-fg-action hover:bg-lyra-state-hover active:bg-lyra-state-pressed hover:text-lyra-fg-default rounded-lyra-sm",

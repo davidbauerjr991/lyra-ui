@@ -119,7 +119,9 @@
     <h2>Install Lyra UI?</h2>
     <p class="sub">Lyra UI is the design system your prototype will be built from. Nothing installs on your computer — your choice here is written into the prompt this wizard generates at the end, and Claude does the actual download when you paste it. Choose "Already Installed" only if Claude set up Lyra UI earlier in the same chat you'll paste into.</p>
     <p class="sub">Clicking either button may also ask for read access to your work folder (pick the folder that contains your Prototypes and lyra-ui folders) so this wizard can list your prototypes and components. It only asks once — press Esc to skip.</p>
+    <p class="sub">Already have a lyra-ui folder on your computer and just want the newest components and stories? <strong>Update Lyra UI Storybook</strong> pulls the latest main branch from GitHub straight into that real folder and rebuilds its local Storybook — the two buttons below don't touch your computer at all.</p>
     <div class="btn-row">
+      <button class="btn" onclick="updateStorybook()">Update Lyra UI Storybook</button>
       <span class="spacer"></span>
       <button class="btn" onclick="skipInstall()">Already Installed</button>
       <button class="btn primary" onclick="doInstall()">Yes, Install Lyra UI</button>
@@ -217,6 +219,29 @@
     </div>
   </div>
 
+  <!-- Step 9: Update Storybook prompt out -->
+  <div class="card hidden" id="step9">
+    <h2>Your update prompt is ready</h2>
+    <p class="sub">Copy it and paste it into your Claude Cowork chat. This is the one flow in this wizard where Claude touches your real lyra-ui folder — not just its own sandbox.</p>
+    <textarea class="prompt-out" id="updatePromptOut" readonly></textarea>
+    <div class="btn-row">
+      <button class="btn" onclick="go(1)">Back</button>
+      <button class="btn primary" onclick="copyUpdatePrompt()">Copy prompt</button>
+      <span class="copied" id="updateCopiedMsg">Copied ✓</span>
+      <span class="spacer"></span>
+      <button class="btn" onclick="restart()">Start over</button>
+    </div>
+    <div class="note">
+      <strong>Next steps:</strong>
+      <ol class="next-steps">
+        <li>Paste the prompt into any Claude Cowork chat.</li>
+        <li>If a folder isn't connected yet, Claude asks you to connect the one containing your lyra-ui folder.</li>
+        <li>Claude pulls the latest main branch from <strong>github.com/davidbauerjr991/lyra-ui</strong> into that real folder, reinstalls dependencies if needed, and rebuilds the Storybook static build there — nothing in its sandbox, nothing else touched.</li>
+        <li>Claude tells you what changed and how to open the refreshed Storybook: double-click <strong>storybook-static/index.html</strong>, or run <strong>npm run storybook</strong> for the live dev server.</li>
+      </ol>
+    </div>
+  </div>
+
   <!-- Step 3: Type -->
   <div class="card hidden" id="step3">
     <h2>What kind of prototype?</h2>
@@ -232,9 +257,13 @@
       </button>
     </div>
     <div id="protoListWrap" class="hidden" style="margin-top:22px;">
-      <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Your prototypes</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <span style="font-size:13px;font-weight:600;flex:1;">Your prototypes</span>
+        <button type="button" class="btn" style="font-size:12px;padding:5px 10px;" onclick="pickPrototypeFile()">Select File…</button>
+      </div>
+      <input type="file" id="protoFileInput" accept=".html,.htm" style="display:none;" onchange="protoFileChanged(this)" />
       <div id="protoList"></div>
-      <p class="hint">Launch works when this wizard file sits next to your Prototypes folder. "Mark published" stores the live link after you deploy.</p>
+      <p class="hint">Launch works when this wizard file sits next to your Prototypes folder. "Mark published" stores the live link after you deploy. Sent a prototype by a teammate (or copied one in) that isn't listed? Put it in your Prototypes folder, then "Select File…" to add it here.</p>
     </div>
     <div class="btn-row">
       <button class="btn" onclick="go(2)">Back</button>
@@ -252,6 +281,7 @@
     <label for="product">Product</label>
     <select id="product">
       <option>Outbound Engagement</option>
+      <option>Agent Workspace</option>
       <option>Agent Workspace Advanced</option>
       <option>Agent Workspace Premium</option>
     </select>
@@ -344,6 +374,41 @@
   function doInstall() { state.alreadyInstalled = false; grantFolderAccess(); go(2); }
   function skipInstall() { state.alreadyInstalled = true; grantFolderAccess(); go(2); }
 
+  /* Update Lyra UI Storybook — the one flow that updates the REAL lyra-ui
+     folder on the user's computer (git pull + rebuild), not a sandbox clone.
+     Everything else in this wizard only writes the prompt text; the actual
+     git/npm work happens when Claude runs the pasted prompt. */
+  function updateStorybook() {
+    var prompt =
+"Update my local Lyra UI checkout and refresh its Storybook. Follow every instruction below exactly.\n" +
+"\n" +
+"SETUP\n" +
+"- My lyra-ui folder lives on my own computer, not in your sandbox. If no folder is connected yet, use your directory-access tool to ask me to connect the folder that contains my lyra-ui folder BEFORE doing anything.\n" +
+"- Work directly inside that real lyra-ui/ folder for this task — it's the one flow in this wizard allowed to touch the repo itself, not just src/components/local/.\n" +
+"\n" +
+"UPDATE\n" +
+"- Confirm lyra-ui/ is a git checkout of https://github.com/davidbauerjr991/lyra-ui, note the current commit SHA, then pull the latest main branch (git fetch origin, then git pull --ff-only origin main). If I have local changes that would conflict, STOP and tell me — never overwrite, stash, or discard anything of mine.\n" +
+"- If package.json or package-lock.json changed as part of the pull, run npm install so dependencies match.\n" +
+"- Rebuild the Storybook with npm run build-storybook so storybook-static/ reflects the latest components and stories. This is a local refresh only — do NOT run the deploy script, and never push or publish anything.\n" +
+"\n" +
+"REPORT\n" +
+"- Tell me the old and new commit SHAs and a short summary of what changed between them (skim the git log). Flag anything in CLAUDE.md or CONTRIBUTING.md that changed and might affect my own components in src/components/local/.\n" +
+"- Tell me how to view the refreshed Storybook: double-click storybook-static/index.html, or run npm run storybook for the live dev server at localhost:6006.\n";
+
+    document.getElementById("updatePromptOut").value = prompt;
+    go(9);
+  }
+
+  function copyUpdatePrompt() {
+    var ta = document.getElementById("updatePromptOut");
+    ta.select();
+    ta.setSelectionRange(0, 999999);
+    try { navigator.clipboard.writeText(ta.value); } catch (e) { document.execCommand("copy"); }
+    var msg = document.getElementById("updateCopiedMsg");
+    msg.style.display = "inline";
+    setTimeout(function () { msg.style.display = "none"; }, 2500);
+  }
+
   var TEMPLATES = {
     admin: {
       label: "Admin",
@@ -392,13 +457,37 @@
     saveProtos(loadProtos().filter(function (p) { return p.file !== file; }));
     renderProtoList();
   }
+  /* "Select File…" — registers a prototype html that isn't in this list
+     (e.g. sent by a teammate and copied into the Prototypes folder). The
+     browser only reveals the file's NAME, which is all the registry needs —
+     launch resolves it as Prototypes/<name>.html like every other row. */
+  function pickPrototypeFile() {
+    document.getElementById("protoFileInput").click();
+  }
+  function protoFileChanged(input) {
+    if (input.files && input.files.length) {
+      var base = input.files[0].name.replace(/\.html?$/i, "");
+      var pretty = base.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim()
+        .replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+      recordProto(pretty || base, base);
+      renderProtoList();
+    }
+    input.value = "";
+  }
+
   function renderProtoList() {
     var wrap = document.getElementById("protoListWrap");
     var list = loadProtos();
-    if (!list.length) { wrap.classList.add("hidden"); return; }
     wrap.classList.remove("hidden");
     var host = document.getElementById("protoList");
     host.innerHTML = "";
+    if (!list.length) {
+      var empty = document.createElement("p");
+      empty.className = "hint";
+      empty.textContent = "No prototypes tracked yet — create one below, or use \"Select File…\" to add one you were sent.";
+      host.appendChild(empty);
+      return;
+    }
     list.forEach(function (p) {
       var row = document.createElement("div");
       row.style.cssText = "display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border-subtle);border-radius:8px;margin-bottom:6px;background:var(--surface);font-size:13px;";

@@ -685,7 +685,18 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
             <div
               key="edge-resize"
               onMouseDown={onLeftEdgeResizeDown}
-              className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize z-10 group/edge"
+              // z-30, not z-10 — per explicit request ("the interior panel
+              // is overlaying on top of the drag icon so the dragged
+              // containers cannot be resized when the interior panel is
+              // open"): arbitrary panel content rendered inside `children`
+              // (e.g. `CustomerRowInfoPanel`'s own `InteriorPanel`, raised
+              // to `z-20` to clear a table row's own hover overlay — see
+              // that component's own doc comment) could otherwise paint
+              // above this resize strip and swallow its mouse events. This
+              // handle needs to stay interactive above ANY content this
+              // container hosts, not just whatever z-index happened to be
+              // in use when it was originally set to z-10.
+              className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize z-30 group/edge"
               aria-hidden="true"
             >
               <div className="absolute inset-y-0 left-0 w-px bg-lyra-border-subtle group-hover/edge:bg-lyra-border-active transition-colors" />
@@ -714,10 +725,14 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
         <div
           key="corner-resize"
           onMouseDown={onCornerResizeDown}
-          className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize flex items-end justify-end pb-1 pr-1 group/resize z-10"
+          // z-30, not z-10 — same reasoning as `edge-resize`'s own doc
+          // comment just above: stays interactive above any panel content
+          // this container hosts (e.g. a `z-20` `InteriorPanel` docked
+          // inside it), instead of being paintable-over by it.
+          className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize flex items-end justify-end pb-1 pr-1 group/resize z-30"
           aria-hidden="true"
         >
-          <svg width="10" height="10" viewBox="0 0 10 10" className="text-lyra-border-default group-hover/resize:text-lyra-border-active transition-colors">
+          <svg width="10" height="10" viewBox="0 0 10 10" className="text-lyra-border-soft group-hover/resize:text-lyra-border-active transition-colors">
             <path d="M9 1L1 9M9 5L5 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
         </div>

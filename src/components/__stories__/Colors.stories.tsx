@@ -15,7 +15,7 @@ function Swatch({
   light?: boolean;
 }) {
   return (
-    <div className="overflow-hidden rounded-lyra-lg border border-lyra-border-default">
+    <div className="overflow-hidden rounded-lyra-lg border border-lyra-border-soft">
       <div
         className="h-24 w-full border-b border-lyra-border-subtle"
         style={{ backgroundColor: value }}
@@ -53,7 +53,7 @@ function AliasRow({
     <div className="flex items-center border-b border-lyra-border-subtle py-3 gap-4">
       <div className="w-[140px] flex-shrink-0 lyra-body-md text-lyra-fg-default">{name}</div>
       <div
-        className="h-8 w-8 flex-shrink-0 rounded-lyra-sm border border-lyra-border-default"
+        className="h-8 w-8 flex-shrink-0 rounded-lyra-sm border border-lyra-border-soft"
         style={{ backgroundColor: value }}
         title={`Light: ${value}`}
       />
@@ -61,7 +61,7 @@ function AliasRow({
       {darkValue !== undefined && (
         <>
           <div
-            className="h-8 w-8 flex-shrink-0 rounded-lyra-sm border border-lyra-border-default"
+            className="h-8 w-8 flex-shrink-0 rounded-lyra-sm border border-lyra-border-soft"
             style={{ backgroundColor: darkValue }}
             title={`Dark: ${darkValue}`}
           />
@@ -200,7 +200,7 @@ export const AllColors: Story = {
         description="Use for borders, dividers, and outlines."
         colors={[
           { name: "Subtle", token: "lyra-border-subtle", value: "rgba(0,0,0,0.10)", description: "Lightest dividers and card borders." },
-          { name: "Default", token: "lyra-border-default", value: "rgba(0,0,0,0.16)", description: "Standard input and control borders." },
+          { name: "Default", token: "lyra-border-soft", value: "rgba(0,0,0,0.16)", description: "Standard input and control borders." },
           { name: "Medium", token: "lyra-border-medium", value: "rgba(0,0,0,0.32)", description: "Medium emphasis borders." },
           { name: "Strong", token: "lyra-border-strong", value: "rgba(0,0,0,0.46)", description: "High emphasis borders and hover states." },
           { name: "Disabled", token: "lyra-border-disabled", value: "rgba(0,0,0,0.10)", description: "Borders on disabled controls." },
@@ -430,7 +430,7 @@ export const NeutralColors: Story = {
         <Swatch name="Hover" token="lyra-state-hover" value="rgba(0,0,0,0.04)" />
         <Swatch name="Pressed" token="lyra-state-pressed" value="rgba(0,0,0,0.10)" />
         <Swatch name="Border Subtle" token="lyra-border-subtle" value="rgba(0,0,0,0.10)" />
-        <Swatch name="Border Default" token="lyra-border-default" value="rgba(0,0,0,0.16)" />
+        <Swatch name="Border Default" token="lyra-border-soft" value="rgba(0,0,0,0.16)" />
         <Swatch name="Border Medium" token="lyra-border-medium" value="rgba(0,0,0,0.32)" />
         <Swatch name="Border Strong" token="lyra-border-strong" value="rgba(0,0,0,0.46)" />
         <Swatch name="Fg Secondary" token="lyra-fg-secondary" value="rgba(0,0,0,0.56)" />
@@ -456,7 +456,7 @@ export const NeutralColors: Story = {
       <AliasRow name="hover" value="rgba(0,0,0,0.04)" darkValue="rgba(255,255,255,0.06)" token="lyra-state-hover" />
       <AliasRow name="pressed" value="rgba(0,0,0,0.10)" darkValue="rgba(255,255,255,0.12)" token="lyra-state-pressed" />
       <AliasRow name="border-subtle" value="rgba(0,0,0,0.10)" darkValue="rgba(255,255,255,0.10)" token="lyra-border-subtle" />
-      <AliasRow name="border-default" value="rgba(0,0,0,0.16)" darkValue="rgba(255,255,255,0.16)" token="lyra-border-default" />
+      <AliasRow name="border-default" value="rgba(0,0,0,0.16)" darkValue="rgba(255,255,255,0.16)" token="lyra-border-soft" />
       <AliasRow name="border-medium" value="rgba(0,0,0,0.32)" darkValue="rgba(255,255,255,0.32)" token="lyra-border-medium" />
       <AliasRow name="border-strong" value="rgba(0,0,0,0.46)" darkValue="rgba(255,255,255,0.46)" token="lyra-border-strong" />
       <AliasRow name="border-disabled" value="rgba(0,0,0,0.10)" darkValue="rgba(255,255,255,0.10)" token="lyra-border-disabled" />

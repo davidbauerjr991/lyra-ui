@@ -158,10 +158,10 @@ const Switch = React.forwardRef<
           ],
 
           /* Indeterminate */
-          isIndeterminate && "bg-lyra-bg-secondary border-lyra-border-default",
+          isIndeterminate && "bg-lyra-bg-secondary border-lyra-border-soft",
 
           /* Checked off */
-          isCheckedOff && "bg-lyra-bg-secondary border-lyra-border-default",
+          isCheckedOff && "bg-lyra-bg-secondary border-lyra-border-soft",
 
           /* Disabled */
           disabled && "opacity-40 cursor-not-allowed"

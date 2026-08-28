@@ -76,7 +76,19 @@ const DonutChart = React.forwardRef<HTMLDivElement, DonutChartProps>(
 
     const option: EChartsOption = React.useMemo(
       () => ({
-        tooltip: showTooltip ? { trigger: "item", formatter: "{b}: {c}" } : { show: false },
+        // `appendToBody: true` — per explicit bug report, the tooltip was
+        // getting hard-clipped by the home screen's Activity card (any
+        // ancestor with `overflow: hidden`, e.g. a rounded `DashboardCard`).
+        // ECharts' default tooltip is a plain `position: absolute` DOM node
+        // appended as a CHILD of the chart's own container div, so it's
+        // subject to whatever overflow behavior that container's ancestors
+        // impose — same as any other absolutely-positioned DOM content
+        // would be. `appendToBody` instead renders it as a direct child of
+        // `document.body`, escaping every ancestor's overflow/stacking
+        // context the same way a portal-based tooltip/popover elsewhere in
+        // this library already does, so it can render outside the card's
+        // bounds without being cut off.
+        tooltip: showTooltip ? { trigger: "item", formatter: "{b}: {c}", appendToBody: true } : { show: false },
         series: [
           {
             type: "pie",

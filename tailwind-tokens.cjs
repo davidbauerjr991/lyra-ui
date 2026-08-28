@@ -50,7 +50,7 @@ module.exports = {
   "lyra-bg-active-moderate":          "var(--lyra-color-bg-active-moderate)",
   "lyra-bg-active-subtle":            "var(--lyra-color-bg-active-subtle)",
   "lyra-bg-none":                     "var(--lyra-color-bg-none)",
-  "lyra-bg-field-ai":                 "var(--lyra-color-bg-field-ai)",
+  "lyra-bg-ai":                       "var(--lyra-color-bg-ai)",
   "lyra-bg-conversation-user":        "var(--lyra-color-bg-conversation-user)",
   "lyra-bg-conversation-ai":          "var(--lyra-color-bg-conversation-ai)",
   "lyra-bg-conversation-agent":       "var(--lyra-color-bg-conversation-agent)",
@@ -71,7 +71,7 @@ module.exports = {
 
   /* ── Border ── */
   "lyra-border-subtle":    "var(--lyra-color-border-subtle)",
-  "lyra-border-default":   "var(--lyra-color-border-default)",
+  "lyra-border-soft":      "var(--lyra-color-border-soft)",
   "lyra-border-medium":    "var(--lyra-color-border-medium)",
   "lyra-border-strong":    "var(--lyra-color-border-strong)",
   "lyra-border-disabled":  "var(--lyra-color-border-disabled)",

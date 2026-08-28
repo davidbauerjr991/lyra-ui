@@ -27,7 +27,7 @@ export interface SpinnerProps {
 const spinnerBarGapVariants = cva("flex items-center", {
   variants: {
     size: {
-      sm: "gap-[2px]",
+      sm: "gap-lyra-05",
       md: "gap-0.5",
       lg: "gap-[3px]",
     },

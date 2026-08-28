@@ -138,9 +138,33 @@ const Tooltip: React.FC<TooltipProps> = ({
     return () => clearTimeout(t);
   }, []);
 
+  // Per a real, reported bug (console flooded with "Tooltip is changing from
+  // controlled to uncontrolled" warnings): `open` below used to be
+  // `disabled || !allowOpen ? false : undefined` — a literal `false` (a
+  // controlled value) for as long as either guard held, then `undefined` (an
+  // UNCONTROLLED value, letting Radix drive its own internal open state) the
+  // moment `allowOpen` flipped true ~50ms after mount. React treats whether
+  // `open` was first passed as `undefined` as fixing this `Root` as
+  // "uncontrolled" for its whole lifetime — switching to a defined value
+  // later (or back) is exactly the anti-pattern this warning exists for, and
+  // it fired on literally every `Tooltip` in the app, every mount, ~50ms in.
+  // Fixed by keeping `open` a plain boolean for the component's entire
+  // lifetime — never `undefined` — with its own `open`/`setOpen` state
+  // standing in for Radix's internal one (updated via `onOpenChange`, same
+  // as any fully-controlled Radix primitive) whenever neither guard is
+  // active; the guards simply override that state to `false` while they
+  // hold, rather than handing control back to Radix.
+  const [open, setOpen] = useState(false);
+
   return (
     <TooltipPrimitive.Provider delayDuration={delayMs} skipDelayDuration={0}>
-      <TooltipPrimitive.Root open={disabled || !allowOpen ? false : undefined}>
+      <TooltipPrimitive.Root
+        open={disabled || !allowOpen ? false : open}
+        onOpenChange={(next) => {
+          if (disabled || !allowOpen) return;
+          setOpen(next);
+        }}
+      >
         <TooltipPrimitive.Trigger asChild {...triggerAriaProps}>
           {children}
         </TooltipPrimitive.Trigger>

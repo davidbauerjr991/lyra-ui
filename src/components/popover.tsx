@@ -148,7 +148,7 @@ const PopoverArrow = () => (
   <PopoverPrimitive.Arrow
     width={24}
     height={12}
-    className="fill-lyra-bg-surface-overlay stroke-lyra-border-default stroke-1"
+    className="fill-lyra-bg-surface-overlay stroke-lyra-border-soft stroke-1"
     style={{ strokeDasharray: "0 30 40" }}
   />
 );
@@ -255,7 +255,7 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
           // token literally named that, but border-default is the exact
           // 0.16-alpha value asked for (border-subtle, used before, is a
           // lighter 0.10).
-          "rounded-lyra-lg border border-lyra-border-default bg-lyra-bg-surface-overlay shadow-lg",
+          "rounded-lyra-lg border border-lyra-border-soft bg-lyra-bg-surface-overlay shadow-lg",
           "animate-in fade-in-0 duration-150",
           "data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2",
           "data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2",

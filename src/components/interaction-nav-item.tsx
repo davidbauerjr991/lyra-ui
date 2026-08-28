@@ -824,7 +824,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
           : severity === "success"
           ? "border-lyra-status-success-strong hover:border-[color-mix(in_srgb,var(--lyra-color-status-success-strong)_80%,black_20%)]"
           : "border-lyra-border-active hover:border-[color-mix(in_srgb,var(--lyra-color-border-active)_80%,black_20%)]"
-        : "border-lyra-border-subtle hover:border-lyra-border-default"
+        : "border-lyra-border-subtle hover:border-lyra-border-soft"
     );
 
     /* ── Compact: icon-rail avatar tile ── */

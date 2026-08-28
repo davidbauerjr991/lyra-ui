@@ -9,7 +9,7 @@ You are reading this because a user is building Lyra UI prototypes through Claud
 | Is a Claude Design prompt ("on this canvas", "imported into this project") | **Scenario 0** |
 | Attached the zip / pointed at the repo, "set it up" | **Scenario A** |
 | Starts "Build me a Lyra UI prototype" | **Scenario B** |
-| Asks for changes to an existing prototype (text/screenshots) | **Scenario C** |
+| Asks for changes to an existing prototype (text/screenshots), or starts "Update this Lyra UI prototype to the latest components" (the banner's copied prompt) | **Scenario C** |
 | Wants a NEW prototype | **Scenario D** |
 | Starts "Build me a Lyra UI component gallery" | **Scenario E** |
 | Starts "Duplicate an existing Lyra UI prototype" / "Duplicate a repo as an html-only Lyra UI prototype" | **Scenario F** |
@@ -17,6 +17,7 @@ You are reading this because a user is building Lyra UI prototypes through Claud
 | Starts "Submit one of my custom Lyra UI components" / owner attaches a `*-contribution.zip` | **Scenario H** |
 | Wants to share/publish a prototype | **Scenario I** |
 | Starts "Edit one of my custom Lyra UI components" / "Delete one of my custom Lyra UI components" | **Scenario J** |
+| Asks to pull/update their LOCAL lyra-ui ("pull the latest lyra-ui", the skill's first-step offer) | **Scenario K** |
 
 ## Getting Lyra UI (always latest-first)
 
@@ -38,7 +39,9 @@ Users lose confidence the moment stray files appear in their folders — even br
 
 Everything else — entry files, configs, CSS output, bundles, temp files, node_modules — is created in YOUR sandbox only. Before every file write, check the target path. Creating a file in the user's folder and then deleting it is still a violation, not a fix.
 
-One explicit exception: **owner-side contribution review** (Scenario H, owner side) edits library source (`src/components/`, `src/components/__stories__/`, `PROJECT_SUMMARY.md`) at the library owner's request — that flow, and only that flow, may write outside the paths above.
+Two explicit exceptions:
+- **Local lyra-ui pull** (Scenario K): running `git pull` on the USER's local lyra-ui clone, only after they said yes to the pull offer — and only after a clean `git status` check on tracked files (see Scenario K).
+- **Owner-side contribution review** (Scenario H, owner side) edits library source (`src/components/`, `src/components/__stories__/`, `PROJECT_SUMMARY.md`) at the library owner's request — that flow, and only that flow, may write outside the paths above.
 
 ## Sandbox-only builds (critical)
 - All `npm install`, esbuild bundling, and Tailwind compilation happen in YOUR sandbox only.
@@ -71,9 +74,9 @@ Stories run inside Storybook, whose `preview.ts` decorator sets up the page envi
 - One self-contained `.html` file, named from the prototype name (kebab-case), with all JS bundled and all styles compiled and inlined so it opens by double-click.
 - **Version stamp + update notice (required in every build):**
   - Record the commit SHA of the lyra-ui clone you built from (`git rev-parse HEAD` in your sandbox clone) in the `<head>`: `<meta name="lyra-ui-commit" content="<full-sha>">`.
-  - Include this self-contained script so the prototype itself checks GitHub for newer library code and shows a dismissible notice (fails silently offline):
+  - Include this self-contained script (same one `prototype-kit/build-prototype.mjs` embeds — keep the two identical): the prototype checks GitHub for newer library code, shows a dismissible notice, and its **"Update components?"** action copies a ready-made rebuild prompt to the clipboard for the user to paste into Cowork (fails silently offline):
 
-    ```html
+```html
     <script>
     (function () {
       var m = document.querySelector('meta[name="lyra-ui-commit"]');
@@ -82,11 +85,35 @@ Stories run inside Storybook, whose `preview.ts` decorator sets up the page envi
         .then(function (r) { return r.json(); })
         .then(function (d) {
           if (!d || !d.sha || d.sha === m.content) return;
+          var file = decodeURIComponent((location.pathname.split("/").pop() || "this-prototype.html"));
+          var rebuildPrompt =
+            "Update this Lyra UI prototype to the latest components.\n" +
+            "- File: Prototypes/" + file + " in my connected folder (built at lyra-ui commit " + m.content + "; latest main is " + d.sha + ").\n" +
+            "- Follow CLAUDE-INSTRUCTIONS.md Scenario C: clone the latest lyra-ui, rebuild this prototype on it (run the component-drift audit for every component used), verify (integrity checks + smoke test), overwrite the same file in place, and tell me to refresh. Never ask me to run commands.";
           var b = document.createElement("div");
           b.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;background:#ecf5fe;border-bottom:1px solid #D3E6FD;color:#185ba4;font:13px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:8px 40px 8px 16px;text-align:center;";
-          b.textContent = "Lyra UI has been updated since this prototype was built. Ask Claude to rebuild it to pick up the latest components.";
+          var msg = document.createElement("span");
+          msg.textContent = "Lyra UI has been updated since this prototype was built. ";
+          b.appendChild(msg);
+          var act = document.createElement("button");
+          act.textContent = "Update components?";
+          act.style.cssText = "border:none;background:none;color:#185ba4;font:inherit;font-weight:700;text-decoration:underline;cursor:pointer;padding:0;";
+          act.onclick = function () {
+            var done = function () {
+              msg.textContent = "Prompt copied — paste it into Claude Cowork to update this prototype. ";
+              act.textContent = "Copy again";
+            };
+            try {
+              navigator.clipboard.writeText(rebuildPrompt).then(done, function () {
+                window.prompt("Copy this prompt, then paste it into Claude Cowork:", rebuildPrompt); done();
+              });
+            } catch (e) {
+              window.prompt("Copy this prompt, then paste it into Claude Cowork:", rebuildPrompt); done();
+            }
+          };
+          b.appendChild(act);
           var x = document.createElement("button");
-          x.textContent = "×";
+          x.textContent = "\u00d7";
           x.style.cssText = "position:absolute;right:10px;top:4px;border:none;background:none;font-size:18px;cursor:pointer;color:inherit;";
           x.onclick = function () { b.remove(); };
           b.appendChild(x);
@@ -95,7 +122,7 @@ Stories run inside Storybook, whose `preview.ts` decorator sets up the page envi
         .catch(function () {});
     })();
     </script>
-    ```
+```
 - Save it to the user's connected folder, NOT the session outputs folder (that's buried in Claude's app-data and hard for users to find):
   - If no folder is connected, use your directory-access tool to ask the user to pick one BEFORE building.
   - Create a **`Prototypes`** folder in the connected folder if it doesn't exist, and save every prototype `.html` inside it.
@@ -140,6 +167,8 @@ Follow "Getting Lyra UI" at the top and wait for the user's answer if it comes t
 - The prompt specifies a Product (e.g. "Outbound Engagement"). Set that exact string as the `appName` prop on the `AppHeader` component (`src/components/app-header.tsx`) — it renders top-left, next to the logo.
 
 ## Scenario C: The user asks for changes to an existing prototype (text or screenshots)
+
+Also triggered verbatim by the update banner's copied prompt ("Update this Lyra UI prototype to the latest components" — it names the file and both commits). For that prompt: rebuild on latest main, run the component-drift audit (Scenario F's rule) for every component used, and skip the version-check question — updating IS the request.
 
 - **Version check FIRST**: read the `lyra-ui-commit` meta tag from the prototype's html and compare it to the latest main (`git ls-remote https://github.com/davidbauerjr991/lyra-ui.git main`). If they differ, tell the user the library has changed since this prototype was built and ask: update to the latest lyra-ui as part of this change (recommended), or keep the version it was built with? If they keep it, clone/checkout that exact commit so the rebuild stays consistent. If the html has no stamp (an older build), say so and recommend rebuilding on latest.
 - Apply changes to the same prototype in your sandbox copy.
@@ -204,3 +233,13 @@ Both follow the User-local components rules (Rules for Every Scenario) — the u
 
 - **Edit**: confirm you've found the component and its co-located story, then WAIT for the user's change description/screenshots. Edit the source in their local folder, update the story for any new props, verify (tsc, esbuild, `prototype-kit/smoke-test.mjs`), rebuild `Prototypes/my-component-gallery.html` in place (fast path), and tell them to refresh — don't re-present files.
 - **Delete**: the one sanctioned delete — confirm the exact component name, warn if a prototype you know of still uses it, delete both the `.tsx` and `.stories.tsx`, then rebuild the gallery without it.
+
+## Scenario K: Pull the latest lyra-ui into the user's LOCAL clone ("pull the latest lyra-ui")
+
+The `lyra-prototype` skill offers this as its first step; users may also ask directly. This updates the copy on THEIR machine (their wizard copy, local-component context) — sandbox builds always clone latest regardless.
+
+1. Only applies if the connected folder contains a local `lyra-ui` git clone. None → say so and move on (nothing to update).
+2. Compare: `git -C lyra-ui rev-parse HEAD` vs `git ls-remote https://github.com/davidbauerjr991/lyra-ui.git main`. Already current → say so, done.
+3. Behind → ask: "Your local lyra-ui is behind the latest — pull the update?" WAIT for a yes.
+4. Before pulling, run `git -C lyra-ui status --porcelain` and ignore `src/components/local/` (gitignored — their components are never at risk). If TRACKED files are modified, do NOT pull — tell the user what's modified and stop (never stash/reset/discard their work).
+5. Clean → `git -C lyra-ui pull`, then summarize what came in (`git log --oneline OLD..HEAD`). This is a sanctioned write-policy exception — pull only, never commit or push their clone.

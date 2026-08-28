@@ -37,7 +37,7 @@ const lyraPreset: Partial<Config> = {
 
         /* ── Lyra Semantic: Border ── */
         "lyra-border-subtle": "var(--lyra-color-border-subtle)",
-        "lyra-border-default": "var(--lyra-color-border-default)",
+        "lyra-border-soft": "var(--lyra-color-border-soft)",
         "lyra-border-medium": "var(--lyra-color-border-medium)",
         "lyra-border-strong": "var(--lyra-color-border-strong)",
         "lyra-border-disabled": "var(--lyra-color-border-disabled)",

@@ -266,10 +266,10 @@ const DashboardCard = React.forwardRef<HTMLDivElement, DashboardCardProps>(
           //
           // Darker border on hover — `border-lyra-border-subtle` (the
           // `default` Container variant's own border) steps up to
-          // `border-lyra-border-default`, the same neutral-card
+          // `border-lyra-border-soft`, the same neutral-card
           // darken-on-hover pair `InteractionNavItem`'s own compact tile
           // already uses (interaction-nav-item.tsx).
-          showContainer && "transition-[box-shadow,border-color] hover:shadow-md hover:border-lyra-border-default",
+          showContainer && "transition-[box-shadow,border-color] hover:shadow-md hover:border-lyra-border-soft",
           className
         )}
         headerClassName={cn(

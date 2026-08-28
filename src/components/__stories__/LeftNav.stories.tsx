@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { LeftNav, type NavItem } from "../left-nav";
 import { CreateNew, useOutboundAddButton, type CreateNewOutboundContact, type CreateNewOutboundConfig } from "../create-new";
 import { InteractionNavItem, type InteractionChannel, type ChannelType } from "../interaction-nav-item";
+import { AssignmentsSectionCaption, type AssignmentSortValue } from "../assignments-section-caption";
 import { OUTBOUND_CONFIG } from "./create-new-outbound-mock";
 import { Container } from "../container";
 import { ContentArea } from "../content-area";
@@ -15,8 +16,6 @@ import {
   PencilRuler,
   FileText,
   Home,
-  Search,
-  NotebookPen,
   HelpCircle,
   Gauge,
   BarChart3,
@@ -120,6 +119,34 @@ interface AgentNextGenDemoInteraction {
    *  channel works instead, since those use their own local channel type
    *  rather than `InteractionChannel` directly). */
   channelAddresses?: Partial<Record<ChannelType, string[]>>;
+}
+
+/** "MM:SS" → total seconds, for sorting by `elapsed` below. */
+function parseElapsedSeconds(elapsed: string): number {
+  const [mm, ss] = elapsed.split(":").map((n) => parseInt(n, 10) || 0);
+  return mm * 60 + ss;
+}
+
+/** Local equivalent of agent-next-gen-v2's own `sortAssignments`
+ *  (`AssignmentSortValue`, from assignments-section-caption.tsx) — this
+ *  story's `AgentNextGenDemoInteraction` carries a single flat `elapsed`
+ *  "MM:SS" string (see that interface's own doc comment: no live-ticking
+ *  clock here, unlike AgentNextGenTemplate.stories.tsx's per-channel
+ *  numeric start ticks), so "Last Updated" and "Start Date" collapse to
+ *  the same order — smaller elapsed (started/updated more recently) sorts
+ *  first for both. */
+function sortAssignments(
+  interactions: AgentNextGenDemoInteraction[],
+  sort: AssignmentSortValue
+): AgentNextGenDemoInteraction[] {
+  if (sort === "awaitingLongest") {
+    const key = (i: AgentNextGenDemoInteraction) =>
+      i.awaitingResponse ? parseElapsedSeconds(i.elapsed) : -Infinity;
+    // Descending — the LARGEST elapsed among awaiting cards is the longest
+    // wait, and needs to sort first.
+    return [...interactions].sort((a, b) => key(b) - key(a));
+  }
+  return [...interactions].sort((a, b) => parseElapsedSeconds(a.elapsed) - parseElapsedSeconds(b.elapsed));
 }
 
 const sampleItems: NavItem[] = [
@@ -231,24 +258,95 @@ export const AgentNextGen: Story = {
   name: "Agent Next Gen Left Nav",
   render: () => {
     const [open, setOpen] = useState(false);
+
+    // Seeded with 3 real contacts from `OUTBOUND_CONFIG`'s own "customers"
+    // group (ids "customer-1"/"customer-2"/"customer-3", see
+    // create-new-customers-data.ts) rather than left empty — per explicit
+    // request, this story should show what multiple concurrent assignments
+    // actually look like (single- vs. multi-channel cards, a card awaiting
+    // response) instead of only being reachable by manually clicking through
+    // CreateNew's "New Outbound" flow first. Every id/channel still maps to
+    // a real `OUTBOUND_CONFIG` contact — same "no fake ids with no backing
+    // contact" reasoning the old empty-start comment (now below, on
+    // `handleStartCall`) already documents, so each seeded card's own "+"
+    // button works exactly like one actually started here would.
+    //
+    // Ordered oldest → newest (array order is render order, same as every
+    // card `handleStartCall` appends below) with David Santos' card last —
+    // the most-recently-started assignment — and its id is what `activeId`
+    // below initializes to, so the newest assignment is the one shown
+    // selected/highlighted on load, matching what already happens the
+    // moment a real "Start Interaction" click lands (`setActiveId(selection
+    // .contact.id)` in `handleStartCall`).
+    const [interactions, setInteractions] = useState<AgentNextGenDemoInteraction[]>(() => [
+      {
+        id: "customer-1",
+        customerName: "Alex Miller",
+        elapsed: "05:42",
+        channels: [
+          { id: "voice", type: "voice", elapsed: "05:42", current: false, preview: "General Support" },
+          { id: "email:alex.miller@example.com", type: "email", elapsed: "05:42", current: true, preview: "Billing" },
+        ],
+        channelAddresses: { voice: ["+14563833329"], email: ["alex.miller@example.com"] },
+      },
+      {
+        id: "customer-2",
+        customerName: "Sarah Brown",
+        awaitingResponse: true,
+        elapsed: "02:15",
+        channels: [
+          {
+            id: "sms:+14565559981",
+            type: "sms",
+            elapsed: "02:15",
+            current: true,
+            preview: "Technical Support",
+            awaitingResponse: true,
+            awaitingSeverity: "warning",
+          },
+        ],
+        channelAddresses: { sms: ["+14565559981"] },
+      },
+      {
+        id: "customer-3",
+        customerName: "David Santos",
+        elapsed: "00:39",
+        channels: [{ id: "voice", type: "voice", elapsed: "00:39", current: true, preview: "General Support" }],
+        channelAddresses: { voice: ["+14565550147"] },
+      },
+    ]);
     // Click any InteractionNavItem card below to make it the active one —
     // lets you test the active/inactive + awaiting-response border and
     // highlight states interactively instead of only via fixed args.
-    const [activeId, setActiveId] = useState("");
+    // Starts on "customer-3" — the latest (most recently started, per the
+    // seed list above) of the three seeded assignments — rather than "",
+    // so the newest card is the one shown active on load.
+    const [activeId, setActiveId] = useState("customer-3");
 
-    // Empty until the agent actually starts an interaction from CreateNew's
-    // "New Outbound" flow (see handleStartCall/handleQuickDial) — same
-    // "no cards until launched" behavior as `agent-next-gen-v1` and
-    // `AgentNextGenTemplate.stories.tsx` (which never seeded fixed demo
-    // cards to begin with). This story used to seed 3 fixed placeholder
-    // cards ("Sofia Martinez"/"Ray Torres"/"Customer") with ids that had no
-    // matching contact in `OUTBOUND_CONFIG` — clicking their "+" could never
-    // actually open CreateNew's call-setup screen, which looked like a bug
-    // in the "+" button itself rather than what it actually was (cards with
-    // no real contact behind them). Starting empty and only populating via
-    // a real "Start Interaction" click means every card that appears here
-    // is backed by a real contact, so its own "+" button always works.
-    const [interactions, setInteractions] = useState<AgentNextGenDemoInteraction[]>([]);
+    // Drives `AssignmentsSectionCaption`'s sort button + collapse-all — see
+    // assignments-section-caption.tsx's own doc comments. `interactions`
+    // itself stays in insertion order for everything else that reads it;
+    // only the render below reorders a copy (`sortAssignments`).
+    const [assignmentSort, setAssignmentSort] = useState<AssignmentSortValue>("lastUpdated");
+    const [channelsAllExpanded, setChannelsAllExpanded] = useState(true);
+    const [channelsExpandedOverrideVersion, setChannelsExpandedOverrideVersion] = useState(0);
+    const handleToggleAllChannelsExpanded = () => {
+      setChannelsAllExpanded((v) => !v);
+      setChannelsExpandedOverrideVersion((v) => v + 1);
+    };
+
+    // A NEWLY started interaction (from here on, via CreateNew's "New
+    // Outbound" flow — see handleStartCall/handleQuickDial below) still
+    // gets a real backing contact the same way the 3 seeded cards above do:
+    // this story used to seed 3 fixed placeholder cards ("Sofia Martinez"/
+    // "Ray Torres"/"Customer") with ids that had no matching contact in
+    // `OUTBOUND_CONFIG` — clicking their "+" could never actually open
+    // CreateNew's call-setup screen, which looked like a bug in the "+"
+    // button itself rather than what it actually was (cards with no real
+    // contact behind them). Only populating via a real "Start Interaction"
+    // click (on top of the 3 seeded, likewise-real cards above) means every
+    // card that ever appears here is backed by a real contact, so its own
+    // "+" button always works.
     // Starting a new outbound call/quick dial adds (or restarts) a card —
     // and, since a collapsed nav would otherwise hide that new card from
     // view entirely, also expands the nav so the agent immediately sees
@@ -437,27 +535,16 @@ export const AgentNextGen: Story = {
     // since focus has moved to that assignment instead. `onClick` clears
     // `activeId` back to "" so Desk stays a real way back to this page
     // instead of just a static "you're on the dashboard" indicator. Every
-    // item below it is a plain static rail entry (per the reference
-    // screenshot: Search, Directory, WEM, Help, Settings — Contacts/
-    // Schedule dropped, Queue/Reporting intentionally not added here).
+    // item below it is a plain static rail entry. Rail is Home("Desk") +
+    // Settings only, matching AgentNextGenTemplate.stories.tsx's NAV_ITEMS
+    // (Search/WEM/Help removed per explicit request — the header app-panel
+    // icons cover those surfaces).
     const items: NavItem[] = [
       {
         icon: <Home className="h-4 w-4" strokeWidth={1.5} />,
         label: "Desk",
         active: activeId === "",
         onClick: () => setActiveId(""),
-      },
-      {
-        icon: <Search className="h-4 w-4" strokeWidth={1.5} />,
-        label: "Search",
-      },
-      {
-        icon: <NotebookPen className="h-4 w-4" strokeWidth={1.5} />,
-        label: "WEM",
-      },
-      {
-        icon: <HelpCircle className="h-4 w-4" strokeWidth={1.5} />,
-        label: "Help",
       },
       {
         icon: <Settings className="h-4 w-4" strokeWidth={1.5} />,
@@ -482,7 +569,20 @@ export const AgentNextGen: Story = {
         }
         header={
           <>
-            {interactions.map((interaction) => (
+            {/* "Assignments (N active)" caption + collapse-all/sort — see
+                assignments-section-caption.tsx's own doc comment. `count`
+                is `interactions.length`, the exact same live list the
+                cards below render from, so the two numbers can't drift
+                apart. */}
+            <AssignmentsSectionCaption
+              expanded={open}
+              count={interactions.length}
+              sort={assignmentSort}
+              onSortChange={setAssignmentSort}
+              allExpanded={channelsAllExpanded}
+              onToggleAllExpanded={handleToggleAllChannelsExpanded}
+            />
+            {sortAssignments(interactions, assignmentSort).map((interaction) => (
               <InteractionNavItem
                 key={interaction.id}
                 customerName={interaction.customerName}
@@ -494,7 +594,22 @@ export const AgentNextGen: Story = {
                 channels={interaction.channels}
                 onDismiss={() => handleDismissInteraction(interaction.id)}
                 onDismissChannel={(channel) => handleDismissChannel(interaction.id, channel)}
+                // Per v2: the expanded card's "+" (Add Channel,
+                // `getHeaderAction` below) is replaced with a chevron that
+                // expands/collapses this card's own channel list —
+                // `headerAction` itself is left wired below (harmless;
+                // `InteractionNavItem` ignores it whenever `collapsible`
+                // is true) rather than removed.
                 headerAction={getHeaderAction(interaction.id)}
+                collapsible
+                // "Collapse all"/"Expand all" — see `channelsAllExpanded`'s
+                // own doc comment near its declaration for why this is a
+                // one-shot `{ expanded, version }` override object rather
+                // than a plain controlled boolean.
+                channelsExpandedOverride={{
+                  expanded: channelsAllExpanded,
+                  version: channelsExpandedOverrideVersion,
+                }}
               />
             ))}
           </>

@@ -31,12 +31,12 @@ function readNumberCookie(name: string): number | null {
    admin-shell.tsx's "interior panels row"). Always inline and resizable;
    opened via a click/trigger elsewhere in the main container (a button, a
    row select, etc. — there's no hover-to-open concept here, unlike
-   `SidePanel`). Below 1024px of its parent container's width it switches
+   `SidePanel`). Below 1440px of its parent container's width it switches
    to an absolute overlay instead of squeezing the content column further —
-   the same 1024px threshold `SidePanel`'s own consumers (`AdminShell`, the
-   "Agent Next Gen" template) use for their pin guard, unified so every
-   panel in the system reacts to the same pixel width rather than each
-   picking its own nearby value (previously 1050px here).
+   raised from 1024px (which used to match `SidePanel`'s own consumers'
+   pin-guard threshold — `AdminShell`, the "Agent Next Gen" template — before
+   1050px before that) after testing wider values in agent-next-gen-v2; the
+   two thresholds are no longer tied to one shared value.
 
    This is one of exactly two panel types in the design system — the other
    being `SidePanel` (over the page header, hover/pin, left or right).
@@ -57,6 +57,9 @@ export interface InteriorPanelProps extends React.HTMLAttributes<HTMLDivElement>
   open?: boolean;
   /** Called when the header's close (×) button is clicked */
   onClose?: () => void;
+  /** Icon rendered inside the header's close button — see `ContainerHeaderProps.closeIcon`'s
+   *  own doc comment. Default: lucide `X`, unchanged for every existing consumer. */
+  closeIcon?: React.ReactNode;
 
   /** Allow drag-to-resize on the panel's leading border (default: true) */
   resizable?: boolean;
@@ -125,7 +128,7 @@ export interface InteriorPanelProps extends React.HTMLAttributes<HTMLDivElement>
    * `Minimize2` icon, matching `ContainerHeader.stories.tsx`'s own
    * fullscreen-toggle reference) that expands the panel to the full width
    * of its container — same overlay mechanism the panel already uses below
-   * 1024px of its parent's width (`isNarrow`, see the class doc comment
+   * 1440px of its parent's width (`isNarrow`, see the class doc comment
    * above), just user-triggered instead of width-triggered, so it needs no
    * extra cooperation from whatever main-content column sits next to this
    * panel: the panel simply covers it, rather than requiring that sibling
@@ -136,8 +139,9 @@ export interface InteriorPanelProps extends React.HTMLAttributes<HTMLDivElement>
    * from outside) — same "the component owns this interaction, not the
    * consumer" status as the resize drag state already has. Resizing
    * (`resizable`) is disabled while full-screen, since dragging a width
-   * that's currently `100%` doesn't mean anything; it resumes at whatever
-   * width was active before entering full-screen once toggled back off.
+   * that's currently clamped to the full measured container width doesn't
+   * mean anything; it resumes at whatever width was active before entering
+   * full-screen once toggled back off.
    */
   allowFullScreen?: boolean;
   /**
@@ -168,6 +172,7 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       side = "right",
       open = true,
       onClose,
+      closeIcon,
       resizable = true,
       minWidth = 350,
       maxWidth = 425,
@@ -231,29 +236,15 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       return () => clearTimeout(closeTimerRef.current);
     }, [open]);
 
-    /* ── Go absolute/overlay when the parent container is < 1024px, instead
-       of squeezing the main content column further — matches SidePanel's
-       own pin-guard threshold (admin-shell.tsx / AgentNextGenTemplate),
-       previously 1050px here ── */
+    /* ── Go absolute/overlay when the parent container is < 1440px, instead
+       of squeezing the main content column further — was 1024px (matching
+       SidePanel's own pin-guard threshold, admin-shell.tsx /
+       AgentNextGenTemplate; 1050px before that); raised after testing wider
+       values in agent-next-gen-v2, so this is no longer tied to SidePanel's
+       own threshold. ── */
     const outerRef = useRef<HTMLDivElement>(null);
     const [parentWidth, setParentWidth] = useState(9999);
-    const isNarrow = parentWidth < 1024;
-
-    /* Auto full-screen below 400px of the parent container's own width — a
-       dedicated, tighter breakpoint than `isNarrow`'s 1024px above (which
-       only switches to an absolute overlay, still at the panel's normal
-       ~350-425px width). Below 400px there simply isn't room for both the
-       panel and whatever sits beside it at ANY width, so the panel takes
-       over entirely — same visual result as the user clicking
-       `allowFullScreen`'s own toggle (`displayWidth`/the overlay branch
-       below both key off this too, alongside `isFullScreen`), just
-       automatic. The toggle itself hides at this width (`fullScreenToggle`
-       below) — there's nothing to "exit" to below 400px, so a control
-       that can't do anything would just be confusing chrome. Independent
-       of `allowFullScreen`: this breakpoint applies to every `InteriorPanel`
-       regardless of whether that panel opts into the user-triggered
-       toggle. Was 768px — lowered per explicit request. */
-    const isAutoFullScreen = parentWidth < 400;
+    const isNarrow = parentWidth < 1440;
 
     const stableOuterRef = useCallback((el: HTMLDivElement | null) => {
       (outerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
@@ -277,8 +268,7 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
     // should come back full-screen, the same way a resized width is
     // remembered across a close/reopen (just per-mount rather than via a
     // `storageKey` cookie) — confirmed as the wanted behavior over
-    // "always reopens at the pre-full-screen size." Hidden entirely below
-    // 400px (`isAutoFullScreen`) — see that flag's own doc comment above.
+    // "always reopens at the pre-full-screen size."
     const [isFullScreen, setIsFullScreen] = useState(false);
 
     // `exitFullScreenSignal` escape hatch (see its own doc comment above) —
@@ -298,7 +288,7 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       prevExitFullScreenSignalRef.current = exitFullScreenSignal;
     }, [exitFullScreenSignal]);
 
-    const fullScreenToggle = allowFullScreen && !isAutoFullScreen ? (
+    const fullScreenToggle = allowFullScreen ? (
       <Tooltip content={isFullScreen ? "Exit full screen" : "Full screen"} placement="bottom" asLabel>
         <button
           type="button"
@@ -315,31 +305,39 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       </Tooltip>
     ) : null;
 
-    // Dragging a width that's currently forced to 100% doesn't mean
-    // anything, so the handle disappears while full-screen (user-triggered
-    // OR the automatic 768px breakpoint) — it comes back at whatever width
-    // was active before, once above 768px and toggled back off.
-    const dragHandle = resizable && open && !isFullScreen && !isAutoFullScreen ? (
+    // Dragging a width that's currently clamped to the full measured
+    // container width doesn't mean anything, so the handle disappears while
+    // full-screen — it comes back at whatever width was active before, once
+    // toggled back off.
+    const dragHandle = resizable && open && !isFullScreen ? (
       <div
         onMouseDown={onMouseDown}
         className="absolute top-0 bottom-0 z-10 flex items-center justify-center group"
         style={{ [side === "right" ? "left" : "right"]: -4, width: 8, cursor: "col-resize" }}
         aria-hidden="true"
       >
-        <div className="w-0.5 h-8 rounded-full bg-lyra-border-default opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="w-0.5 h-8 rounded-full bg-lyra-border-soft opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
     ) : null;
 
-    // `currentWidth` (px, from drag-resize state) everywhere below, except
-    // while full-screen (user-triggered OR the automatic 768px breakpoint)
-    // — then the panel's actual on-screen size is "100% of its container"
-    // instead, and every place that otherwise sizes off `currentWidth`
-    // needs to say so too, not just the outermost shell (`inner`'s own
-    // width, and the left-side absolute-positioning wrapper further down,
-    // would otherwise still cap content at the pre-full-screen px width
-    // inside an outer shell that's already gone full width, leaving empty
-    // space instead of actually filling it).
-    const displayWidth: number | string = (isFullScreen || isAutoFullScreen) ? "100%" : currentWidth;
+    // `currentWidth` (px, from drag-resize state) clamped to the measured
+    // `parentWidth` — the panel never renders wider than the space its
+    // parent container actually has, even mid-drag or at its default
+    // minWidth/maxWidth (previously unclamped, which could overflow past
+    // the panel's own container edge when nested inside another narrow
+    // container, e.g. the docked Customer Information panel). While
+    // full-screen (`isFullScreen`), this is simply `parentWidth` itself —
+    // a literal `"100%"` on this panel's `position: absolute` wrapper
+    // resolves against the nearest positioned ancestor, which isn't
+    // necessarily the same element `parentWidth` measures, so it could
+    // bleed wider than the actual container too. Every place that sizes
+    // off `currentWidth` needs to read this instead, not just the
+    // outermost shell (`inner`'s own width, and the left-side
+    // absolute-positioning wrapper further down, would otherwise still cap
+    // content at the pre-full-screen px width inside an outer shell that's
+    // already gone full width, leaving empty space instead of actually
+    // filling it).
+    const displayWidth: number | string = isFullScreen ? parentWidth : Math.min(currentWidth, parentWidth);
 
     const inner = (
       <div
@@ -365,6 +363,7 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
               actions={<>{headerActions}{fullScreenToggle}</>}
               tabs={headerTabs}
               onClose={onClose}
+              closeIcon={closeIcon}
               bordered={false}
             />
           )}
@@ -383,17 +382,14 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
 
     // Overlay instead of pushing the main content column: the parent
     // container is genuinely too narrow to squeeze further (`isNarrow`,
-    // <1024px), or the panel is full-screen — user-triggered
-    // (`isFullScreen`) or automatic (`isAutoFullScreen`, <768px) — same
-    // mechanism either way (`position: absolute`, covering whatever's
-    // beside it rather than requiring that sibling to shrink out of the
-    // way), just a different trigger. `isAutoFullScreen` is already
-    // narrower than `isNarrow`'s own threshold (so it never actually adds
-    // a case today), listed anyway so this stays correct on its own if
-    // either threshold ever changes independently. See `allowFullScreen`'s
-    // own doc comment for why full-screen deliberately reuses this instead
-    // of needing its own separate layout branch.
-    if (isNarrow || isFullScreen || isAutoFullScreen) {
+    // <1440px), or the panel is full-screen (`isFullScreen`, user-triggered
+    // via `allowFullScreen`'s toggle) — same mechanism either way
+    // (`position: absolute`, covering whatever's beside it rather than
+    // requiring that sibling to shrink out of the way), just a different
+    // trigger. See `allowFullScreen`'s own doc comment for why full-screen
+    // deliberately reuses this instead of needing its own separate layout
+    // branch.
+    if (isNarrow || isFullScreen) {
       return (
         <div
           ref={stableOuterRef}

@@ -113,6 +113,27 @@ export interface AgentProfileProps {
    *  external trigger, not a controlled-value takeover the way `isDarkMode`/
    *  `onDarkModeToggle` is. */
   connectAgentLegSignal?: number;
+  /** Seeds this menu's own agent-leg connection state at mount, instead of
+   *  the plain `"disconnected"` default below — for a consuming app that
+   *  persists the agent leg's connected/disconnected status ACROSS
+   *  separate top-level page mounts (e.g. switching between Agent Workspace
+   *  tiers, each its own route/component — see `AgentWorkspace2WithDeskPage
+   *  .tsx`'s own doc comment on why those are separate mounts, not one
+   *  shared page), so a fresh mount can start already reflecting whatever
+   *  the agent leg was actually doing on the PREVIOUS page rather than
+   *  every switch silently reverting it to disconnected. Purely an initial
+   *  value, not a controlled prop — this component still owns
+   *  `agentLegStatus` after mount exactly as before (see
+   *  `onAgentLegStatusChange`'s own doc comment for why this isn't fully
+   *  controlled). Deliberately excludes `"connecting"` — that's a
+   *  transient in-flight state with no sensible meaning as a starting
+   *  point. Defaults to `"disconnected"`, matching this component's
+   *  pre-existing behavior when omitted. `isFirstAgentLegRender`'s own
+   *  mount-skip guard below still applies to whatever this seeds —
+   *  hydrating from a previous page is not, itself, a new connect/
+   *  disconnect event, so it must never fire `onAgentLegStatusChange` (and
+   *  therefore never fire a consumer's own toast) on its own. */
+  initialAgentLegStatus?: "disconnected" | "connected";
   /** Hides the "Connected Apps" row (and its flyout panel) entirely — for
    *  a consumer with no real integrations to surface here at all, rather
    *  than showing a permanently-empty "0" row. Unlike `onHelpClick`
@@ -264,6 +285,7 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
     onDarkModeToggle, isDarkMode: isDarkModeProp, onHelpClick, onLogOut,
     onAgentLegStatusChange,
     connectAgentLegSignal,
+    initialAgentLegStatus,
     hideConnectedApps = false,
     className,
   }, ref) => {
@@ -288,7 +310,9 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
     const [open, setOpen] = React.useState(false);
     const [statusSearch, setStatusSearch] = React.useState("");
     const [favoriteStatuses, setFavoriteStatuses] = React.useState<Set<AgentStatus>>(new Set());
-    const [agentLegStatus, setAgentLegStatus] = React.useState<"disconnected" | "connecting" | "connected">("disconnected");
+    const [agentLegStatus, setAgentLegStatus] = React.useState<"disconnected" | "connecting" | "connected">(
+      initialAgentLegStatus ?? "disconnected"
+    );
     const [reconnectedIds, setReconnectedIds] = React.useState<Set<string>>(new Set());
     const contentRef = React.useRef<HTMLDivElement>(null);
     const issueCount = connectedApps.filter((a) => a.status !== "healthy" && !reconnectedIds.has(a.id)).length;

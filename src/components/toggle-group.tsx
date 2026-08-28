@@ -152,8 +152,8 @@ const ToggleGroup = React.forwardRef<HTMLDivElement, ToggleGroupProps>(
                   /* Off — border always present but transparent, so hover/press don't shift layout */
                   !selected && !isDisabled && [
                     "text-lyra-fg-default border border-transparent",
-                    "hover:bg-lyra-bg-surface-shell hover:border-lyra-border-default",
-                    "active:bg-lyra-bg-disabled active:border-lyra-border-default",
+                    "hover:bg-lyra-bg-surface-shell hover:border-lyra-border-soft",
+                    "active:bg-lyra-bg-disabled active:border-lyra-border-soft",
                   ],
                   /* Disabled */
                   isDisabled && !selected && "text-lyra-fg-disabled cursor-not-allowed border border-transparent",

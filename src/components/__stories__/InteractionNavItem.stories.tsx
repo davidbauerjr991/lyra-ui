@@ -25,6 +25,7 @@ const meta: Meta<typeof InteractionNavItem> = {
     expanded: { control: "boolean" },
     active: { control: "boolean" },
     awaitingResponse: { control: "boolean" },
+    collapsible: { control: "boolean" },
   },
 };
 
@@ -218,6 +219,10 @@ export const Expanded: Story = {
     awaitingResponse: true,
     elapsed: "08:27",
     expanded: true,
+    // Per v2: every real card is `collapsible` unconditionally — the
+    // chevron replaces `headerAction` in the header row and toggles this
+    // card's own channel list independently of any other card's.
+    collapsible: true,
     channels: [{
       type: "chat",
       elapsed: "08:27",
@@ -237,6 +242,7 @@ export const ExpandedActiveNotAwaiting: Story = {
     awaitingResponse: false,
     elapsed: "03:41",
     expanded: true,
+    collapsible: true,
     channels: [{
       type: "chat",
       elapsed: "03:41",
@@ -255,6 +261,7 @@ export const ExpandedInactive: Story = {
     awaitingResponse: true,
     elapsed: "06:12",
     expanded: true,
+    collapsible: true,
     channels: [{
       type: "chat",
       elapsed: "06:12",
@@ -273,6 +280,7 @@ export const ExpandedNoCustomer: Story = {
     awaitingResponse: false,
     elapsed: "02:05",
     expanded: true,
+    collapsible: true,
     channels: [{
       type: "voice",
       elapsed: "02:05",
@@ -291,6 +299,7 @@ export const ExpandedMultiChannelActive: Story = {
     awaitingResponse: true,
     elapsed: "08:27",
     expanded: true,
+    collapsible: true,
     channels: SOFIA_CHANNELS,
   },
   parameters: { layout: "padded" },
@@ -304,6 +313,7 @@ export const ExpandedMultiChannelInactive: Story = {
     awaitingResponse: true,
     elapsed: "04:00",
     expanded: true,
+    collapsible: true,
     channels: RAY_CHANNELS,
   },
   parameters: { layout: "padded" },
@@ -317,12 +327,39 @@ export const ExpandedVoice: Story = {
     awaitingResponse: false,
     elapsed: "01:12",
     expanded: true,
+    collapsible: true,
     channels: [{
       type: "voice",
       elapsed: "01:12",
       current: true,
       preview: randomSkill(),
     }],
+  },
+  parameters: { layout: "padded" },
+};
+
+/* `collapsible`'s own channel-list expand/collapse state is internal (see
+   that prop's doc comment, interaction-nav-item.tsx) and defaults to
+   expanded — every "Expanded — ..." story above demonstrates the toggle
+   available, but always starting open. This story instead starts
+   COLLAPSED via `channelsExpandedOverride`, the same one-shot `{ expanded,
+   version }` object a page-level "Collapse all" button uses (see
+   `AssignmentsExpandCollapseAllButton`, assignments-section-caption.tsx) —
+   here just applied once, on mount, so the story itself renders straight
+   into the collapsed look instead of requiring a manual chevron click to
+   see it. Once rendered, the chevron toggles this card independently, same
+   as any other collapsible card. */
+export const ExpandedCollapsed: Story = {
+  name: "Expanded — Collapsible (Channels Collapsed)",
+  args: {
+    customerName: "Sofia Martinez",
+    active: true,
+    awaitingResponse: true,
+    elapsed: "08:27",
+    expanded: true,
+    collapsible: true,
+    channelsExpandedOverride: { expanded: false, version: 1 },
+    channels: SOFIA_CHANNELS,
   },
   parameters: { layout: "padded" },
 };
@@ -337,6 +374,7 @@ export const ExpandedStack: Story = {
         awaitingResponse
         elapsed="08:27"
         expanded
+        collapsible
         channels={SOFIA_CHANNELS}
       />
       <InteractionNavItem
@@ -344,11 +382,13 @@ export const ExpandedStack: Story = {
         awaitingResponse
         elapsed="04:00"
         expanded
+        collapsible
         channels={RAY_CHANNELS}
       />
       <InteractionNavItem
         elapsed="02:05"
         expanded
+        collapsible
         channels={[{ type: "voice", elapsed: "02:05", current: true, preview: randomSkill() }]}
       />
     </div>

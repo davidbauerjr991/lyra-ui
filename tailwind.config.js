@@ -17,6 +17,7 @@ export default {
       /* ── Lyra Spacing Scale (4px base unit) ── */
       spacing: {
         "lyra-0": "var(--lyra-spacing-0)",
+        "lyra-05": "var(--lyra-spacing-05)",
         "lyra-1": "var(--lyra-spacing-1)",
         "lyra-2": "var(--lyra-spacing-2)",
         "lyra-3": "var(--lyra-spacing-3)",
@@ -26,6 +27,7 @@ export default {
         "lyra-7": "var(--lyra-spacing-7)",
         "lyra-8": "var(--lyra-spacing-8)",
         "lyra-9": "var(--lyra-spacing-9)",
+        "lyra-10": "var(--lyra-spacing-10)",
       },
       /* ── Lyra Colors ── */
       // Sourced from tailwind-tokens.cjs (see its own doc comment) — the
