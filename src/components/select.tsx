@@ -247,6 +247,31 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
     // its own `overflow-auto` scrolling div, which would create a second,
     // nested scroll container around this one. The max-height/scroll
     // constraint lives entirely inside `content`.
+    //
+    // That said, Popover applies that same body-wrapping `overflow-auto`
+    // whenever `header` is set too (not just when `maxHeight` is passed) —
+    // and `header` below is always set for this dropdown (search field/
+    // Select All row). So this listbox already sat inside two nested
+    // scroll containers; it only became visibly a DOUBLE scrollbar once
+    // Popover's available height (it falls back to Radix's own
+    // `--radix-popover-content-available-height` for its `maxHeight` when
+    // header/footer is set) shrank below this list's 300px cap — i.e.
+    // whenever the viewport got short enough. Fixed by giving the wrapper
+    // below `flex-1 min-h-0` alongside its existing `max-h-[300px]`
+    // (replacing an earlier `h-full` attempt that turned out unreliable —
+    // percentage-height through a non-flex-container ancestor is exactly
+    // the kind of thing real browsers disagree on): Popover's own body div
+    // is now a real flex container in the header/footer branch (see
+    // popover.tsx's matching comment), so this wrapper correctly shrinks
+    // to `min(300px, whatever room Popover's body has left)` the same
+    // proven way its own `listRef` child already shrinks against it one
+    // level down. It never exceeds — and therefore never triggers a
+    // scrollbar on — that outer body div. `flex-1 min-h-0` is inert when
+    // there's no `header`/`footer` (body isn't a flex container in that
+    // branch, so these have nothing to size against), so this doesn't
+    // change anything for that case. `TagPicker` (tag-picker.tsx) has the
+    // exact same structure/bug/fix, for the same reason — same fix
+    // mirrored there.
     const listRef = React.useRef<HTMLDivElement | null>(null);
     const { canScrollUp, canScrollDown, onScroll: onListScroll } = useScrollChevrons(
       listRef,
@@ -475,7 +500,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               // mirrors MenuRadix's structure exactly, for the same reason:
               // a chevron nested inside the scrollable region would only
               // become visible once already scrolled to that end.
-              <div className="flex flex-col max-h-[300px]">
+              <div className="flex max-h-[300px] flex-1 min-h-0 flex-col">
                 {canScrollUp && <ScrollChevronButton direction="up" onStep={() => scrollListBy(-6)} />}
                 <div
                   ref={listRef}

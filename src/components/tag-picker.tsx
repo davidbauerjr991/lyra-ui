@@ -205,7 +205,19 @@ const TagPicker = React.forwardRef<HTMLButtonElement, TagPickerProps>(
           // reason: a chevron nested INSIDE the scrollable region would
           // only ever become visible once already scrolled to that end,
           // which defeats the point of it as a "there's more" affordance.
-          <div className="flex max-h-[280px] flex-col">
+          //
+          // `flex-1 min-h-0` alongside the existing `max-h-[280px]` fixes
+          // the same double-scrollbar bug `Select`'s own multi-select
+          // listbox had — see that component's fuller comment (select.tsx,
+          // just above its own `listRef`/`useScrollChevrons`) for the full
+          // explanation, including why an earlier `h-full` attempt here
+          // wasn't reliable. Short version: this `header` (the search field
+          // above) makes `Popover`'s own body div a real flex container
+          // (popover.tsx), so this wrapper correctly shrinks to whatever
+          // room is actually left in it instead of ever overflowing it —
+          // so that outer body's own `overflow-auto` never has anything to
+          // show.
+          <div className="flex max-h-[280px] flex-1 min-h-0 flex-col">
             {canScrollUp && <ScrollChevronButton direction="up" onStep={() => scrollListBy(-6)} />}
             <div
               ref={listRef}

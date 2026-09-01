@@ -171,9 +171,19 @@ const PopoverArrow = () => (
 // e.g. a menu item inside the popover re-opens (or re-closes) a completely
 // unrelated tooltip sitting on the icon button that opened the popover.
 // Stopping these at the Content root contains them to this popover's own
-// subtree — Radix's own outside-click/focus-trap handling lives on native
-// document-level listeners, not React bubbling, so it's unaffected.
-// See CONTRIBUTING.md §17.
+// subtree. `pointerdown` is deliberately NOT stopped: React's synthetic
+// stopPropagation() also halts the underlying native event, and Radix's
+// DismissableLayer (usePointerDownOutside) needs that native pointerdown
+// to reach its document-level listener — that listener is what RESETS the
+// "this pointerdown started inside my React tree" flag which the layer's
+// own onPointerDownCapture sets. With pointerdown swallowed here, clicking
+// anything inside a popover's panel (a radio in a filter chip, the status
+// menu's search field) left every OTHER open layer's flag stuck on
+// "inside", and that layer then swallowed the next outside click instead
+// of dismissing — the "takes two clicks to close" bug. A stray pointerdown
+// bubbling to an outer Tooltip trigger is harmless (Radix Tooltip only
+// closes on it), so pointermove/leave and focus/blur — the actual
+// misfire vectors — are still stopped. See CONTRIBUTING.md §16.
 const stopSyntheticBubble = (e: React.SyntheticEvent) => e.stopPropagation();
 
 const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Content>, PopoverProps>(({
@@ -216,7 +226,6 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
         onEscapeKeyDown={onEscapeKeyDown}
         onInteractOutside={onInteractOutside}
         onPointerMove={stopSyntheticBubble}
-        onPointerDown={stopSyntheticBubble}
         onPointerLeave={stopSyntheticBubble}
         onFocus={stopSyntheticBubble}
         onBlur={stopSyntheticBubble}
@@ -288,12 +297,40 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
             `bodyPadding`'s `px-5` (20px) is the default inset for plain body
             content — see its own doc comment above for which real consumers
             opt out with `bodyPadding={false}` instead (full-bleed Menu/
-            listbox rows, or content supplying its own complete chrome). */}
+            listbox rows, or content supplying its own complete chrome).
+
+            `display: "flex", flexDirection: "column"` (header/footer branch
+            only) makes this div a flex CONTAINER, not just a flex ITEM of
+            Content above it — needed so `content` slots that already manage
+            their own internal scrolling (`Select`'s multi-select listbox,
+            `TagPicker` — both `select.tsx`/`tag-picker.tsx`, chevron-driven,
+            capped at a fixed max-height) can shrink themselves to whatever
+            room is actually left here via the ordinary `flex-1 min-h-0`
+            pattern, instead of ever growing taller than this div and
+            triggering ITS OWN `overflow-auto` on top of their own internal
+            scroll — a real double-scrollbar bug (reported against
+            `FilterChip`'s dropdown, though not specific to it — any
+            `multiple` `Select`/`TagPicker` popover with a `header`, which is
+            most of them, had the same nested-scroll-container setup). A
+            first attempt at fixing this from the `content` side alone (via
+            `height:100%` against this div's flex-computed height) turned
+            out unreliable — percentage-height resolution through a
+            non-flex-container ancestor is exactly the kind of thing real
+            browsers disagree on — so this div becoming a real flex
+            container itself is the actually-bulletproof fix: the same
+            flex-basis/flex-grow/min-height:0 mechanics already used one
+            level down (`content`'s own wrapper → its `listRef` div) work
+            here for the identical reason, no CSS var/percentage guessing
+            needed. Purely additive for every other existing `header`/
+            `footer` consumer (channel-row.tsx's confirm view: a single
+            plain `<p>`/button row, unaffected by becoming a flex item of a
+            column flex container instead of a block child — same natural
+            size, same full-width stretch it already had). */}
         <div
           className={cn(bodyPadding && "px-5", (header || footer || maxHeight) && "overflow-auto")}
           style={
             header || footer
-              ? { flex: "1 1 auto", minHeight: 0, overflowY: "auto" }
+              ? { flex: "1 1 auto", minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column" }
               : maxHeight
               ? { maxHeight }
               : undefined

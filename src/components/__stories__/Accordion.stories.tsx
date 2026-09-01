@@ -1,7 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { useState } from "react";
 import { Box, Clock } from "lucide-react";
-import { Accordion } from "../accordion";
+import {
+  Accordion,
+  AccordionHeadless,
+  AccordionHeadlessItem,
+  AccordionHeadlessContent,
+} from "../accordion";
 import { Tag } from "../tag";
+import { Button } from "../button";
 import { Metric } from "../dashboard-card";
 import {
   Table,
@@ -276,4 +283,42 @@ export const WithEndSlot: Story = {
       ]}
     />
   ),
+};
+
+/* ── Headless — trigger-less building blocks, external control ──
+   `AccordionHeadless`/`-Item`/`-Content` expose the same Radix mechanism
+   and height animation as `Accordion`, without its trigger row or divider
+   chrome, for layouts where some other element drives the open state (the
+   shape agent-next-gen-v2's transcript uses for Session Details: a pill
+   button toggles a fully-controlled single/collapsible root). */
+
+function HeadlessDemo() {
+  const [open, setOpen] = useState(true);
+  return (
+    <div className="w-[420px]">
+      <Button variant="outline" size="sm" onClick={() => setOpen((v) => !v)}>
+        {open ? "Hide details" : "Show details"}
+      </Button>
+      <AccordionHeadless
+        type="single"
+        collapsible
+        value={open ? "details" : ""}
+        onValueChange={() => {}}
+      >
+        <AccordionHeadlessItem value="details" className="border-none">
+          <AccordionHeadlessContent>
+            <p className="pt-3 lyra-body-md text-lyra-fg-secondary">
+              Collapsible content with the standard accordion height
+              animation — no built-in trigger row, no divider; the button
+              above owns the open state.
+            </p>
+          </AccordionHeadlessContent>
+        </AccordionHeadlessItem>
+      </AccordionHeadless>
+    </div>
+  );
+}
+
+export const Headless: Story = {
+  render: () => <HeadlessDemo />,
 };

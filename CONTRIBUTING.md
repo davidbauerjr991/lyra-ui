@@ -823,7 +823,7 @@ Work through this list top-to-bottom before marking a component done.
 [ ] Composite stories (component used inside a larger component) wire all child callbacks to state
 [ ] If debugging "doesn't appear/show up," ruled out rendering causes (§14) before touching event/state logic
 [ ] Any new Tooltip usage has its placement checked against the component's actual layout context, not left at a reflexive default (§15)
-[ ] Any new portal-rendering component (Popover-like, custom flyout, etc.) stops pointer/focus events from bubbling past its own content root, so it can't be wrapped by a Tooltip or similar hover-triggered wrapper without misfiring it (§16)
+[ ] Any new portal-rendering component (Popover-like, custom flyout, etc.) stops pointermove/pointerleave/focus/blur from bubbling past its own content root — but NEVER pointerdown, which Radix's outside-click bookkeeping needs at the document (§16)
 [ ] Any new TabList has overflowMenu enabled (overflowBreakpoint="compact" in narrow/resizable containers) unless it has its own purpose-built collapse strategy (CLAUDE.md)
 [ ] Card/grid responsiveness is container-query-based (.lyra-container-grid etc.), never a Tailwind sm:/md:/lg: viewport prefix (CLAUDE.md)
 [ ] Any new text-entry/select-style component has the size?: "sm" | "md" prop (with "size" added to the Omit<> list where props extend InputHTMLAttributes) (CLAUDE.md)
@@ -898,13 +898,14 @@ Any time a `Tooltip` (or anything else with hover/focus-triggered open logic) wr
 const stopSyntheticBubble = (e: React.SyntheticEvent) => e.stopPropagation();
 // ...on PopoverPrimitive.Content:
 onPointerMove={stopSyntheticBubble}
-onPointerDown={stopSyntheticBubble}
 onPointerLeave={stopSyntheticBubble}
 onFocus={stopSyntheticBubble}
 onBlur={stopSyntheticBubble}
 ```
 
-This is safe: Radix's own outside-click/focus-trap detection is implemented via native document-level listeners, not React bubbling, so it's unaffected. `onClick` is deliberately left alone — Radix's composed `onClick` handler on `Tooltip.Trigger` only *closes* the tooltip, and letting that bubble is harmless.
+`onClick` is deliberately left alone — Radix's composed `onClick` handler on `Tooltip.Trigger` only *closes* the tooltip, and letting that bubble is harmless.
+
+**`onPointerDown` must NEVER be stopped here.** React's synthetic `stopPropagation()` also halts the underlying *native* event, and Radix's `DismissableLayer` (`usePointerDownOutside`) depends on every native `pointerdown` reaching its document-level listener: the layer's own `onPointerDownCapture` sets an "this pointerdown started inside my React tree" flag, and the document listener is the only thing that resets it. Stopping `pointerdown` at a portal's content root meant that after clicking anything *inside* a popover (selecting a radio in a filter chip, typing in the status menu's search field), every other open layer's flag stayed stuck on "inside" — so the next click outside was swallowed instead of dismissing, and the popover took **two clicks to close**. This was a real, shipped bug (the filter-chip radio popovers and the `AgentProfile` status menu). A stray `pointerdown` bubbling to an outer `Tooltip.Trigger` is harmless (Radix Tooltip only closes on it), so stopping the four events above is sufficient for the tooltip-misfire problem.
 
 **Rule:** any new component that renders content via a portal (a new `Popover`-like primitive, a custom flyout, etc.) needs this same containment at its content root — don't rely on every consumer remembering not to wrap it in a Tooltip carelessly. If you're building something that *could* reasonably be wrapped by a Tooltip or similar hover-triggered wrapper from the outside, stop the bubbling at the source.
 

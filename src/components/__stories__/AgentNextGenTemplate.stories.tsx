@@ -1,10 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Draggable, type DraggableVariant, type EmbeddablePanelContent } from "../draggable";
 import { AppHeader } from "../app-header";
-import { AppName } from "../app-name";
-import { AppMenu, type AppMenuGroup } from "../app-menu";
+import { type AppMenuGroup } from "../app-menu";
+import { AppNameMenu } from "../app-name-menu";
 import { CXoneLogo } from "../cxone-logo";
 import { ActionIconButton } from "../actions";
 import { NotificationsBell } from "../notifications-bell";
@@ -1573,7 +1572,16 @@ function AgentNextGenTemplate({
         </>
       )}
     >
-      {activePanelContent.body}
+      {/* Per explicit request ("when the user navigates between apps,
+          please have them fade in when transitioning" — applied here for
+          consistency with the same treatment in the agent-next-gen-v2/
+          agent-next-gen-test apps that pattern this template after):
+          `key={activePanelKey}` forces a fresh mount on every app switch
+          (Home/Search/etc.), which is what lets `animate-in fade-in-0`
+          actually replay instead of only firing once ever. */}
+      <div key={activePanelKey} className="flex flex-col flex-1 min-h-0 animate-in fade-in-0 duration-200">
+        {activePanelContent.body}
+      </div>
     </Draggable>
   ) : null;
 
@@ -1583,31 +1591,15 @@ function AgentNextGenTemplate({
       {/* ── App Header ── */}
       <AppHeader
         appName={
-          <PopoverPrimitive.Root open={appMenuOpen} onOpenChange={setAppMenuOpen}>
-            <PopoverPrimitive.Trigger asChild>
-              <AppName
-                icon={<img src={appIcon} alt="Agent Workspace 2.0" className="h-6 w-6" />}
-                name="Agent Workspace 2.0"
-                compact={isCompactHeader}
-                aria-expanded={appMenuOpen}
-              />
-            </PopoverPrimitive.Trigger>
-            <PopoverPrimitive.Portal>
-              <PopoverPrimitive.Content
-                side="bottom"
-                align="start"
-                sideOffset={6}
-                onOpenAutoFocus={(e: Event) => e.preventDefault()}
-                className="z-[9999] animate-in fade-in-0 slide-in-from-top-2 duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-100"
-              >
-                <AppMenu
-                  groups={APP_MENU_GROUPS}
-                  footer={<CXoneLogo />}
-                  header={isCompactHeader ? "Agent Workspace 2.0" : undefined}
-                />
-              </PopoverPrimitive.Content>
-            </PopoverPrimitive.Portal>
-          </PopoverPrimitive.Root>
+          <AppNameMenu
+            icon={<img src={appIcon} alt="Agent Workspace 2.0" className="h-6 w-6" />}
+            name="Agent Workspace 2.0"
+            compact={isCompactHeader}
+            groups={APP_MENU_GROUPS}
+            menuFooter={<CXoneLogo />}
+            open={appMenuOpen}
+            onOpenChange={setAppMenuOpen}
+          />
         }
         actions={
           <>

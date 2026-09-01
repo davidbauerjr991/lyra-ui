@@ -25,8 +25,8 @@ export type { QuickReplyMenuItem, QuickReplyMenuProps } from "./components/quick
 export { QuickReplyVariableForm } from "./components/quick-reply-variable-form";
 export type { QuickReplyFieldType, QuickReplyFieldOption, QuickReplyField, QuickReplyVariableFormProps } from "./components/quick-reply-variable-form";
 export type { DatePickerProps, DateRangePickerProps } from "./components/date-picker";
-export { Accordion } from "./components/accordion";
-export type { AccordionProps, AccordionItem } from "./components/accordion";
+export { Accordion, AccordionHeadless, AccordionHeadlessItem, AccordionHeadlessContent } from "./components/accordion";
+export type { AccordionProps, AccordionItem, AccordionHeadlessProps, AccordionHeadlessItemProps, AccordionHeadlessContentProps } from "./components/accordion";
 export { ToggleGroup } from "./components/toggle-group";
 export type { ToggleGroupProps, ToggleGroupItem, ToggleGroupType } from "./components/toggle-group";
 export { Checkbox } from "./components/checkbox";
@@ -61,6 +61,8 @@ export { AppHeader } from "./components/app-header";
 export type { AppHeaderProps } from "./components/app-header";
 export { AppMenu } from "./components/app-menu";
 export type { AppMenuItem, AppMenuGroup, AppMenuProps } from "./components/app-menu";
+export { AppNameMenu } from "./components/app-name-menu";
+export type { AppNameMenuProps } from "./components/app-name-menu";
 export { CreateNew, OutboundAddButton, useOutboundAddButton, looksLikeEmail, looksLikePhoneNumber } from "./components/create-new";
 export type {
   CreateNewItem,

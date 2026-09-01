@@ -239,4 +239,63 @@ const Accordion = React.forwardRef<HTMLDivElement, AccordionProps>(
 
 Accordion.displayName = "Accordion";
 
-export { Accordion };
+/* ── Headless accordion — trigger-less building blocks ── */
+
+/**
+ * Bare, unstyled counterparts to `Accordion` for layouts its opinionated
+ * rows can't express: an external element (e.g. a pill button) drives the
+ * open state, there is no built-in trigger row, and no divider chrome —
+ * the shape agent-next-gen-v2's transcript needs for its Session Details
+ * and collapsed-session animations, which previously imported
+ * `@radix-ui/react-accordion` directly to get it.
+ *
+ * Same Radix mechanism as `Accordion` (`Root`/`Item`/`Content` pass-
+ * throughs), and `AccordionHeadlessContent` bakes in the same
+ * `--radix-accordion-content-height`-driven `accordion-down`/`accordion-up`
+ * height animation (tailwind.config.js, 200ms ease-in-out) — so consumers
+ * get the canonical animation without ever touching the Radix package
+ * themselves. Everything else (open-state wiring via `value`/
+ * `onValueChange`, `type`/`collapsible`, classNames on any part) passes
+ * straight through, per Radix's own API.
+ */
+
+export type AccordionHeadlessProps = React.ComponentPropsWithoutRef<
+  typeof AccordionPrimitive.Root
+>;
+
+const AccordionHeadless = React.forwardRef<
+  React.ElementRef<typeof AccordionPrimitive.Root>,
+  AccordionHeadlessProps
+>((props, ref) => <AccordionPrimitive.Root ref={ref} {...props} />);
+AccordionHeadless.displayName = "AccordionHeadless";
+
+export type AccordionHeadlessItemProps = React.ComponentPropsWithoutRef<
+  typeof AccordionPrimitive.Item
+>;
+
+const AccordionHeadlessItem = React.forwardRef<
+  React.ElementRef<typeof AccordionPrimitive.Item>,
+  AccordionHeadlessItemProps
+>((props, ref) => <AccordionPrimitive.Item ref={ref} {...props} />);
+AccordionHeadlessItem.displayName = "AccordionHeadlessItem";
+
+export type AccordionHeadlessContentProps = React.ComponentPropsWithoutRef<
+  typeof AccordionPrimitive.Content
+>;
+
+const AccordionHeadlessContent = React.forwardRef<
+  React.ElementRef<typeof AccordionPrimitive.Content>,
+  AccordionHeadlessContentProps
+>(({ className, ...props }, ref) => (
+  <AccordionPrimitive.Content
+    ref={ref}
+    className={cn(
+      "overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up",
+      className
+    )}
+    {...props}
+  />
+));
+AccordionHeadlessContent.displayName = "AccordionHeadlessContent";
+
+export { Accordion, AccordionHeadless, AccordionHeadlessItem, AccordionHeadlessContent };

@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState, useRef, useEffect } from "react";
-import * as PopoverPrimitive from "@radix-ui/react-popover";
 import {
   Plus,
   Gauge,
@@ -15,8 +14,8 @@ import { AdminShell } from "../admin-shell";
 import { Button } from "../button";
 import { AiIcon } from "../icons/ai-icon";
 import { AppHeader } from "../app-header";
-import { AppName } from "../app-name";
-import { AppMenu, type AppMenuGroup } from "../app-menu";
+import { type AppMenuGroup } from "../app-menu";
+import { AppNameMenu } from "../app-name-menu";
 import { CXoneLogo } from "../cxone-logo";
 import { LeftNav, type NavItem } from "../left-nav";
 import { ContentArea } from "../content-area";
@@ -52,9 +51,10 @@ const NAV_ITEMS: NavItem[] = [
 /* ── App menu — same page-switcher content as lyra-ux-templates'
    Header.tsx (Agent Next Gen / Agent Workspace Premium / Outbound
    Engagement), with "Outbound Engagement" active since that's what this
-   demo's AppHeader displays. Click-to-open wiring mirrors AppHeader.stories
-   .tsx's AppNameWithMenu helper — duplicated locally rather than imported
-   since story files don't import from one another. ── */
+   demo's AppHeader displays. Click-to-open wiring comes from the shared
+   `AppNameMenu` component (app-name-menu.tsx) — only these group fixtures
+   are duplicated locally, since story files don't import from one
+   another. ── */
 const APP_MENU_GROUPS: AppMenuGroup[] = [
   {
     items: [
@@ -66,28 +66,13 @@ const APP_MENU_GROUPS: AppMenuGroup[] = [
 ];
 
 function AppNameWithMenu({ name }: { name: string }) {
-  const [open, setOpen] = useState(false);
   return (
-    <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
-      <PopoverPrimitive.Trigger asChild>
-        <AppName
-          icon={<img src={appIcon} alt="" className="h-6 w-6" />}
-          name={name}
-          aria-expanded={open}
-        />
-      </PopoverPrimitive.Trigger>
-      <PopoverPrimitive.Portal>
-        <PopoverPrimitive.Content
-          side="bottom"
-          align="start"
-          sideOffset={6}
-          onOpenAutoFocus={(e) => e.preventDefault()}
-          className="z-[9999] animate-in fade-in-0 slide-in-from-top-2 duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-100"
-        >
-          <AppMenu groups={APP_MENU_GROUPS} footer={<CXoneLogo />} />
-        </PopoverPrimitive.Content>
-      </PopoverPrimitive.Portal>
-    </PopoverPrimitive.Root>
+    <AppNameMenu
+      icon={<img src={appIcon} alt="" className="h-6 w-6" />}
+      name={name}
+      groups={APP_MENU_GROUPS}
+      menuFooter={<CXoneLogo />}
+    />
   );
 }
 

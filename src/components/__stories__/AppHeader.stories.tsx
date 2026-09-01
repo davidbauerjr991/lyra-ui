@@ -1,10 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState, useEffect, useRef } from "react";
 import * as ReactDOM from "react-dom";
-import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { AppHeader } from "../app-header";
-import { AppName } from "../app-name";
-import { AppMenu, type AppMenuGroup } from "../app-menu";
+import { type AppMenuGroup } from "../app-menu";
+import { AppNameMenu } from "../app-name-menu";
 import { AiPanel } from "../ai-panel";
 import { CXoneLogo } from "../cxone-logo";
 import { ActionIconButton } from "../actions";
@@ -59,28 +58,13 @@ const APP_MENU_GROUPS: AppMenuGroup[] = [
 ];
 
 function AppNameWithMenu({ name, alt }: { name: string; alt: string }) {
-  const [open, setOpen] = useState(false);
   return (
-    <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
-      <PopoverPrimitive.Trigger asChild>
-        <AppName
-          icon={<img src={appIcon} alt={alt} className="h-6 w-6" />}
-          name={name}
-          aria-expanded={open}
-        />
-      </PopoverPrimitive.Trigger>
-      <PopoverPrimitive.Portal>
-        <PopoverPrimitive.Content
-          side="bottom"
-          align="start"
-          sideOffset={6}
-          onOpenAutoFocus={(e) => e.preventDefault()}
-          className="z-[9999] animate-in fade-in-0 slide-in-from-top-2 duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-100"
-        >
-          <AppMenu groups={APP_MENU_GROUPS} footer={<CXoneLogo />} />
-        </PopoverPrimitive.Content>
-      </PopoverPrimitive.Portal>
-    </PopoverPrimitive.Root>
+    <AppNameMenu
+      icon={<img src={appIcon} alt={alt} className="h-6 w-6" />}
+      name={name}
+      groups={APP_MENU_GROUPS}
+      menuFooter={<CXoneLogo />}
+    />
   );
 }
 
@@ -182,26 +166,14 @@ export const AgentNextGen: Story = {
       <>
       <AppHeader
         appName={
-          <PopoverPrimitive.Root open={appMenuOpen} onOpenChange={setAppMenuOpen}>
-            <PopoverPrimitive.Trigger asChild>
-              <AppName
-                icon={<img src={appIcon} alt="Agent Next Gen" className="h-6 w-6" />}
-                name="Agent Next Gen"
-                aria-expanded={appMenuOpen}
-              />
-            </PopoverPrimitive.Trigger>
-            <PopoverPrimitive.Portal>
-              <PopoverPrimitive.Content
-                side="bottom"
-                align="start"
-                sideOffset={6}
-                onOpenAutoFocus={(e) => e.preventDefault()}
-                className="z-[9999] animate-in fade-in-0 slide-in-from-top-2 duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-100"
-              >
-                <AppMenu groups={APP_MENU_GROUPS} footer={<CXoneLogo />} />
-              </PopoverPrimitive.Content>
-            </PopoverPrimitive.Portal>
-          </PopoverPrimitive.Root>
+          <AppNameMenu
+            icon={<img src={appIcon} alt="Agent Next Gen" className="h-6 w-6" />}
+            name="Agent Next Gen"
+            groups={APP_MENU_GROUPS}
+            menuFooter={<CXoneLogo />}
+            open={appMenuOpen}
+            onOpenChange={setAppMenuOpen}
+          />
         }
         actions={
           <>
