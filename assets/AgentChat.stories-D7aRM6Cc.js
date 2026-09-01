@@ -1,0 +1,6 @@
+import{j as e}from"./jsx-runtime-D_zvdyIk.js";import{A as d}from"./agent-chat-DD5-SwJ_.js";import{C as s}from"./container-header-nDAu7P_l.js";import"./index-CXOcBcs0.js";import"./_commonjsHelpers-CqkleIqs.js";import"./utils-BLSKlp9E.js";import"./tooltip-Dp368zAN.js";import"./index-De81K0_o.js";import"./index-DNfP5j1O.js";import"./floating-ui.react-dom-B7A2Lg_k.js";import"./index-DWcjTdiE.js";import"./index-DujEZ9g2.js";import"./x-N8aIqrq2.js";import"./createLucideIcon-DEcfmm_F.js";const A={title:"UI/Agent Chat",component:d,tags:["autodocs"],parameters:{layout:"padded",backgrounds:{default:"lyra-shell"}}},r={render:()=>e.jsxs("div",{className:"flex h-[480px] w-[360px] flex-col overflow-hidden rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-base",children:[e.jsx(s,{title:"Agent Chat",bordered:!0}),e.jsx(d,{})]})};var t,o,a;r.parameters={...r.parameters,docs:{...(t=r.parameters)==null?void 0:t.docs,source:{originalSource:`{
+  render: () => <div className="flex h-[480px] w-[360px] flex-col overflow-hidden rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-base">
+      <ContainerHeader title="Agent Chat" bordered />
+      <AgentChat />
+    </div>
+}`,...(a=(o=r.parameters)==null?void 0:o.docs)==null?void 0:a.source}}};const j=["Default"];export{r as Default,j as __namedExportsOrder,A as default};
