@@ -185,6 +185,21 @@ export interface InteractionNavItemProps {
    * agent individually re-expanded since the first one).
    */
   channelsExpandedOverride?: { expanded: boolean; version: number };
+  /**
+   * Reports this card's own current channel-list expanded/collapsed state
+   * — fired on mount and every time it changes, whether that's from the
+   * per-card chevron, the "click a collapsed card to expand it" behavior
+   * below, or `channelsExpandedOverride` above. Purely informational (this
+   * component's `channelsExpanded` stays its own internally-owned state
+   * either way — see `channelsExpandedOverride`'s own doc comment for why
+   * it isn't a controlled prop); a consumer driving a page-level "Collapse
+   * all"/"Expand all" toggle (`AssignmentsExpandCollapseAllButton`,
+   * assignments-section-caption.tsx) can use this to notice once every
+   * card happens to already agree with one direction — e.g. the agent
+   * manually expanded every card by hand — and flip that toggle's own
+   * `allExpanded` to match, without having to wait for another bulk click.
+   */
+  onChannelsExpandedChange?: (expanded: boolean) => void;
   className?: string;
 }
 
@@ -216,6 +231,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       onCurrentChannelChange,
       collapsible = false,
       channelsExpandedOverride,
+      onChannelsExpandedChange,
       className,
     },
     ref
@@ -228,6 +244,16 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     // conditionally" reasoning `hoverCardOpen` below already documents for
     // itself.
     const [channelsExpanded, setChannelsExpanded] = React.useState(true);
+
+    // Reports every change (see `onChannelsExpandedChange`'s own doc
+    // comment above) — a plain effect, not inlined at each of the three
+    // `setChannelsExpanded` call sites below, so a consumer gets exactly
+    // one notification per actual change regardless of which of those
+    // triggered it, without having to duplicate the call three times.
+    React.useEffect(() => {
+      onChannelsExpandedChange?.(channelsExpanded);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [channelsExpanded]);
 
     // Applies `channelsExpandedOverride` (see its own doc comment above)
     // the moment its `version` changes — "adjusting state during render
