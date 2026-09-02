@@ -1584,25 +1584,17 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
       resolveOutboundDetailField(contact, channel, outbound?.phoneOptions ?? []).defaultValue;
 
     const goToDetail = (groupId: string, contact: CreateNewOutboundContact, channel: ChannelType) => {
-      // Per explicit request: a `quickLaunch` contact (agents/skill queues
-      // — see that field's own doc comment) skips this whole "detail"
-      // screen — there's no real per-contact address worth stopping to
-      // pick, so picking a channel launches immediately with the same
-      // defaults the detail screen's own fields would have opened to
-      // (first available address for this channel, first skill option).
-      // Mirrors `handleStartCall`'s own `outbound.onStartCall?.(...)` call
-      // below almost exactly, just fired straight from the channel pick
-      // instead of from a later "Start Interaction" press.
-      if (contact.quickLaunch) {
-        outbound?.onStartCall?.({
-          contact,
-          channel,
-          phone: defaultDetailValueFor(contact, channel),
-          skillId: outbound?.skillOptions?.[0]?.value ?? "",
-        });
-        setOpen(false);
-        return;
-      }
+      // Per explicit follow-up request, a `quickLaunch` contact (agents/
+      // skill queues — see that field's own doc comment) no longer skips
+      // straight to launching from a bare row click or the per-row
+      // Call/Chat flyout — every contact, quickLaunch or not, now always
+      // goes through this "detail" screen (Select Channel/Select Phone/
+      // Outbound Skill/Start Interaction) first, so the agent can confirm
+      // the channel/address/skill before the interaction actually starts
+      // rather than committing on the very first click. `quickLaunch`
+      // itself is left in place on the type/data (unused here now) rather
+      // than deleted outright, in case some OTHER future entry point still
+      // wants the old skip-straight-to-launch behavior.
       setDetailChannel(channel);
       setDetailPhone(defaultDetailValueFor(contact, channel));
       // First skill, not `""` — see `detailSkill`'s own doc comment above.
