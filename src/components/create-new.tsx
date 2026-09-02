@@ -1983,23 +1983,44 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                 )}
               </div>
             )}
-            <Select
-              aria-label="Choose group"
-              value={activeGroup.id}
-              onValueChange={setActiveGroup}
-              // `kind === "dialpad"` groups are deliberately left out of
-              // this list — per explicit request, Dial Pad is reachable via
-              // its own small ghost button below (see `dialpadGroup` just
-              // below) instead of living in this dropdown alongside the
-              // real contact-list groups. Still found via `outbound.groups`
-              // (not deleted from the app's own config), so `activeGroup`
-              // above and `setActiveGroup(dialpadGroup.id)` below both keep
-              // working exactly like any other group once picked.
-              options={(outbound?.groups ?? [])
+            {/* Per explicit request: the group picker is no longer a
+                collapsed `Select` combobox — it's now an always-visible
+                list of rows directly below the search field (a divider
+                marks the boundary, same `border-t border-lyra-border-subtle`
+                treatment `ContactRow`/the section headers below already
+                use), each one a full-width button that swaps `activeGroup`
+                exactly like the old `Select`'s `onValueChange` did. Same
+                `kind !== "dialpad"` filter as before — Dial Pad keeps its
+                own small ghost button below instead of a row here. No
+                icon/count on these rows (unlike `ContactRow`'s own
+                leading-icon treatment) — plain caps-tracked label + a
+                trailing chevron, matching the reference mockup exactly. */}
+            <div className="border-t border-lyra-border-subtle -mx-4">
+              {(outbound?.groups ?? [])
                 .filter((g) => g.kind !== "dialpad")
-                .map((g) => ({ value: g.id, label: g.label, icon: g.icon }))}
-              portalDropdown
-            />
+                .map((g) => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => setActiveGroup(g.id)}
+                    aria-current={activeGroup.id === g.id ? "true" : undefined}
+                    className={cn(
+                      "flex w-full items-center justify-between gap-2 border-b border-lyra-border-subtle px-4 py-3 text-left transition-colors",
+                      "hover:bg-lyra-state-hover active:bg-lyra-state-pressed focus-visible:outline-none focus-visible:bg-lyra-state-hover",
+                      activeGroup.id === g.id && "bg-lyra-bg-active-subtle"
+                    )}
+                  >
+                    <span className="lyra-body-sm-emphasis uppercase tracking-wide text-lyra-fg-secondary">
+                      {g.label}
+                    </span>
+                    <ChevronRight
+                      className="h-4 w-4 flex-shrink-0 text-lyra-fg-disabled"
+                      strokeWidth={1.5}
+                      aria-hidden="true"
+                    />
+                  </button>
+                ))}
+            </div>
             {/* Per-group secondary picker — see `CreateNewOutboundGroup.
                 subFilter`'s own doc comment above. Renders below "Choose
                 group" so it reads as a further narrowing of whichever
