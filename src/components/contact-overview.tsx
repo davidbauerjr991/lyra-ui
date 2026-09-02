@@ -1,6 +1,6 @@
 import * as React from "react";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
-import { ChevronDown, Bookmark } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { cn } from "../lib/utils";
 
 /**
@@ -24,13 +24,13 @@ export interface ContactOverviewInfo {
    *  with no history to summarize). */
   snapshot?: string[];
   /** A one-paragraph recap of what's led up to this contact, rendered
-   *  below Contact Snapshot in its own bordered "Journey Summary" card
-   *  (bookmark icon + soft-purple header over a plain white body) — per
-   *  explicit request, the same visual treatment agent-next-gen-v2's own
-   *  Copilot tab already used for this exact same field
-   *  (`CopilotTabContent`, agent-next-gen-customer-info-panel.tsx) before
-   *  Copilot itself was hidden there; this is that content's new home.
-   *  Omit for no journey to recap (same as `snapshot`). */
+   *  below Contact Snapshot as a plain "label + paragraph" block — same
+   *  chromeless treatment `snapshot` gets, no card/border/icon (per
+   *  explicit follow-up request; this originally reused agent-next-gen-v2's
+   *  former Copilot tab's own bordered/bookmark-icon card markup
+   *  (`CopilotTabContent`, agent-next-gen-customer-info-panel.tsx), toned
+   *  down to match once it landed here instead). Omit for no journey to
+   *  recap (same as `snapshot`). */
   journeySummary?: string;
 }
 
@@ -123,25 +123,14 @@ const ContactOverview = React.forwardRef<HTMLDivElement, ContactOverviewProps>(
                   </ul>
                 </div>
               )}
-              {/* Journey Summary — a bordered card with its own soft-purple
-                  header band (icon + title) over a plain white body, same
-                  markup as agent-next-gen-v2's own former Copilot tab used
-                  for this exact field (`CopilotTabContent`) — see
-                  `journeySummary`'s own doc comment above for why it moved
-                  here. `lyra-accent-purple-soft`/`-strong` (tailwind-
-                  preset.ts) is the same accent pair `Badge`'s `color="purple"`
-                  variant resolves to — used directly here since this is a
-                  fixed two-tone header bar, not a pill needing that
-                  component's full variant machinery. */}
+              {/* Journey Summary — plain "label + paragraph" block, same
+                  chromeless treatment `snapshot` gets just above (per
+                  explicit follow-up request; see `journeySummary`'s own
+                  doc comment for the card-first version this replaced). */}
               {journeySummary && (
-                <div className="overflow-hidden rounded-lyra-md border border-lyra-border-subtle">
-                  <div className="flex items-center gap-2 bg-lyra-accent-purple-soft px-4 py-2.5">
-                    <Bookmark className="h-4 w-4 shrink-0 text-lyra-accent-purple-strong" strokeWidth={1.5} aria-hidden="true" />
-                    <span className="lyra-body-md-emphasis text-lyra-fg-default">Journey Summary</span>
-                  </div>
-                  <div className="bg-lyra-bg-surface-base px-4 py-3">
-                    <p className="lyra-body-md text-lyra-fg-default">{journeySummary}</p>
-                  </div>
+                <div className="flex flex-col gap-1.5">
+                  <span className="lyra-body-sm-emphasis text-lyra-fg-secondary">Journey Summary</span>
+                  <p className="lyra-body-sm text-lyra-fg-default">{journeySummary}</p>
                 </div>
               )}
             </div>
