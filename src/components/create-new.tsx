@@ -12,8 +12,8 @@ import { Button } from "./button";
 import { TableFooter } from "./table";
 import { FavoriteButton } from "./favorite-button";
 import { ListItem } from "./list-item";
+import { Badge, type BadgeCircleVariant } from "./badge";
 import { PhoneInput, PHONE_COUNTRIES, isPhoneNumberComplete, type PhoneValue } from "./phone-input";
-import { Tag, type TagVariant } from "./tag";
 import type { ChannelType } from "./channel-row";
 
 /* ── Types ── */
@@ -27,18 +27,25 @@ export interface CreateNewItem {
   onClick?: () => void;
 }
 
-/** An agent's current availability, shown as a status chip next to their
- *  name in the Outbound picker's "Select Agent" list (see
- *  `AgentPresenceChip`/`ContactRow` below). Distinct from `AgentProfile`'s
- *  own `AgentStatus` (available/busy/away/offline) — that type is the
- *  *current, logged-in* agent's own status control; this is read-only
- *  presence for *other* agents being considered as an outbound recipient,
- *  which also needs an "in a call" state `AgentProfile` has no use for
- *  (an agent never sets their own status to "in a call" — that's an
- *  automatic, observed state, not a status code they pick). */
+/** An agent's current availability, shown as a small corner badge on their
+ *  leading avatar/category icon in the Outbound picker's "Select Agent"
+ *  list (see `AgentPresenceBadge`/`ContactRow` below). Distinct from
+ *  `AgentProfile`'s own `AgentStatus` (available/busy/away/offline) — that
+ *  type is the *current, logged-in* agent's own status control; this is
+ *  read-only presence for *other* agents being considered as an outbound
+ *  recipient, which also needs an "in a call" state `AgentProfile` has no
+ *  use for (an agent never sets their own status to "in a call" — that's
+ *  an automatic, observed state, not a status code they pick). */
 export type AgentPresenceStatus = "available" | "busy" | "away" | "offline" | "in-call";
 
-const AGENT_PRESENCE_CONFIG: Record<AgentPresenceStatus, { label: string; variant: TagVariant }> = {
+// `variant` values are deliberately the same 5 `BadgeCircleVariant` roles
+// `AgentProfile`'s own status dots already use (agent-profile.tsx) — no
+// new colors invented for this. `label` no longer renders as visible text
+// (see `AgentPresenceBadge`'s own doc comment below, on why the chip this
+// used to feed was removed) — kept only for the badge's `aria-label`, so
+// the status is still announced to screen readers even though it's now a
+// plain colored dot with no text.
+const AGENT_PRESENCE_CONFIG: Record<AgentPresenceStatus, { label: string; variant: BadgeCircleVariant }> = {
   available: { label: "Available", variant: "success" },
   busy:      { label: "Busy",      variant: "critical" },
   away:      { label: "Away",      variant: "warning" },
@@ -46,9 +53,34 @@ const AGENT_PRESENCE_CONFIG: Record<AgentPresenceStatus, { label: string; varian
   "in-call": { label: "In a Call", variant: "info" },
 };
 
-function AgentPresenceChip({ status }: { status: AgentPresenceStatus }) {
+// Per explicit follow-up request, this replaces the old `AgentPresenceChip`
+// (a `Tag` pill rendered as its own line under the name) with a small
+// circular `Badge` anchored to the bottom-right corner of the leading
+// avatar/category icon instead — the exact position/sizing/border
+// treatment `AgentProfile`'s own status dot already uses on a real avatar
+// (agent-profile.tsx's `StatusIcon`: `absolute bottom-[-2px] right-[-2px]
+// px-0 border border-lyra-bg-surface-base` on a `size="sm"` circle badge,
+// inside a `relative` avatar wrapper) — reused verbatim rather than
+// inventing a new position/size for this second "status on an avatar"
+// case. `dot` (no icon/count content) rather than one of `AgentProfile`'s
+// own status icons (Check/Minus) — those only cover its own two states
+// (Available/Unavailable); this needs five, and a plain color-coded dot
+// covers all of them consistently without picking icons for the ones
+// `AgentProfile` has no equivalent for. Rendered by `ContactRow` itself
+// now (not this row's own JSX), positioned relative to whatever
+// `contact.categoryIcon` renders — see that render site's own comment.
+function AgentPresenceBadge({ status }: { status: AgentPresenceStatus }) {
   const { label, variant } = AGENT_PRESENCE_CONFIG[status];
-  return <Tag label={label} variant={variant} shape="pill" className="flex-shrink-0" />;
+  return (
+    <Badge
+      shape="circle"
+      dot
+      variant={variant}
+      size="sm"
+      aria-label={label}
+      className="absolute bottom-[-2px] right-[-2px] px-0 border border-lyra-bg-surface-base"
+    />
+  );
 }
 
 export interface CreateNewContact {
@@ -64,9 +96,11 @@ export interface CreateNewContact {
   subtitle?: string;
   /** Tailwind classes for the avatar circle's background + text color */
   avatarClassName?: string;
-  /** Renders a status chip below the name, to the left of `subtitle` (see
-   *  `AgentPresenceChip`) — set on agent and skill records; left unset for
-   *  customers/teams, which have no individual presence concept. */
+  /** Renders as a small colored badge in the bottom-right corner of
+   *  `categoryIcon` (see `AgentPresenceBadge`) — set on agent and skill
+   *  records; left unset for customers/teams, which have no individual
+   *  presence concept. Has no effect on a contact with no `categoryIcon`
+   *  set, since there's no avatar/icon for the badge to anchor to. */
   status?: AgentPresenceStatus;
   /** Skill records only: number of contacts currently waiting in this
    *  skill's queue. Paired with `waitTimeSeconds` to render "Queue: {N}
@@ -471,8 +505,16 @@ function ContactRow({
           set one renders exactly as before, no empty leading slot
           reserving space. */}
       {contact.categoryIcon && (
-        <span aria-hidden="true" className="flex-shrink-0">
+        // `relative` — per explicit follow-up request, this is now where
+        // `AgentPresenceBadge` anchors itself (`absolute bottom-[-2px]
+        // right-[-2px]`, see that component's own doc comment), replacing
+        // the old status CHIP that used to render as its own line below
+        // the name. Purely additive when `contact.status` is unset — the
+        // badge itself doesn't render at all in that case, same as the
+        // chip it replaced didn't.
+        <span aria-hidden="true" className="relative flex-shrink-0">
           {contact.categoryIcon}
+          {contact.status && <AgentPresenceBadge status={contact.status} />}
         </span>
       )}
       {(() => {
@@ -483,26 +525,20 @@ function ContactRow({
         return (
           <span className="min-w-0 flex-1">
             <span className="block truncate lyra-body-md text-lyra-fg-default">{contact.name}</span>
-            {hasQueueText ? (
-              // Skill rows: the queue/wait summary runs long ("Queue: 4
-              // Wait Time: 3m 20s"), so it goes on its own line below the
-              // status chip rather than squeezed onto the chip's row where
-              // it'd truncate.
-              <span className="flex min-w-0 flex-col items-start gap-1">
-                {contact.status && <AgentPresenceChip status={contact.status} />}
-                {secondaryText && (
-                  <span className="block max-w-full truncate lyra-body-sm text-lyra-fg-secondary">{secondaryText}</span>
-                )}
-              </span>
-            ) : (
-              (contact.status || secondaryText) && (
-                <span className="flex min-w-0 items-center gap-1.5">
-                  {contact.status && <AgentPresenceChip status={contact.status} />}
-                  {secondaryText && (
-                    <span className="min-w-0 truncate lyra-body-sm text-lyra-fg-secondary">{secondaryText}</span>
-                  )}
-                </span>
-              )
+            {/* No more status chip on this line — moved onto the leading
+                icon itself, see that render site's own comment above. This
+                secondary line is now just `secondaryText` (subtitle or the
+                skill queue/wait summary), so it only renders at all when
+                there's actually text to show — `contact.status` alone no
+                longer keeps an otherwise-empty line/wrapper around. The
+                two kinds of secondary text no longer need their own
+                separate wrapper elements either (that split existed to
+                sit the removed chip beside one and above the other) — one
+                shared `<span>` covers both; `max-w-full` (vs. plain
+                `min-w-0`) only mattered for lining up against the chip
+                that's no longer there, so it's dropped too. */}
+            {secondaryText && (
+              <span className="block min-w-0 truncate lyra-body-sm text-lyra-fg-secondary">{secondaryText}</span>
             )}
           </span>
         );
