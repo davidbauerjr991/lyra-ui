@@ -2357,6 +2357,46 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
               >
                 {(screen.kind === "group" || screen.kind === "outbound-menu") && activeGroup && (
                   screen.kind === "outbound-menu" ? (
+                  // Per explicit follow-up request, a search that matches
+                  // NO contact in ANY group falls through to the same
+                  // "No matches found" + "Continue with" ad-hoc-contact
+                  // treatment the "group" screen's own empty-results branch
+                  // already uses (further below), instead of the row list
+                  // rendering every group at "(0)" — a wall of zeroes has
+                  // no useful next action, while "Continue with" gives the
+                  // agent a real path forward for a typed number/email
+                  // that isn't in the directory. Only kicks in on a true
+                  // zero-match search — the condition below checks
+                  // `trimmedSearchQuery` is non-empty AND no contact across
+                  // every group matches it; an EMPTY search box (idle)
+                  // always shows the normal row list regardless.
+                  trimmedSearchQuery && allOutboundContacts.filter((c) => contactMatchesSearch(c, trimmedSearchQuery)).length === 0 ? (
+                    <div className="px-3 py-6 text-center">
+                      <p className="lyra-body-sm text-lyra-fg-secondary">No matches found</p>
+                      {/* Same email/phone-shaped-query gate as the "group"
+                          screen's own identical button — see that button's
+                          own doc comment further below for why a plain
+                          unmatched name gets no button at all. `groupId`
+                          here is `initialOutboundGroupId` (the same
+                          default/"Favorites" group `activeGroup` itself
+                          resolves this screen to) — screen 1 has no OTHER
+                          specific group of its own to stamp onto the
+                          resulting "detail" screen's back button. */}
+                      {(searchQueryIsEmail || searchQueryIsPhone) && (
+                        <Button
+                          variant="outline"
+                          size="lg"
+                          wrap
+                          className="mt-3 w-full"
+                          onClick={() =>
+                            handleContinueWithSearch(trimmedSearchQuery, initialOutboundGroupId ?? "")
+                          }
+                        >
+                          Continue with &quot;{trimmedSearchQuery}&quot;
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
                     // The group row list itself — per explicit follow-up
                     // request, moved here from the popover's pinned
                     // `header` above (see that block's own doc comment) so
@@ -2365,10 +2405,12 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                     // available height, instead of overflowing a non-
                     // scrolling header with no way to reach the rows below
                     // the fold. Per explicit follow-up request, shown
-                    // whether idle OR searching — typing into this screen's
-                    // own search field no longer swaps the row list out for
-                    // a flat cross-group results list; instead each row's
-                    // own `recordCount` (below) narrows to that group's
+                    // whether idle OR searching (as long as the search has
+                    // at least one match somewhere — see the zero-match
+                    // branch above) — typing into this screen's own search
+                    // field no longer swaps the row list out for a flat
+                    // cross-group results list; instead each row's own
+                    // `recordCount` (below) narrows to that group's
                     // matching contacts, e.g. "Agents (100)" becoming
                     // "Agents (5)", so the agent can still see which
                     // group(s) actually have a match before drilling into
@@ -2483,6 +2525,7 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                         );
                       })}
                     </div>
+                  )
                   ) : (activeGroup.kind ?? "contacts") === "dialpad" ? (
                     // PhoneInput (country selector + digit mask + validation)
                     // rather than a hand-rolled `<Input type="tel">` — see
