@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Plus, X, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Plus, X, ChevronLeft, ChevronRight, Search, Check, Minus } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Menu } from "./menu";
 import { Input } from "./input";
@@ -40,17 +40,23 @@ export type AgentPresenceStatus = "available" | "busy" | "away" | "offline" | "i
 
 // `variant` values are deliberately the same 5 `BadgeCircleVariant` roles
 // `AgentProfile`'s own status dots already use (agent-profile.tsx) — no
-// new colors invented for this. `label` no longer renders as visible text
-// (see `AgentPresenceBadge`'s own doc comment below, on why the chip this
-// used to feed was removed) — kept only for the badge's `aria-label`, so
-// the status is still announced to screen readers even though it's now a
-// plain colored dot with no text.
-const AGENT_PRESENCE_CONFIG: Record<AgentPresenceStatus, { label: string; variant: BadgeCircleVariant }> = {
-  available: { label: "Available", variant: "success" },
-  busy:      { label: "Busy",      variant: "critical" },
+// new colors invented for this. `icon` mirrors `AgentProfile`'s own
+// `statusConfig`/`StatusIcon` pattern (agent-profile.tsx lines 166-219):
+// a glyph rendered as the Badge's own content (NOT the `dot` prop) at
+// `size="sm"` with `px-0`, so the circle has the same 16px diameter as a
+// real status badge but with an icon centered inside it. Statuses with no
+// natural icon (e.g. `away`) omit `icon` and fall back to a plain white
+// dot as the Badge's content instead — exactly how `AgentProfile` itself
+// handles `working` (no icon defined for it either).
+const AGENT_PRESENCE_CONFIG: Record<
+  AgentPresenceStatus,
+  { label: string; variant: BadgeCircleVariant; icon?: typeof Check }
+> = {
+  available: { label: "Available", variant: "success", icon: Check },
+  busy:      { label: "Busy",      variant: "critical", icon: Minus },
   away:      { label: "Away",      variant: "warning" },
-  offline:   { label: "Offline",   variant: "neutral" },
-  "in-call": { label: "In a Call", variant: "info" },
+  offline:   { label: "Offline",   variant: "neutral", icon: X },
+  "in-call": { label: "In a Call", variant: "info", icon: Check },
 };
 
 // Per explicit follow-up request, this replaces the old `AgentPresenceChip`
@@ -62,24 +68,30 @@ const AGENT_PRESENCE_CONFIG: Record<AgentPresenceStatus, { label: string; varian
 // px-0 border border-lyra-bg-surface-base` on a `size="sm"` circle badge,
 // inside a `relative` avatar wrapper) — reused verbatim rather than
 // inventing a new position/size for this second "status on an avatar"
-// case. `dot` (no icon/count content) rather than one of `AgentProfile`'s
-// own status icons (Check/Minus) — those only cover its own two states
-// (Available/Unavailable); this needs five, and a plain color-coded dot
-// covers all of them consistently without picking icons for the ones
-// `AgentProfile` has no equivalent for. Rendered by `ContactRow` itself
-// now (not this row's own JSX), positioned relative to whatever
+// case. Per follow-up feedback that the badges "don't look like the agent
+// status badges" (they need icons in them), this now mirrors
+// `StatusIcon`'s own content-mode rendering exactly: an icon glyph as the
+// Badge's children when `AGENT_PRESENCE_CONFIG` defines one, otherwise a
+// plain white dot as children — never the `dot` prop, which shrinks the
+// circle to 8px with no room for icon content. Rendered by `ContactRow`
+// itself now (not this row's own JSX), positioned relative to whatever
 // `contact.categoryIcon` renders — see that render site's own comment.
 function AgentPresenceBadge({ status }: { status: AgentPresenceStatus }) {
-  const { label, variant } = AGENT_PRESENCE_CONFIG[status];
+  const { label, variant, icon: StatusGlyph } = AGENT_PRESENCE_CONFIG[status];
   return (
     <Badge
       shape="circle"
-      dot
       variant={variant}
       size="sm"
       aria-label={label}
       className="absolute bottom-[-2px] right-[-2px] px-0 border border-lyra-bg-surface-base"
-    />
+    >
+      {StatusGlyph ? (
+        <StatusGlyph className="h-2 w-2" strokeWidth={3} aria-hidden="true" />
+      ) : (
+        <span className="block h-2 w-2 rounded-full bg-white" aria-hidden="true" />
+      )}
+    </Badge>
   );
 }
 
