@@ -29,6 +29,27 @@ import { Tooltip } from "./tooltip";
  *    • Rule: anchor floatLeft.current = containerWidth - panelWidth - margin
  *      on open; reset to null on close; update on variant change (dock→float).
  *
+ *  FLOAT mode — left edge handle (per explicit request: "expand the
+ *  drag-state panels to the left if I hover and grab the left side, like
+ *  how it works when they're docked")
+ *    • Right edge is what's actually fixed here — the consumer's own
+ *      static `left` anchor (above) never moves, so this handle can't just
+ *      grow `width` alone the way the docked handle does; it has to shift
+ *      `offset.x` (the internal drag transform) by the same amount `width`
+ *      changes, in lockstep, so `staticLeft + offset.x + width` (the
+ *      right edge) stays constant while the left edge moves.
+ *    • `onFloatLeftEdgeResizeDown`'s math: for a given `deltaX` (mouse
+ *      movement since resize start), `newWidth = startWidth - deltaX` and
+ *      `newOffsetX = startOffsetX + deltaX` — dragging the mouse LEFT
+ *      (negative deltaX) grows width and shifts the box left by the exact
+ *      same distance; dragging RIGHT does the reverse (shrinks, shifts
+ *      right). Both derive from one clamped `deltaX`, so they can never
+ *      drift out of sync with each other.
+ *    • Viewport containment: the LEFT edge (`rect.left` at resize start,
+ *      plus `deltaX`) is the only thing that can leave the viewport here
+ *      (the right edge never moves) — clamps `deltaX >= -rect.left` on top
+ *      of the usual `minWidth`/`maxWidth` bounds on the resulting width.
+ *
  *  DOCKED mode — left edge handle
  *    • Right edge is fixed at the viewport/container boundary.
  *    • Dragging the left edge LEFTWARD grows the panel (into the content area).
@@ -335,6 +356,11 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
 
     const dragStart   = React.useRef<{ mx: number; my: number; ox: number; oy: number; baseLeft: number; baseTop: number } | null>(null);
     const resizeStart = React.useRef<{ mx: number; my: number; w: number; h: number; left: number; top: number } | null>(null);
+    // Separate from `resizeStart` above — the float left-edge handle needs
+    // to track the drag's starting `offset.x` (`ox`) too, since it moves
+    // `offset.x` and `width` together (see `onFloatLeftEdgeResizeDown`'s
+    // own doc comment, "Panel Resize Direction Rules" above, for why).
+    const floatEdgeResizeStart = React.useRef<{ mx: number; w: number; ox: number; left: number } | null>(null);
 
     // Local ref for measuring the panel's own on-screen position (viewport
     // containment needs this regardless of how a consumer positions the
@@ -541,6 +567,45 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
       document.addEventListener("mouseup", onUp);
     };
 
+    /* ── Float: left edge resize ── */
+    const onFloatLeftEdgeResizeDown = (e: React.MouseEvent) => {
+      e.preventDefault(); e.stopPropagation();
+      // The RIGHT edge is what stays fixed here (see "Panel Resize
+      // Direction Rules" above) — `offset.x` and `width` move together in
+      // lockstep off one shared `deltaX`, so they can never drift apart.
+      const rect = rootRef.current?.getBoundingClientRect();
+      floatEdgeResizeStart.current = { mx: e.clientX, w: width, ox: offset.x, left: rect?.left ?? 0 };
+      document.body.style.cursor     = "ew-resize";
+      document.body.style.userSelect = "none";
+      onResizeStateChange?.(true);
+      const onMove = (ev: MouseEvent) => {
+        if (!floatEdgeResizeStart.current) return;
+        const { mx, w: startW, ox: startOx, left: startLeft } = floatEdgeResizeStart.current;
+        const deltaX = ev.clientX - mx;
+        // Viewport containment: the left edge (`startLeft + deltaX`) is the
+        // only thing that can leave the viewport from this handle — the
+        // right edge never moves — so clamp `deltaX` from below at
+        // `-startLeft` (left edge can't cross x = 0), on top of the usual
+        // `minWidth`/`maxWidth` bounds on the resulting width.
+        const minDeltaX = Math.max(-startLeft, startW - resolveMaxWidth(maxWidth, disableResponsiveMaxWidth));
+        const maxDeltaX = startW - minWidth;
+        const clampedDeltaX = Math.max(minDeltaX, Math.min(maxDeltaX, deltaX));
+        setWidth(startW - clampedDeltaX);
+        onWidthChange?.(startW - clampedDeltaX);
+        setOffset((prev) => ({ x: startOx + clampedDeltaX, y: prev.y }));
+      };
+      const onUp = () => {
+        floatEdgeResizeStart.current = null;
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        onResizeStateChange?.(false);
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+      };
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    };
+
     /* ── Docked: left edge resize ── */
     const onLeftEdgeResizeDown = (e: React.MouseEvent) => {
       e.preventDefault(); e.stopPropagation();
@@ -720,6 +785,24 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
         {headerControlsNode}
         {/* pl-7 gives the first child's header room for the grip icon — only when using built-in overlay (see contentNode's className above) */}
         {contentNode}
+
+        {/* Left edge resize handle — expands left, right side stays fixed
+            (see `onFloatLeftEdgeResizeDown`'s own doc comment, "Panel
+            Resize Direction Rules" above, for the float-specific offset+
+            width math this needs that the docked handle doesn't). Same
+            markup/z-index reasoning as docked's own `edge-resize` handle
+            — stays interactive above any panel content this container
+            hosts. Always shown (no `dockedResizable`-style opt-out prop)
+            — unlike docked mode, a floating panel never has "nothing
+            beside it to resize into" as a reason to hide this. */}
+        <div
+          key="float-edge-resize"
+          onMouseDown={onFloatLeftEdgeResizeDown}
+          className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize z-30 group/edge"
+          aria-hidden="true"
+        >
+          <div className="absolute inset-y-0 left-0 w-px bg-lyra-border-subtle group-hover/edge:bg-lyra-border-active transition-colors" />
+        </div>
 
         {/* Bottom-right corner resize handle */}
         <div
