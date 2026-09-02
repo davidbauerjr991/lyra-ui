@@ -8,6 +8,8 @@
 import type { ChannelType } from "../channel-row";
 import type { AgentPresenceStatus } from "../create-new";
 
+export type CreateNewAgentRole = "Support Agent" | "Team Supervisor";
+
 export interface CreateNewAgentRecord {
   id: string;
   name: string;
@@ -19,6 +21,13 @@ export interface CreateNewAgentRecord {
   /** Current availability — rendered as a status chip next to the agent's
    *  name in the Outbound picker's "Select Agent" list. */
   status: AgentPresenceStatus;
+  /** This agent's job title — per explicit follow-up request, rendered as
+   *  the Outbound picker's agent-row subhead (`CreateNewContact.subtitle`)
+   *  in place of the raw `agentId`, so the list reads as "who is this
+   *  person" rather than an internal record number. Mostly "Support Agent"
+   *  with an occasional "Team Supervisor", matching a real support org's
+   *  own ratio of individual contributors to supervisors. */
+  role: CreateNewAgentRole;
 }
 
 // Disjoint from `create-new-customers-data.ts`'s own FIRST_NAMES/LAST_NAMES
@@ -54,6 +63,13 @@ const STATUS_CYCLE: AgentPresenceStatus[] = [
   "available", "available", "busy", "available", "away",
   "available", "in-call", "available", "offline", "available",
 ];
+// 1-in-8 supervisors — a real support org has far more individual
+// contributors than supervisors; matches the reference mockup's own
+// roster (Priya Shah as the one "Team Supervisor" among 8 rows).
+const ROLE_CYCLE: CreateNewAgentRole[] = [
+  "Support Agent", "Support Agent", "Support Agent", "Support Agent",
+  "Support Agent", "Support Agent", "Support Agent", "Team Supervisor",
+];
 
 /** Deterministic (no Math.random) so the story renders identically every
  *  time — cycles through name/color pools and varies channel support per
@@ -74,6 +90,7 @@ function buildAgents(count: number): CreateNewAgentRecord[] {
       channels: ["voice", ...extra],
       avatarClassName: `bg-lyra-accent-${color}-soft text-lyra-accent-${color}-strong`,
       status: STATUS_CYCLE[i % STATUS_CYCLE.length],
+      role: ROLE_CYCLE[i % ROLE_CYCLE.length],
     });
   }
   return agents;
