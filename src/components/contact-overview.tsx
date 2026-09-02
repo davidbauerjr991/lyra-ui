@@ -140,13 +140,14 @@ const ContactOverview = React.forwardRef<HTMLDivElement, ContactOverviewProps>(
                 )}
               </p>
               {/* "Contact Snapshot" row also carries the "View customer
-                  info"/"Contact History" links on its right edge (per
-                  explicit request) — shown whenever there's a snapshot to
-                  list OR either link to show, since either link needs this
-                  row's header to attach to even with no bullets under it. */}
+                  info"/"Contact History" links directly beside its own
+                  label (per explicit request — NOT pushed to the row's far
+                  right edge) — shown whenever there's a snapshot to list OR
+                  either link to show, since either link needs this row's
+                  header to attach to even with no bullets under it. */}
               {(snapshot && snapshot.length > 0) || onViewCustomerInfo || onViewInteractionHistory ? (
                 <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
                     <span className="lyra-body-sm-emphasis text-lyra-fg-secondary">Contact Snapshot</span>
                     {(onViewCustomerInfo || onViewInteractionHistory) && (
                       <div className="flex items-center gap-1.5 lyra-body-sm">
