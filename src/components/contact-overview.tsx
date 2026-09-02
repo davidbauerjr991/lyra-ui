@@ -45,6 +45,15 @@ export interface ContactOverviewProps extends ContactOverviewInfo {
   defaultExpanded?: boolean;
   /** Additional className on the root element. */
   className?: string;
+  /** Renders a "View customer info" link at the bottom of the overview.
+   *  Omit to hide the link entirely (e.g. no customer info panel available
+   *  in this context). The caller is responsible for opening whatever
+   *  customer-info surface it has and focusing it on the right tab. */
+  onViewCustomerInfo?: () => void;
+  /** Renders a "View interaction history" link alongside `onViewCustomerInfo`
+   *  (same row, `|`-separated, matching the divider convention already used
+   *  for adjacent link-like items elsewhere in this app). Omit to hide. */
+  onViewInteractionHistory?: () => void;
 }
 
 /* ── ContactOverview ──
@@ -70,7 +79,19 @@ export interface ContactOverviewProps extends ContactOverviewInfo {
    enough for a single toggle like this — no external open-state plumbing
    needed, same as `AIProcess`'s own internal `useState`. */
 const ContactOverview = React.forwardRef<HTMLDivElement, ContactOverviewProps>(
-  ({ customerName, previousAgent, snapshot, journeySummary, defaultExpanded = true, className }, ref) => {
+  (
+    {
+      customerName,
+      previousAgent,
+      snapshot,
+      journeySummary,
+      defaultExpanded = true,
+      className,
+      onViewCustomerInfo,
+      onViewInteractionHistory,
+    },
+    ref
+  ) => {
     return (
       <AccordionPrimitive.Root
         ref={ref}
@@ -131,6 +152,33 @@ const ContactOverview = React.forwardRef<HTMLDivElement, ContactOverviewProps>(
                 <div className="flex flex-col gap-1.5">
                   <span className="lyra-body-sm-emphasis text-lyra-fg-secondary">Journey Summary</span>
                   <p className="lyra-body-sm text-lyra-fg-default">{journeySummary}</p>
+                </div>
+              )}
+              {(onViewCustomerInfo || onViewInteractionHistory) && (
+                <div className="flex items-center gap-1.5 lyra-body-sm">
+                  {onViewCustomerInfo && (
+                    <button
+                      type="button"
+                      onClick={onViewCustomerInfo}
+                      className="text-lyra-fg-link hover:underline focus-visible:outline-none"
+                    >
+                      View customer info
+                    </button>
+                  )}
+                  {onViewCustomerInfo && onViewInteractionHistory && (
+                    <span className="text-lyra-fg-secondary" aria-hidden="true">
+                      |
+                    </span>
+                  )}
+                  {onViewInteractionHistory && (
+                    <button
+                      type="button"
+                      onClick={onViewInteractionHistory}
+                      className="text-lyra-fg-link hover:underline focus-visible:outline-none"
+                    >
+                      View interaction history
+                    </button>
+                  )}
                 </div>
               )}
             </div>
