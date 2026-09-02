@@ -2279,12 +2279,48 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                           native button would give for free; its own
                           `divider` prop (default true) supplies the same
                           row-separator lines the old markup built by hand. */}
-                      {(outbound?.groups ?? []).map((g) => (
+                      {(outbound?.groups ?? []).map((g) => {
+                        // Per explicit request: each row's own record
+                        // count, in a lighter weight than the label, e.g.
+                        // "Favorites (4)"/"Agents (54,332)". `toLocaleString()`
+                        // for the thousands separator in that second example.
+                        // "favorites" kind counts `favoriteIds` (the same
+                        // set idle-favorites browsing/`activeGroupContacts`
+                        // already filters by, see that const's own doc
+                        // comment) rather than `g.contacts?.length` — a
+                        // "how many contacts are favorited," not "how many
+                        // contacts exist across every group," is what
+                        // "Favorites (N)" should mean. "dialpad"/"empty"
+                        // kinds have no record count at all (Dial Pad
+                        // dials a typed number, and the three placeholder
+                        // groups have no contacts to count yet — see their
+                        // own `kind: "empty"` doc comment) — `recordCount`
+                        // is `undefined` for both, and the label renders
+                        // with no "(N)" suffix rather than a misleading
+                        // "(0)".
+                        const recordCount =
+                          g.kind === "favorites"
+                            ? favoriteIds.size
+                            : g.kind === "dialpad" || g.kind === "empty"
+                            ? undefined
+                            : g.contacts?.length ?? 0;
+                        return (
                         <ListItem
                           key={g.id}
                           role="button"
                           tabIndex={0}
-                          title={g.label}
+                          title={
+                            recordCount === undefined ? (
+                              g.label
+                            ) : (
+                              <>
+                                {g.label}{" "}
+                                <span className="lyra-body-md text-lyra-fg-secondary">
+                                  ({recordCount.toLocaleString()})
+                                </span>
+                              </>
+                            )
+                          }
                           leading={g.icon}
                           trailing={
                             <ChevronRight
@@ -2301,7 +2337,8 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                             }
                           }}
                         />
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (activeGroup.kind ?? "contacts") === "dialpad" ? (
                     // PhoneInput (country selector + digit mask + validation)
