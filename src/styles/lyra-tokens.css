@@ -1221,10 +1221,9 @@
    it's unreadable) plus a date `FilterChip` into that same slot.
 
    `.lyra-container-header-actions-wrap` (opt-in via `ContainerHeader`'s
-   `actionsWrap` prop) just establishes the container-query boundary
-   (`container-type: inline-size`) around the whole header — on its own it
-   changes nothing. Everything else below is a family of PER-ELEMENT
-   collapse behaviors that react to that same boundary, so each piece of
+   `actionsWrap` prop) marks the header row that the family of PER-ELEMENT
+   collapse classes below (filter-chip icon collapse, search inline/below)
+   are scoped under — on its own it changes nothing; each piece of
    `actions` decides its own fate instead of the whole cluster moving as
    one block.
 
@@ -1234,21 +1233,62 @@
    `SearchInput` needing that room — still got shoved onto its own line for
    no reason, overlapping the title above it; confirmed from a screenshot.
    The per-element classes below replace it — see "Filter chip icon
-   collapse" and "Search inline/below" further down.) */
-.lyra-container-header-actions-wrap {
+   collapse" and "Search inline/below" further down.)
+
+   Deliberately does NOT itself establish the container-query boundary
+   (`container-type: inline-size`) — that used to live right here, which
+   meant EVERY `actionsWrap` consumer measured against its own header
+   row's width and got the exact same threshold, with no way to opt out.
+   That silently broke narrower dashboard widgets that only turned
+   `actionsWrap` on for the filter-chip icon-collapse fallback (Performance/
+   Productivity's `DateFilterChip`, agent-dashboard.tsx and agent-next-gen-
+   interaction-dashboard.tsx) the moment `ContactHistoryCard`'s own
+   threshold below was raised from 480px to 768px — those cards are
+   comfortably wider than 480px but not 768px, so they went from "always
+   full" to "always collapsed to the kebab icon" with no code of their own
+   changing at all (reported via screenshot: "Performance"/"Productivity"'s
+   date chip stuck as a bare `⋮` button).
+
+   Per that explicit follow-up ("I want the query to be not on the widget
+   itself but the parent container") the boundary is now a SEPARATE,
+   explicitly opt-in class, `.lyra-container-header-query-boundary`
+   (below) — the caller applies it to whichever ancestor's width should
+   actually decide the collapse (typically the card's own outer root, one
+   level OUTSIDE `ContainerHeader` itself, via that card's own `className`
+   prop — e.g. `DashboardCard`'s `className`, same "establish the boundary
+   on the card root, not inside the header" pattern `.lyra-metric-row-wrap`
+   already uses for `MetricRow`'s own responsive collapse, just above).
+   `ContactHistoryCard` (agent-next-gen-contact-history.tsx) is the one
+   real consumer that opts in today; Performance/Productivity deliberately
+   don't, so their `DateFilterChip` now stays in full/expanded mode
+   unconditionally — no container ancestor means the `@container` rules
+   below simply never match, which is the desired "no widget of mine is
+   quietly missing its query context" fallback. */
+.lyra-container-header-query-boundary {
   container-type: inline-size;
 }
 
-/* ── Filter chip icon collapse — same family, same 480px threshold ──
+/* ── Filter chip icon collapse — same family, same 768px threshold ──
    A chip-style trigger (e.g. `DateFilterChip`/`ContactHistoryDateFilterChip`
    in agent-next-gen-v1 — app-level components, not in lyra-ui itself, but
    built on this shared family) sitting in a `ContainerHeader`'s `actions`
    (with `actionsWrap` on) can shrink to a compact icon-only trigger below
-   480px instead of getting crushed — this keeps it pinned in its normal
+   768px instead of getting crushed — this keeps it pinned in its normal
    spot, top-right beside the title, rather than moving anywhere.
-   Deliberately reuses `.lyra-container-header-actions-wrap`'s own
-   container-type boundary and 480px threshold rather than declaring a
-   second one — same header, same "is there room" question, one answer.
+   Deliberately reuses whatever `.lyra-container-header-query-boundary`
+   ancestor the caller opted into (see that class's own doc comment just
+   above) and the same 768px threshold rather than declaring a second one
+   — same header, same "is there room" question, one answer. If no
+   ancestor carries that class, this whole `@container` block simply never
+   matches and stays in full/expanded mode — see that same doc comment for
+   why that's the deliberate fallback, not a bug. Raised from 480px per
+   explicit follow-up request ("update the container breakpoint to 768px
+   so search goes to a row below sooner" — reported against
+   `ContactHistoryCard`'s own "My Contact History" header, whose title was
+   still getting crushed to a couple of characters at ~500-600px because
+   this family's old 480px threshold hadn't fired yet) — matches the same
+   768px convention `TableToolbar`'s own row-wrap threshold uses
+   (table.tsx) rather than inventing a new number.
 
    Same "both real nodes always in the DOM, CSS toggles which one shows"
    convention as `.lyra-tab-overflow-wrap`/`.lyra-page-header-breadcrumb-
@@ -1267,7 +1307,7 @@
 .lyra-container-header-actions-wrap .lyra-container-header-filter-compact {
   display: none;
 }
-@container (max-width: 480px) {
+@container (max-width: 768px) {
   .lyra-container-header-actions-wrap .lyra-container-header-filter-full {
     display: none;
   }
@@ -1282,12 +1322,12 @@
   }
 }
 
-/* ── Search inline/below — same family, same 480px threshold ──
+/* ── Search inline/below — same family, same 768px threshold ──
    The other half of the "filter stays put, search is what actually needs
    to move" split above: a `SearchInput` in `actions` (e.g.
    `ContactHistoryCard`'s "Search contact history" box, agent-next-gen-v1)
    is the one control that genuinely can't shrink below a readable width —
-   below 480px it's what needs to give up its spot next to the title, not
+   below 768px it's what needs to give up its spot next to the title, not
    the filter chip beside it. Rather than forcing the whole `actions`
    cluster down (the retired approach above), only the search box moves:
    a second real `SearchInput`, controlled by the same value/onValueChange
@@ -1295,7 +1335,9 @@
    `tabs` slot (renders on its own full-width row below the title,
    regardless of what's actually inside it — "a `TabList` (or similar)",
    per that prop's own doc comment) and CSS-toggled against this one
-   `-full`/`-below` pair.
+   `-full`/`-below` pair. Threshold raised from 480px to 768px alongside
+   the filter-chip collapse above — see that rule's own doc comment for
+   why.
 
    Two real, separately-controlled `<input>` elements, not one node moved
    around — same "duplicate node, CSS shows/hides" convention as
@@ -1307,7 +1349,7 @@
 .lyra-container-header-actions-wrap .lyra-container-header-search-below {
   display: none;
 }
-@container (max-width: 480px) {
+@container (max-width: 768px) {
   .lyra-container-header-actions-wrap .lyra-container-header-search-inline {
     display: none;
   }

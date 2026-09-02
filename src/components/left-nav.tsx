@@ -88,6 +88,57 @@ interface LeftNavProps extends React.HTMLAttributes<HTMLElement> {
    * without changing anyone else's layout.
    */
   itemsFirst?: boolean;
+  /**
+   * Lets `header`'s own wrapper grow to fill whatever vertical space is
+   * left in the scroll region, rather than shrink-wrapping to its content
+   * (the default). Off by default — every existing consumer relies on
+   * `header` sizing to its own content so the item rail (or, with
+   * `itemsFirst`, whatever follows) sits directly after it with no gap.
+   * Meant for a consumer that wants to vertically CENTER something inside
+   * `header` (e.g. an empty-state message) when there's little enough
+   * content to leave slack — centering only works if the wrapper actually
+   * has that slack to distribute in the first place, which requires this
+   * flag. Safe to combine with `itemsFirst`: when there's more content
+   * than fits, this still just yields to the surrounding scroll region
+   * (flex-grow only claims genuinely leftover space, never causes new
+   * overflow on its own).
+   *
+   * Applies `flex-1` alone — deliberately WITHOUT `min-h-0` (see the bug
+   * this caused, fixed below at both usage sites: a long list of cards
+   * bunching up with no internal scrollbar at all, the whole nav growing
+   * past the viewport instead). `min-h-0` would let this wrapper shrink
+   * BELOW its own content's natural height whenever the scroll region runs
+   * out of room — exactly the case a long card list needs the OPPOSITE
+   * of: without a min-height floor, the browser happily compresses this
+   * wrapper's flex-item box down to whatever space is left rather than
+   * letting it, and the card list it contains, overflow — and it's that
+   * overflow the surrounding `overflow-y-auto` scroll region depends on to
+   * ever show a scrollbar in the first place. Leaving `min-height` at its
+   * default `auto` keeps the item's automatic minimum size pinned to its
+   * own content's natural height, so `flex-grow` can still expand it to
+   * fill leftover space when content is light (the empty state this flag
+   * was built for), while a heavy card list still refuses to shrink below
+   * what it actually needs — overflowing the scroll region exactly like
+   * the pre-`headerFillsHeight` `flex-shrink-0` default already did.
+   */
+  headerFillsHeight?: boolean;
+  /**
+   * Content rendered inside the SAME sticky-top box as `items` when
+   * `itemsFirst` is set — directly after them, still pinned together as one
+   * unit, exempt from scrolling like `items` itself (unlike `header` below
+   * it, which does scroll). Built for a caption/section-header row (e.g.
+   * "Assignments (N)") that a consumer wants to stay put under a pinned
+   * "Home"-type item rather than scrolling away with the cards beneath it
+   * — per explicit request/screenshot ("fix the assignments header under
+   * the home button so it doesn't scroll").
+   *
+   * Only meaningful combined with `itemsFirst` (there's no sticky-top box
+   * to join otherwise) — ignored when `itemsFirst` is falsy. Like `header`/
+   * `footer`, a consumer should pass their own `expanded` prop tied to
+   * `open` in inline mode; overlay mode auto-injects it based on hover
+   * state via `injectExpanded`, same as those two.
+   */
+  stickyCaption?: React.ReactNode;
 }
 
 /**
@@ -141,6 +192,8 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
       pinnedHeader,
       header,
       itemsFirst = false,
+      headerFillsHeight = false,
+      stickyCaption,
       ...props
     },
     ref
@@ -361,7 +414,7 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
                 "always pinned regardless of content", is what was asked
                 for). Needs an opaque background so scrolled-under cards
                 don't show through the nav items' icons/labels. */}
-            <div className="flex flex-1 flex-col overflow-hidden min-h-0">
+            <div className="relative flex flex-1 flex-col overflow-hidden min-h-0">
               <div ref={listScrollRef} className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden lyra-scrollbar-hide min-h-0">
                 {/* No `gap` here — `header` (InteractionNavItem cards) supplies its own
                     bottom margin per item (see InteractionNavItem), so spacing only
@@ -370,45 +423,55 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
                 {itemsFirst && (
                   <div
                     className={cn(
-                      "flex flex-shrink-0 flex-col bg-lyra-bg-surface-shell px-2 sticky top-0",
-                      hoverOpen ? "items-stretch" : "items-center",
-                      !header && "pb-3",
-                      // 4px, not the usual 12px (`pt-3`) — just enough gap
-                      // under `pinnedHeader` (e.g. the "New Outbound"
-                      // trigger) to read as a separate row, per an explicit
-                      // request to match this exact spacing. Only applies
-                      // when `itemsFirst` puts the rail directly under
-                      // `pinnedHeader` — the default (rail last) arrangement
-                      // never sits next to `pinnedHeader`, so its own
-                      // spacing there is untouched.
-                      "pt-1"
+                      // `relative z-20` — see the inline-mode branch's own
+                      // copy of this rail (below, `header`'s sibling in the
+                      // default render) for the full "cards painting over
+                      // this rail" bug writeup; same fix, same reasoning,
+                      // just this mode's own copy.
+                      //
+                      // `pt-0 pb-1` — per explicit request/devtools
+                      // screenshot, replacing the previous `pt-1`/no-pb-
+                      // when-`header`-present combination. See the
+                      // inline-mode branch's own copy of this rail for the
+                      // fuller writeup (including why the old 4px gap under
+                      // `pinnedHeader` is intentionally gone now).
+                      "relative z-20 flex flex-shrink-0 flex-col bg-lyra-bg-surface-shell px-2 pt-0 pb-1 sticky top-0",
+                      hoverOpen ? "items-stretch" : "items-center"
                     )}
                   >
                     {hoverOpen ? <TreeMenu items={treeItems} /> : iconOnlyNav}
+                    {/* `stickyCaption` — see the inline-mode branch's own
+                        copy of this rail for the full writeup; same
+                        technique, same reasoning, just this mode's own
+                        copy. `injectExpanded`, matching `header`/`footer`/
+                        `pinnedHeader`'s own overlay-mode treatment above. */}
+                    {stickyCaption && injectExpanded(stickyCaption, hoverOpen)}
                   </div>
                 )}
                 {header && (
                   <div
                     className={cn(
-                      "flex flex-shrink-0 flex-col px-2",
+                      "flex flex-col px-2",
+                      // See `headerFillsHeight`'s own doc comment — off by
+                      // default (shrink-wrap to content, the original
+                      // behavior every other consumer still relies on).
+                      // `flex-1` ONLY, no `min-h-0` — see that comment's
+                      // own note on why `min-h-0` here breaks a long card
+                      // list's ability to overflow/scroll.
+                      headerFillsHeight ? "flex-1" : "flex-shrink-0",
                       hoverOpen ? "items-stretch" : "items-center",
-                      // No top padding at all now (was `!itemsFirst &&
-                      // "pt-3"`) — per explicit request/reference
-                      // screenshot, `header`'s own first child (e.g.
-                      // `AssignmentsSectionCaption`) should sit flush
-                      // against the top of the scroll region with no gap
-                      // above it, matching `itemsFirst`'s own
-                      // already-flush arrangement (its first child there is
-                      // that same caption's separator, which already sits
-                      // flush under the rail above it).
-                      itemsFirst && "pb-3"
+                      // See the inline-mode branch's own copy of this line
+                      // for the full "bottom reserved padding for the fade,
+                      // no top padding" writeup; same change, same
+                      // reasoning.
+                      itemsFirst && "pb-8"
                     )}
                   >
                     {injectExpanded(header, hoverOpen)}
                   </div>
                 )}
                 {!itemsFirst && (
-                  <div className={cn("sticky bottom-0 flex flex-shrink-0 flex-col bg-lyra-bg-surface-shell px-2 pb-3", !header && "pt-3")}>
+                  <div className={cn("relative z-20 sticky bottom-0 flex flex-shrink-0 flex-col bg-lyra-bg-surface-shell px-2 pb-3", !header && "pt-3")}>
                     {/* Soft fade instead of a hard edge — per explicit
                         request, same technique used elsewhere for content
                         scrolling underneath a fixed/sticky bar (a solid-to-
@@ -430,7 +493,11 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
                         its last visible card, even though nothing was
                         actually scrolling underneath the rail to indicate.
                         See `listHasOverflow`'s own doc comment above for
-                        how it's computed. */}
+                        how it's computed.
+
+                        `relative z-20` — see the `itemsFirst` rail above
+                        for the "cards painting over this rail" bug
+                        writeup; mirrored here for the same reason. */}
                     {listHasOverflow && (
                       <div
                         aria-hidden="true"
@@ -441,6 +508,16 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
                   </div>
                 )}
               </div>
+              {/* New bottom-of-viewport fade — `itemsFirst` only. See the
+                  inline-mode branch's own copy of this fade for the full
+                  writeup; same technique, same reasoning, just this mode's
+                  own copy. */}
+              {itemsFirst && listHasOverflow && (
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-8 bg-gradient-to-b from-transparent to-lyra-bg-surface-shell"
+                />
+              )}
             </div>
             {footer && (
               <div className="flex-shrink-0 flex items-center justify-center px-2 pb-3">
@@ -493,7 +570,7 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
             were only a few cards, since "sticky", not "always pinned regardless of content",
             is what was asked for). Needs an opaque background so scrolled-under cards don't
             show through the nav items' icons/labels. */}
-        <div className="flex flex-1 flex-col overflow-hidden min-h-0">
+        <div className="relative flex flex-1 flex-col overflow-hidden min-h-0">
           <div ref={listScrollRef} className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden lyra-scrollbar-hide min-h-0">
             {/* No `gap` here — `header`'s items (InteractionNavItem cards) carry their own
                 bottom margin, so an empty-but-truthy `header` (e.g. a Fragment wrapping a
@@ -503,40 +580,123 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
             {itemsFirst && (
               <div
                 className={cn(
-                  // 4px, not the usual 12px (`pt-3`) — just enough gap under
-                  // `pinnedHeader` (e.g. the "New Outbound" trigger) to read
-                  // as a separate row, per an explicit request to match this
-                  // exact spacing. Only applies when `itemsFirst` puts the
-                  // rail directly under `pinnedHeader`.
-                  "flex flex-shrink-0 flex-col bg-lyra-bg-surface-shell px-2 sticky top-0 pt-1",
-                  open ? "items-stretch" : "items-center",
-                  !header && "pb-3"
+                  // `z-20` — per explicit bug report, scrolled
+                  // `InteractionNavItem` cards were painting OVER this rail
+                  // instead of staying hidden behind it. Root cause: a card
+                  // can contain its own `position: relative` descendant deep
+                  // inside it (e.g. channel-row.tsx's hover-only Consult/
+                  // Transfer/Outcome button cluster, `<span className=
+                  // "relative ...">`) — `position: relative` with the
+                  // default `z-index: auto` doesn't create a new stacking
+                  // context, so that descendant (and anything else like it)
+                  // is promoted straight into `<aside>`'s own single shared
+                  // stacking context (created by ITS `relative z-10`),
+                  // painted in tree order alongside every other positioned
+                  // element in it — including this rail (`sticky` is also a
+                  // "positioned" value). Since this rail is EARLIER in the
+                  // DOM (itemsFirst puts it before `header`'s cards) but a
+                  // card's own nested positioned descendant is LATER in tree
+                  // order, tree order alone let the descendant paint on top
+                  // whenever the two visually overlapped during a scroll.
+                  // An explicit `z-index` sidesteps tree order entirely —
+                  // `z-20` only has to beat the default `z-index: auto`
+                  // (effectively 0) every one of those nested positioned
+                  // descendants uses, so this rail now always wins
+                  // regardless of DOM order. Mirrored below on the
+                  // `!itemsFirst` sticky-bottom rail for the same reason,
+                  // even though only this arrangement was actually reported.
+                  //
+                  // `pt-0 pb-1` — per explicit request/devtools screenshot,
+                  // replacing the previous `pt-1`/no-pb-when-`header`-
+                  // present combination. `pt-1` used to open a small 4px
+                  // gap under `pinnedHeader` (e.g. "New Outbound") — gone
+                  // now, Home sits flush against it instead, per the same
+                  // request. `pb-1` is new: a small 4px gap between this
+                  // box's own content (now Home + `stickyCaption`, below)
+                  // and the scrolling cards underneath it.
+                  "relative z-20 flex flex-shrink-0 flex-col bg-lyra-bg-surface-shell px-2 pt-0 pb-1 sticky top-0",
+                  open ? "items-stretch" : "items-center"
                 )}
               >
                 {open ? <TreeMenu items={treeItems} /> : iconOnlyNav}
+                {/* `stickyCaption` — per explicit follow-up request ("fix
+                    the assignments header under the home button so it
+                    doesn't scroll"): a consumer's section caption (e.g.
+                    `AssignmentsSectionCaption`) used to be the first child
+                    of `header` below — in normal flow, scrolling away with
+                    the cards under it exactly like they do. Rendering it
+                    HERE instead, inside this same sticky box as `items`,
+                    keeps it pinned together with Home as one unit — it
+                    only has to be a sibling in DOM order for `position:
+                    sticky`'s own "stick to the top of the nearest
+                    scrolling ancestor" behavior to just work; no extra
+                    positioning of its own needed. No `injectExpanded` here
+                    (this is the inline-mode branch) — a consumer passes
+                    its own `expanded` prop directly, same established
+                    pattern `header`/`footer` already use inline (see
+                    `footer`'s own doc comment for why relying on injection
+                    inline specifically caused a real bug once). */}
+                {stickyCaption}
+                {/* Top fade removed per explicit follow-up request. It had
+                    briefly existed here (re-added alongside `stickyCaption`
+                    to mirror the bottom-rail fade below) but the `pt-8`
+                    reserved-space buffer it depended on had already been
+                    reverted (see `header`'s own wrapper className below),
+                    and was called out again directly: "remove the top
+                    fade." The bottom-of-scroll-viewport fade (`!itemsFirst`
+                    branch below, and its own copy further down this file)
+                    is unaffected — only this top one, under the sticky
+                    Home/`stickyCaption` rail, was removed. */}
               </div>
             )}
             {header && (
               <div
                 className={cn(
-                  "flex flex-shrink-0 flex-col px-2",
+                  "flex flex-col px-2",
+                  // See `headerFillsHeight`'s own doc comment — see the
+                  // overlay-mode branch above for the full explanation;
+                  // same flag, same reasoning, just this mode's own copy.
+                  // `flex-1` ONLY, no `min-h-0` — see that comment's own
+                  // note on why `min-h-0` here breaks a long card list's
+                  // ability to overflow/scroll.
+                  headerFillsHeight ? "flex-1" : "flex-shrink-0",
                   open ? "items-stretch" : "items-center",
-                  // No top padding at all now — see the overlay-mode
-                  // branch above for the full explanation; same change,
-                  // same reasoning, just this mode's own copy.
-                  itemsFirst && "pb-3"
+                  // `pb-8` — reserved padding below this wrapper, sized to
+                  // match the bottom fade's own 32px (`h-8`) height exactly,
+                  // so an always-on fade (not scroll-position aware, see the
+                  // top fade's own comment above) never lands on a real
+                  // card's own edge — only ever on this reserved, otherwise-
+                  // invisible space.
+                  //
+                  // No top padding here (reverted per explicit request —
+                  // the `pt-8` tried briefly alongside `stickyCaption`
+                  // moving the caption out of `header` created a visibly
+                  // oversized gap above the first card/empty-state block).
+                  // `header`'s own first child goes back to sitting flush
+                  // against the top of the scroll region, same as before
+                  // `stickyCaption` existed; the top fade (gated on
+                  // `listHasOverflow`, rendered on the sticky rail above,
+                  // not on this wrapper) can in principle touch that first
+                  // child's very top edge now, but it's a soft gradient, not
+                  // a hard line, so this trade-off was accepted as the
+                  // better one.
+                  itemsFirst && "pb-8"
                 )}
               >
                 {header}
               </div>
             )}
             {!itemsFirst && (
-              <div className={cn("sticky bottom-0 flex flex-shrink-0 flex-col bg-lyra-bg-surface-shell px-2 pb-3", !header && "pt-3")}>
+              <div className={cn("relative z-20 sticky bottom-0 flex flex-shrink-0 flex-col bg-lyra-bg-surface-shell px-2 pb-3", !header && "pt-3")}>
                 {/* Soft fade instead of a hard edge — see the overlay-mode
                     branch above for the full explanation (including
                     `listHasOverflow`, gating this the same way here); same
                     technique, same reasoning, just this mode's own copy of
-                    the rail. */}
+                    the rail. `relative z-20` — see this same rail's `z-20`
+                    note in the `itemsFirst` branch above; mirrored here for
+                    the same "don't let a card's own nested positioned
+                    descendant paint over this rail" reason, even though only
+                    the `itemsFirst` arrangement was actually reported. */}
                 {listHasOverflow && (
                   <div
                     aria-hidden="true"
@@ -547,6 +707,29 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
               </div>
             )}
           </div>
+          {/* New bottom-of-viewport fade — `itemsFirst` only. Unlike the
+              `!itemsFirst` arrangement above, where `items` itself is a
+              sticky rail sitting right at the scroll region's bottom edge
+              (carrying its own fade, unchanged), `itemsFirst` moves Home to
+              the TOP and Settings out of the scroll region entirely (into
+              `footer`, a sibling AFTER this whole wrapper) — so the scroll
+              region's bottom edge has no sticky rail of its own to anchor a
+              fade to anymore, just the raw `overflow-hidden` clip edge of
+              this non-scrolling wrapper. Attached here (not inside
+              `listScrollRef`) specifically so it stays fixed at the visible
+              viewport edge rather than scrolling away with the list — this
+              wrapper's own `relative` (added above) is what lets it anchor
+              to that. `z-20`, same reasoning as the two rails' own z-index
+              note above. Gated on `listHasOverflow` (not scroll-position —
+              same established convention) and paired with `header`'s own
+              `pb-8` reserved space above so it never lands on the last
+              card's real bottom edge, only that reserved padding. */}
+          {itemsFirst && listHasOverflow && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-8 bg-gradient-to-b from-transparent to-lyra-bg-surface-shell"
+            />
+          )}
         </div>
         {footer && (
           <div className="flex-shrink-0 flex items-center justify-center px-2 pb-3">
@@ -559,5 +742,70 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
 );
 LeftNav.displayName = "LeftNav";
 
-export { LeftNav };
+/**
+ * Renders a `NavItem[]` the exact way `LeftNav`'s own item rail does — a
+ * full `TreeMenu` when `expanded`, single icon-only buttons (with
+ * tooltips + the same active-bar treatment) when collapsed. Exported so a
+ * consumer can render an ADDITIONAL nav row matching the rail's own
+ * styling somewhere OTHER than the `items` prop — e.g. inside `footer`, so
+ * a single item (Settings, say) can be genuinely pinned to the true
+ * bottom of the aside (outside the scrollable region entirely, per
+ * `footer`'s own doc comment) while `items` holds a different item (Home,
+ * say) positioned elsewhere via `itemsFirst`. Pass it straight to
+ * `footer` — `injectExpanded` already clones the right `expanded` value
+ * onto it in both overlay and inline mode, same as it does for any other
+ * `footer` content, so there's no need to read `open`/`hoverOpen`
+ * yourself. Deliberately a separate, independent copy of `LeftNav`'s own
+ * internal icon-only rendering (not a shared extraction) — keeps this a
+ * zero-risk addition that can't affect `LeftNav`'s own existing rail
+ * rendering for any other consumer.
+ */
+const NavRail = React.forwardRef<HTMLElement, { items: NavItem[]; expanded?: boolean; className?: string }>(
+  ({ items, expanded = false, className }, ref) => {
+    if (expanded) {
+      return <TreeMenu ref={ref} items={toTreeItems(items)} className={cn("w-full", className)} />;
+    }
+    return (
+      <nav
+        ref={ref}
+        aria-label="Navigation"
+        className={cn("flex w-full flex-shrink-0 flex-col gap-0.5 items-center", className)}
+      >
+        {items.map((item, i) => {
+          const isActive =
+            item.active || (item.children && item.children.some((c) => c.active));
+          return (
+            <div key={i} className="relative flex w-9 flex-shrink-0 justify-center">
+              {isActive && (
+                <span
+                  aria-hidden="true"
+                  className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-lyra-state-hover-primary"
+                />
+              )}
+              <Tooltip content={item.label} placement="right" asLabel>
+                <button
+                  onClick={item.onClick}
+                  aria-label={item.label}
+                  aria-current={isActive ? "page" : undefined}
+                  className={cn(
+                    "flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lyra-sm transition-colors",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
+                    isActive
+                      ? "bg-lyra-bg-active-moderate text-lyra-fg-active-strong"
+                      : "text-lyra-fg-default hover:bg-lyra-state-hover active:bg-lyra-state-pressed"
+                  )}
+                >
+                  <span aria-hidden="true">{item.icon}</span>
+                </button>
+              </Tooltip>
+            </div>
+          );
+        })}
+      </nav>
+    );
+  }
+);
+NavRail.displayName = "NavRail";
+
+export { LeftNav, NavRail };
 export type { LeftNavProps };

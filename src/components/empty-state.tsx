@@ -19,27 +19,44 @@ export interface EmptyStateProps extends React.HTMLAttributes<HTMLDivElement> {
   message?: React.ReactNode;
   /** Optional secondary line rendered under the message, smaller/muted */
   description?: React.ReactNode;
+  /**
+   * Text color for the icon/message/description — `"disabled"` (default,
+   * `text-lyra-fg-disabled`, unchanged) is the original/most muted tone,
+   * meant for a bounded "nothing here yet" box (a card body, a history
+   * panel). `"secondary"` (`text-lyra-fg-secondary`, one step brighter) is
+   * for a placeholder that needs to read clearly against a busier
+   * surrounding UI — the same token the app's own hand-rolled "Nothing to
+   * Display" (Contact History) placeholder already uses, per an explicit
+   * request/screenshot comparing the two ("it should match the Nothing to
+   * Display in My Contact History"). Off by default so every existing
+   * consumer (`DraggablePanel`'s default body, `AiPanel`'s history view,
+   * the `EmptyState` stories) is completely unaffected.
+   */
+  tone?: "disabled" | "secondary";
 }
 
 const EmptyState = React.forwardRef<HTMLDivElement, EmptyStateProps>(
-  ({ icon, message = "No data available", description, className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn(
-        "flex h-full w-full flex-col items-center justify-center gap-2 py-8 text-center",
-        className
-      )}
-      {...props}
-    >
-      {icon && (
-        <span className="text-lyra-fg-disabled" aria-hidden="true">
-          {icon}
-        </span>
-      )}
-      <p className="lyra-body-md text-lyra-fg-disabled">{message}</p>
-      {description && <p className="lyra-body-sm text-lyra-fg-disabled">{description}</p>}
-    </div>
-  )
+  ({ icon, message = "No data available", description, tone = "disabled", className, ...props }, ref) => {
+    const toneClassName = tone === "secondary" ? "text-lyra-fg-secondary" : "text-lyra-fg-disabled";
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "flex h-full w-full flex-col items-center justify-center gap-2 py-8 text-center",
+          className
+        )}
+        {...props}
+      >
+        {icon && (
+          <span className={toneClassName} aria-hidden="true">
+            {icon}
+          </span>
+        )}
+        <p className={cn("lyra-body-md", toneClassName)}>{message}</p>
+        {description && <p className={cn("lyra-body-sm", toneClassName)}>{description}</p>}
+      </div>
+    );
+  }
 );
 EmptyState.displayName = "EmptyState";
 

@@ -914,12 +914,16 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
     // and action buttons both wrap down together onto one shared row
     // beneath it — filters floated left, action buttons right (`justify-
     // between`, not both crowded onto one right-aligned side) — in both
-    // the title and no-title layouts. Raised from 360 to 768 so this
-    // shared row kicks in well before `isWide`'s own 991 threshold,
-    // rather than leaving a narrow dead zone where the actions/filters
-    // row is still crowded (`isWide` false) but not yet wrapped
-    // (`isNarrow` also still false).
-    const isNarrow = containerWidth <= 768;
+    // the title and no-title layouts. Raised from 360 to 768, then per a
+    // further explicit follow-up ("update the container breakpoint to
+    // 768px so search goes to a row below sooner" — clarified to mean
+    // raising the wrap point further, to close out the crowded 769–990px
+    // dead zone entirely, not literally re-lowering it to 768) raised
+    // again to match `isWide`'s own 991 threshold exactly: `isNarrow` is
+    // now simply `!isWide`, so the row wraps the INSTANT the toolbar drops
+    // out of the wide tier — no gap where the actions/filters row is
+    // already crowded (`isWide` false) but still hasn't wrapped.
+    const isNarrow = containerWidth < 991;
 
     useEffect(() => {
       if (!moreOpen) return;

@@ -19,6 +19,14 @@ import { Button } from "./button";
    Storybook usage) don't need to change. */
 
 const ACTION_ICON_BUTTON_SIZE_MAP = {
+  /* Matches `Button`'s own `size="sm"` (h-6, 24px) — for an icon button
+     that must sit height-matched next to a labeled `sm` `Button` in the
+     same row (e.g. agent-next-gen-v2's Customer Overview card, whose
+     channel-launch icon buttons sit beside a `size="sm"` "Edit" button —
+     see that app's own doc comment on the change that added this tier).
+     Not the default for this component's own general icon-button usage
+     (24px reads as quite small on its own) — opt in per-consumer. */
+  xs: "icon-sm",
   sm: "icon-md",
   default: "icon-lg",
   lg: "icon-xl",
@@ -32,8 +40,8 @@ interface ActionIconButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   /** Badge count — hidden when 0 or undefined */
   badge?: number;
-  /** Size: sm=32 (Button `icon-md`), default=36 (`icon-lg`), lg=40 (`icon-xl`), xl=44 (`icon-2xl`, the AppHeader standard) */
-  size?: "sm" | "default" | "lg" | "xl";
+  /** Size: xs=24 (Button `icon-sm`, matches `Button`'s own `size="sm"` height), sm=32 (Button `icon-md`), default=36 (`icon-lg`), lg=40 (`icon-xl`), xl=44 (`icon-2xl`, the AppHeader standard) */
+  size?: "xs" | "sm" | "default" | "lg" | "xl";
 }
 
 const ActionIconButton = React.forwardRef<

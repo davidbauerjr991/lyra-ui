@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
-import { LeftNav, type NavItem } from "../left-nav";
+import { LeftNav, NavRail, type NavItem } from "../left-nav";
+import { EmptyState } from "../empty-state";
 import { CreateNew, useOutboundAddButton, type CreateNewOutboundContact, type CreateNewOutboundConfig } from "../create-new";
 import { InteractionNavItem, type InteractionChannel, type ChannelType } from "../interaction-nav-item";
 import { AssignmentsSectionCaption, type AssignmentSortValue } from "../assignments-section-caption";
@@ -19,6 +20,7 @@ import {
   HelpCircle,
   Gauge,
   BarChart3,
+  Inbox,
 } from "lucide-react";
 
 /**
@@ -534,28 +536,70 @@ export const AgentNextGen: Story = {
     // interaction (activeId set) takes the active state away from Desk,
     // since focus has moved to that assignment instead. `onClick` clears
     // `activeId` back to "" so Desk stays a real way back to this page
-    // instead of just a static "you're on the dashboard" indicator. Every
-    // item below it is a plain static rail entry. Rail is Home("Desk") +
-    // Settings only, matching AgentNextGenTemplate.stories.tsx's NAV_ITEMS
-    // (Search/WEM/Help removed per explicit request — the header app-panel
-    // icons cover those surfaces).
-    const items: NavItem[] = [
-      {
-        icon: <Home className="h-4 w-4" strokeWidth={1.5} />,
-        label: "Desk",
-        active: activeId === "",
-        onClick: () => setActiveId(""),
-      },
-      {
-        icon: <Settings className="h-4 w-4" strokeWidth={1.5} />,
-        label: "Settings",
-      },
-    ];
+    // instead of just a static "you're on the dashboard" indicator.
+    //
+    // Split into two separate items (not one combined `items` array
+    // anymore) to match `agent-next-gen-v2`'s own restructuring: "Desk"
+    // renders above the Assignments caption/cards via `itemsFirst`,
+    // "Settings" renders genuinely pinned to the true bottom via `footer`
+    // + `NavRail` — see the `<LeftNav>` call below for the full reasoning
+    // (kept inline there, matching `AgentNextGenPage.tsx`'s own comments).
+    const homeItem: NavItem = {
+      icon: <Home className="h-4 w-4" strokeWidth={1.5} />,
+      label: "Desk",
+      active: activeId === "",
+      onClick: () => setActiveId(""),
+    };
+    const settingsItem: NavItem = {
+      icon: <Settings className="h-4 w-4" strokeWidth={1.5} />,
+      label: "Settings",
+    };
     return (
       <LeftNav
-        items={items}
+        items={[homeItem]}
         open={open}
         onToggle={() => setOpen((v) => !v)}
+        // `itemsFirst` — "Desk" renders ABOVE `header` (the "Assignments"
+        // caption + empty-state/cards), `sticky top-0`, directly under
+        // `pinnedHeader` ("New Outbound"). "Settings" goes to `footer`
+        // instead (below), genuinely pinned to the true bottom of the rail
+        // rather than sharing this sticky-top spot with "Desk".
+        itemsFirst
+        // Lets `header` grow to fill whatever height "Desk"+"New Outbound"
+        // don't use, so the "Your assignment queue is empty" message below
+        // can be vertically centered in that leftover space — see its own
+        // centering wrapper, and `headerFillsHeight`'s doc comment in
+        // left-nav.tsx.
+        headerFillsHeight
+        // "Assignments (N)" caption — per explicit follow-up request ("fix
+        // the assignments header under the home button so it doesn't
+        // scroll"), mirrored from `agent-next-gen-v2` (see
+        // `AgentNextGenPage.tsx`'s own comment on this same prop for the
+        // fuller writeup): rendered via `stickyCaption` now, the same
+        // sticky-top box as `items` ("Desk"), so it stays pinned instead of
+        // scrolling away with the cards under it.
+        stickyCaption={
+          <AssignmentsSectionCaption
+            expanded={open}
+            count={interactions.length}
+            sort={assignmentSort}
+            onSortChange={setAssignmentSort}
+            allExpanded={channelsAllExpanded}
+            onToggleAllExpanded={handleToggleAllChannelsExpanded}
+            compact
+          />
+        }
+        // "Settings" — genuinely pinned to the TRUE bottom of the nav (not
+        // just `sticky bottom-0`, which only holds once the card list
+        // actually overflows). `footer` renders as a sibling AFTER the
+        // whole scrollable region — always at the aside's real bottom edge
+        // regardless of content above it. `NavRail` renders this single
+        // item with the exact same TreeMenu/icon-only styling `items`
+        // itself uses. `expanded={open}` passed explicitly, not left to
+        // `injectExpanded` — `left-nav.tsx`'s inline (non-overlay) mode
+        // renders `footer` as `{footer}` directly with no injection at
+        // all (only the overlay-mode branch auto-injects `expanded`).
+        footer={<NavRail expanded={open} items={[settingsItem]} />}
         pinnedHeader={
           <CreateNew
             title="New Outbound"
@@ -569,19 +613,51 @@ export const AgentNextGen: Story = {
         }
         header={
           <>
-            {/* "Assignments (N active)" caption + collapse-all/sort — see
-                assignments-section-caption.tsx's own doc comment. `count`
-                is `interactions.length`, the exact same live list the
-                cards below render from, so the two numbers can't drift
-                apart. */}
-            <AssignmentsSectionCaption
-              expanded={open}
-              count={interactions.length}
-              sort={assignmentSort}
-              onSortChange={setAssignmentSort}
-              allExpanded={channelsAllExpanded}
-              onToggleAllExpanded={handleToggleAllChannelsExpanded}
-            />
+            {/* "Assignments (N active)" caption + collapse-all/sort — now
+                rendered via `stickyCaption` above (pinned with "Desk"
+                instead of scrolling with these cards), not here. See
+                assignments-section-caption.tsx's own doc comment for the
+                caption's own reasoning; `count` there is still
+                `interactions.length`, the exact same live list these
+                cards render from, so the two numbers can't drift apart. */}
+            {/* Dismiss every seeded/started card (each card's own "×") to
+                see this live — matches `agent-next-gen-v2`'s own empty
+                state exactly, including the vertical centering
+                (`headerFillsHeight` above), the `tone="secondary"` color
+                match to Contact History's "Nothing to Display" placeholder,
+                and the delayed fade-in below (see the "Empty State" story,
+                further down this file, for a dedicated demo that doesn't
+                require dismissing cards first).
+
+                `animate-in fade-in-0 duration-150 delay-200
+                fill-mode-backwards` — per explicit follow-up ("I can see
+                the text growing/shrinking ... have it fade in"), mirrored
+                from `agent-next-gen-v2`'s own `AgentNextGenPage.tsx` (see
+                that file's comment on this same block for the full
+                writeup): this message mounts the instant `open` flips
+                true, while the `<aside>` itself (left-nav.tsx) is still
+                mid-`transition-all duration-200` on its own width. Without
+                the delay, the message sits inside a still-widening box for
+                that whole 200ms and visibly rewraps as more room opens up.
+                `delay-200` matches that width transition's own duration so
+                the fade only starts once it's settled; `fill-mode-
+                backwards` holds the message at opacity 0 for the entire
+                delay (approximating the requested `display: none` →
+                `display: inline`, since `display` itself can't be
+                transitioned). No equivalent needed on close — this block
+                unmounts instantly when `open` goes false, before the aside
+                starts collapsing. */}
+            {interactions.length === 0 && open && (
+              <div className="flex flex-1 min-h-0 items-center justify-center animate-in fade-in-0 duration-150 delay-200 fill-mode-backwards">
+                <EmptyState
+                  icon={<Inbox className="h-8 w-8" strokeWidth={1.5} />}
+                  message="Your assignment queue is empty"
+                  description="New assignments will appear here."
+                  className="h-auto w-full py-6"
+                  tone="secondary"
+                />
+              </div>
+            )}
             {sortAssignments(interactions, assignmentSort).map((interaction) => (
               <InteractionNavItem
                 key={interaction.id}
@@ -612,6 +688,91 @@ export const AgentNextGen: Story = {
                 }}
               />
             ))}
+          </>
+        }
+      />
+    );
+  },
+};
+
+/* ── Empty State ── */
+
+/**
+ * Dedicated demo of the left nav's "no assignments" empty state — per
+ * explicit request ("add a story to the left nav that shows an empty state
+ * like this"), so it's visible directly on load instead of only being
+ * reachable by manually dismissing every seeded/started card in the
+ * `AgentNextGen` story above.
+ *
+ * Deliberately minimal: a real `homeItem`/`footer` (`NavRail` + Settings,
+ * same as `AgentNextGen`) so the empty state reads in its real context —
+ * still inside the actual rail chrome, not floating in isolation — but no
+ * `pinnedHeader`/`CreateNew` "New Outbound" trigger and no interaction
+ * seeding/dismissal logic at all, since this story has exactly one state to
+ * show and nothing here should ever add a card to it. `count={0}` is a
+ * fixed prop, not local state driven by any list.
+ *
+ * Toggle the collapse/expand button (or `Collapsed`'s own control) to watch
+ * the message mount fresh each time the rail re-opens — the delayed
+ * `animate-in fade-in-0 duration-150 delay-200 fill-mode-backwards` on its
+ * wrapper (mirrored from `agent-next-gen-v2`'s own fix; see
+ * `AgentNextGenPage.tsx`'s comment on this same block for the full
+ * writeup) is exactly what this story exists to demonstrate: the message
+ * stays invisible through the rail's own 200ms width transition, then
+ * fades in once that settles, instead of visibly rewrapping as the rail
+ * widens.
+ */
+export const EmptyStateExample: Story = {
+  name: "Empty State",
+  render: () => {
+    const [open, setOpen] = useState(true);
+    const homeItem: NavItem = {
+      icon: <Home className="h-4 w-4" strokeWidth={1.5} />,
+      label: "Desk",
+      active: true,
+    };
+    const settingsItem: NavItem = {
+      icon: <Settings className="h-4 w-4" strokeWidth={1.5} />,
+      label: "Settings",
+    };
+    return (
+      <LeftNav
+        items={[homeItem]}
+        open={open}
+        onToggle={() => setOpen((v) => !v)}
+        itemsFirst
+        headerFillsHeight
+        // `count={0}` — always empty, so `AssignmentsSectionCaption` never
+        // shows its sort/collapse-all actions (`showActions = count > 1`);
+        // the sort/toggle props below are still required by its own type
+        // but are never actually invoked here. Rendered via `stickyCaption`
+        // (pinned with "Desk" instead of scrolling), matching the real app
+        // and the `AgentNextGen` story above.
+        stickyCaption={
+          <AssignmentsSectionCaption
+            expanded={open}
+            count={0}
+            sort="lastUpdated"
+            onSortChange={() => {}}
+            allExpanded
+            onToggleAllExpanded={() => {}}
+            compact
+          />
+        }
+        footer={<NavRail expanded={open} items={[settingsItem]} />}
+        header={
+          <>
+            {open && (
+              <div className="flex flex-1 min-h-0 items-center justify-center animate-in fade-in-0 duration-150 delay-200 fill-mode-backwards">
+                <EmptyState
+                  icon={<Inbox className="h-8 w-8" strokeWidth={1.5} />}
+                  message="Your assignment queue is empty"
+                  description="New assignments will appear here."
+                  className="h-auto w-full py-6"
+                  tone="secondary"
+                />
+              </div>
+            )}
           </>
         }
       />

@@ -103,8 +103,17 @@ const APP_MENU_GROUPS: AppMenuGroup[] = [
    The "Create New" header uses the shared Outbound-flow config (see
    create-new-outbound-mock.tsx) rather than the old flat channel list. NAV_
    ITEMS and the header's InteractionNavItem cards mirror LeftNav.stories.tsx's
-   "Agent Next Gen Left Nav" story exactly (no item marked `active` — the rail
-   itself doesn't track a "current page" here, same as that story). */
+   "Agent Next Gen Left Nav" story (no item marked `active` — the rail itself
+   doesn't track a "current page" here, same as that story).
+
+   NOTE — no longer an EXACT mirror as of that story's `itemsFirst`/`footer`
+   restructuring (Home above the Assignments caption, Settings genuinely
+   pinned to the true bottom via `NavRail`, matching `agent-next-gen-v2`'s
+   own left nav): this story's own `<LeftNav>` call (further down) still
+   passes NAV_ITEMS as one combined `items` array in the library's default
+   arrangement, deliberately not touched by that restructuring — it wasn't
+   part of the request that prompted it. Revisit if a future request asks
+   for this story specifically to match too. */
 
 const NAV_ITEMS: NavItem[] = [
   // Home + Settings only (Contacts/Directory/Schedule removed per explicit

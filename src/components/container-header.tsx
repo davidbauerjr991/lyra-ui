@@ -76,18 +76,34 @@ export interface ContainerHeaderProps extends React.HTMLAttributes<HTMLDivElemen
    */
   tabs?: React.ReactNode;
   /**
-   * Establishes a CSS container-query boundary (`.lyra-container-header-
-   * actions-wrap`, `container-type: inline-size`) around this whole header
-   * — below ~480px of the header's own available width, descendants opted
-   * into that family reflow: a chip-style trigger in `actions` (e.g.
-   * `DateFilterChip` in agent-next-gen-v1) can shrink to a compact icon via
-   * its own `-filter-full`/`-filter-compact` markup, and a `SearchInput`
-   * pair can swap which of two copies is visible via `-search-inline`/
-   * `-search-below` (one sitting in `actions`, the other passed through
-   * `tabs` so it renders on its own full-width row below the title) — see
-   * lyra-tokens.css's "Container header actions" families for the concrete
-   * classes. Default `false`: a header with a couple of plain icon buttons
-   * in `actions` doesn't need any of this.
+   * Marks this header (`.lyra-container-header-actions-wrap`) as scoped
+   * into the shared responsive-collapse family: a chip-style trigger in
+   * `actions` (e.g. `DateFilterChip` in agent-next-gen-v1) can shrink to a
+   * compact icon via its own `-filter-full`/`-filter-compact` markup, and a
+   * `SearchInput` pair can swap which of two copies is visible via
+   * `-search-inline`/`-search-below` (one sitting in `actions`, the other
+   * passed through `tabs` so it renders on its own full-width row below the
+   * title) — see lyra-tokens.css's "Container header actions" families for
+   * the concrete classes. Default `false`: a header with a couple of plain
+   * icon buttons in `actions` doesn't need any of this.
+   *
+   * On its own this does nothing — it does NOT establish the CSS
+   * container-query boundary those collapse rules react to. That's a
+   * SEPARATE, explicitly opt-in class, `.lyra-container-header-query-
+   * boundary` (`container-type: inline-size`), which the caller applies to
+   * whichever ancestor's width should actually decide the collapse —
+   * typically the card's own outer root, one level OUTSIDE this component,
+   * via that card's own `className` (e.g. `DashboardCard`'s `className`).
+   * Kept deliberately separate from this prop after a real regression: an
+   * earlier version had `actionsWrap` establish that boundary right here,
+   * on this header's own row — every consumer that turned `actionsWrap` on
+   * shared the exact same width and threshold with no way to opt out, so
+   * raising `ContactHistoryCard`'s own 768px threshold silently broke
+   * narrower dashboard widgets (Performance/Productivity's `DateFilterChip`)
+   * that had only turned `actionsWrap` on for the icon-collapse fallback —
+   * they went from "always full" to "always collapsed" with no code of
+   * their own changing. See `.lyra-container-header-query-boundary`'s own
+   * doc comment (lyra-tokens.css) for the full story.
    *
    * Does NOT wrap `actions` itself as a block (an earlier version of this
    * prop did — `.lyra-container-header-actions-row`/`-actions` forcibly

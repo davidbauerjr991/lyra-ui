@@ -138,7 +138,7 @@ export { RadioGroup, RadioGroupItem } from "./components/radio";
 export type { RadioGroupProps, RadioGroupItemProps } from "./components/radio";
 export { RadioButtonGroup } from "./components/radio-button-group";
 export type { RadioButtonGroupProps, RadioButtonGroupOption } from "./components/radio-button-group";
-export { LeftNav } from "./components/left-nav";
+export { LeftNav, NavRail } from "./components/left-nav";
 export type { NavItem, NavChild, LeftNavProps } from "./components/left-nav";
 export { CXoneLogo } from "./components/cxone-logo";
 export type { CXoneLogoProps } from "./components/cxone-logo";

@@ -5,6 +5,7 @@ import { Popover } from "./popover";
 import { RadioGroup, RadioGroupItem } from "./radio";
 import { ActionIconButton } from "./actions";
 import { Separator } from "./separator";
+import { cn } from "../lib/utils";
 
 /* ── Assignments section caption ──
    Ported from agent-next-gen-v2's `agent-next-gen-interaction-dashboard.tsx`
@@ -167,6 +168,7 @@ export function AssignmentsSectionCaption({
   onSortChange,
   allExpanded,
   onToggleAllExpanded,
+  compact = false,
 }: {
   expanded?: boolean;
   count: number;
@@ -175,6 +177,21 @@ export function AssignmentsSectionCaption({
   /** See `AssignmentsExpandCollapseAllButton`'s own doc comment above. */
   allExpanded: boolean;
   onToggleAllExpanded: () => void;
+  /**
+   * Tightens this caption's own vertical padding — the text row's `py-2`
+   * (8px top, 8px bottom) becomes `pt-0 pb-1` (0px top, 4px bottom), and
+   * the wrapper's own trailing `pb-2` (8px, the gap after the `Separator`)
+   * becomes `pb-1` (4px) — per explicit request/devtools screenshot
+   * ("update the padding-top:0 and bottom:4px" on this caption), specific
+   * to `LeftNav`'s `stickyCaption` slot (agent-next-gen-v2's left nav):
+   * pinned directly under a sticky "Home" item there, with no gap of its
+   * own needed above, and only a thin one needed below before the
+   * scrolling cards start. Off by default — every other consumer (the
+   * un-restructured `AgentNextGenTemplate.stories.tsx` story,
+   * `agent-next-gen-interaction-dashboard.tsx`) keeps this caption's
+   * original spacing, unaffected.
+   */
+  compact?: boolean;
 }) {
   const showActions = count > 1;
   if (!expanded) {
@@ -186,8 +203,8 @@ export function AssignmentsSectionCaption({
     );
   }
   return (
-    <div className="flex flex-col pb-2">
-      <div className="flex items-center justify-between gap-2 pl-2 py-2">
+    <div className={cn("flex flex-col", compact ? "pb-1" : "pb-2")}>
+      <div className={cn("flex items-center justify-between gap-2 pl-2", compact ? "pt-0 pb-1" : "py-2")}>
         <div className="flex items-baseline gap-1">
           <span className="lyra-body-md-emphasis text-lyra-fg-default">Assignments</span>
           <span className="lyra-body-md text-lyra-fg-secondary">({count})</span>
