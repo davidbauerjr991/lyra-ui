@@ -1,7 +1,9 @@
 import * as React from "react";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Phone, MessageCircle } from "lucide-react";
 import { cn } from "../lib/utils";
+import { Popover } from "./popover";
+import { MenuItem } from "./menu-item";
 
 /**
  * Promoted out of agent-next-gen-v2's transcript file (originally a
@@ -65,6 +67,17 @@ export interface ContactOverviewProps extends ContactOverviewInfo {
    *  "always has a header to attach to" reasoning `onViewCustomerInfo` gets
    *  from Contact Snapshot. Omit to hide. */
   onViewInteractionHistory?: () => void;
+  /**
+   * Turns `previousAgent.name (previousAgent.agentId)` into a clickable
+   * link (per explicit request) that opens a small popover offering
+   * "Call"/"Chat" — the caller launches whichever interaction makes sense
+   * for reaching that colleague on `channel`. Has no effect (and the name/
+   * id renders as plain text, same as before) when `previousAgent` itself
+   * is unset, or when this is omitted — same "no callback, no
+   * affordance" convention `onViewCustomerInfo`/`onViewInteractionHistory`
+   * already follow.
+   */
+  onLaunchPreviousAgentInteraction?: (channel: "voice" | "chat") => void;
 }
 
 /* ── ContactOverview ──
@@ -100,9 +113,16 @@ const ContactOverview = React.forwardRef<HTMLDivElement, ContactOverviewProps>(
       className,
       onViewCustomerInfo,
       onViewInteractionHistory,
+      onLaunchPreviousAgentInteraction,
     },
     ref
   ) => {
+    // Closes the "Call"/"Chat" popover as part of picking either one — a
+    // plain uncontrolled `Popover` (no `open`/`onOpenChange` passed) only
+    // closes on outside click/Escape, not on an internal item's own click,
+    // so this stays local state rather than leaving that to Radix's
+    // defaults.
+    const [previousAgentPopoverOpen, setPreviousAgentPopoverOpen] = React.useState(false);
     return (
       <AccordionPrimitive.Root
         ref={ref}
@@ -134,9 +154,46 @@ const ContactOverview = React.forwardRef<HTMLDivElement, ContactOverviewProps>(
                   <>
                     {" "}This is your first contact with {customerName} although they have already been working
                     with{" "}
-                    <span className="lyra-body-md-emphasis text-lyra-fg-default">
-                      {previousAgent.name} ({previousAgent.agentId})
-                    </span>
+                    {onLaunchPreviousAgentInteraction ? (
+                      <Popover
+                        open={previousAgentPopoverOpen}
+                        onOpenChange={setPreviousAgentPopoverOpen}
+                        placement="bottom"
+                        align="start"
+                        bodyPadding={false}
+                        content={
+                          <div className="flex flex-col py-1">
+                            <MenuItem
+                              icon={<Phone className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />}
+                              label="Call"
+                              onClick={() => {
+                                setPreviousAgentPopoverOpen(false);
+                                onLaunchPreviousAgentInteraction("voice");
+                              }}
+                            />
+                            <MenuItem
+                              icon={<MessageCircle className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />}
+                              label="Chat"
+                              onClick={() => {
+                                setPreviousAgentPopoverOpen(false);
+                                onLaunchPreviousAgentInteraction("chat");
+                              }}
+                            />
+                          </div>
+                        }
+                      >
+                        <button
+                          type="button"
+                          className="lyra-body-md-emphasis text-lyra-fg-link hover:underline focus-visible:outline-none"
+                        >
+                          {previousAgent.name} ({previousAgent.agentId})
+                        </button>
+                      </Popover>
+                    ) : (
+                      <span className="lyra-body-md-emphasis text-lyra-fg-default">
+                        {previousAgent.name} ({previousAgent.agentId})
+                      </span>
+                    )}
                     .
                   </>
                 ) : (
