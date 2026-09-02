@@ -2220,7 +2220,14 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                 Start Interaction
               </Button>
             </div>
-          ) : (screen.kind === "group" || screen.kind === "outbound-menu") &&
+          ) : screen.kind === "group" &&
+            // Per a later explicit follow-up request, the "outbound-menu"
+            // screen (screen 1, the group row list) no longer ever falls
+            // through to the flat cross-group contacts list this footer
+            // paginates — searching there now just narrows each row's own
+            // count instead (see that screen's own render-site doc
+            // comment) — so this footer only ever needs to apply to a real
+            // "group" screen (screen 2) now.
             ((activeGroup?.kind ?? "contacts") === "contacts" || activeGroup?.kind === "favorites") &&
             filteredGroupContacts.length > 0 &&
             // Per a later explicit request ("display all of the agents
@@ -2325,7 +2332,7 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                 className="animate-in fade-in-0 slide-in-from-right-1 duration-150"
               >
                 {(screen.kind === "group" || screen.kind === "outbound-menu") && activeGroup && (
-                  screen.kind === "outbound-menu" && !search.trim() ? (
+                  screen.kind === "outbound-menu" ? (
                     // The group row list itself — per explicit follow-up
                     // request, moved here from the popover's pinned
                     // `header` above (see that block's own doc comment) so
@@ -2333,13 +2340,16 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                     // scroll container once the popover runs out of
                     // available height, instead of overflowing a non-
                     // scrolling header with no way to reach the rows below
-                    // the fold. Only shown idle (`!search.trim()`) — once
-                    // searching, this screen falls through to the same
-                    // contacts-list branch below that any other
-                    // "favorites"-kind group already uses (see
-                    // `activeGroup`'s own doc comment on why this screen
-                    // resolves to that kind), showing matching results
-                    // across every group instead of the row list.
+                    // the fold. Per explicit follow-up request, shown
+                    // whether idle OR searching — typing into this screen's
+                    // own search field no longer swaps the row list out for
+                    // a flat cross-group results list; instead each row's
+                    // own `recordCount` (below) narrows to that group's
+                    // matching contacts, e.g. "Agents (100)" becoming
+                    // "Agents (5)", so the agent can still see which
+                    // group(s) actually have a match before drilling into
+                    // one, rather than being dropped straight into a
+                    // single merged list.
                     //
                     // Per explicit request: the group picker is no longer
                     // a collapsed `Select` combobox — it's now an always-
@@ -2391,11 +2401,27 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                         // is `undefined` for both, and the label renders
                         // with no "(N)" suffix rather than a misleading
                         // "(0)".
+                        //
+                        // Per explicit follow-up request, while searching
+                        // this narrows to how many of that group's own
+                        // contacts actually MATCH the typed query (same
+                        // `contactMatchesSearch` every other search surface
+                        // here already uses) — "favorites" still counts
+                        // across every group while searching (matching
+                        // `activeGroupContacts`' own identical
+                        // "search overrides the starred-only filter" rule
+                        // for that kind, see its doc comment), not just the
+                        // matching ones already starred.
+                        const searchQuery = search.trim();
                         const recordCount =
-                          g.kind === "favorites"
-                            ? favoriteIds.size
-                            : g.kind === "dialpad" || g.kind === "empty"
+                          g.kind === "dialpad" || g.kind === "empty"
                             ? undefined
+                            : searchQuery
+                            ? (g.kind === "favorites" ? allOutboundContacts : g.contacts ?? []).filter((c) =>
+                                contactMatchesSearch(c, searchQuery)
+                              ).length
+                            : g.kind === "favorites"
+                            ? favoriteIds.size
                             : g.contacts?.length ?? 0;
                         return (
                         <ListItem
