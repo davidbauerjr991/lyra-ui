@@ -1983,103 +1983,119 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                 )}
               </div>
             )}
-            {/* Per explicit request: the group picker is no longer a
-                collapsed `Select` combobox — it's now an always-visible
-                list of rows directly below the search field (a divider
-                marks the boundary, same `border-t border-lyra-border-subtle`
-                treatment `ContactRow`/the section headers below already
-                use), each one a full-width button that swaps `activeGroup`
-                exactly like the old `Select`'s `onValueChange` did. Same
-                `kind !== "dialpad"` filter as before — Dial Pad keeps its
-                own small ghost button below instead of a row here. No
-                icon/count on these rows (unlike `ContactRow`'s own
-                leading-icon treatment) — plain caps-tracked label + a
-                trailing chevron, matching the reference mockup exactly. */}
-            <div className="border-t border-lyra-border-subtle -mx-4">
-              {(outbound?.groups ?? [])
-                .filter((g) => g.kind !== "dialpad")
-                .map((g) => (
-                  <button
-                    key={g.id}
-                    type="button"
-                    onClick={() => setActiveGroup(g.id)}
-                    aria-current={activeGroup.id === g.id ? "true" : undefined}
-                    className={cn(
-                      "flex w-full items-center justify-between gap-2 border-b border-lyra-border-subtle px-4 py-3 text-left transition-colors",
-                      "hover:bg-lyra-state-hover active:bg-lyra-state-pressed focus-visible:outline-none focus-visible:bg-lyra-state-hover",
-                      activeGroup.id === g.id && "bg-lyra-bg-active-subtle"
-                    )}
-                  >
-                    <span className="lyra-body-sm-emphasis uppercase tracking-wide text-lyra-fg-secondary">
-                      {g.label}
-                    </span>
-                    <ChevronRight
-                      className="h-4 w-4 flex-shrink-0 text-lyra-fg-disabled"
-                      strokeWidth={1.5}
-                      aria-hidden="true"
-                    />
-                  </button>
-                ))}
-            </div>
-            {/* Per-group secondary picker — see `CreateNewOutboundGroup.
-                subFilter`'s own doc comment above. Renders below "Choose
-                group" so it reads as a further narrowing of whichever
-                group is already selected (e.g. Teams → a specific team),
-                not a second, competing top-level filter. */}
-            {activeGroup.subFilter && (
-              <Select
-                aria-label={activeGroup.subFilter.ariaLabel}
-                placeholder={activeGroup.subFilter.placeholder}
-                value={activeGroup.subFilter.value}
-                onValueChange={activeGroup.subFilter.onChange}
-                options={activeGroup.subFilter.options}
-                portalDropdown
-              />
+            {/* Per explicit follow-up request: while the agent is typing a
+                search query, this whole group-row-list + Dial Pad block
+                hides — the matching contacts already render below (the
+                `filteredGroupContacts`/`filteredContacts` blocks further
+                down in `content`), so showing both the un-narrowed group
+                list AND the search results at once was redundant and
+                pushed the results down out of view. `!search.trim()` (not
+                `!search`) so a whitespace-only query still counts as
+                "searching" and hides this block, matching every other
+                `search.trim()` check in this file. */}
+            {!search.trim() && (
+              <>
+                {/* Dial Pad quick-access button — per follow-up request,
+                    now rendered ABOVE the group row list (previously
+                    below the group Select/subFilter) to match the
+                    reference mockup's own ordering. Looked up by `kind`
+                    (not a hardcoded id) so any consumer's own Dial Pad
+                    group — whatever `id` it picks — gets this treatment
+                    for free, same as `activeGroup.kind === "dialpad"`
+                    elsewhere in this file already keys off `kind` rather
+                    than a specific id. Omitted entirely when the consumer
+                    has no dialpad-kind group configured (e.g.
+                    `outbound.groups` doesn't include one) rather than
+                    rendering a button that goes nowhere. `variant="ghost"`
+                    has no underline of its own (see button.tsx's own
+                    `ghost` class list — text color + hover/active
+                    background only), so "don't underline" needed no extra
+                    styling here, just not reaching for a link-styled
+                    variant. */}
+                {(() => {
+                  const dialpadGroup = (outbound?.groups ?? []).find((g) => g.kind === "dialpad");
+                  return (
+                    dialpadGroup && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          // Captured here (not derived later) — see
+                          // `priorOutboundGroupId`'s own doc comment above for
+                          // why `setActiveGroup` alone can't be backed out of
+                          // via `popScreen`/the stack. `activeGroup` at this
+                          // exact moment (the group showing when this button
+                          // was clicked) is exactly "whichever filter the
+                          // agent was on before switching to Dial Pad" — the
+                          // same value `handleBackFromDialpad` below reads
+                          // back out once the header's back arrow is pressed.
+                          if (activeGroup) setPriorOutboundGroupId(activeGroup.id);
+                          setActiveGroup(dialpadGroup.id);
+                        }}
+                      >
+                        {dialpadGroup.icon ?? <LayoutGrid className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />}
+                        Dial Pad
+                      </Button>
+                    )
+                  );
+                })()}
+                {/* Per explicit request: the group picker is no longer a
+                    collapsed `Select` combobox — it's now an always-visible
+                    list of rows directly below the search field (a divider
+                    marks the boundary, same `border-t border-lyra-border-subtle`
+                    treatment `ContactRow`/the section headers below already
+                    use), each one a full-width button that swaps `activeGroup`
+                    exactly like the old `Select`'s `onValueChange` did. Same
+                    `kind !== "dialpad"` filter as before — Dial Pad has its
+                    own button above instead of a row here. No icon/count on
+                    these rows (unlike `ContactRow`'s own leading-icon
+                    treatment) — plain caps-tracked label + a trailing
+                    chevron, matching the reference mockup exactly. */}
+                <div className="border-t border-lyra-border-subtle -mx-4">
+                  {(outbound?.groups ?? [])
+                    .filter((g) => g.kind !== "dialpad")
+                    .map((g) => (
+                      <button
+                        key={g.id}
+                        type="button"
+                        onClick={() => setActiveGroup(g.id)}
+                        aria-current={activeGroup.id === g.id ? "true" : undefined}
+                        className={cn(
+                          "flex w-full items-center justify-between gap-2 border-b border-lyra-border-subtle px-4 py-3 text-left transition-colors",
+                          "hover:bg-lyra-state-hover active:bg-lyra-state-pressed focus-visible:outline-none focus-visible:bg-lyra-state-hover",
+                          activeGroup.id === g.id && "bg-lyra-bg-active-subtle"
+                        )}
+                      >
+                        <span className="lyra-body-sm-emphasis uppercase tracking-wide text-lyra-fg-secondary">
+                          {g.label}
+                        </span>
+                        <ChevronRight
+                          className="h-4 w-4 flex-shrink-0 text-lyra-fg-disabled"
+                          strokeWidth={1.5}
+                          aria-hidden="true"
+                        />
+                      </button>
+                    ))}
+                </div>
+                {/* Per-group secondary picker — see `CreateNewOutboundGroup.
+                    subFilter`'s own doc comment above. Renders below the
+                    group row list so it reads as a further narrowing of
+                    whichever group is already selected (e.g. Teams → a
+                    specific team), not a second, competing top-level
+                    filter. */}
+                {activeGroup.subFilter && (
+                  <Select
+                    aria-label={activeGroup.subFilter.ariaLabel}
+                    placeholder={activeGroup.subFilter.placeholder}
+                    value={activeGroup.subFilter.value}
+                    onValueChange={activeGroup.subFilter.onChange}
+                    options={activeGroup.subFilter.options}
+                    portalDropdown
+                  />
+                )}
+              </>
             )}
-            {/* Dial Pad quick-access button — per explicit request, a
-                small ghost button below the group Select/subFilter rather
-                than a dropdown entry (see the Select's own `options`
-                filter above for why it's excluded there). Looked up by
-                `kind` (not a hardcoded id) so any consumer's own Dial Pad
-                group — whatever `id` it picks — gets this treatment for
-                free, same as `activeGroup.kind === "dialpad"` elsewhere in
-                this file already keys off `kind` rather than a specific
-                id. Omitted entirely when the consumer has no dialpad-kind
-                group configured (e.g. `outbound.groups` doesn't include
-                one) rather than rendering a button that goes nowhere.
-                `variant="ghost"` has no underline of its own (see
-                button.tsx's own `ghost` class list — text color + hover/
-                active background only), so "don't underline" needed no
-                extra styling here, just not reaching for a link-styled
-                variant. */}
-            {(() => {
-              const dialpadGroup = (outbound?.groups ?? []).find((g) => g.kind === "dialpad");
-              return (
-                dialpadGroup && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      // Captured here (not derived later) — see
-                      // `priorOutboundGroupId`'s own doc comment above for
-                      // why `setActiveGroup` alone can't be backed out of
-                      // via `popScreen`/the stack. `activeGroup` at this
-                      // exact moment (the group showing when this button
-                      // was clicked) is exactly "whichever filter the
-                      // agent was on before switching to Dial Pad" — the
-                      // same value `handleBackFromDialpad` below reads
-                      // back out once the header's back arrow is pressed.
-                      if (activeGroup) setPriorOutboundGroupId(activeGroup.id);
-                      setActiveGroup(dialpadGroup.id);
-                    }}
-                  >
-                    {dialpadGroup.icon ?? <LayoutGrid className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />}
-                    Dial Pad
-                  </Button>
-                )
-              );
-            })()}
           </div>
         )}
 
