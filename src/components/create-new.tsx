@@ -56,7 +56,12 @@ const AGENT_PRESENCE_CONFIG: Record<
   busy:      { label: "Busy",      variant: "critical", icon: Minus },
   away:      { label: "Away",      variant: "warning" },
   offline:   { label: "Offline",   variant: "neutral", icon: X },
-  "in-call": { label: "In a Call", variant: "info", icon: Check },
+  // No icon — a checkmark specifically reads as "Available" (see that
+  // entry above), so per explicit follow-up feedback it can't be reused
+  // here just because this status also happens to render `success`-green
+  // elsewhere; this falls back to the plain white dot instead, same as
+  // `away`.
+  "in-call": { label: "In a Call", variant: "info" },
 };
 
 // Per explicit follow-up request, this replaces the old `AgentPresenceChip`
@@ -139,6 +144,19 @@ export interface CreateNewContact {
    *  sizing/color logic of its own. Omit for the plain, icon-less row
    *  every existing consumer already renders. */
   categoryIcon?: React.ReactNode;
+  /** Per explicit follow-up request: a small, bare (no colored circle)
+   *  "what kind of record is this" glyph rendered inline right after the
+   *  name itself — e.g. a plain headset for an agent, a share icon for a
+   *  skill, a building for a directory placeholder — rather than as part
+   *  of the leading avatar (`categoryIcon`, now always that record's own
+   *  initials avatar; see its own doc comment). Distinct from
+   *  `categoryIcon`: that one anchors `AgentPresenceBadge` and fills the
+   *  leading avatar slot, this one is a same-line label next to the name
+   *  text, same as `Menu`'s own `trailingIcon` convention of layering a
+   *  second small icon onto a row that already has one elsewhere. Omit
+   *  for the plain, icon-less row every existing consumer already
+   *  renders. */
+  typeIcon?: React.ReactNode;
 }
 
 /** "Queue: {N}   Wait Time: {M}m {S}s" — the skill-row secondary text. */
@@ -536,7 +554,19 @@ function ContactRow({
           : contact.subtitle;
         return (
           <span className="min-w-0 flex-1">
-            <span className="block truncate lyra-body-md text-lyra-fg-default">{contact.name}</span>
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className="truncate lyra-body-md text-lyra-fg-default">{contact.name}</span>
+              {/* Per explicit follow-up request: the contact-type glyph
+                  now sits inline right after the name (see `typeIcon`'s
+                  own doc comment, above) rather than in the leading avatar
+                  slot — `flex-shrink-0` so it never gets squeezed out by a
+                  long name before the name itself starts truncating. */}
+              {contact.typeIcon && (
+                <span aria-hidden="true" className="flex flex-shrink-0 items-center text-lyra-fg-secondary">
+                  {contact.typeIcon}
+                </span>
+              )}
+            </span>
             {/* No more status chip on this line — moved onto the leading
                 icon itself, see that render site's own comment above. This
                 secondary line is now just `secondaryText` (subtitle or the
