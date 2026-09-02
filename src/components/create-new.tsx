@@ -2252,10 +2252,16 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                     // (unlike `ContactRow`'s own leading-icon treatment) —
                     // plain caps-tracked label + a trailing chevron,
                     // matching the reference mockup exactly.
-                    <div className="border-t border-lyra-border-subtle">
-                      {/* `ListItem` (list-item.tsx) rather than a hand-
-                          rolled `<button>` row — per explicit request, use
-                          the design system's own default row primitive
+                    <div>
+                      {/* No extra `border-t` on this wrapper — the pinned
+                          header above already ends in its own
+                          `border-b border-lyra-border-subtle` (the search
+                          field's own container), so adding one here too
+                          doubled up into two adjacent divider lines right
+                          under the search field. `ListItem` (list-item.tsx)
+                          rather than a hand-rolled `<button>` row — per
+                          explicit request, use the design system's own
+                          default row primitive
                           here instead of one-off markup. It's a `<div>`,
                           not a real button, so `role="button"`/`tabIndex`/
                           `onKeyDown` add back the keyboard/semantics a
