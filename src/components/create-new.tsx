@@ -1516,8 +1516,8 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
       setPage(1);
     }, [search, screen.kind === "group" ? screen.groupId : screen.kind]);
 
-    const pushScreen = (s: Screen) => {
-      setSearch("");
+    const pushScreen = (s: Screen, options?: { keepSearch?: boolean }) => {
+      if (!options?.keepSearch) setSearch("");
       setStack((prev) => [...prev, s]);
     };
     const popScreen = () => {
@@ -1540,7 +1540,19 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     // return to the `"outbound-menu"` screen underneath with no special-
     // casing needed for any particular group (Dial Pad included).
     const goToGroup = (groupId: string) => {
-      pushScreen({ kind: "group", groupId });
+      // Per explicit follow-up request: screen 1's own search text carries
+      // straight over onto the group it's pushing to, rather than being
+      // cleared like every other `pushScreen` transition — typing "da" on
+      // the row list, then picking "Agents," should land already filtered
+      // to "da" (still an active, editable search, not a one-time snapshot
+      // — the group screen's own search field just starts pre-populated
+      // with what was already typed). `keepSearch: true` opts out of
+      // `pushScreen`'s normal clear-on-navigate behavior, which every
+      // OTHER transition (root → category, category → channels, a group's
+      // own row → detail, etc.) still gets unchanged — those really are
+      // moving to an unrelated context where a leftover query would be
+      // stale, not a continuation of the same search.
+      pushScreen({ kind: "group", groupId }, { keepSearch: true });
     };
     // Screen 2's second field means something different per channel: an
     // actual phone number for Call/SMS (from `outbound.phoneOptions`), or a
