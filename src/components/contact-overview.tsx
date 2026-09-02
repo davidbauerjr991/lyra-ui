@@ -107,7 +107,7 @@ const ContactOverview = React.forwardRef<HTMLDivElement, ContactOverviewProps>(
                   <span className="lyra-body-sm-emphasis text-lyra-fg-secondary">Contact Snapshot</span>
                   <ul className="flex flex-col gap-1 pl-4 list-disc">
                     {snapshot.map((line, i) => (
-                      <li key={i} className="lyra-body-md text-lyra-fg-default">
+                      <li key={i} className="lyra-body-sm text-lyra-fg-default">
                         {line}
                       </li>
                     ))}
