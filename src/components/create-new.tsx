@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Plus, X, ChevronLeft, ChevronRight, Search, LayoutGrid } from "lucide-react";
+import { Plus, X, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Menu } from "./menu";
 import { Input } from "./input";
@@ -2221,82 +2221,58 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
               >
                 {(screen.kind === "group" || screen.kind === "outbound-menu") && activeGroup && (
                   screen.kind === "outbound-menu" && !search.trim() ? (
-                    // The Dial Pad button + group row list themselves — per
-                    // explicit follow-up request, moved here from the
-                    // popover's pinned `header` above (see that block's own
-                    // doc comment) so this can actually scroll inside
-                    // `content`'s own scroll container once the popover
-                    // runs out of available height, instead of overflowing
-                    // a non-scrolling header with no way to reach the rows
-                    // below the fold. Only shown idle (`!search.trim()`) —
-                    // once searching, this screen falls through to the
-                    // same contacts-list branch below that any other
+                    // The group row list itself — per explicit follow-up
+                    // request, moved here from the popover's pinned
+                    // `header` above (see that block's own doc comment) so
+                    // this can actually scroll inside `content`'s own
+                    // scroll container once the popover runs out of
+                    // available height, instead of overflowing a non-
+                    // scrolling header with no way to reach the rows below
+                    // the fold. Only shown idle (`!search.trim()`) — once
+                    // searching, this screen falls through to the same
+                    // contacts-list branch below that any other
                     // "favorites"-kind group already uses (see
                     // `activeGroup`'s own doc comment on why this screen
                     // resolves to that kind), showing matching results
                     // across every group instead of the row list.
-                    <>
-                      {(() => {
-                        const dialpadGroup = (outbound?.groups ?? []).find((g) => g.kind === "dialpad");
-                        return (
-                          dialpadGroup && (
-                            <div className="px-4 pt-3">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => goToGroup(dialpadGroup.id)}
-                              >
-                                {dialpadGroup.icon ?? (
-                                  <LayoutGrid className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
-                                )}
-                                Dial Pad
-                              </Button>
-                            </div>
-                          )
-                        );
-                      })()}
-                      {/* Per explicit request: the group picker is no
-                          longer a collapsed `Select` combobox — it's now
-                          an always-visible list of rows (a divider marks
-                          the boundary against the Dial Pad button above,
-                          same `border-t border-lyra-border-subtle`
-                          treatment `ContactRow`/the section headers below
-                          already use), each one a full-width button.
-                          Picking a row PUSHES a real "group" screen
-                          (`goToGroup`) — a genuine back-button transition,
-                          see that helper's own doc comment. Same `kind !==
-                          "dialpad"` filter as before — Dial Pad has its
-                          own button above instead of a row here. No
-                          icon/count on these rows (unlike `ContactRow`'s
-                          own leading-icon treatment) — plain caps-tracked
-                          label + a trailing chevron, matching the
-                          reference mockup exactly. */}
-                      <div className="border-t border-lyra-border-subtle">
-                        {(outbound?.groups ?? [])
-                          .filter((g) => g.kind !== "dialpad")
-                          .map((g) => (
-                            <button
-                              key={g.id}
-                              type="button"
-                              onClick={() => goToGroup(g.id)}
-                              className={cn(
-                                "flex w-full items-center justify-between gap-2 border-b border-lyra-border-subtle px-4 py-3 text-left transition-colors",
-                                "hover:bg-lyra-state-hover active:bg-lyra-state-pressed focus-visible:outline-none focus-visible:bg-lyra-state-hover"
-                              )}
-                            >
-                              <span className="lyra-body-sm-emphasis uppercase tracking-wide text-lyra-fg-secondary">
-                                {g.label}
-                              </span>
-                              <ChevronRight
-                                className="h-4 w-4 flex-shrink-0 text-lyra-fg-disabled"
-                                strokeWidth={1.5}
-                                aria-hidden="true"
-                              />
-                            </button>
-                          ))}
-                      </div>
-                    </>
+                    //
+                    // Per explicit request: the group picker is no longer
+                    // a collapsed `Select` combobox — it's now an always-
+                    // visible list of rows, each one a full-width button.
+                    // Picking a row PUSHES a real "group" screen
+                    // (`goToGroup`) — a genuine back-button transition, see
+                    // that helper's own doc comment. Dial Pad is just
+                    // another row here now (per a later explicit request —
+                    // it used to get its own separate ghost button above
+                    // this list, with its own `kind !== "dialpad"` filter
+                    // excluding it from the rows; both are gone now, so it
+                    // renders wherever `outbound.groups` orders it, same
+                    // as every other group). No icon/count on these rows
+                    // (unlike `ContactRow`'s own leading-icon treatment) —
+                    // plain caps-tracked label + a trailing chevron,
+                    // matching the reference mockup exactly.
+                    <div className="border-t border-lyra-border-subtle">
+                      {(outbound?.groups ?? []).map((g) => (
+                        <button
+                          key={g.id}
+                          type="button"
+                          onClick={() => goToGroup(g.id)}
+                          className={cn(
+                            "flex w-full items-center justify-between gap-2 border-b border-lyra-border-subtle px-4 py-3 text-left transition-colors",
+                            "hover:bg-lyra-state-hover active:bg-lyra-state-pressed focus-visible:outline-none focus-visible:bg-lyra-state-hover"
+                          )}
+                        >
+                          <span className="lyra-body-sm-emphasis uppercase tracking-wide text-lyra-fg-secondary">
+                            {g.label}
+                          </span>
+                          <ChevronRight
+                            className="h-4 w-4 flex-shrink-0 text-lyra-fg-disabled"
+                            strokeWidth={1.5}
+                            aria-hidden="true"
+                          />
+                        </button>
+                      ))}
+                    </div>
                   ) : (activeGroup.kind ?? "contacts") === "dialpad" ? (
                     // PhoneInput (country selector + digit mask + validation)
                     // rather than a hand-rolled `<Input type="tel">` — see
