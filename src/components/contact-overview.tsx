@@ -45,21 +45,25 @@ export interface ContactOverviewProps extends ContactOverviewInfo {
   defaultExpanded?: boolean;
   /** Additional className on the root element. */
   className?: string;
-  /** Renders a "View customer info" link on the right side of the "Contact
-   *  Snapshot" header row (per explicit request — this used to sit in its
-   *  own row at the bottom of the overview). Omit to hide the link
+  /** Renders a "View customer info" link directly beside the "Contact
+   *  Snapshot" header's own label (per explicit request — this used to sit
+   *  in its own row at the bottom of the overview). Omit to hide the link
    *  entirely (e.g. no customer info panel available in this context). The
    *  caller is responsible for opening whatever customer-info surface it
    *  has and focusing it on the right tab. Rendered even when `snapshot`
    *  itself is empty/omitted — the "Contact Snapshot" row still shows,
-   *  just without any bullets under it, so this link (and
-   *  `onViewInteractionHistory` below) always has a place to live. */
+   *  just without any bullets under it, so this link always has a place
+   *  to live. */
   onViewCustomerInfo?: () => void;
-  /** Renders a "Contact History" link alongside `onViewCustomerInfo` (same
-   *  row, `|`-separated, matching the divider convention already used for
-   *  adjacent link-like items elsewhere in this app) — opens the same
+  /** Renders a "View Customer Contacts" link directly beside the "Journey
+   *  Summary" header's own label — per explicit request, a SEPARATE row
+   *  from `onViewCustomerInfo` above (not `|`-joined alongside it on
+   *  Contact Snapshot, which is where this used to live) — opens the same
    *  customer-info surface `onViewCustomerInfo` does, focused on that
-   *  surface's own interaction/session-history tab instead. Omit to hide. */
+   *  surface's own interaction/session-history ("Contacts") tab instead.
+   *  Rendered even when `journeySummary` itself is empty/omitted — same
+   *  "always has a header to attach to" reasoning `onViewCustomerInfo` gets
+   *  from Contact Snapshot. Omit to hide. */
   onViewInteractionHistory?: () => void;
 }
 
@@ -140,41 +144,22 @@ const ContactOverview = React.forwardRef<HTMLDivElement, ContactOverviewProps>(
                 )}
               </p>
               {/* "Contact Snapshot" row also carries the "View customer
-                  info"/"Contact History" links directly beside its own
-                  label (per explicit request — NOT pushed to the row's far
-                  right edge) — shown whenever there's a snapshot to list OR
-                  either link to show, since either link needs this row's
-                  header to attach to even with no bullets under it. */}
-              {(snapshot && snapshot.length > 0) || onViewCustomerInfo || onViewInteractionHistory ? (
+                  info" link directly beside its own label (per explicit
+                  request) — shown whenever there's a snapshot to list OR
+                  the link to show, since the link needs this row's header
+                  to attach to even with no bullets under it. */}
+              {(snapshot && snapshot.length > 0) || onViewCustomerInfo ? (
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center gap-2">
                     <span className="lyra-body-sm-emphasis text-lyra-fg-secondary">Contact Snapshot</span>
-                    {(onViewCustomerInfo || onViewInteractionHistory) && (
-                      <div className="flex items-center gap-1.5 lyra-body-sm">
-                        {onViewCustomerInfo && (
-                          <button
-                            type="button"
-                            onClick={onViewCustomerInfo}
-                            className="text-lyra-fg-link hover:underline focus-visible:outline-none"
-                          >
-                            View customer info
-                          </button>
-                        )}
-                        {onViewCustomerInfo && onViewInteractionHistory && (
-                          <span className="text-lyra-fg-secondary" aria-hidden="true">
-                            |
-                          </span>
-                        )}
-                        {onViewInteractionHistory && (
-                          <button
-                            type="button"
-                            onClick={onViewInteractionHistory}
-                            className="text-lyra-fg-link hover:underline focus-visible:outline-none"
-                          >
-                            Contact History
-                          </button>
-                        )}
-                      </div>
+                    {onViewCustomerInfo && (
+                      <button
+                        type="button"
+                        onClick={onViewCustomerInfo}
+                        className="lyra-body-sm text-lyra-fg-link hover:underline focus-visible:outline-none"
+                      >
+                        View customer info
+                      </button>
                     )}
                   </div>
                   {snapshot && snapshot.length > 0 && (
@@ -191,13 +176,30 @@ const ContactOverview = React.forwardRef<HTMLDivElement, ContactOverviewProps>(
               {/* Journey Summary — plain "label + paragraph" block, same
                   chromeless treatment `snapshot` gets just above (per
                   explicit follow-up request; see `journeySummary`'s own
-                  doc comment for the card-first version this replaced). */}
-              {journeySummary && (
+                  doc comment for the card-first version this replaced).
+                  Per a later explicit request, this row now also carries
+                  its own "View Customer Contacts" link directly beside its
+                  label — the same treatment `onViewCustomerInfo` gets on
+                  Contact Snapshot above, moved off that row and onto this
+                  one since it targets the Contacts tab, not the Overview
+                  tab `onViewCustomerInfo` does. */}
+              {journeySummary || onViewInteractionHistory ? (
                 <div className="flex flex-col gap-1.5">
-                  <span className="lyra-body-sm-emphasis text-lyra-fg-secondary">Journey Summary</span>
-                  <p className="lyra-body-sm text-lyra-fg-default">{journeySummary}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="lyra-body-sm-emphasis text-lyra-fg-secondary">Journey Summary</span>
+                    {onViewInteractionHistory && (
+                      <button
+                        type="button"
+                        onClick={onViewInteractionHistory}
+                        className="lyra-body-sm text-lyra-fg-link hover:underline focus-visible:outline-none"
+                      >
+                        View Customer Contacts
+                      </button>
+                    )}
+                  </div>
+                  {journeySummary && <p className="lyra-body-sm text-lyra-fg-default">{journeySummary}</p>}
                 </div>
-              )}
+              ) : null}
             </div>
           </AccordionPrimitive.Content>
         </AccordionPrimitive.Item>
