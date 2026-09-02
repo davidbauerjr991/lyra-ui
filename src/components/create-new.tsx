@@ -2329,6 +2329,23 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                           nested-popover case as the per-row channel flyout,
                           see CONTRIBUTING.md §5. */}
                       <PhoneInput value={phone} onChange={setPhone} dropdownClassName="z-[10003]" />
+                      {/* Same `detailSkill`/`setDetailSkill` state (and the
+                          same `outbound?.skillOptions` list) the "detail"
+                          screen's own "Outbound Skill" field below already
+                          uses — one shared skill choice for however the
+                          agent starts an outbound interaction, dialpad or
+                          contact-detail, rather than two independently-
+                          tracked selections that could disagree. `mt-4`
+                          (not a `space-y-4` on the parent) since this is
+                          the one and only sibling PhoneInput has here. */}
+                      <Select
+                        label="Select outbound skill"
+                        placeholder="Select outbound skill"
+                        value={detailSkill || undefined}
+                        onValueChange={setDetailSkill}
+                        options={outbound?.skillOptions ?? []}
+                        className="mt-4"
+                      />
                     </div>
                   ) : activeGroup.kind === "empty" ? (
                     <p className="px-4 py-8 text-center lyra-body-sm text-lyra-fg-secondary">
