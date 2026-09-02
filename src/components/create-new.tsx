@@ -1992,53 +1992,64 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
             its OWN search field scoped to just this group ("Search
             {label}", not the flow-wide `outbound?.searchLabel` screen 1
             uses), matching how `"channels"` below already gets its own
-            dedicated screen once a category's contact is picked. Not shown
-            on a Dial Pad screen — no search/subFilter box makes sense
-            there (the phone field itself, in `content` below, is that
-            screen's own "input"); the inner `(activeGroup.kind ?? ...)`
-            check just below already excludes dialpad/empty kinds on its
-            own, so no extra guard is needed here. */}
-        {isOutboundFlow && screen.kind === "group" && activeGroup && (
-          <div className="border-b border-lyra-border-subtle px-4 py-3 space-y-3">
-            {((activeGroup.kind ?? "contacts") === "contacts" || activeGroup.kind === "favorites") && (
-              <div className="relative">
-                <Input
-                  ref={searchInputRef}
-                  id="new-outbound-group-search"
-                  type="text"
-                  label={`Search ${activeGroup.label}`}
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  startIcon={<Search className="h-4 w-4 text-lyra-fg-disabled" strokeWidth={1.4} aria-hidden="true" />}
-                  endIcon={search ? <X className="h-4 w-4 text-lyra-fg-action" strokeWidth={1.5} aria-hidden="true" /> : undefined}
-                />
-                {search && (
-                  <button
-                    type="button"
-                    aria-label="Clear search"
-                    onClick={() => setSearch("")}
-                    className="absolute right-2.5 bottom-1.5 h-6 w-6 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
-                  />
-                )}
-              </div>
-            )}
-            {/* Per-group secondary picker — see `CreateNewOutboundGroup.
-                subFilter`'s own doc comment above. Renders below this
-                group's own search field so it reads as a further
-                narrowing of the group already selected (e.g. Teams → a
-                specific team), not a competing top-level filter. */}
-            {activeGroup.subFilter && (
-              <Select
-                aria-label={activeGroup.subFilter.ariaLabel}
-                placeholder={activeGroup.subFilter.placeholder}
-                value={activeGroup.subFilter.value}
-                onValueChange={activeGroup.subFilter.onChange}
-                options={activeGroup.subFilter.options}
-                portalDropdown
-              />
-            )}
-          </div>
-        )}
+            dedicated screen once a category's contact is picked.
+            `hasSearchField`/`hasSubFilter` gate the WHOLE block (not just
+            the search field's own inner check) — a Dial Pad or empty-
+            placeholder group has neither (the phone field itself, in
+            `content` below, is a Dial Pad screen's own "input"), and
+            without this outer guard the block still rendered as an empty
+            padded, bordered box with nothing inside it: a stray gap and
+            divider line sitting above the phone field for no reason. */}
+        {isOutboundFlow &&
+          screen.kind === "group" &&
+          activeGroup &&
+          (() => {
+            const hasSearchField = (activeGroup.kind ?? "contacts") === "contacts" || activeGroup.kind === "favorites";
+            const hasSubFilter = !!activeGroup.subFilter;
+            return (
+              (hasSearchField || hasSubFilter) && (
+                <div className="border-b border-lyra-border-subtle px-4 py-3 space-y-3">
+                  {hasSearchField && (
+                    <div className="relative">
+                      <Input
+                        ref={searchInputRef}
+                        id="new-outbound-group-search"
+                        type="text"
+                        label={`Search ${activeGroup.label}`}
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        startIcon={<Search className="h-4 w-4 text-lyra-fg-disabled" strokeWidth={1.4} aria-hidden="true" />}
+                        endIcon={search ? <X className="h-4 w-4 text-lyra-fg-action" strokeWidth={1.5} aria-hidden="true" /> : undefined}
+                      />
+                      {search && (
+                        <button
+                          type="button"
+                          aria-label="Clear search"
+                          onClick={() => setSearch("")}
+                          className="absolute right-2.5 bottom-1.5 h-6 w-6 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
+                        />
+                      )}
+                    </div>
+                  )}
+                  {/* Per-group secondary picker — see `CreateNewOutboundGroup.
+                      subFilter`'s own doc comment above. Renders below this
+                      group's own search field so it reads as a further
+                      narrowing of the group already selected (e.g. Teams → a
+                      specific team), not a competing top-level filter. */}
+                  {hasSubFilter && (
+                    <Select
+                      aria-label={activeGroup.subFilter!.ariaLabel}
+                      placeholder={activeGroup.subFilter!.placeholder}
+                      value={activeGroup.subFilter!.value}
+                      onValueChange={activeGroup.subFilter!.onChange}
+                      options={activeGroup.subFilter!.options}
+                      portalDropdown
+                    />
+                  )}
+                </div>
+              )
+            );
+          })()}
 
         {/* Drill-down flow's category screen: same "search pinned outside
             the scroll area" treatment as the outbound flow's group/contacts
