@@ -11,6 +11,7 @@ import { RadioButtonGroup } from "./radio-button-group";
 import { Button } from "./button";
 import { TableFooter } from "./table";
 import { FavoriteButton } from "./favorite-button";
+import { ListItem } from "./list-item";
 import { PhoneInput, PHONE_COUNTRIES, isPhoneNumberComplete, type PhoneValue } from "./phone-input";
 import { Tag, type TagVariant } from "./tag";
 import type { ChannelType } from "./channel-row";
@@ -2252,25 +2253,37 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                     // plain caps-tracked label + a trailing chevron,
                     // matching the reference mockup exactly.
                     <div className="border-t border-lyra-border-subtle">
+                      {/* `ListItem` (list-item.tsx) rather than a hand-
+                          rolled `<button>` row — per explicit request, use
+                          the design system's own default row primitive
+                          here instead of one-off markup. It's a `<div>`,
+                          not a real button, so `role="button"`/`tabIndex`/
+                          `onKeyDown` add back the keyboard/semantics a
+                          native button would give for free; its own
+                          `divider` prop (default true) supplies the same
+                          row-separator lines the old markup built by hand. */}
                       {(outbound?.groups ?? []).map((g) => (
-                        <button
+                        <ListItem
                           key={g.id}
-                          type="button"
+                          role="button"
+                          tabIndex={0}
+                          title={g.label}
+                          leading={g.icon}
+                          trailing={
+                            <ChevronRight
+                              className="h-4 w-4 flex-shrink-0 text-lyra-fg-disabled"
+                              strokeWidth={1.5}
+                              aria-hidden="true"
+                            />
+                          }
                           onClick={() => goToGroup(g.id)}
-                          className={cn(
-                            "flex w-full items-center justify-between gap-2 border-b border-lyra-border-subtle px-4 py-3 text-left transition-colors",
-                            "hover:bg-lyra-state-hover active:bg-lyra-state-pressed focus-visible:outline-none focus-visible:bg-lyra-state-hover"
-                          )}
-                        >
-                          <span className="lyra-body-sm-emphasis uppercase tracking-wide text-lyra-fg-secondary">
-                            {g.label}
-                          </span>
-                          <ChevronRight
-                            className="h-4 w-4 flex-shrink-0 text-lyra-fg-disabled"
-                            strokeWidth={1.5}
-                            aria-hidden="true"
-                          />
-                        </button>
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              goToGroup(g.id);
+                            }
+                          }}
+                        />
                       ))}
                     </div>
                   ) : (activeGroup.kind ?? "contacts") === "dialpad" ? (
