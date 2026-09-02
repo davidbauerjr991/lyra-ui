@@ -1521,7 +1521,19 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
       setStack((prev) => [...prev, s]);
     };
     const popScreen = () => {
-      setSearch("");
+      // Per explicit follow-up request, the reverse of `goToGroup`'s own
+      // `keepSearch`: backing out of a "group" screen that was reached
+      // FROM the outbound-menu row list (the only place `keepSearch: true`
+      // ever pushes from) lands back on that same row list with the same
+      // search text still populated — typing "da" under Agents, then
+      // clicking back, should show "da" still in the menu's own search
+      // field, not a blank one. Every other back navigation (out of
+      // "category"/"channels"/"detail", or a "group" screen NOT reached
+      // from outbound-menu) still clears search as before — those aren't
+      // continuations of the same search the way this one pairing is.
+      const parent = stack[stack.length - 2];
+      const keepSearch = screen.kind === "group" && parent?.kind === "outbound-menu";
+      if (!keepSearch) setSearch("");
       setStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
     };
     // NOTE: there used to be a `setActiveGroup` helper here that swapped
