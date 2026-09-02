@@ -2142,17 +2142,32 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                 Start Interaction
               </Button>
             </div>
-          ) : (screen.kind === "group" || screen.kind === "outbound-menu") && ((activeGroup?.kind ?? "contacts") === "contacts" || activeGroup?.kind === "favorites") && !!search.trim() && filteredGroupContacts.length > 0 ? (
-            // `!!search.trim()` — per explicit request, no pagination
-            // footer at all in the idle/no-search state (whether that
-            // idle state is blank, per-group favorited contacts, or "All"'s
+          ) : (screen.kind === "group" || screen.kind === "outbound-menu") &&
+            ((activeGroup?.kind ?? "contacts") === "contacts" || activeGroup?.kind === "favorites") &&
+            filteredGroupContacts.length > 0 &&
+            // Per a later explicit request ("display all of the agents
+            // ... paginate"), a contacts-kind group's idle FULL roster
+            // (`!outbound?.hideContactList`, see that flag's own doc
+            // comment) now needs this footer too, not just once actively
+            // searching. "favorites" is deliberately excluded from that
+            // idle case — its own idle list is always just already-
+            // starred contacts (short, `activeGroupContacts`'s own doc
+            // comment), regardless of `hideContactList`, so it keeps the
+            // original no-footer-until-searching treatment described
+            // below.
+            (!!search.trim() || (activeGroup?.kind !== "favorites" && !outbound?.hideContactList)) ? (
+            // `!!search.trim()` — per the ORIGINAL explicit request, no
+            // pagination footer at all in the idle/no-search state (idle
+            // being blank, per-group favorited contacts, or "All"'s
             // cross-group favorited contacts — see `activeGroupContacts`'s
             // own doc comment), only once actively searching. A short
             // idle list of favorites doesn't need paging chrome sitting
             // under it; a real search result set might, which is why this
             // still needs to cover BOTH kinds once there IS a query — see
             // the note below on why `"favorites"` specifically must be
-            // included here, not just `"contacts"`.
+            // included here, not just `"contacts"`. (The condition above
+            // now ALSO allows a non-favorites idle full roster through —
+            // see that line's own comment.)
             //
             // `filteredGroupContacts.length > 0` — also per explicit
             // request: a search with zero matches ("No matches found",
