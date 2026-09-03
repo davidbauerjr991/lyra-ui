@@ -47,6 +47,25 @@ Two explicit exceptions:
 - All `npm install`, esbuild bundling, and Tailwind compilation happen in YOUR sandbox only.
 - NEVER write `node_modules`, `dist`, build tooling, or repo source into the user's mounted folder or outputs — only the final deliverable file.
 - The user must never be asked to run a terminal command or install anything.
+- Working on a repo in the user's connected folder means: copy it to your sandbox (excluding `node_modules`/`.git`/`dist`), build and iterate THERE, then sync only the final changed files back to the mount. Mounted-folder IO is slow for tree operations, and a sandbox `npm install` on the mount plants Linux binaries a Mac can't run.
+- **Any NEW repo/project you create for the user inherits this rule permanently: stamp this exact block into the new repo's `CLAUDE.md` (create the file if the scaffold has none) in the same step that creates the repo:**
+
+  ```markdown
+  ## Work discipline (Claude)
+
+  - Never run `npm install`, builds, or bundlers directly in this mounted folder — copy the repo to your sandbox (exclude `node_modules`/`.git`/`dist`), build and iterate there, and sync only final changed files back here. A sandbox npm install in this folder writes Linux binaries this machine can't run.
+  - Never write `node_modules`, `dist`, entry files, configs, or temp files into this folder — creating a file here and deleting it later still counts as a violation.
+  - Never ask the user to run terminal commands.
+  - Keep context lean: grep/slice big files instead of reading them whole, filter command output through head/grep, compare versions with git diff --stat in the shell, and delegate bulk reading to a subagent — oversized reads slow every later turn in the session.
+  ```
+
+## Context discipline (speed and cost — applies to every scenario)
+Everything read into the conversation is reprocessed on EVERY later turn — one oversized read slows the whole session permanently. Users notice ("even a trivial command feels slow"), and it burns their tokens.
+- **Never read known-huge files end-to-end**: consumer pages like `AgentNextGenPage.tsx` (11k+ lines), `PROJECT_SUMMARY.md`, full-repo diffs. Grep for anchors and read targeted slices only.
+- **Compare versions in the shell, not in context**: `git diff --stat`, scoped `git diff <sha>..HEAD -- <file>`, `cmp` — never load two copies of a file to eyeball them.
+- **Filter every command's output** (`head`, `tail`, `grep -c`, `--stat`) — tool output enters context exactly like file reads do.
+- **Delegate bulk reading to a subagent** whenever an investigation needs more than a few hundred lines across large files — the subagent's context is disposable; only its summary returns.
+- If a long session has become sluggish, tell the user a fresh chat will be faster — the wizard/banner prompts are self-contained, so nothing is lost by restarting.
 
 ## Protected primitives (never modify)
 Library components are read-only. The ONLY component source a user may change through you is their own `src/components/local/` folder. In particular, any component whose story `title` sits under **"Custom Primitives/"** or **"Headless Primitives/"** (check the `title:` in its `.stories.tsx` meta) is a protected primitive:
