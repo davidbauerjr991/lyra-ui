@@ -175,7 +175,7 @@ const ContactOverview = React.forwardRef<HTMLDivElement, ContactOverviewProps>(
             <AccordionPrimitive.Trigger
               className="group flex items-center gap-1.5 text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors focus-visible:outline-none"
             >
-              <span className="lyra-body-md-emphasis">Contact Overview</span>
+              <span className="lyra-body-md-emphasis">Contextual Overview</span>
               <ChevronDown
                 className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180"
                 strokeWidth={1.5}
