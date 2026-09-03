@@ -39,15 +39,17 @@ export interface ContactOverviewInfo {
    * A small identity-card summary — avatar, subtitle (e.g. segment +
    * tenure), account balance, and a handful of status/context tags —
    * rendered above everything else in the collapsible (per explicit
-   * request, ahead of the intro paragraph). Deliberately a plain,
-   * neutral-toned card (a border + the app's own surface color), NOT the
-   * green/success treatment a reference mockup used for this same
-   * information — this block is a factual summary, not a confirmation or
-   * "it worked" message, so it shouldn't borrow that status's color.
-   * Omit for a customer this component has no directory record for (same
-   * "no affordance without real data" convention every other field here
-   * follows) — the rest of the collapsible (intro paragraph/Contact
-   * Snapshot/Journey Summary) renders exactly the same either way.
+   * request, ahead of the intro paragraph). Uses the same green/success
+   * treatment `Tag`'s own "success" variant does, per explicit follow-up
+   * request (an earlier plain/neutral-toned version — a border + the
+   * app's own surface color, no status tint — was reversed back to the
+   * green/success look a reference mockup originally used).
+   * The caller is expected to always supply this for any "known" contact
+   * (backed by a real directory record or not — see
+   * `buildContactOverviewCustomerCard`'s own doc comment,
+   * agent-next-gen-shared-utils.ts, for the fallback synthesis that keeps
+   * this true even with no real record). Omit only for a contact this
+   * component has no information about at all.
    */
   customerCard?: {
     /** e.g. "AS" for Alex Sanderson — same 2-letter convention every
@@ -185,13 +187,14 @@ const ContactOverview = React.forwardRef<HTMLDivElement, ContactOverviewProps>(
             className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up"
           >
             <div className="mt-3 flex flex-col gap-3">
-              {/* Identity card — see `customerCard`'s own doc comment for
-                  why this is a plain neutral card (border + surface color)
-                  rather than the green/success treatment a reference
-                  mockup used. Rendered first, ahead of the intro paragraph
-                  below, per explicit request. */}
+              {/* Identity card — per explicit follow-up request, uses the
+                  same green/success treatment `Tag`'s own "success"
+                  variant does (`bg-lyra-status-success-subtle` + a
+                  color-mixed success border), reversing this card's
+                  earlier plain/neutral styling. Rendered first, ahead of
+                  the intro paragraph below, per the original request. */}
               {customerCard && (
-                <div className="flex flex-col gap-2.5 rounded-lyra-md border border-lyra-border-soft bg-lyra-bg-surface-base p-3">
+                <div className="flex flex-col gap-2.5 rounded-lyra-md border border-[color-mix(in_srgb,var(--lyra-color-status-success-strong)_30%,transparent)] bg-lyra-status-success-subtle p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div
