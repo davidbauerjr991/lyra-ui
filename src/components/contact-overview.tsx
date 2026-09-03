@@ -4,6 +4,7 @@ import { ChevronDown, Phone, MessageCircle } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Popover } from "./popover";
 import { MenuItem } from "./menu-item";
+import { Tag } from "./tag";
 
 /**
  * Promoted out of agent-next-gen-v2's transcript file (originally a
@@ -34,6 +35,41 @@ export interface ContactOverviewInfo {
    *  down to match once it landed here instead). Omit for no journey to
    *  recap (same as `snapshot`). */
   journeySummary?: string;
+  /**
+   * A small identity-card summary — avatar, subtitle (e.g. segment +
+   * tenure), account balance, and a handful of status/context tags —
+   * rendered above everything else in the collapsible (per explicit
+   * request, ahead of the intro paragraph). Deliberately a plain,
+   * neutral-toned card (a border + the app's own surface color), NOT the
+   * green/success treatment a reference mockup used for this same
+   * information — this block is a factual summary, not a confirmation or
+   * "it worked" message, so it shouldn't borrow that status's color.
+   * Omit for a customer this component has no directory record for (same
+   * "no affordance without real data" convention every other field here
+   * follows) — the rest of the collapsible (intro paragraph/Contact
+   * Snapshot/Journey Summary) renders exactly the same either way.
+   */
+  customerCard?: {
+    /** e.g. "AS" for Alex Sanderson — same 2-letter convention every
+     *  other initials avatar in this library uses. */
+    avatarInitials: string;
+    /** One of this library's own avatar background tokens (e.g.
+     *  "bg-lyra-accent-blue-soft text-lyra-accent-blue-strong") — the
+     *  caller resolves this the same way it resolves any other initials
+     *  avatar's color, not a new scheme invented for this card. */
+    avatarClassName: string;
+    /** e.g. "Business Travel · 8 yrs tenure" — a single pre-formatted
+     *  line under the customer's name; this component doesn't parse or
+     *  re-derive it from anything else. */
+    subtitle: string;
+    /** Pre-formatted balance string (e.g. "$0.00") — omit to hide the
+     *  "Balance" figure entirely rather than showing a placeholder. */
+    balance?: string;
+    /** Short status/context labels (e.g. "Platinum", "Storm Disruption")
+     *  rendered as pill `Tag`s below the identity row. Omit/empty to show
+     *  the identity row with no tags underneath. */
+    tags?: string[];
+  };
 }
 
 export interface ContactOverviewProps extends ContactOverviewInfo {
@@ -109,6 +145,7 @@ const ContactOverview = React.forwardRef<HTMLDivElement, ContactOverviewProps>(
       previousAgent,
       snapshot,
       journeySummary,
+      customerCard,
       defaultExpanded = true,
       className,
       onViewCustomerInfo,
@@ -148,6 +185,45 @@ const ContactOverview = React.forwardRef<HTMLDivElement, ContactOverviewProps>(
             className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up"
           >
             <div className="mt-3 flex flex-col gap-3">
+              {/* Identity card — see `customerCard`'s own doc comment for
+                  why this is a plain neutral card (border + surface color)
+                  rather than the green/success treatment a reference
+                  mockup used. Rendered first, ahead of the intro paragraph
+                  below, per explicit request. */}
+              {customerCard && (
+                <div className="flex flex-col gap-2.5 rounded-lyra-md border border-lyra-border-soft bg-lyra-bg-surface-base p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className={cn(
+                          "flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full lyra-label",
+                          customerCard.avatarClassName
+                        )}
+                        aria-hidden="true"
+                      >
+                        {customerCard.avatarInitials}
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="lyra-body-md-emphasis text-lyra-fg-default truncate">{customerName}</span>
+                        <span className="lyra-body-sm text-lyra-fg-secondary truncate">{customerCard.subtitle}</span>
+                      </div>
+                    </div>
+                    {customerCard.balance && (
+                      <div className="flex flex-shrink-0 flex-col items-end">
+                        <span className="lyra-body-sm text-lyra-fg-secondary">Balance</span>
+                        <span className="lyra-body-md-emphasis text-lyra-fg-default">{customerCard.balance}</span>
+                      </div>
+                    )}
+                  </div>
+                  {customerCard.tags && customerCard.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {customerCard.tags.map((tag) => (
+                        <Tag key={tag} label={tag} shape="pill" />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               <p className="lyra-body-md text-lyra-fg-default">
                 You are now working with {customerName}.
                 {previousAgent ? (
