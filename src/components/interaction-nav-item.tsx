@@ -149,18 +149,24 @@ export interface InteractionNavItemProps {
    */
   onCurrentChannelChange?: (key: string) => void;
   /**
-   * Replaces `headerAction` in the expanded card's header row with a
-   * chevron toggle that expands/collapses the channel list below it —
-   * opt-in (default `false`, every existing consumer's header row is
-   * completely unchanged) rather than a behavior change applied to every
-   * consumer of this component at once, per explicit request. Each card
-   * manages its own expanded/collapsed state internally (defaults to
-   * expanded, matching this component's pre-existing always-shown
-   * behavior) — nothing outside this component needs to read or
-   * coordinate it, so it isn't lifted into a controlled prop pair the way
-   * `currentChannelKey` above is. Only takes effect when there's at least
-   * one channel to collapse; with none, the header row renders with no
-   * trailing action at all, same as `headerAction` being omitted.
+   * Adds a chevron toggle to the expanded card's header row that expands/
+   * collapses the channel list below it — opt-in (default `false`, every
+   * existing consumer's header row is completely unchanged) rather than a
+   * behavior change applied to every consumer of this component at once,
+   * per explicit request. Each card manages its own expanded/collapsed
+   * state internally (defaults to expanded, matching this component's
+   * pre-existing always-shown behavior) — nothing outside this component
+   * needs to read or coordinate it, so it isn't lifted into a controlled
+   * prop pair the way `currentChannelKey` above is. Only takes effect
+   * when there's at least one channel to collapse; with none AND no
+   * `headerAction` either, the header row renders with no trailing action
+   * at all.
+   *
+   * Per a later explicit follow-up request, this no longer REPLACES
+   * `headerAction` in that same slot the way it originally did — the two
+   * now render side by side (chevron, then `headerAction`) whenever both
+   * are present, so a consumer can keep its existing "Add Channel"
+   * trigger on screen even once a card is also collapsible.
    */
   collapsible?: boolean;
   /**
@@ -772,7 +778,24 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
             </Badge>
           )}
           <span className="min-w-0 flex-1 truncate lyra-heading-sm text-lyra-fg-default">{displayName}</span>
-          {collapsible ? channelsToggle : headerAction}
+          {/* Per explicit follow-up request: `headerAction` (typically an
+              "Add Channel" `+` trigger) and the collapse/expand chevron
+              (`collapsible`, above) are no longer mutually exclusive in
+              this one slot — a card can show BOTH side by side now,
+              preserving the existing per-card collapse/"Collapse all"-
+              "Expand all" bulk feature while still surfacing `headerAction`
+              wherever a consumer passes one. Order: chevron first (a
+              structural view control, same position it's always held),
+              then `headerAction` (a content action) rightmost, wrapped in
+              a `shrink-0` row of their own so gap between them lines up
+              with the rest of this header's spacing regardless of which
+              one (or both, or neither) actually renders. */}
+          {(collapsible || headerAction) && (
+            <div className="flex shrink-0 items-center gap-0.5">
+              {collapsible && channelsToggle}
+              {headerAction}
+            </div>
+          )}
         </div>
 
         {channels.length > 0 && (
