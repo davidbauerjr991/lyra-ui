@@ -974,10 +974,40 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
     // `channelOptions` (nothing to default to — the "No channels
     // available" branch below handles that). Kept local to this button,
     // not routed through any shared "detail screen" state.
-    const [detailChannel, setDetailChannel] = useState<ChannelType | null>(
+    //
+    // `"custom"` (not a real `ChannelType`) is a later addition, per
+    // explicit follow-up request ("if the '+' button is clicked on a known
+    // customer with known channels, add a 'Custom' radio that allows the
+    // agent to put in a new number/email/etc., like how you have it
+    // currently [for an unknown contact]"): an extra "Select Channel"
+    // option (below) alongside the contact's real, directory-backed
+    // channels, so a KNOWN contact's own "+" can still reach the exact same
+    // typed-address flow `AddChannelAdHocButton` already offers for an
+    // UNKNOWN one — see `customValue`'s own doc comment just below for how
+    // that typed value ultimately resolves back to a real `ChannelType`.
+    // Never the opening default (`firstAvailableChannel` only ever returns
+    // a real channel or `null`) — the agent has to deliberately pick it.
+    const [detailChannel, setDetailChannel] = useState<ChannelType | "custom" | null>(
       initialChannel ?? firstAvailableChannel(channelOptions, contact, phoneOptions)
     );
     const [detailPhone, setDetailPhone] = useState("");
+    // Only meaningful while `detailChannel === "custom"` — the raw typed
+    // email/phone, same free-text field `AddChannelAdHocButton` shows an
+    // unknown contact unconditionally (see that component's own "Enter
+    // Email Or Phone Number" `Input`). Kept as its own state rather than
+    // reusing `detailPhone` (a "Select Phone" dropdown VALUE for a real
+    // channel) — the two fields mean different things and are never both
+    // relevant at once (mutually exclusive on `detailChannel === "custom"`).
+    const [customValue, setCustomValue] = useState("");
+    // Only meaningful once `customValue` looks like a phone number (an
+    // email-shaped value resolves straight to `"email"`, no ambiguity) —
+    // mirrors `AddChannelAdHocButton`'s own `phoneChannel` second-step
+    // choice exactly (same SMS-vs-Voice question, same reason: a typed
+    // phone number alone doesn't say which kind of channel to open on it).
+    // Starts blank (no silent default) so "Start Interaction" stays
+    // disabled until the agent actually picks one — see `handleStartCall`'s
+    // own guard below.
+    const [customPhoneChannel, setCustomPhoneChannel] = useState<"sms" | "voice" | "">("");
     // Defaults to the FIRST skill in `skillOptions`, not `""` — per explicit
     // request ("when a new channel is launched, default to the first skill
     // in the list so the agent can immediately start the interaction
@@ -988,8 +1018,17 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
     // change).
     const [detailSkill, setDetailSkill] = useState(skillOptions[0]?.value ?? "");
 
-    const selectChannel = (channel: ChannelType) => {
+    const selectChannel = (channel: ChannelType | "custom") => {
       setDetailChannel(channel);
+      if (channel === "custom") {
+        // Blank slate every time "Custom" is (re-)selected — same "no
+        // stale leftover value from a previous open" reasoning as the
+        // close-reset effect below, just triggered by switching TO this
+        // option rather than by closing.
+        setCustomValue("");
+        setCustomPhoneChannel("");
+        return;
+      }
       setDetailPhone(resolveOutboundDetailField(contact, channel, phoneOptions).defaultValue);
       // `detailSkill` is deliberately left alone — `skillOptions` isn't
       // channel-specific (the same Outbound Skill list applies to every
@@ -1011,6 +1050,8 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
       const t = setTimeout(() => {
         setDetailChannel(initialChannel ?? firstAvailableChannel(channelOptions, contact, phoneOptions));
         setDetailPhone("");
+        setCustomValue("");
+        setCustomPhoneChannel("");
         // Back to the first skill, not `""` — same reasoning as this
         // state's own initializer above; `skillOptions` added to this
         // effect's own dependency array below so a reset after the
@@ -1044,12 +1085,31 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
     // `open` flips true — regardless of whether `detailChannel` itself
     // "changed" — fixes it without touching the reset effect above.
     useEffect(() => {
-      if (!open || !detailChannel) return;
+      if (!open || !detailChannel || detailChannel === "custom") return;
       setDetailPhone(resolveOutboundDetailField(contact, detailChannel, phoneOptions).defaultValue);
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, detailChannel]);
 
-    const fieldMeta = detailChannel ? resolveOutboundDetailField(contact, detailChannel, phoneOptions) : null;
+    // `null` while `detailChannel` is `"custom"` too, not just `null` itself
+    // — there's no real channel to resolve a "Select Phone"/"Select Email
+    // Address" field FOR yet (see the custom-mode `Input`/nested "Select
+    // Channel Type" branch below instead, which replaces this field
+    // entirely while `detailChannel === "custom"`).
+    const fieldMeta =
+      detailChannel && detailChannel !== "custom" ? resolveOutboundDetailField(contact, detailChannel, phoneOptions) : null;
+    // Only meaningful in custom mode — mirrors `AddChannelAdHocButton`'s own
+    // `isEmail`/`isPhone` detection verbatim (`looksLikeEmail`/
+    // `looksLikePhoneNumber`, both exported from this same file for exactly
+    // this kind of reuse). `customResolvedChannel` is the real `ChannelType`
+    // this custom entry ultimately becomes: straight to `"email"` once it
+    // looks like one (no further choice needed), or whichever of SMS/Voice
+    // the agent picks below once it looks like a phone number instead —
+    // `null` until then, which keeps "Start Interaction" correctly disabled
+    // (see `handleStartCall`'s own guard).
+    const customTrimmed = customValue.trim();
+    const customIsEmail = looksLikeEmail(customTrimmed);
+    const customIsPhone = !customIsEmail && looksLikePhoneNumber(customTrimmed);
+    const customResolvedChannel: ChannelType | null = customIsEmail ? "email" : customIsPhone && customPhoneChannel ? customPhoneChannel : null;
 
     // Only meaningful when this button is locked to one channel
     // (`initialChannel` — see that prop's own doc comment): with "Select
@@ -1076,8 +1136,29 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
     const blockedTooltip =
       initialChannel === "voice" ? "Customer is already on a call" : `Every ${label} address is already open`;
 
+    // Drives the "Start Interaction" button's own `disabled` below —
+    // pulled out of `handleStartCall` itself so the button can show its
+    // correct enabled/disabled state on every render, not just react after
+    // a click. Custom mode has its own two-part readiness check (a real
+    // resolved channel AND a non-empty typed address — see
+    // `customResolvedChannel`'s own doc comment above); every other channel
+    // just needs itself to be a real, non-null selection, same as before
+    // this option existed.
+    const canStartInteraction = detailSkill
+      ? detailChannel === "custom"
+        ? !!customResolvedChannel && !!customTrimmed
+        : !!detailChannel
+      : false;
+
     const handleStartCall = () => {
-      if (!detailChannel || !detailSkill) return;
+      if (!detailSkill) return;
+      if (detailChannel === "custom") {
+        if (!customResolvedChannel || !customTrimmed) return;
+        onStartCall({ contact, channel: customResolvedChannel, phone: customTrimmed, skillId: detailSkill });
+        setOpen(false);
+        return;
+      }
+      if (!detailChannel) return;
       onStartCall({ contact, channel: detailChannel, phone: detailPhone, skillId: detailSkill });
       setOpen(false);
     };
@@ -1111,27 +1192,39 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
             // — Popover's default 16px body inset would double up either way.
             bodyPadding={false}
             content={
-              detailChannel && fieldMeta ? (
+              detailChannel ? (
                 <div className="w-64 p-3 space-y-3">
                   {/* Omitted while `initialChannel` is locked — see that
                       prop's own doc comment: the trigger itself (a
                       dedicated per-channel icon/label) already answers
                       "Select Channel", so asking again here would just be
-                      the same question twice. */}
+                      the same question twice. Per explicit follow-up
+                      request, one more option beyond the contact's own
+                      real, directory-backed channels: "Custom" (see
+                      `detailChannel`'s own state comment above) — so a
+                      KNOWN contact's "+" can still reach the exact same
+                      typed-address flow `AddChannelAdHocButton` offers an
+                      UNKNOWN one, without having to leave this form. Never
+                      disabled — unlike the real channels above it, there's
+                      no "every address already open" case that could ever
+                      block it. */}
                   {!initialChannel && (
                     <RadioButtonGroup
                       label="Select Channel"
-                      options={channelOptions.map((c) => ({
-                        value: c.id,
-                        label: c.selectLabel ?? c.label,
-                        disabled: isChannelBlockedForContact(contact, c.id, phoneOptions),
-                      }))}
+                      options={[
+                        ...channelOptions.map((c) => ({
+                          value: c.id,
+                          label: c.selectLabel ?? c.label,
+                          disabled: isChannelBlockedForContact(contact, c.id, phoneOptions),
+                        })),
+                        { value: "custom", label: "Custom" },
+                      ]}
                       value={detailChannel}
-                      onValueChange={(v) => selectChannel(v as ChannelType)}
+                      onValueChange={(v) => selectChannel(v as ChannelType | "custom")}
                     />
                   )}
-                  {/* `dropdownClassName="z-[10005]"` on both remaining
-                      `Select`s: each one's dropdown portals to
+                  {/* `dropdownClassName="z-[10005]"` on every remaining
+                      `Select`: each one's dropdown portals to
                       document.body at its own default z-[9999] (the base
                       "portal wrapper" tier, see CONTRIBUTING.md §4), which
                       is *lower* than this popover's own z-[10003] "nested
@@ -1143,13 +1236,59 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
                       level deeper than PhoneInput's z-[10003] override for
                       the same reason inside CreateNew's own detail screen
                       below. */}
-                  <Select
-                    label={fieldMeta.label}
-                    value={detailPhone || undefined}
-                    onValueChange={setDetailPhone}
-                    options={fieldMeta.options}
-                    dropdownClassName="z-[10005]"
-                  />
+                  {detailChannel === "custom" ? (
+                    <>
+                      {/* Same free-text field/placeholder
+                          `AddChannelAdHocButton` shows an unknown contact
+                          unconditionally — deliberately NOT that same
+                          component reused wholesale here: this form still
+                          needs its own Outbound Skill field and "Start
+                          Interaction" button underneath (a KNOWN contact,
+                          unlike an ad-hoc one, always has a real skill list
+                          to pick from), which `AddChannelAdHocButton` has
+                          no slot for. */}
+                      <Input
+                        label="Enter Email Or Phone Number"
+                        placeholder="Email or phone number"
+                        value={customValue}
+                        onChange={(e) => setCustomValue(e.target.value)}
+                      />
+                      {/* Only once the typed value actually looks like a
+                          phone number — an email-shaped one resolves
+                          straight to the "email" channel with nothing left
+                          to ask (see `customResolvedChannel`'s own doc
+                          comment above). "Select Channel Type" (not
+                          "Select Channel" again) — this form already has
+                          one "Select Channel" field above, and the two are
+                          visible at once here (unlike
+                          `AddChannelAdHocButton`'s own SMS/Voice step, a
+                          separate screen that only ever replaces its own
+                          single-field first step) — a second field with
+                          the identical label would read as a duplicate
+                          question instead of the actual follow-up it is. */}
+                      {customIsPhone && (
+                        <RadioButtonGroup
+                          label="Select Channel Type"
+                          options={[
+                            { value: "sms", label: "SMS" },
+                            { value: "voice", label: "Voice" },
+                          ]}
+                          value={customPhoneChannel}
+                          onValueChange={(v) => setCustomPhoneChannel(v as "sms" | "voice")}
+                        />
+                      )}
+                    </>
+                  ) : (
+                    fieldMeta && (
+                      <Select
+                        label={fieldMeta.label}
+                        value={detailPhone || undefined}
+                        onValueChange={setDetailPhone}
+                        options={fieldMeta.options}
+                        dropdownClassName="z-[10005]"
+                      />
+                    )
+                  )}
                   <Select
                     label="Outbound Skill"
                     placeholder="Select Outbound Skill"
@@ -1158,7 +1297,7 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
                     options={skillOptions}
                     dropdownClassName="z-[10005]"
                   />
-                  <Button variant="default" size="lg" className="w-full" disabled={!detailSkill} onClick={handleStartCall}>
+                  <Button variant="default" size="lg" className="w-full" disabled={!canStartInteraction} onClick={handleStartCall}>
                     Start Interaction
                   </Button>
                 </div>
