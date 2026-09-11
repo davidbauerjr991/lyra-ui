@@ -1664,9 +1664,17 @@ const ChannelToggle: React.FC<ChannelToggleProps> = ({
         />
       ) : onDismiss ? (
         // Mirrors `Tab`'s own `onRemove` rendering (tabs.tsx) — same
-        // always-`Trash2`, same active/inactive (never fixed-red) color,
-        // same `stopPropagation` so this click never also selects the
-        // toggle. `h-6 w-6` (not the plain `h-5 w-5` this originally
+        // active/inactive (never fixed-red) color, same `stopPropagation`
+        // so this click never also selects the toggle. Per explicit bug
+        // fix, the icon itself now splits on `removeVariant` the same way
+        // `ChannelRow`'s own equivalent fallback already does just above in
+        // this file (lines ~836-862): a plain `X` for an already-closed
+        // channel/interaction (`removeVariant` default `"close"`), or
+        // `Trash2` only for a genuine never-launched draft
+        // (`"delete-draft"`) — this toggle previously always rendered
+        // `Trash2` regardless, which read as "delete" even for a channel
+        // that's simply closed and has nothing left to delete. `h-6 w-6`
+        // (not the plain `h-5 w-5` this originally
         // shipped with) — per explicit follow-up request/bug report ("the
         // voice button is taller than the other buttons when it is the
         // last item"): this toggle's outer `<button>` has no fixed height
@@ -1694,7 +1702,11 @@ const ChannelToggle: React.FC<ChannelToggleProps> = ({
             active ? activeTextClass : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary"
           )}
         >
-          <Trash2 className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+          {removeVariant === "delete-draft" ? (
+            <Trash2 className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+          ) : (
+            <X className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+          )}
         </span>
       ) : null}
     </button>
