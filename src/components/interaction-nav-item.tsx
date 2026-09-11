@@ -784,16 +784,18 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
               this one slot — a card can show BOTH side by side now,
               preserving the existing per-card collapse/"Collapse all"-
               "Expand all" bulk feature while still surfacing `headerAction`
-              wherever a consumer passes one. Order: chevron first (a
-              structural view control, same position it's always held),
-              then `headerAction` (a content action) rightmost, wrapped in
-              a `shrink-0` row of their own so gap between them lines up
-              with the rest of this header's spacing regardless of which
-              one (or both, or neither) actually renders. */}
+              wherever a consumer passes one. Order: per a later explicit
+              follow-up request, `headerAction` (a content action, typically
+              "Add Channel") now renders FIRST/leftmost, with the chevron
+              (a structural view control) after it — reversed from this
+              slot's original chevron-then-action order — wrapped in a
+              `shrink-0` row of their own so gap between them lines up with
+              the rest of this header's spacing regardless of which one (or
+              both, or neither) actually renders. */}
           {(collapsible || headerAction) && (
             <div className="flex shrink-0 items-center gap-0.5">
-              {collapsible && channelsToggle}
               {headerAction}
+              {collapsible && channelsToggle}
             </div>
           )}
         </div>
