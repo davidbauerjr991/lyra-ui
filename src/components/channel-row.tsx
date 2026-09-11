@@ -1654,10 +1654,25 @@ const ChannelToggle: React.FC<ChannelToggleProps> = ({
           onOpenChange={setMenuOpen}
         />
       ) : onDismiss ? (
-        // Mirrors `Tab`'s own `onRemove` rendering (tabs.tsx) verbatim —
-        // same always-`Trash2`, same active/inactive (never fixed-red)
-        // color, same `h-5 w-5` wrapper around an `h-4 w-4` icon, same
-        // `stopPropagation` so this click never also selects the toggle.
+        // Mirrors `Tab`'s own `onRemove` rendering (tabs.tsx) — same
+        // always-`Trash2`, same active/inactive (never fixed-red) color,
+        // same `stopPropagation` so this click never also selects the
+        // toggle. `h-6 w-6` (not the plain `h-5 w-5` this originally
+        // shipped with) — per explicit follow-up request/bug report ("the
+        // voice button is taller than the other buttons when it is the
+        // last item"): this toggle's outer `<button>` has no fixed height
+        // of its own (see `toggleElement`'s own className above), so its
+        // rendered height is just whichever trailing child happens to be
+        // tallest — and `KebabMenuButton` (rendered instead of this span
+        // whenever `showMenu` is on, right above) is hardcoded `h-6 w-6`
+        // (kebab-menu-button.tsx), a full 4px taller than this span's old
+        // `h-5 w-5`. A pill showing its kebab (any active/`showMenu`
+        // channel) rendered measurably taller than one showing this trash
+        // fallback instead (an inactive/closed one) — purely from that
+        // mismatched trailing-icon box, with nothing about the channel
+        // itself actually differing. Matching both to the same `h-6 w-6`
+        // keeps every pill in a `ChannelToggleGroup` the same height
+        // regardless of which trailing control it happens to render.
         <span
           role="button"
           tabIndex={0}
@@ -1665,7 +1680,7 @@ const ChannelToggle: React.FC<ChannelToggleProps> = ({
           onClick={(e) => { e.stopPropagation(); onDismiss(); }}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onDismiss(); } }}
           className={cn(
-            "flex h-5 w-5 items-center justify-center rounded-lyra-xs flex-shrink-0 transition-colors",
+            "flex h-6 w-6 items-center justify-center rounded-lyra-xs flex-shrink-0 transition-colors",
             "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
             active ? activeTextClass : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary"
           )}
