@@ -1634,7 +1634,16 @@ const ChannelToggle: React.FC<ChannelToggleProps> = ({
       aria-checked={active}
       onClick={onClick}
       className={cn(
-        "relative inline-flex items-center gap-1.5 px-3 py-1.5 lyra-body-md rounded-lyra-sm transition-colors select-none",
+        // `h-8` (32px) — per explicit request, every button inside a
+        // `ChannelToggleGroup` should be the same fixed height regardless
+        // of its own content, rather than sizing to `py-1.5` + whatever's
+        // tallest among its icon/label/trailing-control children (the same
+        // "no fixed height on the outer `<button>`" gap that caused the
+        // kebab-vs-trash-fallback mismatch this toggle's own trailing
+        // control comment below already documents/fixes at the CHILD
+        // level — this fixes it at the button's own root instead, so
+        // nothing inside ever needs to match anything else's height again).
+        "relative inline-flex h-8 items-center gap-1.5 px-3 py-1.5 lyra-body-md rounded-lyra-sm transition-colors select-none",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-1",
         active
           ? "bg-lyra-bg-active-subtle border border-lyra-border-active text-lyra-fg-active-strong hover:bg-lyra-state-hover-active-subtle active:bg-lyra-state-pressed-active-subtle"
@@ -1779,7 +1788,12 @@ const PlainToggleTab: React.FC<PlainToggleTabProps> = ({ icon, active, onClick, 
         aria-checked={active}
         onClick={onClick}
         className={cn(
-          "relative inline-flex items-center gap-1.5 px-3 py-1.5 lyra-body-md rounded-lyra-sm transition-colors select-none",
+          // `h-8` (32px) — matches `ChannelToggle`'s own fixed height (see
+          // that button's identical `h-8` comment) so a `PlainToggleTab`
+          // sitting alongside `ChannelToggle` siblings in the same
+          // `ChannelToggleGroup` (its one real use case) is always the same
+          // height as them, never sized to its own icon/label/kebab content.
+          "relative inline-flex h-8 items-center gap-1.5 px-3 py-1.5 lyra-body-md rounded-lyra-sm transition-colors select-none",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-1",
           active
             ? "bg-lyra-bg-active-subtle border border-lyra-border-active text-lyra-fg-active-strong hover:bg-lyra-state-hover-active-subtle active:bg-lyra-state-pressed-active-subtle"
