@@ -10,6 +10,8 @@ import {
   User,
   UserX,
   ArrowUpRight,
+  PhoneIncoming,
+  PhoneOutgoing,
   CircleCheck,
   ChevronDown,
   Send,
@@ -18,6 +20,8 @@ import {
   PlayCircle,
   X,
   Trash2,
+  MessageSquareShare,
+  PhoneOff,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Tag, tagVariants, type TagVariant } from "./tag";
@@ -25,7 +29,6 @@ import { Menu, type MenuEntry } from "./menu";
 import { KebabMenuButton } from "./kebab-menu-button";
 import { Tab } from "./tabs";
 import { Tooltip } from "./tooltip";
-import { Badge } from "./badge";
 import { Button } from "./button";
 import { Popover } from "./popover";
 import { PanelHeader } from "./panel-header";
@@ -35,6 +38,8 @@ import { Label } from "./label";
 import { Textarea } from "./textarea";
 import { type TagPickerOption } from "./tag-picker";
 import { WarningIconSolid } from "./icons/warning-icon-solid";
+import { SuccessIconSolid } from "./icons/success-icon-solid";
+import { formatPhoneForDisplay } from "./phone-input";
 
 /* ── WhatsApp icon (not in Lucide) ──
  * Accepts `className` (default `h-3 w-3`, the chip-sized icon `ChannelRow`
@@ -53,6 +58,68 @@ const ConsultTransferIcon = () => (
     <ArrowUpRight className="absolute -right-1 -top-1 h-2.5 w-2.5" strokeWidth={2.5} />
   </span>
 );
+
+/** Whether a channel was customer-initiated ("inbound") or agent-initiated
+ *  ("outbound") — per explicit request (Agent Workspace 2.0 Phase 1 & Phase
+ *  2 only), drives the direction-aware icon swap `VoiceDirectionIcon`/
+ *  `SmsDirectionIcon` below render. Omit entirely for a channel whose
+ *  direction isn't tracked/known — both icons fall back to their plain,
+ *  pre-existing glyph in that case, so every consumer that doesn't pass
+ *  this renders exactly as before. */
+export type ChannelDirection = "inbound" | "outbound";
+
+/** Voice call direction — dedicated Lucide icons cover this natively, so
+ *  this just swaps the base `Phone` glyph for `PhoneIncoming`/
+ *  `PhoneOutgoing` once `direction` is known. See `ChannelDirection`'s own
+ *  doc comment for the omitted-direction fallback. */
+export const VoiceDirectionIcon = ({
+  direction,
+  className = "h-3 w-3",
+}: {
+  direction?: ChannelDirection;
+  className?: string;
+}) => {
+  if (direction === "inbound") return <PhoneIncoming className={className} strokeWidth={1.5} />;
+  if (direction === "outbound") return <PhoneOutgoing className={className} strokeWidth={1.5} />;
+  return <Phone className={className} strokeWidth={1.5} />;
+};
+
+/** SMS direction — per explicit follow-up request/screenshot (Lucide's own
+ *  "message-square-share" icon page, "use this icon and just flip the arrow
+ *  for inbound"), this is now Lucide's real `MessageSquareShare` glyph — a
+ *  single, purpose-built icon (message square + an arrow escaping its top-
+ *  right corner), not a hand-assembled composite. Superseded the earlier
+ *  `MessageSquare` + absolute-positioned `ArrowUpRight`/`ArrowDownLeft`
+ *  corner-badge overlay (see git history) — that composite's badge kept
+ *  needing separate size/offset tuning to stay inside `ChannelRow`'s own
+ *  small chip (a real, previously-fixed bug: it overflowed the chip's
+ *  rounded border), a problem this single pre-drawn icon doesn't have at
+ *  all, since the arrow is already an integral part of the glyph's own
+ *  bounding box.
+ *
+ *  Outbound renders `MessageSquareShare` as-is (arrow escaping up-right —
+ *  already reads as "sent out"). Inbound mirrors it horizontally
+ *  (`-scale-x-100`) rather than a hand-drawn separate icon — same glyph,
+ *  same box, just flipped so the arrow points up-LEFT instead, per the
+ *  explicit request to "just flip the arrow." See `ChannelDirection`'s own
+ *  doc comment for the omitted-direction fallback (still the plain
+ *  `MessageSquare`, unchanged — direction only matters once it's known). */
+export const SmsDirectionIcon = ({
+  direction,
+  className = "h-3 w-3",
+}: {
+  direction?: ChannelDirection;
+  className?: string;
+}) => {
+  if (!direction) return <MessageSquare className={className} strokeWidth={1.5} />;
+  return (
+    <MessageSquareShare
+      className={cn(className, direction === "inbound" && "-scale-x-100")}
+      strokeWidth={1.5}
+      aria-hidden="true"
+    />
+  );
+};
 
 /* ── Channel types ── */
 
@@ -104,6 +171,22 @@ export interface InteractionChannel {
    *  the clock icon + text are omitted entirely rather than showing a blank
    *  or misleadingly-ticking value. */
   elapsed: string;
+  /** Replaces the clock-icon + `elapsed` span entirely with arbitrary
+   *  content (e.g. a small colored chip) — per explicit request ("have the
+   *  on hold chip replace the timer in hold calls"): a live voice channel
+   *  the agent has navigated away from reads as "on hold" via `OnHoldBadge
+   *  .tsx`'s `OnHoldPill` (agent-next-gen-v3, app-local — deliberately NOT
+   *  imported here, same "build new things locally" convention that
+   *  component's own doc comment already establishes) in its card header,
+   *  and this prop is what lets that same on-hold state also replace THIS
+   *  row's own running "01:57" timer, which would otherwise keep ticking
+   *  right alongside it and read as contradictory. `preview` above is
+   *  untouched either way (still renders normally alongside whichever of
+   *  `elapsedOverride`/`elapsed` wins) — only the clock+time half of this
+   *  line is ever swapped. Takes priority over `elapsed` whenever both are
+   *  supplied (checked first, via `??`) — omit to leave this row's plain
+   *  clock+text behavior exactly as before (every other caller). */
+  elapsedOverride?: React.ReactNode;
   /** Message preview for this channel. */
   preview?: string;
   /**
@@ -148,6 +231,52 @@ export interface InteractionChannel {
    *  `ChannelOutcomeConfig`'s own doc comment (below `buildVoiceMenuItems`)
    *  for the full explanation. Omit to leave that button unwired. */
   outcome?: ChannelOutcomeConfig;
+  /** Show the standalone "Consult / Transfer" icon button (left of Outcome
+   *  in the hover-reveal overlay, or the record header's own copy of this
+   *  same cluster — see `ChannelRowProps.showConsultTransfer`'s own doc
+   *  comment for the full reasoning). Default: true. Per explicit request
+   *  (Agent Workspace 2.0 Phase 1 only), the one consumer that needs this
+   *  false is `AgentNextGenPage.tsx`'s own `channels` builder — every other
+   *  caller omits this and keeps the button exactly as before. */
+  showConsultTransfer?: boolean;
+  /** Show the trailing "More Options" kebab (⋮) button — see
+   *  `ChannelRowProps.showKebab`'s own doc comment for the full reasoning.
+   *  Default: true. Per explicit request (Agent Workspace 2.0 Phase 1
+   *  only), the one consumer that needs this false is `AgentNextGenPage.
+   *  tsx`'s own `channels` builder — every other caller omits this and
+   *  keeps the kebab exactly as before. */
+  showKebab?: boolean;
+  /** Keep the Consult/Transfer + Outcome overlay permanently visible
+   *  instead of hover/focus-revealed — see `ChannelRowProps.
+   *  alwaysShowOutcome`'s own doc comment for the full reasoning. Default:
+   *  false (every other consumer keeps the existing hover-reveal). */
+  alwaysShowOutcome?: boolean;
+  /** Show a standalone "Unassign & Dismiss" icon button in this overlay —
+   *  see `ChannelRowProps.showDismissButton`'s own doc comment for the
+   *  full reasoning. Default: false (every other consumer keeps this
+   *  action buried in the kebab's menu only, same as before). */
+  showDismissButton?: boolean;
+  /** Whether this channel was customer-initiated or agent-initiated — for
+   *  `type: "voice"`/`"sms"` only, swaps the row's icon to a direction-
+   *  aware glyph (`VoiceDirectionIcon`/`SmsDirectionIcon` above) — per
+   *  explicit request (Agent Workspace 2.0 Phase 1 & Phase 2 only). Omit
+   *  to leave the plain, pre-existing `Phone`/`MessageSquare` icon exactly
+   *  as before (every other channel `type`/consumer ignores this). */
+  direction?: ChannelDirection;
+  /** Renders a standalone solid-red "End Call" icon button immediately to
+   *  the right of the Outcome button — per explicit request ("add an end
+   *  call solid red icon to the right of the outcome check buttons in
+   *  active call interactionNavitems"), so an agent can hang up a live
+   *  voice call straight from its own LeftNav row without first switching
+   *  back to it (e.g. while it's on hold — see `elapsedOverride`'s own
+   *  doc comment just above). Voice-only in practice (every consumer only
+   *  ever sets this for a `type: "voice"` channel), but not restricted to
+   *  it here — same "this row has no opinion on what counts as an active
+   *  call, just how to render the button once told to" split
+   *  `ChannelOutcomeConfig`/`onDismiss` already draw. Omit (the default)
+   *  to leave this row exactly as before — no button, no space reserved
+   *  for it. */
+  onEndCall?: () => void;
 }
 
 /* ── Default menu items, per channel type ──
@@ -272,6 +401,14 @@ function useOutcomePopoverState() {
   return { resolutionMenuOpen, setResolutionMenuOpen, resolutionMenuView, setResolutionMenuView };
 }
 
+// Same helper as `stopSyntheticBubble` in popover.tsx (not exported from
+// there, so re-declared locally here rather than reaching into that
+// module's internals) — see `buildOutcomePopoverSlots`'s own doc comment
+// just below for why THIS popover's content specifically needs its clicks
+// stopped, which is a different bug from the pointermove/focus one that
+// helper was originally written for.
+const stopSyntheticBubble = (e: React.SyntheticEvent) => e.stopPropagation();
+
 /** Builds the Outcome popover's `header`/`footer`/`content` — the actual
  *  Resolution/Tags/Disposition/Summary form (see `ChannelOutcomeConfig`'s
  *  own doc comment above) — shared verbatim between `ChannelRow`'s
@@ -285,16 +422,46 @@ function buildOutcomePopoverSlots(
   { resolutionMenuOpen, setResolutionMenuOpen, resolutionMenuView, setResolutionMenuView }: ReturnType<typeof useOutcomePopoverState>
 ): { header: React.ReactNode; footer: React.ReactNode; content: React.ReactNode } {
   return {
+    // `onClick={stopSyntheticBubble}` on all three slots below — per
+    // explicit bug report ("if the outcome is updated in an on hold call
+    // (non-active interaction) do not switch to that interaction after
+    // updating the status - stay on the current interaction"). This
+    // popover's `header`/`footer`/`content` are logically nested (in the
+    // React tree) inside this specific channel row's own outer element,
+    // which is itself nested inside the WHOLE CARD's own `onClick`
+    // (`InteractionNavCard`'s `onClick` prop, AgentNextGenPage.tsx/
+    // AgentWorkspace2WithDeskPage.tsx — switches `activeInteractionId`).
+    // `Popover.Content` renders through a Radix Portal (mounted at
+    // `document.body`, nowhere near the card in the actual DOM), but per
+    // React's own docs a portal's content still bubbles synthetic events
+    // to its LOGICAL React ancestors regardless of where it's mounted in
+    // the DOM — see `stopSyntheticBubble`'s own doc comment (popover.tsx)
+    // for the exact same "React tree, not DOM tree" mechanism, already
+    // relied on there for a different bug (pointermove/focus reaching an
+    // outer Tooltip). That existing guard only stops pointermove/leave/
+    // focus/blur, deliberately not click — so every click inside this
+    // popover (Approve & Save, Cancel, a Resolution/Tags/Disposition pick,
+    // even the nested "Closed" confirm) was bubbling all the way up to the
+    // card's own `onClick` and silently switching the agent onto whatever
+    // OTHER interaction's on-hold call they'd just logged an outcome for,
+    // the instant they clicked anything in here. Stopped at all three
+    // slots (not just `footer`'s Save/Cancel) since Resolution/Tags/
+    // Disposition selections above `onSave` firing all trigger the exact
+    // same unwanted switch on their own. This is the "Log Outcome"
+    // popover's own click behavior, not a change to the shared `Popover`
+    // primitive itself — every other `Popover` consumer is unaffected.
     header: (
-      <PanelHeader
-        title={outcome.title ?? "Log Outcome"}
-        bordered={false}
-        className="px-5 pb-0"
-        onClose={() => outcome.onOpenChange(false)}
-      />
+      <div onClick={stopSyntheticBubble}>
+        <PanelHeader
+          title={outcome.title ?? "Log Outcome"}
+          bordered={false}
+          className="px-5 pb-0"
+          onClose={() => outcome.onOpenChange(false)}
+        />
+      </div>
     ),
     footer: (
-      <div className="flex items-center justify-end gap-2 px-5 pb-4 pt-1">
+      <div className="flex items-center justify-end gap-2 px-5 pb-4 pt-1" onClick={stopSyntheticBubble}>
         <Button variant="outline" size="md" onClick={outcome.onCancel}>
           Cancel
         </Button>
@@ -304,7 +471,7 @@ function buildOutcomePopoverSlots(
       </div>
     ),
     content: (
-      <div className="flex flex-col gap-4 pb-2 pt-1">
+      <div className="flex flex-col gap-4 pb-2 pt-1" onClick={stopSyntheticBubble}>
         <div>
           <Label label="Status" className="mb-1.5" />
           {/* Same colored-dot `Menu` the session-status pill's own dropdown
@@ -532,6 +699,8 @@ interface ChannelRowProps {
    *  to "critical" (red) regardless of this value. */
   variant: TagVariant;
   elapsed: string;
+  /** See `InteractionChannel.elapsedOverride`'s own doc comment above. */
+  elapsedOverride?: React.ReactNode;
   preview?: string;
   /** Blue-highlighted row background — set by the parent when this row is
    *  both `current` and the card is `active`. */
@@ -579,7 +748,51 @@ interface ChannelRowProps {
    *  `ChannelOutcomeConfig`'s own doc comment above) — omit to leave that
    *  button a plain, unwired placeholder (its pre-existing behavior). */
   outcome?: ChannelOutcomeConfig;
+  /** Hide just the standalone "Consult / Transfer" icon button in the
+   *  hover-reveal overlay, leaving Outcome and the trailing kebab (governed
+   *  by `showMenu`) untouched — per explicit request (Agent Workspace 2.0
+   *  Phase 1 only). Default: true (every other consumer keeps this button
+   *  exactly as before). */
+  showConsultTransfer?: boolean;
+  /** Hide just the trailing "More Options" kebab (⋮) button, leaving
+   *  Consult/Transfer and Outcome (each governed by their own prop)
+   *  untouched — per explicit request (Agent Workspace 2.0 Phase 1 only).
+   *  Unlike `showMenu={false}` (which REPLACES the kebab with a close
+   *  button for a closed/draft row), this just omits it outright — no
+   *  replacement. Default: true (every other consumer keeps the kebab
+   *  exactly as before). */
+  showKebab?: boolean;
+  /** Keep the Consult/Transfer + Outcome overlay permanently visible
+   *  (no hover/focus-reveal, no `opacity-0`/`pointer-events-none`, and
+   *  rendered in normal flow instead of `absolute` — this row's `showKebab`
+   *  is typically `false` alongside this, so there's no longer a kebab
+   *  sitting to its right for `right-full` to anchor against) — per
+   *  explicit request (Agent Workspace 2.0 Phase 1 only). Default: false
+   *  (every other consumer keeps the existing hover-reveal behavior). */
+  alwaysShowOutcome?: boolean;
+  /** Render a standalone "Unassign & Dismiss" icon button (same icon/
+   *  action as the kebab's own "Unassign & Dismiss" menu entry — see
+   *  `onDismiss`'s own doc comment) directly in this overlay, immediately
+   *  right of Outcome — per explicit request (Agent Workspace 2.0 Phase 1
+   *  only): once `showKebab={false}` buries that action nowhere, this is
+   *  how it stays reachable without the kebab. Default: false (every
+   *  other consumer leaves this action inside the kebab's menu only, same
+   *  as before). */
+  showDismissButton?: boolean;
+  /** Passed straight through from `InteractionChannel.onEndCall` — see its
+   *  own doc comment for the full reasoning. Omit (the default) to leave
+   *  this row's trailing cluster exactly as before. */
+  onEndCall?: () => void;
 }
+
+// `direction` (see `InteractionChannel.direction`'s own doc comment) is
+// deliberately NOT a `ChannelRowProps` field — `icon` above is already the
+// fully-resolved glyph by the time it reaches this component. Only the two
+// per-type wrappers that need it (`VoiceChannelRow`/`SmsChannelRow`, further
+// below) read `direction` off their own `ChannelRowInstanceProps`, to pick
+// `VoiceDirectionIcon`/`SmsDirectionIcon` BEFORE calling into `<ChannelRow
+// icon={...} />` — every other wrapper (`ChatChannelRow`/`EmailChannelRow`/
+// `WhatsAppChannelRow`) still hardcodes its own `icon`, untouched.
 
 // "consult-transfer"/"outcome" are promoted out of this row's own kebab
 // into their own standalone icon buttons (rendered just to its left, see
@@ -605,6 +818,7 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
   label,
   variant,
   elapsed,
+  elapsedOverride,
   preview,
   highlighted,
   isFirst,
@@ -617,6 +831,11 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
   onSelect,
   onMenuOpenChange,
   outcome,
+  showConsultTransfer = true,
+  showKebab = true,
+  alwaysShowOutcome = false,
+  showDismissButton = false,
+  onEndCall,
 }) => {
   // `null` when not awaiting at all (the plain gray look below is
   // untouched); otherwise `awaitingSeverity`, defaulting to `"critical"` —
@@ -658,21 +877,18 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
     )}
   >
     <div className="flex items-center gap-0">
-      {/* Small critical dot to the left of the chip, on top of the chip's
-          own red/critical color swap above — an extra, unmissable visual
-          cue that this specific channel (not just this row's colors) is the
-          one awaiting a response, for a card with more than one open
-          channel where only one might be. Same `Badge` dot primitive
-          `InteractionNavItem`'s compact-mode avatar corner badge already
-          uses (`shape="circle" dot variant="critical"`), just inline here
-          rather than absolutely positioned. */}
-      {severity && (
-        // `severity` ("warning" | "critical") lines up 1:1 with `Badge`'s
-        // own `BadgeCircleVariant` values, so it drops straight in — no
-        // translation needed between this row's escalation tier and the
-        // dot's color.
-        <Badge shape="circle" dot variant={severity} size="sm" className="mr-1" aria-hidden="true" />
-      )}
+      {/* Per explicit follow-up bug report ("remove the dots next to the
+          channel chips - they are not clear what they mean"): this used to
+          render a small extra `Badge` dot here, on top of the chip's own
+          red/critical (or, per `awaitingSeverity`, green/orange) color swap
+          just below — meant as an unmissable "this specific channel is the
+          one awaiting a response" cue for a card with more than one open
+          channel where only one might be. Removed outright rather than
+          reworked: with no label/tooltip of its own, a bare colored dot
+          sitting next to an already-colored chip read as an unexplained
+          second signal, not a clarifying one. The chip's own color swap
+          (`severity ?? variant` just below) still carries the same
+          information on its own, unchanged. */}
       <span className={cn(tagVariants({ variant: severity ?? variant, shape: "pill" }))}>
         <span aria-hidden="true">{icon}</span>
         {label}
@@ -726,30 +942,45 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
       {showMenu ? (
         <span className="relative ml-auto flex h-6 shrink-0 items-center">
           <div
-            className={cn(
-              "pointer-events-none absolute inset-y-0 right-full flex h-6 items-center gap-0 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100",
-              // `group-focus-within:` alongside `group-hover:` — per
-              // explicit accessibility request: Consult/Transfer and
-              // Outcome are real buttons, so `opacity-0`/`pointer-events-
-              // none` alone doesn't remove them from the tab order, it
-              // just leaves them invisible (and unclickable, pre-
-              // `pointer-events-auto`) while a keyboard user has actually
-              // tabbed to one. Tabbing into either button now reveals this
-              // whole cluster exactly like hovering the row does; the
-              // hover behavior itself is unchanged.
-              "group-focus-within:pointer-events-auto group-focus-within:opacity-100",
-              // Stay revealed while the Outcome popover it triggers is open
-              // — without this, moving the pointer off the row after
-              // opening it (to actually reach into the now-portaled-
-              // elsewhere popover content) would fade this whole overlay
-              // back to `opacity-0 pointer-events-none`, leaving the
-              // popover open with no visible trigger button anchoring it.
-              outcome?.open && "pointer-events-auto opacity-100"
-            )}
+            className={
+              // Per explicit request (Agent Workspace 2.0 Phase 1 only):
+              // `alwaysShowOutcome` drops the hover/focus-reveal treatment
+              // entirely — no `opacity-0`, no `pointer-events-none`, no
+              // `absolute`/`right-full` positioning (which assumed a kebab
+              // sitting just to this overlay's right to anchor against;
+              // `showKebab` is typically `false` alongside this prop, so
+              // there'd be nothing left there to anchor to) — rendering
+              // this overlay as a normal, always-visible flex item in the
+              // row's own flow instead.
+              alwaysShowOutcome
+                ? "flex h-6 items-center gap-0"
+                : cn(
+                    "pointer-events-none absolute inset-y-0 right-full flex h-6 items-center gap-0 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100",
+                    // `group-focus-within:` alongside `group-hover:` — per
+                    // explicit accessibility request: Consult/Transfer and
+                    // Outcome are real buttons, so `opacity-0`/`pointer-events-
+                    // none` alone doesn't remove them from the tab order, it
+                    // just leaves them invisible (and unclickable, pre-
+                    // `pointer-events-auto`) while a keyboard user has actually
+                    // tabbed to one. Tabbing into either button now reveals this
+                    // whole cluster exactly like hovering the row does; the
+                    // hover behavior itself is unchanged.
+                    "group-focus-within:pointer-events-auto group-focus-within:opacity-100",
+                    // Stay revealed while the Outcome popover it triggers is open
+                    // — without this, moving the pointer off the row after
+                    // opening it (to actually reach into the now-portaled-
+                    // elsewhere popover content) would fade this whole overlay
+                    // back to `opacity-0 pointer-events-none`, leaving the
+                    // popover open with no visible trigger button anchoring it.
+                    outcome?.open && "pointer-events-auto opacity-100"
+                  )
+            }
           >
-            <Button variant="icon" size="icon-sm" title="Consult / Transfer" className="shrink-0 text-lyra-fg-secondary">
-              <ConsultTransferIcon />
-            </Button>
+            {showConsultTransfer && (
+              <Button variant="icon" size="icon-sm" title="Consult / Transfer" className="shrink-0 text-lyra-fg-secondary">
+                <ConsultTransferIcon />
+              </Button>
+            )}
             {outcome ? (
               <Popover
                 open={outcome.open}
@@ -793,25 +1024,75 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
                   className="shrink-0 text-lyra-fg-secondary"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <CircleCheck className="h-4 w-4 text-lyra-status-info-strong" strokeWidth={1.5} />
+                  {/* Per explicit request ("make the outcome check button
+                      a solid blue circle"): swaps the outline `CircleCheck`
+                      lucide icon for this file's own `SuccessIconSolid` (a
+                      filled circle + white checkmark, recolorable via
+                      `text-*` since its circle is `fill="currentColor"`) —
+                      the same solid-icon convention `WarningIconSolid`
+                      above already uses. Kept the existing
+                      `text-lyra-status-info-strong` blue tint rather than
+                      the icon's "success" green default, matching the blue
+                      this Outcome icon has always used. The kebab-menu
+                      "Outcome" entries (`buildStandardKebabMenuOptions`/
+                      `buildVoiceKebabMenuOptions` above) keep the plain
+                      outline `CircleCheck` — they sit in a list alongside
+                      other plain outline icons (Send/FileDown/Languages/
+                      PlayCircle), where a solid badge would look
+                      inconsistent with its neighbors. */}
+                  <SuccessIconSolid className="h-4 w-4 text-lyra-status-info-strong" />
                 </Button>
               </Popover>
             ) : (
               <Button variant="icon" size="icon-sm" title="Outcome" className="shrink-0 text-lyra-fg-secondary">
-                <CircleCheck className="h-4 w-4 text-lyra-status-info-strong" strokeWidth={1.5} />
+                <SuccessIconSolid className="h-4 w-4 text-lyra-status-info-strong" />
+              </Button>
+            )}
+            {onEndCall && (
+              // Per explicit follow-up ("sorry I don't want it in a solid
+              // square - just make the hang up icon red"): reverted from a
+              // solid-red-FILLED `variant="destructive"` button to a plain
+              // ghost icon button matching this same overlay's own
+              // Unassign & Dismiss treatment just below (`showDismissButton`)
+              // — no background fill, just the `PhoneOff` glyph itself in
+              // red, with a light red hover/press state.
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                title="End Call"
+                className="shrink-0 text-lyra-status-critical-strong hover:bg-lyra-status-critical-subtle hover:text-lyra-status-critical-strong active:bg-lyra-status-critical-medium"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEndCall();
+                }}
+              >
+                <PhoneOff className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+              </Button>
+            )}
+            {showDismissButton && onDismiss && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                title="Unassign & Dismiss"
+                className="shrink-0 text-lyra-status-critical-strong hover:bg-lyra-status-critical-subtle hover:text-lyra-status-critical-strong active:bg-lyra-status-critical-medium"
+                onClick={onDismiss}
+              >
+                <UserX className="h-3.5 w-3.5" strokeWidth={1.5} />
               </Button>
             )}
           </div>
-          <Tooltip content="More Options" placement="bottom" disabled={menuOpen}>
-            <KebabMenuButton
-              items={stripPromotedChannelRowActions(menuItems)}
-              ariaLabel={`More options for ${label}`}
-              onOpenChange={(open) => {
-                setMenuOpen(open);
-                onMenuOpenChange?.(open);
-              }}
-            />
-          </Tooltip>
+          {showKebab && (
+            <Tooltip content="More Options" placement="bottom" disabled={menuOpen}>
+              <KebabMenuButton
+                items={stripPromotedChannelRowActions(menuItems)}
+                ariaLabel={`More options for ${label}`}
+                onOpenChange={(open) => {
+                  setMenuOpen(open);
+                  onMenuOpenChange?.(open);
+                }}
+              />
+            </Tooltip>
+          )}
         </span>
       ) : (
         onDismiss && (
@@ -877,10 +1158,12 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
         non-empty (not gated on `preview`, unlike before) — see `elapsed`'s
         own doc comment for the `""` case, which now omits this span
         entirely (a bare clock icon with nothing next to it would just read
-        as a rendering glitch, not "nothing to time yet"). */}
+        as a rendering glitch, not "nothing to time yet"). `elapsedOverride`
+        (own doc comment above) takes priority over this whole span whenever
+        supplied — `preview` is untouched either way. */}
     <div className="flex items-center gap-1">
       {preview && <p className="min-w-0 flex-1 truncate lyra-body-sm text-lyra-fg-secondary">{preview}</p>}
-      {elapsed && (
+      {elapsedOverride ?? (elapsed && (
         <span
           className={cn(
             "flex shrink-0 items-center gap-1 lyra-body-xs",
@@ -896,7 +1179,7 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
           <Clock className="h-3 w-3" strokeWidth={1.5} aria-hidden="true" />
           {elapsed}
         </span>
-      )}
+      ))}
     </div>
   </div>
   );
@@ -909,6 +1192,9 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
 
 export interface ChannelRowInstanceProps {
   elapsed: string;
+  /** Passed straight through to `ChannelRow` — see `InteractionChannel.
+   *  elapsedOverride`'s own doc comment. */
+  elapsedOverride?: React.ReactNode;
   preview?: string;
   highlighted?: boolean;
   isFirst?: boolean;
@@ -934,6 +1220,21 @@ export interface ChannelRowInstanceProps {
   onMenuOpenChange?: (open: boolean) => void;
   /** Passed straight through to `ChannelRow` — see its own doc comment. */
   outcome?: ChannelOutcomeConfig;
+  /** Passed straight through to `ChannelRow` — see its own doc comment. */
+  showConsultTransfer?: boolean;
+  /** Passed straight through to `ChannelRow` — see its own doc comment. */
+  showKebab?: boolean;
+  /** Passed straight through to `ChannelRow` — see its own doc comment. */
+  alwaysShowOutcome?: boolean;
+  /** Passed straight through to `ChannelRow` — see its own doc comment. */
+  showDismissButton?: boolean;
+  /** Passed straight through to `ChannelRow` — see `InteractionChannel.
+   *  onEndCall`'s own doc comment. */
+  onEndCall?: () => void;
+  /** Read (not forwarded) by `VoiceChannelRow`/`SmsChannelRow` only, to pick
+   *  a direction-aware icon — see `InteractionChannel.direction`'s own doc
+   *  comment. Every other wrapper ignores this. */
+  direction?: ChannelDirection;
 }
 
 const ChatChannelRow: React.FC<ChannelRowInstanceProps> = ({ menuItems, removable, onDismiss, ...rest }) => (
@@ -966,10 +1267,14 @@ const EmailChannelRow: React.FC<ChannelRowInstanceProps> = ({ menuItems, removab
   />
 );
 
-const SmsChannelRow: React.FC<ChannelRowInstanceProps> = ({ menuItems, removable, onDismiss, ...rest }) => (
+const SmsChannelRow: React.FC<ChannelRowInstanceProps> = ({ menuItems, removable, onDismiss, direction, ...rest }) => (
   <ChannelRow
     {...rest}
-    icon={<MessageSquare className="h-3 w-3" strokeWidth={1.5} />}
+    // Direction-aware (`SmsDirectionIcon` — see its own doc comment): a
+    // plain `MessageSquare` when `direction` is omitted, a small corner
+    // arrow badge on it otherwise. Per explicit request (Agent Workspace
+    // 2.0 Phase 1 & Phase 2 only).
+    icon={<SmsDirectionIcon direction={direction} className="h-3 w-3" />}
     label="SMS"
     variant={CHANNEL_TYPE_TAG_VARIANT.sms}
     menuItems={menuItems ?? buildDigitalMenuItems(onDismiss)}
@@ -990,10 +1295,14 @@ const WhatsAppChannelRow: React.FC<ChannelRowInstanceProps> = ({ menuItems, remo
   />
 );
 
-const VoiceChannelRow: React.FC<ChannelRowInstanceProps> = ({ menuItems, removable, onDismiss, ...rest }) => (
+const VoiceChannelRow: React.FC<ChannelRowInstanceProps> = ({ menuItems, removable, onDismiss, direction, ...rest }) => (
   <ChannelRow
     {...rest}
-    icon={<Phone className="h-3 w-3" strokeWidth={1.5} />}
+    // Direction-aware (`VoiceDirectionIcon` — see its own doc comment): a
+    // plain `Phone` when `direction` is omitted, `PhoneIncoming`/
+    // `PhoneOutgoing` otherwise. Per explicit request (Agent Workspace 2.0
+    // Phase 1 & Phase 2 only).
+    icon={<VoiceDirectionIcon direction={direction} className="h-3 w-3" />}
     label="Voice"
     variant={CHANNEL_TYPE_TAG_VARIANT.voice}
     menuItems={menuItems ?? buildVoiceMenuItems(onDismiss)}
@@ -1197,7 +1506,7 @@ export interface ChannelTabProps {
 
 const ChannelTab: React.FC<ChannelTabProps> = ({
   type,
-  address,
+  address: addressProp,
   showAddressOnFace = true,
   // Destructured but intentionally unused below — kept as a real prop for
   // existing callers/future use; see its own doc comment on
@@ -1218,6 +1527,13 @@ const ChannelTab: React.FC<ChannelTabProps> = ({
   className,
 }) => {
   const meta = CHANNEL_TYPE_META[type];
+  // `address` isn't guaranteed to already be display-formatted (despite
+  // this prop's own doc comment) — several producers upstream just copy a
+  // raw dialed/looked-up string through unchanged — so it's normalized
+  // here, once, before any of this component's render sites below use it.
+  // `formatPhoneForDisplay` is a safe no-op for a non-phone-shaped address
+  // (an email, a WhatsApp handle), so this never needs its own type check.
+  const address = formatPhoneForDisplay(addressProp);
   // See `ChannelRow`'s own identical `severity` derivation above — same
   // "null when not awaiting at all, otherwise `awaitingSeverity` defaulting
   // to critical" rule, just feeding `Tab`'s `severity` prop instead of a
@@ -1566,7 +1882,7 @@ export interface ChannelToggleProps extends ChannelTabProps {
  */
 const ChannelToggle: React.FC<ChannelToggleProps> = ({
   type,
-  address,
+  address: addressProp,
   statusLabel,
   lastCustomerContactLabel,
   interactionId,
@@ -1583,6 +1899,10 @@ const ChannelToggle: React.FC<ChannelToggleProps> = ({
   isFirst,
 }) => {
   const meta = CHANNEL_TYPE_META[type];
+  // See `ChannelTab`'s own identical normalization above — `address` isn't
+  // guaranteed to already be display-formatted, so it's normalized here
+  // too before this component's tooltip below uses it.
+  const address = formatPhoneForDisplay(addressProp);
   // Mirrors `ChannelTab`'s own `severity`/`tabIcon` derivation verbatim —
   // see that component's doc comments (above) for the full "success/
   // warning/critical, escalating icon" reasoning; not re-explained here.

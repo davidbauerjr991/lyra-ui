@@ -31,12 +31,13 @@ function readNumberCookie(name: string): number | null {
    admin-shell.tsx's "interior panels row"). Always inline and resizable;
    opened via a click/trigger elsewhere in the main container (a button, a
    row select, etc. — there's no hover-to-open concept here, unlike
-   `SidePanel`). Below 1440px of its parent container's width it switches
-   to an absolute overlay instead of squeezing the content column further —
-   raised from 1024px (which used to match `SidePanel`'s own consumers'
-   pin-guard threshold — `AdminShell`, the "Agent Next Gen" template — before
-   1050px before that) after testing wider values in agent-next-gen-v2; the
-   two thresholds are no longer tied to one shared value.
+   `SidePanel`). Below 1440px of its parent container's width (see
+   `absoluteBreakpoint` below) it switches to an absolute overlay instead of
+   squeezing the content column further — raised from 1024px (which used to
+   match `SidePanel`'s own consumers' pin-guard threshold — `AdminShell`,
+   the "Agent Next Gen" template — before 1050px before that) after testing
+   wider values in agent-next-gen-v2; the two thresholds are no longer tied
+   to one shared value.
 
    This is one of exactly two panel types in the design system — the other
    being `SidePanel` (over the page header, hover/pin, left or right).
@@ -128,8 +129,9 @@ export interface InteriorPanelProps extends React.HTMLAttributes<HTMLDivElement>
    * `Minimize2` icon, matching `ContainerHeader.stories.tsx`'s own
    * fullscreen-toggle reference) that expands the panel to the full width
    * of its container — same overlay mechanism the panel already uses below
-   * 1440px of its parent's width (`isNarrow`, see the class doc comment
-   * above), just user-triggered instead of width-triggered, so it needs no
+   * its `absoluteBreakpoint` (default 1440px) of its parent's width
+   * (`isNarrow`, see the class doc comment above and `absoluteBreakpoint`'s
+   * own doc comment), just user-triggered instead of width-triggered, so it needs no
    * extra cooperation from whatever main-content column sits next to this
    * panel: the panel simply covers it, rather than requiring that sibling
    * to shrink out of the way itself. Default `false` — every existing
@@ -162,6 +164,22 @@ export interface InteriorPanelProps extends React.HTMLAttributes<HTMLDivElement>
    * full-screen. */
   exitFullScreenSignal?: number | string;
 
+  /**
+   * Width (px) of the panel's PARENT container below which it switches to
+   * an absolute overlay instead of squeezing the main content column
+   * further — see this component's own top doc comment for the "why" and
+   * this value's own history. Default: 1440, unchanged for every existing
+   * consumer (`AdminShell` and every other app built on this design system)
+   * — per explicit request, scoped per-consumer rather than changed
+   * globally: a lower value here flips to overlay mode sooner (at a wider
+   * parent width), which suits a narrower/busier main content column (e.g.
+   * one already sharing space with a docked Customer Information panel)
+   * without affecting any other app's own interior panels, which have no
+   * reason to change behavior just because one consumer wanted a different
+   * threshold.
+   */
+  absoluteBreakpoint?: number;
+
   footer?: React.ReactNode;
 }
 
@@ -188,6 +206,7 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       headerTabs,
       allowFullScreen = false,
       exitFullScreenSignal,
+      absoluteBreakpoint = 1440,
       footer,
       children,
       ...props
@@ -236,15 +255,17 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       return () => clearTimeout(closeTimerRef.current);
     }, [open]);
 
-    /* ── Go absolute/overlay when the parent container is < 1440px, instead
-       of squeezing the main content column further — was 1024px (matching
-       SidePanel's own pin-guard threshold, admin-shell.tsx /
-       AgentNextGenTemplate; 1050px before that); raised after testing wider
-       values in agent-next-gen-v2, so this is no longer tied to SidePanel's
-       own threshold. ── */
+    /* ── Go absolute/overlay when the parent container is < absoluteBreakpoint
+       (default 1440px), instead of squeezing the main content column
+       further — was 1024px (matching SidePanel's own pin-guard threshold,
+       admin-shell.tsx / AgentNextGenTemplate; 1050px before that); raised
+       after testing wider values in agent-next-gen-v2, so this is no longer
+       tied to SidePanel's own threshold. See `absoluteBreakpoint`'s own doc
+       comment for why this is now a per-consumer prop rather than always
+       this one hardcoded value. ── */
     const outerRef = useRef<HTMLDivElement>(null);
     const [parentWidth, setParentWidth] = useState(9999);
-    const isNarrow = parentWidth < 1440;
+    const isNarrow = parentWidth < absoluteBreakpoint;
 
     const stableOuterRef = useCallback((el: HTMLDivElement | null) => {
       (outerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;

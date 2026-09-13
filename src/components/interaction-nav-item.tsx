@@ -11,6 +11,7 @@ import {
 import { Popover } from "./popover";
 import { Badge, getPillInlineStyles, type BadgeColor } from "./badge";
 import { Button } from "./button";
+import { formatPhoneForDisplay } from "./phone-input";
 
 /* ── Helpers ── */
 
@@ -80,6 +81,21 @@ export interface InteractionNavItemProps {
   awaitingSeverity?: "success" | "warning" | "critical";
   /** Whether this is the currently-open/selected interaction. */
   active?: boolean;
+  /** Tints the whole expanded card (background + outer border) with the
+   *  warning/yellow treatment — per explicit request ("make the ENTIRE card
+   *  background yellow and give the entire card background a warning
+   *  border"). Overrides `expandedCardClassName`'s normal background AND
+   *  its normal active/inactive/severity border logic unconditionally
+   *  while true, regardless of `active`/`awaitingSeverity` — a consumer
+   *  drives this off its own domain state (e.g. "this interaction has a
+   *  live call the agent has navigated away from"); this component has no
+   *  opinion on what "on hold" means, just how to paint the card once told
+   *  it applies. Shared by both the real expanded card and the compact
+   *  tile's hover-preview popover below (both reuse the same
+   *  `expandedCardClassName`), so a held interaction reads the same way in
+   *  either. Default `false` (every existing consumer renders exactly as
+   *  before). */
+  onHold?: boolean;
   /**
    * Whether the parent LeftNav rail is expanded. False renders the compact
    * avatar tile (icon-rail mode); true renders the full detail card. Mirrors
@@ -228,6 +244,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       awaitingResponse = false,
       awaitingSeverity,
       active = false,
+      onHold = false,
       expanded = false,
       onClick,
       onDismiss,
@@ -282,7 +299,12 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       }
     }
     const initials = getInitials(customerName);
-    const displayName = customerName || "Customer";
+    // `formatPhoneForDisplay` is a no-op for a real customer name (or any
+    // other non-phone-shaped string — an email address, a WhatsApp handle)
+    // and only reformats `customerName` when it's actually standing in for
+    // a raw dialed number (see that prop's own doc comment) — safe to call
+    // unconditionally rather than branching on `hasCustomerName` below.
+    const displayName = formatPhoneForDisplay(customerName) || "Customer";
     const channelCount = channels.length;
     // Whether there's a real customer name to derive initials from at all —
     // `customerIdentified` wins when the consumer passes it explicitly
@@ -582,6 +604,16 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                 <RowComponent
                   key={`${channelKey(ch)}-${i}`}
                   elapsed={ch.elapsed}
+                  // Was missing entirely, same class of bug as `outcome`'s
+                  // own doc comment just below — every other per-channel
+                  // field here got forwarded from `ch`, but this one (added
+                  // alongside `InteractionChannel.elapsedOverride`,
+                  // channel-row.tsx) never made it into this explicit
+                  // per-field list, so a consumer's on-hold chip silently
+                  // never appeared — this row kept rendering its own plain
+                  // clock+timer regardless of what `elapsedOverride` was set
+                  // to.
+                  elapsedOverride={ch.elapsedOverride}
                   preview={ch.preview}
                   highlighted={highlighted}
                   isFirst={i === 0}
@@ -590,6 +622,12 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                   removable={ch.removable}
                   removeVariant={ch.removeVariant}
                   menuItems={ch.menuItems}
+                  showConsultTransfer={ch.showConsultTransfer}
+                  showKebab={ch.showKebab}
+                  alwaysShowOutcome={ch.alwaysShowOutcome}
+                  showDismissButton={ch.showDismissButton}
+                  onEndCall={ch.onEndCall}
+                  direction={ch.direction}
                   // Keeps the hover-preview popover open (and its close
                   // timer disarmed) for as long as this row's own kebab
                   // dropdown is open — see `handleChannelMenuOpenChange`'s
@@ -831,7 +869,12 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     // shared between the real expanded return and the hover popover's
     // preview of it — same reasoning as `cardBody` above.
     const expandedCardClassName = cn(
-      "flex w-full cursor-pointer flex-col overflow-hidden rounded-lyra-sm border-y border-r bg-lyra-bg-surface-base text-left transition-colors",
+      "flex w-full cursor-pointer flex-col overflow-hidden rounded-lyra-sm border-y border-r text-left transition-colors",
+      // Per `onHold`'s own doc comment above: overrides the plain surface
+      // background unconditionally while true — a `bg-lyra-bg-surface-base`
+      // ternary'd branch here rather than baked into the base string above,
+      // same reasoning as the border override just below.
+      onHold ? "bg-lyra-status-warning-subtle" : "bg-lyra-bg-surface-base",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
       active ? "border-l-4" : "border-l",
       // Active cards get a permanent `shadow-md` (the "elevated" token per
@@ -867,7 +910,13 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       //    is used instead, computed against whichever theme's value the
       //    token already resolves to, so it darkens correctly in both
       //    themes without hardcoding either one's hex directly.
-      active
+      // `onHold` wins outright, ahead of `active`/`severity` — see its own
+      // doc comment above: a held card's border is always the warning
+      // treatment, whether or not it's also the active card or separately
+      // awaiting a response.
+      onHold
+        ? "border-lyra-status-warning-strong hover:border-[color-mix(in_srgb,var(--lyra-color-status-warning-strong)_80%,black_20%)]"
+        : active
         ? severity === "critical"
           ? "border-lyra-status-critical-strong hover:border-[color-mix(in_srgb,var(--lyra-color-status-critical-strong)_80%,black_20%)]"
           : severity === "warning"

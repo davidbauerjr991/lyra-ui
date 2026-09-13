@@ -103,7 +103,7 @@ function validatePhone(digits: string, country: PhoneCountry): string | null {
   if (!digits) return null;
   const expected = maskDigitCount(country.mask);
   if (digits.length !== expected) {
-    return `Enter a valid ${country.name} number (${expected} digits). Example: ${country.example}`;
+    return `This number isn't formatted correctly for ${country.name} (expects ${expected} digits). Example: ${country.example}`;
   }
   return null;
 }
@@ -117,6 +117,76 @@ function validatePhone(digits: string, country: PhoneCountry): string | null {
  *  §1 ("never hard-code around a real component's own logic"). */
 export function isPhoneNumberComplete(digits: string, country: PhoneCountry): boolean {
   return digits.length === maskDigitCount(country.mask);
+}
+
+/**
+ * Formats an arbitrary phone-shaped string for display as
+ * "(xxx) xxx-xxxx" (US/Canada) or "+<dial> <national format>" (every other
+ * `PHONE_COUNTRIES` entry) — the single place every consumer (session rows,
+ * contact history, channel tabs, InteractionNavItem titles, and so on)
+ * should route a raw address through before showing it, rather than each
+ * one re-deriving its own formatting (CONTRIBUTING.md §1). Handles every
+ * raw shape already in use across the app: E.164 with or without spaces
+ * ("+14563833329", "+1 456 383 3329"), a bare national number with no
+ * country code ("(503) 555-0142", "5035550142"), and an already-formatted
+ * string (returned unchanged, since re-formatting a correctly-formatted
+ * number is a harmless no-op).
+ *
+ * Deliberately defensive rather than phone-specific in what it accepts:
+ * anything that isn't ALL DIGITS once formatting characters (spaces,
+ * parens, dashes, a leading "+") are stripped — an email address, a
+ * WhatsApp handle, a customer's real name — is returned unchanged rather
+ * than mangled, so callers that show a phone number alongside other kinds
+ * of address/identity strings (e.g. `contactHistoryDisplayIdentity`,
+ * `ChannelTab`'s `address`) can pass anything through this unconditionally
+ * without checking the channel type themselves first.
+ *
+ * Also returns the original string unchanged when it CAN'T be matched to
+ * any known country's expected digit count (same "unknown format" case
+ * `PhoneInput`'s own live validation error covers for user-typed numbers)
+ * — there is no country to format bad/incomplete mock data against, so
+ * showing the raw value as-is beats guessing.
+ */
+export function formatPhoneForDisplay(raw: string | null | undefined): string {
+  if (!raw) return "";
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+
+  // Only ever treat this as a phone number if, once formatting characters
+  // are stripped, what's left is ALL digits — see doc comment above.
+  const strippedOfFormatting = trimmed.replace(/[\s().+-]/g, "");
+  if (!strippedOfFormatting || /\D/.test(strippedOfFormatting)) return trimmed;
+
+  let country: PhoneCountry | undefined;
+  let nationalDigits: string;
+
+  if (trimmed.startsWith("+")) {
+    // Leading "+<dial>" pins the country explicitly — same convention
+    // `PHONE_COUNTRIES` itself uses for `dial`. Checked longest-dial-code
+    // first so e.g. "+1" (US/CA, a 1-digit dial) doesn't shadow a real
+    // multi-digit dial code for a number that happens to start with the
+    // same leading digit.
+    const digitsOnly = stripDigits(trimmed);
+    const byDialLengthDesc = [...PHONE_COUNTRIES].sort((a, b) => b.dial.length - a.dial.length);
+    const match = byDialLengthDesc.find((c) => digitsOnly.startsWith(c.dial.slice(1)));
+    if (!match) return trimmed;
+    country = match;
+    nationalDigits = digitsOnly.slice(match.dial.length - 1);
+  } else {
+    // No explicit country prefix — assume US/Canada, same default
+    // `PhoneInput`'s own `defaultCountry` uses for a bare number. A bare
+    // 11-digit number starting with "1" already carries that country
+    // digit without a "+" (e.g. "14563833329") — strip it before matching
+    // against the 10-digit US/CA mask.
+    const digitsOnly = stripDigits(trimmed);
+    country = PHONE_COUNTRIES.find((c) => c.code === "us");
+    nationalDigits = digitsOnly.length === 11 && digitsOnly.startsWith("1") ? digitsOnly.slice(1) : digitsOnly;
+  }
+
+  if (!country || !isPhoneNumberComplete(nationalDigits, country)) return trimmed;
+
+  const formattedNational = applyMask(nationalDigits, country.mask);
+  return country.dial === "+1" ? formattedNational : `${country.dial} ${formattedNational}`;
 }
 
 /* ── Types ── */
@@ -160,6 +230,18 @@ export interface PhoneInputProps {
    * field, list rows) stays full-size, same as any other popover content.
    */
   size?: "sm" | "md";
+  /**
+   * Shows the validation error immediately, without waiting for the field
+   * to blur first (the default behavior — see `touched` below). For a
+   * consumer with its own explicit submit action (e.g. a "Dial Number"
+   * button, or Enter-to-dial), pass `true` here once the user attempts
+   * that action while the number is still incomplete/invalid, so the error
+   * appears right away instead of only after they click elsewhere — same
+   * "reveal on submit attempt, not before" pattern most form validation
+   * uses. Purely additive: once `touched` is also true (the user did blur),
+   * the error shows regardless of this prop. Default false.
+   */
+  forceShowError?: boolean;
 }
 
 /* ── Component ── */
@@ -180,6 +262,7 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
     hideCountrySelector = false,
     dropdownClassName,
     size = "md",
+    forceShowError = false,
   }, ref) => {
     const autoId    = React.useId();
     const inputId   = id ?? autoId;
@@ -195,7 +278,7 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
 
     const selected    = PHONE_COUNTRIES.find((c) => c.code === countryCode) ?? PHONE_COUNTRIES[0];
     const formatted   = applyMask(rawDigits, selected.mask);
-    const error       = touched ? validatePhone(rawDigits, selected) : null;
+    const error       = (touched || forceShowError) ? validatePhone(rawDigits, selected) : null;
     const ph          = placeholder ?? selected.example;
 
     const filtered = React.useMemo(() => {

@@ -123,8 +123,10 @@ export {
   useOutcomePopoverState,
   buildOutcomePopoverSlots,
   ConsultTransferIcon,
+  VoiceDirectionIcon,
+  SmsDirectionIcon,
 } from "./components/channel-row";
-export type { ChannelRowInstanceProps, ChannelTabProps, ChannelToggleProps, ChannelToggleGroupProps, PlainToggleTabProps, ChannelOutcomeConfig } from "./components/channel-row";
+export type { ChannelRowInstanceProps, ChannelTabProps, ChannelToggleProps, ChannelToggleGroupProps, PlainToggleTabProps, ChannelOutcomeConfig, ChannelDirection } from "./components/channel-row";
 export { ActionIconButton, ActionAvatarButton } from "./components/actions";
 export type { ActionIconButtonProps, ActionAvatarButtonProps } from "./components/actions";
 export { ShellIconButton, ShellAvatarButton } from "./components/shell-button";
@@ -321,7 +323,7 @@ export { TransferBox } from "./components/transfer-box";
 export type { TransferBoxOption, TransferBoxProps } from "./components/transfer-box";
 export { Autocomplete } from "./components/autocomplete";
 export type { AutocompleteOption, AutocompleteProps } from "./components/autocomplete";
-export { PhoneInput, PHONE_COUNTRIES, isPhoneNumberComplete } from "./components/phone-input";
+export { PhoneInput, PHONE_COUNTRIES, isPhoneNumberComplete, formatPhoneForDisplay } from "./components/phone-input";
 export type { PhoneInputProps } from "./components/phone-input";
 export { EmailInput } from "./components/email-input";
 export { Slider, SliderRange } from "./components/slider";

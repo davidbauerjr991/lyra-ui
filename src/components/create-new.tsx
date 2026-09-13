@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { Plus, X, ChevronLeft, ChevronRight, Search, Check, Minus } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Menu } from "./menu";
@@ -9,6 +9,7 @@ import { Tooltip } from "./tooltip";
 import { Select, type SelectOption } from "./select";
 import { RadioButtonGroup } from "./radio-button-group";
 import { Button } from "./button";
+import { Spinner } from "./spinner";
 import { TableFooter } from "./table";
 import { FavoriteButton } from "./favorite-button";
 import { ListItem } from "./list-item";
@@ -37,6 +38,48 @@ export interface CreateNewItem {
  *  use for (an agent never sets their own status to "in a call" — that's
  *  an automatic, observed state, not a status code they pick). */
 export type AgentPresenceStatus = "available" | "busy" | "away" | "offline" | "in-call";
+
+/** How long "Start Interaction"/"Dial Number" show their own "Connecting…"
+ *  state (button disabled, spinner + label swapped in) before the actual
+ *  call fires and this popover closes — shared by every button that starts
+ *  a voice/digital interaction (`OutboundAddButton`'s own detail form,
+ *  `CreateNew`'s outbound-flow detail screen, and its dialpad group's "Dial
+ *  Number") so they all read as the same, consistent transition. Per
+ *  explicit request ("instead of using the call controls strip for the
+ *  dialing animation, just transition the start interaction or dial number
+ *  buttons to a connecting and then when the call is connected open the
+ *  assignment") — this REPLACES the previous approach of opening the
+ *  interaction immediately and showing a "Dialing…" bar in its own record
+ *  header instead; now the interaction/assignment doesn't open at all until
+ *  this window has elapsed. */
+const CONNECTING_DURATION_MS = 2000;
+
+/** `className` override for a "start the call" button while it's in its
+ *  `CONNECTING_DURATION_MS` window — swaps the button's own solid-blue
+ *  `variant="default"` look for a neutral, rounded-full "in progress" pill
+ *  (same treatment on every button `CONNECTING_DURATION_MS` applies to),
+ *  since it's no longer really an actionable CTA at that point. `hover:`/
+ *  `active:` are pinned to the same background as the resting state —
+ *  `disabled:pointer-events-none` (button.tsx's own base classes) already
+ *  blocks real interaction while connecting, but without this a lingering
+ *  `:hover` from the cursor sitting where the button was already re-renders
+ *  a stray darker tint the instant this state appears. */
+const CONNECTING_BUTTON_CLASSNAME =
+  "rounded-full bg-lyra-bg-surface-container-subtle text-lyra-fg-secondary hover:bg-lyra-bg-surface-container-subtle active:bg-lyra-bg-surface-container-subtle";
+
+/** Content for a "start the call" button — the normal `label` right up
+ *  until `CONNECTING_DURATION_MS`'s window opens (`connecting`), at which
+ *  point it swaps to a spinner + "Connecting…" — paired with
+ *  `CONNECTING_BUTTON_CLASSNAME` above wherever this is used. */
+function ConnectingButtonContent({ connecting, label }: { connecting: boolean; label: string }) {
+  if (!connecting) return <>{label}</>;
+  return (
+    <>
+      <Spinner variant="bar" size="sm" label="Connecting" />
+      Connecting…
+    </>
+  );
+}
 
 // `variant` values are deliberately the same 5 `BadgeCircleVariant` roles
 // `AgentProfile`'s own status dots already use (agent-profile.tsx) — no
@@ -359,8 +402,19 @@ export interface CreateNewOutboundConfig {
   phoneOptions: { value: string; label: string }[];
   /** Options for the detail screen's "Outbound Skill" dropdown */
   skillOptions: { value: string; label: string }[];
-  /** Fired when a number is submitted from a "dialpad"-kind group (Enter key) */
-  onQuickDial?: (phoneNumber: string) => void;
+  /** Fired when a number is submitted from a "dialpad"-kind group (Enter
+   *  key, or the "Dial Number" button) — `skillId` is whatever this group's
+   *  own "Select outbound skill" field (`detailSkill`/`setDetailSkill`,
+   *  same shared state the "detail" screen's identically-labeled field
+   *  uses) was set to at submit time, defaulting to `skillOptions[0]` same
+   *  as that field always has. Added per explicit bug report: this used to
+   *  be a bare `(phoneNumber: string) => void` — the dialpad's own skill
+   *  Select rendered and was fully interactive, but selecting anything
+   *  other than the default was silently discarded, since nothing ever
+   *  read `detailSkill` at dial time. Every existing consumer's callback
+   *  still works unchanged (an extra trailing argument is simply ignored
+   *  by a function that only declares one parameter). */
+  onQuickDial?: (phoneNumber: string, skillId: string) => void;
   /** Fired when "Start Interaction" is pressed on the detail screen */
   onStartCall?: (selection: {
     contact: CreateNewOutboundContact;
@@ -387,6 +441,59 @@ export interface CreateNewOutboundConfig {
    *  component can't clear its own prop, so the consumer should use this to
    *  reset whatever state produced it back to `null`. */
   onLaunchRequestHandled?: () => void;
+  /** Imperatively opens the popover directly to the "dialpad"-kind group
+   *  (see `CreateNewOutboundGroup.kind`), pre-filled with `phoneNumber` —
+   *  same "external deep-link" idea as `launchRequest` above, for a caller
+   *  that already knows a raw number to dial rather than a specific
+   *  contact+channel — e.g. a "Redial" button on a past Contact History
+   *  entry, which needs the agent to confirm/pick an outbound skill before
+   *  the call actually starts (this component's own dialpad screen already
+   *  has exactly that field) rather than dialing immediately with no skill
+   *  chosen at all. `phoneNumber` is parsed the same "digits only, `+1`
+   *  assumed unless the string already carries a different recognized
+   *  country prefix" way `handleDialNumber` itself formats a dialed number,
+   *  so passing back what an earlier `onQuickDial`/`onStartCall` call
+   *  received (or an entry's own on-file phone) round-trips correctly.
+   *  Compared by reference each render, same as `launchRequest` — set a new
+   *  `{ phoneNumber }` object each time this should fire, and clear it back
+   *  to `null` (see `onDialpadRequestHandled` below) once handled.
+   *
+   *  Per explicit follow-up request ("don't close the interior panel of
+   *  the contact history when redial is clicked, simply open the popover
+   *  (place it on top of the redial button)... If it is an existing
+   *  customer, display the customer name and an ability to select from any
+   *  of the phone numbers available"), three more fields, all optional:
+   *
+   *  - `anchorEl`: repositions the popover against this element instead of
+   *    the "+" New Outbound trigger — e.g. the Redial button itself, so the
+   *    popover opens right where the agent clicked rather than jumping to
+   *    the trigger elsewhere on the page (see `Popover`'s own
+   *    `virtualAnchorRef` prop, popover.tsx, which this is threaded
+   *    through to). Omit to keep anchoring on the normal trigger.
+   *  - `customerName`/`phoneOptions`: when BOTH are set, this entry
+   *    resolves to a real customer record with more than one number on
+   *    file — the dialpad screen shows `customerName` as its title (in
+   *    place of the group's own "Dial Pad" label) and a "Select Phone"
+   *    dropdown of `phoneOptions` (in place of the free-text
+   *    country+digits field) defaulting to whichever option's `value`
+   *    matches `phoneNumber`. Omit both for a raw/unknown number with
+   *    nothing else to show — the screen keeps its original free-text
+   *    field and generic "Dial Pad" title exactly as before.
+   *
+   *  The back button is also suppressed for the whole lifetime of any
+   *  `dialpadRequest`-driven open (see `dialpadRequestActive` below) — per
+   *  the same explicit request, there's no real "back" destination once
+   *  the agent has already committed to a specific redial. */
+  dialpadRequest?: {
+    phoneNumber: string;
+    anchorEl?: HTMLElement | null;
+    customerName?: string;
+    phoneOptions?: { value: string; label: string }[];
+  } | null;
+  /** Fired immediately after `dialpadRequest` has been acted on — same
+   *  "this component can't clear its own prop" reasoning as
+   *  `onLaunchRequestHandled`. */
+  onDialpadRequestHandled?: () => void;
   /**
    * Temporary escape hatch, per explicit request: suppresses the full
    * unfiltered browse list for every "contacts"-kind group (Agents/Teams/
@@ -861,6 +968,27 @@ function resolveOutboundDetailField(
   return { label: "Select Phone", options, defaultValue: options[0]?.value ?? "" };
 }
 
+/** Parses a display-formatted phone string (e.g. `"(704) 555-0142"`, or
+ *  `"+1 234 567 8901"` — the two shapes this app's own Contact History rows
+ *  and synthesized addresses respectively already produce) into the plain
+ *  `PhoneValue` shape `PhoneInput` needs (`countryCode` + raw digits, no
+ *  formatting or dial code — see that type's own doc comment, phone-input
+ *  .tsx) — used by the `dialpadRequest` effect below to seed the dialpad
+ *  screen's phone field from a caller-supplied number. Strips everything
+ *  but digits, then drops a leading "1" if that leaves 11 digits (a
+ *  US/Canada number that already carried its own "+1"/"1" dial prefix) so
+ *  the remaining 10 digits match what `PhoneInput` expects for `"us"`
+ *  (`PHONE_COUNTRIES`' own 10-digit mask) — every number this app produces
+ *  is US/Canada, so `"us"` is always the right `countryCode` here; a
+ *  consumer dialing a real international number would need a richer
+ *  `dialpadRequest` shape than this (a `countryCode` alongside
+ *  `phoneNumber`), not something this helper can infer from digits alone. */
+function parseDialpadPhoneNumber(raw: string): PhoneValue {
+  const digitsOnly = raw.replace(/\D/g, "");
+  const number = digitsOnly.length === 11 && digitsOnly.startsWith("1") ? digitsOnly.slice(1) : digitsOnly;
+  return { countryCode: "us", number };
+}
+
 /* ── Outbound "add" button (internal to the flyout, exported) ──
    Small standalone "+" trigger for adding another channel to a contact who
    already has a live interaction open — factored out so other surfaces can
@@ -1017,6 +1145,18 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
     // own `!detailSkill` check below in that case, same as before this
     // change).
     const [detailSkill, setDetailSkill] = useState(skillOptions[0]?.value ?? "");
+    // True for the brief window between "Start Interaction" being pressed
+    // and the resulting call actually connecting — see `handleStartCall`
+    // below for what this drives (the button itself turning into a
+    // "Connecting…" state) and why the popover deliberately stays open for
+    // it rather than closing immediately, per explicit request ("instead of
+    // using the call controls strip for the dialing animation, just
+    // transition the start interaction ... button[] to a connecting and
+    // then when the call is connected open the assignment"). Reset in the
+    // same close effect below as every other field here — this popover's
+    // content stays mounted (just hidden) between opens, so nothing resets
+    // on its own.
+    const [connecting, setConnecting] = useState(false);
 
     const selectChannel = (channel: ChannelType | "custom") => {
       setDetailChannel(channel);
@@ -1058,9 +1198,28 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
         // consumer's skill list itself changes still re-derives from the
         // current list, not a stale one captured on an earlier render.
         setDetailSkill(skillOptions[0]?.value ?? "");
+        setConnecting(false);
       }, 200);
       return () => clearTimeout(t);
     }, [open, channelOptions, contact, initialChannel, skillOptions, phoneOptions]);
+
+    // Holds `handleStartCall`'s own pending `setTimeout` id (below) for the
+    // "Connecting…" window — a plain ref, not state, since nothing ever
+    // renders off it directly.
+    const connectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // If the agent closes this popover (Escape, clicking away) WHILE
+    // "Connecting…" is showing, the call that was about to fire is canceled
+    // outright rather than going through after the popover's already gone —
+    // same "canceling really cancels" expectation as every other in-flight
+    // action here. Deliberately its own effect, not folded into the
+    // 200ms-deferred field-reset one above: that delay exists so the exit
+    // animation doesn't visibly flash reset fields, which has nothing to do
+    // with how fast a pending call should be canceled.
+    useEffect(() => {
+      if (open || !connectTimeoutRef.current) return;
+      clearTimeout(connectTimeoutRef.current);
+      connectTimeoutRef.current = null;
+    }, [open]);
 
     // "Select Channel" stays editable once on the detail form (matching
     // `CreateNew`'s own detail screen) — if the agent switches channel here,
@@ -1150,17 +1309,35 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
         : !!detailChannel
       : false;
 
+    // `connecting` guards re-entrancy — the button is `disabled` while true
+    // (below), but this also covers the keyboard-Enter/synthetic-click path,
+    // same defensive double-check every other guard in this function
+    // already makes explicit rather than relying on `disabled` alone. See
+    // `CONNECTING_DURATION_MS`'s own doc comment — the actual `onStartCall`
+    // (which is what opens the resulting interaction) and this popover's
+    // close are both now deferred until the "Connecting…" window elapses,
+    // rather than firing immediately the way they used to;
+    // `connectTimeoutRef`'s own effect above cancels this outright if the
+    // agent closes the popover before then.
     const handleStartCall = () => {
-      if (!detailSkill) return;
+      if (!detailSkill || connecting) return;
       if (detailChannel === "custom") {
         if (!customResolvedChannel || !customTrimmed) return;
-        onStartCall({ contact, channel: customResolvedChannel, phone: customTrimmed, skillId: detailSkill });
-        setOpen(false);
+        setConnecting(true);
+        connectTimeoutRef.current = setTimeout(() => {
+          connectTimeoutRef.current = null;
+          onStartCall({ contact, channel: customResolvedChannel, phone: customTrimmed, skillId: detailSkill });
+          setOpen(false);
+        }, CONNECTING_DURATION_MS);
         return;
       }
       if (!detailChannel) return;
-      onStartCall({ contact, channel: detailChannel, phone: detailPhone, skillId: detailSkill });
-      setOpen(false);
+      setConnecting(true);
+      connectTimeoutRef.current = setTimeout(() => {
+        connectTimeoutRef.current = null;
+        onStartCall({ contact, channel: detailChannel, phone: detailPhone, skillId: detailSkill });
+        setOpen(false);
+      }, CONNECTING_DURATION_MS);
     };
 
     return (
@@ -1297,8 +1474,14 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
                     options={skillOptions}
                     dropdownClassName="z-[10005]"
                   />
-                  <Button variant="default" size="lg" className="w-full" disabled={!canStartInteraction} onClick={handleStartCall}>
-                    Start Interaction
+                  <Button
+                    variant="default"
+                    size="lg"
+                    className={cn("w-full", connecting && CONNECTING_BUTTON_CLASSNAME)}
+                    disabled={!canStartInteraction || connecting}
+                    onClick={handleStartCall}
+                  >
+                    <ConnectingButtonContent connecting={connecting} label="Start Interaction" />
                   </Button>
                 </div>
               ) : (
@@ -1537,6 +1720,43 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     // per component instance (isDrillDown / isOutboundFlow never both true),
     // so one PhoneValue suffices for whichever is actually rendered.
     const [phone, setPhone] = useState<PhoneValue>({ countryCode: "us", number: "" });
+    // Set once the user tries to dial `phone` (Enter, or the dialpad
+    // group's own "Dial Number" button) while it's still incomplete —
+    // forces `PhoneInput`'s validation error to show immediately instead
+    // of waiting for blur, per explicit request ("if they do not match any
+    // known country code formatting, display an error in the dialpad
+    // input"). Shared by both `PhoneInput` usages below for the same
+    // reason `phone` itself is shared (see that state's own doc comment).
+    // Reset back to false the moment the number changes again, so the
+    // error clears while the user is actively retyping rather than staying
+    // stuck on-screen until the next dial attempt.
+    const [phoneDialAttempted, setPhoneDialAttempted] = useState(false);
+    const handlePhoneChange = (next: PhoneValue) => {
+      setPhone(next);
+      if (phoneDialAttempted) setPhoneDialAttempted(false);
+    };
+    // Same "Connecting…" window as `OutboundAddButton`'s own identical
+    // state (create-new.tsx, above) — see `CONNECTING_DURATION_MS`'s doc
+    // comment. Shared here by BOTH `handleStartCall`/"Start Interaction"
+    // (outbound flow's detail screen) and `handleDialNumber`/"Dial Number"
+    // (dialpad group) below, same reasoning `phone` itself is shared: the
+    // two are mutually exclusive per component instance.
+    const [connecting, setConnecting] = useState(false);
+    const connectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // Cancels a pending dial outright if the agent closes this popover
+    // while "Connecting…" is showing — unlike `OutboundAddButton`'s own
+    // version of this effect, this popover's other fields (`detailChannel`/
+    // `phone`/etc.) have no equivalent "reset once closed" effect of their
+    // own to piggyback on, so `connecting` gets a small effect all its own
+    // rather than introducing one.
+    useEffect(() => {
+      if (open) return;
+      if (connectTimeoutRef.current) {
+        clearTimeout(connectTimeoutRef.current);
+        connectTimeoutRef.current = null;
+      }
+      setConnecting(false);
+    }, [open]);
     const [page, setPage] = useState(1);
     const pageSize = outbound?.pageSize ?? 10;
     // Detail-screen selections — editable on screen 2 (Select Channel can be
@@ -1556,21 +1776,54 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     // outbound drill-down flow, which has no skill concept at all.
     const [detailSkill, setDetailSkill] = useState(outbound?.skillOptions?.[0]?.value ?? "");
     const searchInputRef = React.useRef<HTMLInputElement>(null);
-    // Set right before the `launchRequest` effect below opens this popover
-    // programmatically, and read (then cleared) inside `onOpenAutoFocus` on
-    // the `Popover` call further down. A normal open (the agent clicking
-    // this component's own trigger button) intentionally cancels Radix's
-    // auto-focus so focus stays on that trigger; a `launchRequest`-driven
-    // open has no such trigger click to preserve — the click that caused it
-    // happened on a completely unrelated element elsewhere on the page
-    // (e.g. `InteractionNavItem`'s own "Add Outbound" button) — so letting
-    // Radix's default auto-focus land on the first focusable field inside
-    // this popover's content is exactly what's needed, and doing so is what
-    // fixes the "opens, then instantly closes again" flash a bug report
-    // described: without it, focus stayed on that unrelated trigger,
-    // Radix's dismissable layer saw focus sitting *outside* the newly
-    // mounted popover, and treated that as an outside interaction.
-    const openedViaLaunchRequestRef = React.useRef(false);
+    // Set right before the `launchRequest`/`dialpadRequest` effects below
+    // open this popover programmatically, and read (then cleared) inside
+    // `onOpenAutoFocus` on the `Popover` call further down. A normal open
+    // (the agent clicking this component's own trigger button) intentionally
+    // cancels Radix's auto-focus so focus stays on that trigger; either of
+    // these imperative opens has no such trigger click to preserve — the
+    // click that caused it happened on a completely unrelated element
+    // elsewhere on the page (e.g. `InteractionNavItem`'s own "Add Outbound"
+    // button for `launchRequest`, a Contact History row's "Redial" button
+    // for `dialpadRequest`) — so letting Radix's default auto-focus land on
+    // the first focusable field inside this popover's content is exactly
+    // what's needed, and doing so is what fixes the "opens, then instantly
+    // closes again" flash a bug report described: without it, focus stayed
+    // on that unrelated trigger, Radix's dismissable layer saw focus sitting
+    // *outside* the newly mounted popover, and treated that as an outside
+    // interaction. Named generically (not `...LaunchRequestRef`) since it's
+    // now shared by both imperative-open mechanisms, not just `launchRequest`.
+    const openedViaImperativeRequestRef = React.useRef(false);
+    // `dialpadRequest.anchorEl` (see that field's own doc comment) — a
+    // plain mutable ref, not state, since Popper's own `Anchor` reads it
+    // directly (`Popover`'s `virtualAnchorRef` prop, popover.tsx) and
+    // re-renders itself off `open`/`dialpadRequest` changing anyway; no
+    // extra re-render is needed just to update where this points. Reset to
+    // `null` in the close-reset effect below (`dialpadRequestActive`'s own
+    // doc comment), so a later NORMAL "+" trigger click reverts to
+    // anchoring on `children` (the default) rather than staying pinned to
+    // wherever the last redial happened to be.
+    const virtualAnchorRef = React.useRef<HTMLElement | null>(null);
+    // True for the whole lifetime of a `dialpadRequest`-driven open — per
+    // explicit request, suppresses the dialpad group screen's own back
+    // button for exactly this case (see `showBackButton` below): there's
+    // nothing to go "back" to once the agent has already committed to a
+    // specific redial via a dedicated button elsewhere on the page, unlike
+    // the ordinary "+" New Outbound → Dial Pad row navigation, which keeps
+    // its back button as before (this stays `false` for that path). Reset
+    // in the same close-reset effect that already clears every other
+    // transient popover-session flag.
+    const [dialpadRequestActive, setDialpadRequestActive] = useState(false);
+    // `dialpadRequest.customerName`/`.phoneOptions` (see that field's own
+    // doc comment) — `null`/`null` for a raw/unknown redialed number, which
+    // keeps the dialpad screen's original free-text-field/generic-title
+    // rendering unchanged. `dialpadSelectedPhone` is this picker's own
+    // "Select Phone" value, analogous to `detailPhone` on the "detail"
+    // screen but kept separate since the two screens are never showing at
+    // the same time and want independently-reset defaults.
+    const [dialpadCustomerName, setDialpadCustomerName] = useState<string | null>(null);
+    const [dialpadPhoneOptions, setDialpadPhoneOptions] = useState<{ value: string; label: string }[] | null>(null);
+    const [dialpadSelectedPhone, setDialpadSelectedPhone] = useState("");
     // Favorited contact ids, toggled by FavoriteButton (add or remove — see
     // favorite-button.tsx). Persists across popover open/close, unlike the
     // transient search/page state reset in the effect below, since a
@@ -1621,6 +1874,17 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
           setSearch("");
           setPhone({ countryCode: "us", number: "" });
           setPage(1);
+          // `dialpadRequest`-session state (see each one's own doc
+          // comment above) — reset here alongside everything else this
+          // effect already clears on close, so a later NORMAL "+" trigger
+          // click always reopens at the plain, un-redialed dialpad screen
+          // anchored on the trigger itself, never still showing (or
+          // anchored to) whatever the last redial left behind.
+          virtualAnchorRef.current = null;
+          setDialpadRequestActive(false);
+          setDialpadCustomerName(null);
+          setDialpadPhoneOptions(null);
+          setDialpadSelectedPhone("");
         }, 200);
         return () => clearTimeout(t);
       }
@@ -1970,13 +2234,62 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
         setDetailSkill(outbound?.skillOptions?.[0]?.value ?? "");
         setSearch("");
         setStack([{ kind: "group", groupId }, { kind: "detail", groupId, contactId: contact.id, channel: req.channel }]);
-        openedViaLaunchRequestRef.current = true;
+        openedViaImperativeRequestRef.current = true;
         setOpen(true);
         outbound?.onLaunchRequestHandled?.();
       }, 0);
       return () => clearTimeout(t);
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [outbound?.launchRequest]);
+
+    // External deep-link (see `CreateNewOutboundConfig.dialpadRequest`'s own
+    // doc comment) — same overall shape as the `launchRequest` effect just
+    // above (deferred one tick for the exact same "let some other popover's
+    // close finish first" reason — a "Redial" button living inside a Contact
+    // History detail panel is exactly this kind of trigger), but jumps to
+    // the dialpad group screen instead of a contact's own "detail" screen,
+    // since a raw redialed number has no contact record to look up at all.
+    React.useEffect(() => {
+      const req = outbound?.dialpadRequest;
+      if (!req) return;
+      const dialpadGroupId = (outbound?.groups ?? []).find((g) => g.kind === "dialpad")?.id;
+      if (!dialpadGroupId) {
+        // No dialpad group configured at all — nothing to jump to. Still
+        // reports "handled" so the consumer's own request state doesn't
+        // stay stuck set forever with nothing ever able to act on it.
+        outbound?.onDialpadRequestHandled?.();
+        return;
+      }
+      const t = setTimeout(() => {
+        setPhone(parseDialpadPhoneNumber(req.phoneNumber));
+        // First skill, not `""` — see `detailSkill`'s own doc comment above.
+        setDetailSkill(outbound?.skillOptions?.[0]?.value ?? "");
+        setSearch("");
+        setStack([{ kind: "outbound-menu" }, { kind: "group", groupId: dialpadGroupId }]);
+        openedViaImperativeRequestRef.current = true;
+        // `anchorEl`/`customerName`/`phoneOptions` — see `dialpadRequest`'s
+        // own doc comment for what each does. `dialpadSelectedPhone`
+        // defaults to whichever option's `value` actually matches
+        // `phoneNumber` (falling back to the first option, same "first
+        // skill, not a blank" idiom `detailSkill` above already uses) —
+        // deliberately NOT just `req.phoneNumber` verbatim, since a caller
+        // could in principle pass a `phoneNumber` that doesn't exactly
+        // match any of its own `phoneOptions`' `value` strings (e.g. a
+        // formatting mismatch), which would otherwise silently default
+        // this "Select Phone" field to a value with no matching option.
+        virtualAnchorRef.current = req.anchorEl ?? null;
+        setDialpadRequestActive(true);
+        setDialpadCustomerName(req.customerName ?? null);
+        setDialpadPhoneOptions(req.phoneOptions ?? null);
+        setDialpadSelectedPhone(
+          req.phoneOptions?.find((o) => o.value === req.phoneNumber)?.value ?? req.phoneOptions?.[0]?.value ?? ""
+        );
+        setOpen(true);
+        outbound?.onDialpadRequestHandled?.();
+      }, 0);
+      return () => clearTimeout(t);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [outbound?.dialpadRequest]);
 
     // Label + options for screen 2's second field, matching whichever
     // channel is currently selected — delegates to the same
@@ -1993,15 +2306,23 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
         ? resolveOutboundDetailField(activeOutboundContact, detailChannel, outbound?.phoneOptions ?? [])
         : { label: "Select Phone", options: outbound?.phoneOptions ?? [] };
 
+    // See `CONNECTING_DURATION_MS`'s own doc comment — `onStartCall` (which
+    // opens the resulting interaction) and this popover's close are both
+    // now deferred until the "Connecting…" window elapses; the effect above
+    // cancels this outright if the agent closes the popover before then.
     const handleStartCall = () => {
-      if (!outbound || !activeOutboundContact || !detailChannel || !detailSkill) return;
-      outbound.onStartCall?.({
-        contact: activeOutboundContact,
-        channel: detailChannel,
-        phone: detailPhone,
-        skillId: detailSkill,
-      });
-      setOpen(false);
+      if (!outbound || !activeOutboundContact || !detailChannel || !detailSkill || connecting) return;
+      setConnecting(true);
+      connectTimeoutRef.current = setTimeout(() => {
+        connectTimeoutRef.current = null;
+        outbound.onStartCall?.({
+          contact: activeOutboundContact,
+          channel: detailChannel,
+          phone: detailPhone,
+          skillId: detailSkill,
+        });
+        setOpen(false);
+      }, CONNECTING_DURATION_MS);
     };
 
     // Shared by the dialpad group's "Dial Number" button and its Enter-to-dial
@@ -2011,10 +2332,41 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     // instead of re-deriving it (CONTRIBUTING.md §1).
     const selectedPhoneCountry = PHONE_COUNTRIES.find((c) => c.code === phone.countryCode) ?? PHONE_COUNTRIES[0];
     const isDialpadNumberValid = isPhoneNumberComplete(phone.number, selectedPhoneCountry);
+    // See `CONNECTING_DURATION_MS`'s own doc comment — same "Connecting…"
+    // deferral as `handleStartCall` above, for exactly the same reason.
     const handleDialNumber = () => {
-      if (!isDialpadNumberValid) return;
-      outbound?.onQuickDial?.(`${selectedPhoneCountry.dial}${phone.number}`);
-      setOpen(false);
+      if (connecting) return;
+      // Picker mode (`dialpadPhoneOptions` set — see that state's own doc
+      // comment): the free-text country+digits field isn't even rendered,
+      // so there's nothing for `isDialpadNumberValid`/`selectedPhoneCountry`
+      // to validate — `dialpadSelectedPhone`'s own "Select Phone" value is
+      // dialed directly instead, already a complete, dialable value by
+      // construction (one of `dialpadPhoneOptions`' own `value`s, never
+      // freehand-typed).
+      if (dialpadPhoneOptions) {
+        if (!dialpadSelectedPhone) return;
+        setConnecting(true);
+        connectTimeoutRef.current = setTimeout(() => {
+          connectTimeoutRef.current = null;
+          outbound?.onQuickDial?.(dialpadSelectedPhone, detailSkill);
+          setOpen(false);
+        }, CONNECTING_DURATION_MS);
+        return;
+      }
+      if (!isDialpadNumberValid) {
+        setPhoneDialAttempted(true);
+        return;
+      }
+      // `detailSkill` — see `CreateNewOutboundConfig.onQuickDial`'s own doc
+      // comment for why this is now forwarded too (previously silently
+      // dropped, even though this same field renders right above and is
+      // fully interactive).
+      setConnecting(true);
+      connectTimeoutRef.current = setTimeout(() => {
+        connectTimeoutRef.current = null;
+        outbound?.onQuickDial?.(`${selectedPhoneCountry.dial}${phone.number}`, detailSkill);
+        setOpen(false);
+      }, CONNECTING_DURATION_MS);
     };
 
     const headerTitle =
@@ -2031,7 +2383,29 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
           // the same way as any other row now, see `goToGroup`) shows its
           // own label as the title, the same way `"channels"` above shows
           // the contact it's viewing rather than the flow-wide title.
-          activeGroup?.label ?? outbound?.outboundTitle ?? "New Outbound"
+          //
+          // Exception, per explicit request: a `dialpadRequest` that
+          // resolved to a real customer (`dialpadCustomerName` set — see
+          // that state's own doc comment) shows THEIR name here instead of
+          // the group's generic "Dial Pad" label, matching how "detail"
+          // (below) already shows a picked contact's own name rather than
+          // the flow-wide title.
+          //
+          // Second exception, per a later explicit request/screenshot
+          // ("the header of the redial should say 'Redial Contact' not
+          // Dial Pad"): a `dialpadRequest` for a number with NO matching
+          // customer (`dialpadCustomerName` unset) falls through to
+          // "Redial Contact" instead of the generic "Dial Pad" group
+          // label — `dialpadRequest` is only ever set by a page's own
+          // Redial button (see that field's own doc comment above), never
+          // by the ordinary "+" New Outbound → Dial Pad row navigation, so
+          // `dialpadRequestActive` alone is enough to tell the two apart
+          // without a separate "is this a redial" flag.
+          (activeGroup?.kind === "dialpad" ? dialpadCustomerName : null) ??
+          (activeGroup?.kind === "dialpad" && dialpadRequestActive ? "Redial Contact" : null) ??
+          activeGroup?.label ??
+          outbound?.outboundTitle ??
+          "New Outbound"
         : /* screen.kind === "detail" */ activeOutboundContact?.name ?? outbound?.outboundTitle ?? "New Outbound";
 
     // Back button shows on any drill-down sub-screen, and on the outbound
@@ -2040,9 +2414,19 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     // popover. Only the outbound flow's OWN screen 1 (`"outbound-menu"`)
     // has no action list above it to go back to, so it keeps getting no
     // back button — same as drill-down's `"root"`.
+    //
+    // Exception, per explicit request: the whole lifetime of a
+    // `dialpadRequest`-driven open (`dialpadRequestActive` — see its own
+    // doc comment) gets no back button either, on top of that — there's no
+    // real "back" destination once the agent has already committed to a
+    // specific redial via a dedicated button elsewhere on the page, unlike
+    // the ordinary "+" New Outbound → Dial Pad row navigation, which keeps
+    // its own back button exactly as before.
     const showBackButton =
       (isDrillDown && screen.kind !== "root") ||
-      (isOutboundFlow && (screen.kind === "detail" || screen.kind === "group"));
+      (isOutboundFlow &&
+        (screen.kind === "detail" || screen.kind === "group") &&
+        !(screen.kind === "group" && activeGroup?.kind === "dialpad" && dialpadRequestActive));
 
     // A single persistent button, not two JSX branches swapped by
     // `expanded` — its width/colors/padding and the label's reveal are all
@@ -2322,15 +2706,22 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
         align="start"
         sideOffset={6}
         showArrow={false}
+        // Repositions onto `dialpadRequest.anchorEl` (e.g. the Redial
+        // button) while one is pending/active, and back onto the "+"
+        // trigger the instant it isn't — see `virtualAnchorRef`'s own doc
+        // comment (above) and `Popover`'s own (popover.tsx) for the
+        // mechanics. A no-op for every consumer that never sets a
+        // `dialpadRequest` at all.
+        virtualAnchorRef={virtualAnchorRef}
         onOpenAutoFocus={(e) => {
-          // See `openedViaLaunchRequestRef`'s own doc comment above — only
+          // See `openedViaImperativeRequestRef`'s own doc comment above — only
           // cancel Radix's auto-focus for a normal user-click open (the
           // default keeps focus on this component's own trigger button,
-          // which the agent just clicked); a launchRequest-driven open has
-          // no such trigger click to preserve focus on, and needs Radix's
-          // real auto-focus to land inside this content instead.
-          if (openedViaLaunchRequestRef.current) {
-            openedViaLaunchRequestRef.current = false;
+          // which the agent just clicked); a `launchRequest`/`dialpadRequest`
+          // -driven open has no such trigger click to preserve focus on, and
+          // needs Radix's real auto-focus to land inside this content instead.
+          if (openedViaImperativeRequestRef.current) {
+            openedViaImperativeRequestRef.current = false;
             return;
           }
           e.preventDefault();
@@ -2368,11 +2759,11 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
               <Button
                 variant="default"
                 size="lg"
-                className="w-full"
-                disabled={!detailSkill}
+                className={cn("w-full", connecting && CONNECTING_BUTTON_CLASSNAME)}
+                disabled={!detailSkill || connecting}
                 onClick={handleStartCall}
               >
-                Start Interaction
+                <ConnectingButtonContent connecting={connecting} label="Start Interaction" />
               </Button>
             </div>
           ) : screen.kind === "group" &&
@@ -2448,11 +2839,13 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
               <Button
                 variant="default"
                 size="lg"
-                className="w-full"
-                disabled={!isDialpadNumberValid}
+                className={cn("w-full", connecting && CONNECTING_BUTTON_CLASSNAME)}
+                // Picker mode validates against `dialpadSelectedPhone`
+                // instead — see `handleDialNumber`'s own doc comment.
+                disabled={(dialpadPhoneOptions ? !dialpadSelectedPhone : !isDialpadNumberValid) || connecting}
                 onClick={handleDialNumber}
               >
-                Dial Number
+                <ConnectingButtonContent connecting={connecting} label="Dial Number" />
               </Button>
             </div>
           ) : undefined
@@ -2673,16 +3066,43 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                         }
                       }}
                     >
-                      {/* No `placeholder` override here — PhoneInput's own
-                          per-country example (e.g. "(555) 555-5555" for the
-                          US) is more useful than a fixed generic string, and
-                          it updates automatically as the country changes.
-                          `dropdownClassName="z-[10003]"`: the country
-                          dropdown is a Popover nested inside this
-                          component's own z-[9999] popover panel — same
-                          nested-popover case as the per-row channel flyout,
-                          see CONTRIBUTING.md §5. */}
-                      <PhoneInput value={phone} onChange={setPhone} dropdownClassName="z-[10003]" />
+                      {/* Picker mode (`dialpadPhoneOptions` set — see that
+                          state's own doc comment): this entry resolved to a
+                          real customer with more than one number on file,
+                          so a "Select Phone" dropdown replaces the free-text
+                          field entirely — same `Select` usage as the
+                          "detail" screen's own identically-labeled field
+                          just below, for the same reason (picking among a
+                          contact's own known numbers, not typing an
+                          arbitrary one). The customer's own NAME renders as
+                          this screen's header title instead (`headerTitle`
+                          above), not repeated here — same "name in the
+                          header, fields in the body" split the "detail"
+                          screen already uses for a picked contact. */}
+                      {dialpadPhoneOptions ? (
+                        <Select
+                          label="Select Phone"
+                          value={dialpadSelectedPhone || undefined}
+                          onValueChange={setDialpadSelectedPhone}
+                          options={dialpadPhoneOptions}
+                        />
+                      ) : (
+                        // No `placeholder` override here — PhoneInput's own
+                        // per-country example (e.g. "(555) 555-5555" for the
+                        // US) is more useful than a fixed generic string, and
+                        // it updates automatically as the country changes.
+                        // `dropdownClassName="z-[10003]"`: the country
+                        // dropdown is a Popover nested inside this
+                        // component's own z-[9999] popover panel — same
+                        // nested-popover case as the per-row channel flyout,
+                        // see CONTRIBUTING.md §5.
+                        <PhoneInput
+                          value={phone}
+                          onChange={handlePhoneChange}
+                          forceShowError={phoneDialAttempted}
+                          dropdownClassName="z-[10003]"
+                        />
+                      )}
                       {/* Same `detailSkill`/`setDetailSkill` state (and the
                           same `outbound?.skillOptions` list) the "detail"
                           screen's own "Outbound Skill" field below already
@@ -2901,12 +3321,24 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                     <div
                       className="border-b border-lyra-border-subtle px-4 py-3"
                       onKeyDown={(e) => {
-                        if (e.key === "Enter" && phone.number.trim()) {
-                          e.preventDefault();
-                          const country = PHONE_COUNTRIES.find((c) => c.code === phone.countryCode) ?? PHONE_COUNTRIES[0];
-                          onQuickDial?.(`${country.dial}${phone.number}`);
-                          setOpen(false);
+                        if (e.key !== "Enter") return;
+                        e.preventDefault();
+                        const country = PHONE_COUNTRIES.find((c) => c.code === phone.countryCode) ?? PHONE_COUNTRIES[0];
+                        // Same digit-count completeness check the dialpad
+                        // group's own "Dial Number" button/Enter-to-dial
+                        // uses (`isDialpadNumberValid`) — previously this
+                        // only checked `phone.number.trim()` truthiness, so
+                        // an incomplete/malformed number would silently
+                        // dial anyway. Per explicit request, an invalid
+                        // attempt now instead surfaces `PhoneInput`'s own
+                        // validation error (`forceShowError` below) rather
+                        // than dialing.
+                        if (!isPhoneNumberComplete(phone.number, country)) {
+                          setPhoneDialAttempted(true);
+                          return;
                         }
+                        onQuickDial?.(`${country.dial}${phone.number}`);
+                        setOpen(false);
                       }}
                     >
                       {/* `phoneFieldPlaceholder` is undefined unless a
@@ -2917,7 +3349,13 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                           `dropdownClassName="z-[10003]"` here too (same
                           nested-popover case as the dialpad group's
                           PhoneInput above). */}
-                      <PhoneInput value={phone} onChange={setPhone} placeholder={phoneFieldPlaceholder} dropdownClassName="z-[10003]" />
+                      <PhoneInput
+                        value={phone}
+                        onChange={handlePhoneChange}
+                        forceShowError={phoneDialAttempted}
+                        placeholder={phoneFieldPlaceholder}
+                        dropdownClassName="z-[10003]"
+                      />
                     </div>
                     <Menu
                       items={(categories ?? []).map((category) => ({

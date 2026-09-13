@@ -36,6 +36,19 @@ export interface CreateNewCustomerRecord {
   /** Customer segment/tag shown in list views. */
   group: string;
   firstPhone: string;
+  /** Every phone number on file for this customer (e.g. "Mobile"/"Home"/
+   *  "Work") — per explicit request ("If it is an existing customer,
+   *  display the customer name and an ability to select from any of the
+   *  phone numbers available"), consumers that let the agent pick which of
+   *  a customer's own numbers to dial (e.g. AgentWorkspace2WithDeskPage.tsx's
+   *  own Redial-button popover) read this instead of being limited to the
+   *  single `firstPhone`. `phones[0].value` is always identical to
+   *  `firstPhone` itself — the two are generated from the same seed below —
+   *  so a consumer that only cares about "the one number" (the Customers
+   *  list view's own column, `OUTBOUND_CUSTOMERS`' `primaryPhone`, etc.)
+   *  can keep reading `firstPhone` exactly as before with no risk of the
+   *  two ever disagreeing. */
+  phones: { label: string; value: string }[];
   emailAddress: string;
   address1: string;
   city: string;
@@ -116,6 +129,35 @@ const AGENTS = ["Jordan Blake", "Casey Nguyen", "Morgan Lee", "Taylor Reyes", "R
 const AGENT_TEAMS = ["Tier 1 Support", "Tier 2 Escalations", "Billing Support", "VIP Concierge"];
 const PAYMENT_BALANCES = ["$0.00", "$24.99", "$49.50", "$99.00", "$149.99", "$249.50", "$499.00", "$999.99"];
 
+/** Builds this customer's `phones` list (see that field's own doc comment)
+ *  — "Mobile" is always `firstPhone` itself (same `areaCode`/`phoneMid`/
+ *  `phoneEnd` triple the caller already used for it), with "Home" and/or
+ *  "Work" added for some rotating subset of customers (same `i % N`
+ *  rotation idiom `GROUPS`/`CITY_STATE_ZIP` above already use for varied-
+ *  but-deterministic demo data) rather than giving every single customer
+ *  an identical 3-number shape. Each extra number reuses `areaCode` (same
+ *  area, plausible for a second line) with its own `mid`/`end` digits
+ *  derived from different multipliers than `firstPhone`'s own, so the two
+ *  never accidentally collide into the same number. */
+function buildPhoneOptions(
+  areaCode: number,
+  firstPhone: string,
+  i: number
+): { label: string; value: string }[] {
+  const phones = [{ label: "Mobile", value: firstPhone }];
+  if (i % 2 === 0) {
+    const homeMid = 200 + ((i * 29) % 800);
+    const homeEnd = 1000 + ((i * 53) % 9000);
+    phones.push({ label: "Home", value: `(${areaCode}) ${homeMid}-${homeEnd}` });
+  }
+  if (i % 3 === 0) {
+    const workMid = 200 + ((i * 41) % 800);
+    const workEnd = 1000 + ((i * 67) % 9000);
+    phones.push({ label: "Work", value: `(${areaCode}) ${workMid}-${workEnd}` });
+  }
+  return phones;
+}
+
 function buildCustomers(count: number): CreateNewCustomerRecord[] {
   const customers: CreateNewCustomerRecord[] = [];
   for (let i = 0; i < count; i++) {
@@ -129,6 +171,7 @@ function buildCustomers(count: number): CreateNewCustomerRecord[] {
     const areaCode = 200 + (i % 8) * 100;
     const phoneMid = 200 + ((i * 13) % 800);
     const phoneEnd = 1000 + ((i * 71) % 9000);
+    const firstPhone = `(${areaCode}) ${phoneMid}-${phoneEnd}`;
     customers.push({
       id: `customer-${i + 1}`,
       name: `${first} ${last}`,
@@ -138,7 +181,8 @@ function buildCustomers(count: number): CreateNewCustomerRecord[] {
       firstName: first,
       lastName: last,
       group: GROUPS[i % GROUPS.length],
-      firstPhone: `(${areaCode}) ${phoneMid}-${phoneEnd}`,
+      firstPhone,
+      phones: buildPhoneOptions(areaCode, firstPhone, i),
       emailAddress: `${first.toLowerCase()}.${last.toLowerCase().replace(/\s+/g, "")}@example.com`,
       address1: `${streetNumber} ${street}`,
       city: loc.city,
@@ -175,6 +219,7 @@ const MARCUS_WEBB_CUSTOMER_RECORD: CreateNewCustomerRecord = {
   lastName: "Webb",
   group: "Standard",
   firstPhone: "(503) 555-0142",
+  phones: [{ label: "Mobile", value: "(503) 555-0142" }, { label: "Home", value: "(503) 555-0198" }],
   emailAddress: "marcus.webb@personalmail.com",
   address1: "482 Birchwood Ter",
   city: "Portland",
@@ -187,7 +232,175 @@ const MARCUS_WEBB_CUSTOMER_RECORD: CreateNewCustomerRecord = {
   paymentBalance: "$0.00",
 };
 
+// Five more hand-authored records, added per explicit request ("add these
+// contacts to the database and use the database instead of making one-off
+// contacts ... everything that is existing should be tied to the
+// database"). These back agent-next-gen-v3's own 5 hand-authored
+// `CONTACT_HISTORY` fixture rows (Nathan Cole/Priya Shah/Omar Farooq/Lauren
+// Briggs/Mei Tanaka — agent-next-gen-contact-history.tsx), which previously
+// had NO real customer record behind them at all: every consumer that
+// resolves "the customer behind this id" (`handleOpenInteractionRow`'s own
+// `CREATE_NEW_CUSTOMERS.find(...) ?? CREATE_NEW_CUSTOMERS[0]` fallback,
+// `useOutboundAddButton`'s own contact lookup for the "+" Add Channel
+// button) had nothing real to find for these 5 people, so different entry
+// points into "the same real case" silently diverged onto different
+// fallback ids — confirmed via screenshot/repro: reopening the same
+// Contact History row via different paths kept opening a DIFFERENT,
+// wrong channel in a brand-new card instead of the same one every time.
+// Each record's `customerId` below MUST stay in sync with that
+// `CONTACT_HISTORY` row's own `caseId` (agent-next-gen-contact-history.tsx)
+// — `ContactHistoryEntry.customerId` is set to this same record's `id` (not
+// `customerId`) so `entry.customerId ?? \`history:${entry.caseId}\`` now
+// resolves to a real, stable id instead of falling back to the synthetic
+// one — same "duplicated as plain string literals, not a shared import"
+// reasoning as `MARCUS_WEBB_CUSTOMER_RECORD` above (lyra-ui doesn't depend
+// on one consuming app's own fixture data). `channels` mirrors each row's
+// own `ContactHistoryEntry.channels` field exactly (never includes "chat" —
+// same "chat has no outbound-start concept" rule every other record here
+// already follows), and `phone`/`emailAddress` mirror that same row's own
+// `phone`/`email` so a real customer record and its Contact History
+// summary agree on the same reach-back address instead of two independent,
+// only-coincidentally-matching values.
+//
+// Side effect worth knowing about: unlike the 5 hand-authored
+// `CONTACT_HISTORY` rows themselves (deliberately kept OUT of
+// `outboundConfig.groups`'s own browsable "New Outbound" directory and the
+// Customers list view — see `contactHistoryOutboundContacts`'s own doc
+// comment, AgentNextGenPage.tsx, for why), these 5 records are NOT scoped
+// that way — being part of this shared array, they're now also real,
+// searchable/dialable entries in the New Outbound picker and real rows in
+// the Customers list view, the same as Marcus Webb already is. That's the
+// explicit trade-off of "tied to the database instead of a one-off" rather
+// than a narrower, Contact-History-only fix.
+const NATHAN_COLE_CUSTOMER_RECORD: CreateNewCustomerRecord = {
+  id: "nathan-cole-history",
+  name: "Nathan Cole",
+  customerId: "CST-22841",
+  channels: ["voice", "sms", "email"],
+  avatarClassName: "bg-lyra-accent-blue-soft text-lyra-accent-blue-strong",
+  firstName: "Nathan",
+  lastName: "Cole",
+  group: "Standard",
+  firstPhone: "(704) 555-0142",
+  phones: [
+    { label: "Mobile", value: "(704) 555-0142" },
+    { label: "Home", value: "(704) 555-0187" },
+    { label: "Work", value: "(704) 555-0221" },
+  ],
+  emailAddress: "nathan.cole@example.com",
+  address1: "215 Clinton Heights Ave",
+  city: "Raleigh",
+  state: "NC",
+  postalCode: "27601",
+  originalCustomerId: "ORIG-500002",
+  dateOfBirth: "04/09/1987",
+  agent: "Casey Nguyen",
+  agentTeam: "Tier 1 Support",
+  paymentBalance: "$0.00",
+};
+
+const PRIYA_SHAH_CUSTOMER_RECORD: CreateNewCustomerRecord = {
+  id: "priya-shah-history",
+  name: "Priya Shah",
+  customerId: "CST-30164",
+  channels: ["email", "sms"],
+  avatarClassName: "bg-lyra-accent-purple-soft text-lyra-accent-purple-strong",
+  firstName: "Priya",
+  lastName: "Shah",
+  group: "Standard",
+  firstPhone: "(415) 555-0178",
+  phones: [{ label: "Mobile", value: "(415) 555-0178" }, { label: "Work", value: "(415) 555-0234" }],
+  emailAddress: "priya.shah@example.com",
+  address1: "88 Spear St",
+  city: "San Francisco",
+  state: "CA",
+  postalCode: "94105",
+  originalCustomerId: "ORIG-500003",
+  dateOfBirth: "02/21/1992",
+  agent: "Morgan Lee",
+  agentTeam: "Billing Support",
+  paymentBalance: "$0.00",
+};
+
+const OMAR_FAROOQ_CUSTOMER_RECORD: CreateNewCustomerRecord = {
+  id: "omar-farooq-history",
+  name: "Omar Farooq",
+  customerId: "CST-16823",
+  channels: ["email", "whatsapp"],
+  avatarClassName: "bg-lyra-accent-teal-soft text-lyra-accent-teal-strong",
+  firstName: "Omar",
+  lastName: "Farooq",
+  group: "Enterprise",
+  firstPhone: "(212) 555-0193",
+  phones: [
+    { label: "Mobile", value: "(212) 555-0193" },
+    { label: "Home", value: "(212) 555-0246" },
+    { label: "Work", value: "(212) 555-0289" },
+  ],
+  emailAddress: "omar.farooq@example.com",
+  address1: "410 Sandell Dr",
+  city: "Dunwoody",
+  state: "GA",
+  postalCode: "30338",
+  originalCustomerId: "ORIG-500004",
+  dateOfBirth: "12/03/1980",
+  agent: "Taylor Reyes",
+  agentTeam: "Tier 2 Escalations",
+  paymentBalance: "$249.50",
+};
+
+const LAUREN_BRIGGS_CUSTOMER_RECORD: CreateNewCustomerRecord = {
+  id: "lauren-briggs-history",
+  name: "Lauren Briggs",
+  customerId: "CST-27760",
+  channels: ["voice", "email"],
+  avatarClassName: "bg-lyra-accent-red-soft text-lyra-accent-red-strong",
+  firstName: "Lauren",
+  lastName: "Briggs",
+  group: "VIP",
+  firstPhone: "(312) 555-0164",
+  phones: [{ label: "Mobile", value: "(312) 555-0164" }, { label: "Home", value: "(312) 555-0219" }],
+  emailAddress: "lauren.briggs@example.com",
+  address1: "742 Congress Ave",
+  city: "Austin",
+  state: "TX",
+  postalCode: "78701",
+  originalCustomerId: "ORIG-500005",
+  dateOfBirth: "07/16/1975",
+  agent: "Riley Chen",
+  agentTeam: "Tier 2 Escalations",
+  paymentBalance: "$499.00",
+};
+
+const MEI_TANAKA_CUSTOMER_RECORD: CreateNewCustomerRecord = {
+  id: "mei-tanaka-history",
+  name: "Mei Tanaka",
+  customerId: "CST-31045",
+  channels: ["sms", "whatsapp", "email"],
+  avatarClassName: "bg-lyra-accent-green-soft text-lyra-accent-green-strong",
+  firstName: "Mei",
+  lastName: "Tanaka",
+  group: "Standard",
+  firstPhone: "(206) 555-0157",
+  phones: [{ label: "Mobile", value: "(206) 555-0157" }, { label: "Work", value: "(206) 555-0203" }],
+  emailAddress: "mei.tanaka@example.com",
+  address1: "560 Burnside St",
+  city: "Portland",
+  state: "OR",
+  postalCode: "97201",
+  originalCustomerId: "ORIG-500006",
+  dateOfBirth: "09/28/1994",
+  agent: "Avery Kim",
+  agentTeam: "Tier 1 Support",
+  paymentBalance: "$24.99",
+};
+
 export const CREATE_NEW_CUSTOMERS: CreateNewCustomerRecord[] = [
   ...buildCustomers(60),
   MARCUS_WEBB_CUSTOMER_RECORD,
+  NATHAN_COLE_CUSTOMER_RECORD,
+  PRIYA_SHAH_CUSTOMER_RECORD,
+  OMAR_FAROOQ_CUSTOMER_RECORD,
+  LAUREN_BRIGGS_CUSTOMER_RECORD,
+  MEI_TANAKA_CUSTOMER_RECORD,
 ];

@@ -107,6 +107,34 @@ export interface PopoverProps {
    * that stray refocus is never allowed to leave in the first place.
    */
   modal?: boolean;
+  /**
+   * Repositions the popover against an arbitrary DOM node instead of
+   * `children` — e.g. a "Redial" button living somewhere else on the page
+   * entirely, not this component's own rendered trigger — without giving up
+   * `children`'s normal trigger/anchor behavior the rest of the time.
+   *
+   * Implemented as Radix Popper's own `virtualRef` escape hatch
+   * (`@radix-ui/react-popper`'s `Anchor` accepts a ref to ANY element and
+   * positions purely off its measured `getBoundingClientRect()`, mounting
+   * no DOM node of its own) rather than replacing `children`'s own
+   * Trigger/Anchor wrapping above: a SECOND `PopoverPrimitive.Anchor` is
+   * mounted alongside it, conditionally, only while
+   * `virtualAnchorRef.current` is actually pointing at something. Radix's
+   * own Anchor registers itself via an unconditional per-render effect (no
+   * dependency array) that simply overwrites whichever anchor was
+   * registered last, so mounting this one AFTER `children`'s own
+   * Trigger/Anchor (below) — order matters — means it wins for position
+   * whenever it's mounted, and disappears back to `children`'s own anchor
+   * the moment the caller sets `virtualAnchorRef.current` back to `null`
+   * (see `create-new.tsx`'s own `dialpadRequest`-driven usage: the ref is
+   * populated with the Redial button's element right before opening, and
+   * reset to `null` on close). The `.current` check below is what makes
+   * this purely additive — a consumer that never sets `.current` (i.e.
+   * every existing consumer, which doesn't pass this prop at all) never
+   * mounts the second Anchor, so `children`'s own anchor keeps positioning
+   * exactly as before.
+   */
+  virtualAnchorRef?: React.RefObject<HTMLElement | null>;
 }
 
 /* ── Arrow ──
@@ -208,6 +236,7 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
   onInteractOutside,
   asAnchor = false,
   modal = false,
+  virtualAnchorRef,
 }, ref) => (
   <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange} modal={modal}>
     {asAnchor ? (
@@ -215,6 +244,10 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
     ) : (
       <PopoverPrimitive.Trigger asChild>{children}</PopoverPrimitive.Trigger>
     )}
+    {/* Mounted AFTER `children`'s own Anchor/Trigger above, and only while
+        something is actually pointed at — see `virtualAnchorRef`'s own doc
+        comment above for why both of those matter. */}
+    {virtualAnchorRef?.current && <PopoverPrimitive.Anchor virtualRef={virtualAnchorRef} />}
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
         ref={ref}

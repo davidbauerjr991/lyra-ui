@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Copy } from "lucide-react";
+import { Copy, User } from "lucide-react";
 import { cn } from "../lib/utils";
 import { ActionIconButton } from "./actions";
 import { Button } from "./button";
@@ -32,7 +32,11 @@ import { TagPicker, type TagPickerOption } from "./tag-picker";
    renders.
 
    Same avatar treatment as the original: a colored initials circle,
-   green for `customer`, primary-blue for `agent`.
+   green for `customer`, primary-blue for `agent` — except a `customer`
+   bubble whose `identified` prop reads `false` (see that prop's own doc
+   comment), which shows a generic person icon in the same green circle
+   instead of deriving meaningless "initials" off a raw, unidentified
+   address.
 
    Per a later explicit follow-up request, the bubble is capped to 80% of
    its own rendered container width (`max-w-[80%]`), dropping to full width
@@ -73,8 +77,25 @@ export interface ChatMessageProps {
   variant: "agent" | "customer";
   /** Sender's display name, shown in the header row after the timestamp. */
   name: string;
-  /** 1-2 character avatar initials (e.g. "JS"). Ignored while `narrow`. */
+  /** 1-2 character avatar initials (e.g. "JS"). Ignored while `narrow`, and
+   *  ignored for a `customer`-side bubble whose `identified` is `false` (see
+   *  that prop's own doc comment) — ignored, not required-absent, so a
+   *  caller can keep passing whatever it already computed either way. */
   initials: string;
+  /** Whether this message's OWN sender is an actual identified person, as
+   *  opposed to a raw, unidentified address standing in for one (a dialed
+   *  number, a typed email/SMS/WhatsApp handle with no directory match) —
+   *  same distinction `InteractionNavItem`'s own `customerIdentified` prop
+   *  makes for the compact LeftNav tile's avatar (see that prop's own doc
+   *  comment, interaction-nav-item.tsx). Only ever meaningfully `false` for
+   *  `variant="customer"` — the agent side has no such state, so this is
+   *  ignored there regardless of what's passed. `false` shows a generic
+   *  person icon in place of `initials`, same "a raw address has no real
+   *  initials to speak of" reasoning as that sibling prop (e.g. a lone "4"
+   *  off a phone number starting with "4"). Omit (default: identified) so
+   *  every existing caller — which never had an "unidentified" concept for
+   *  this component at all — keeps showing `initials` exactly as before. */
+  identified?: boolean;
   /** Pre-formatted display timestamp (e.g. "9:51 AM") — this component
    *  doesn't parse/format a real `Date`, same "caller already owns the
    *  string" convention `InteractionNavItem`'s own `elapsed` prop uses. */
@@ -128,6 +149,7 @@ export function ChatMessage({
   variant,
   name,
   initials,
+  identified = true,
   timestamp,
   text,
   narrow,
@@ -188,7 +210,7 @@ export function ChatMessage({
             )}
             aria-hidden="true"
           >
-            {initials}
+            {isCustomer && !identified ? <User className="h-4 w-4" strokeWidth={1.5} /> : initials}
           </span>
         )}
         <div className="flex min-w-0 flex-col gap-1">

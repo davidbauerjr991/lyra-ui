@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ChevronDown, Moon, Sun, Activity, LogOut, Link2Off, Link2, Loader2, CircleHelp, Check, Minus } from "lucide-react";
+import { ChevronDown, Moon, Sun, Activity, LogOut, Link2Off, Link2, Loader2, CircleHelp, Check, Minus, TriangleAlert } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Menu, type MenuEntry } from "./menu";
 import { ConnectedAppsPanel, type ConnectedApp } from "./connected-apps";
@@ -8,6 +8,8 @@ import { Tooltip } from "./tooltip";
 import { FavoriteButton } from "./favorite-button";
 import { Badge, type BadgeProps } from "./badge";
 import { SearchInput } from "./search-input";
+import { Modal } from "./modal";
+import { Button } from "./button";
 
 /* ── Types ──
    Was "available" | "busy" | "away" | "offline" — "away" was dropped
@@ -308,6 +310,13 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
       document.documentElement.setAttribute("data-theme", next ? "dark" : "light");
     };
     const [open, setOpen] = React.useState(false);
+    // Gates the actual `onLogOut` call behind an explicit "Log Out"/"Cancel"
+    // confirmation modal — per explicit request. Lives here (not left to
+    // each consumer wrapping its own `onLogOut` in a confirm step) so every
+    // `AgentProfile` consumer gets the same confirmation for free; see the
+    // "logout" `footerMenuItems` entry and the `Modal` in the render return
+    // below.
+    const [logoutConfirmOpen, setLogoutConfirmOpen] = React.useState(false);
     const [statusSearch, setStatusSearch] = React.useState("");
     const [favoriteStatuses, setFavoriteStatuses] = React.useState<Set<AgentStatus>>(new Set());
     const [agentLegStatus, setAgentLegStatus] = React.useState<"disconnected" | "connecting" | "connected">(
@@ -593,7 +602,13 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
         id: "logout",
         label: "Log Out",
         icon: <LogOut className="h-4 w-4" strokeWidth={1.5} />,
-        onClick: onLogOut,
+        // Closes the status popover and opens the confirmation modal
+        // instead of calling `onLogOut` directly — the modal's own "Log
+        // Out" button is what actually fires `onLogOut`, on confirm.
+        onClick: () => {
+          setOpen(false);
+          setLogoutConfirmOpen(true);
+        },
         destructive: true,
       },
     ];
@@ -783,6 +798,60 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
             </Popover>
           </span>
         </Tooltip>
+
+        {/* Log-out confirmation — per explicit request, "Log Out" no longer
+            calls `onLogOut` immediately (see the "logout" `footerMenuItems`
+            entry above); this modal is what actually fires it, only once
+            the agent confirms. `closeOnBackdropClick` stays the default
+            `false` (matches `Modal.stories.tsx`'s own "Warning"/
+            "Destructive" examples) — a logout confirmation is exactly the
+            "must be dismissed via an explicit button" case that prop's own
+            doc comment calls out, not something to lose to a stray
+            backdrop click.
+
+            Header goes through the real `headerIcon`/`headerTitle` props
+            (→ `ContainerHeader`, same as every other `Modal` consumer)
+            instead of a hand-rolled row inside `children` — that's what
+            gives the title the same `lyra-heading-md` treatment as the
+            "Warning"/"Destructive" stories rather than a mismatched,
+            manually-sized one. `headerBordered` is left at its default
+            (false), same as those stories, and `headerActions` is left
+            unset (no corner close button) — a logout confirmation should
+            only be dismissed via Log Out/Cancel, not an incidental X.
+            Footer buttons are right-aligned with Cancel first, matching
+            `Modal.stories.tsx`'s own Warning/Destructive footer convention,
+            not the left-aligned order from the original screenshot mock.
+            Width is `w-[480px]`, the canonical "md" size those same two
+            stories use (`Modal.stories.tsx`'s `widths.md`) — not an ad-hoc
+            number. Icon is `h-5 w-5` (matching those stories' own
+            `headerIcon` size) at `strokeWidth={1.4}`, CONTRIBUTING.md §5's
+            documented default for a Lucide icon. */}
+        <Modal
+          open={logoutConfirmOpen}
+          onClose={() => setLogoutConfirmOpen(false)}
+          className="w-[480px]"
+          headerIcon={<TriangleAlert className="h-5 w-5 text-lyra-status-critical-strong" strokeWidth={1.4} aria-hidden="true" />}
+          headerTitle="Log out Confirmation"
+        >
+          <div className="flex flex-col gap-4 px-5">
+            <p className="lyra-body-md font-semibold text-lyra-fg-default">
+              Are you sure you want to log out?
+            </p>
+          </div>
+          <div className="flex justify-end gap-2 px-5 pb-5 mt-6">
+            <Button variant="outline" onClick={() => setLogoutConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setLogoutConfirmOpen(false);
+                onLogOut?.();
+              }}
+            >
+              Log Out
+            </Button>
+          </div>
+        </Modal>
       </div>
     );
   }

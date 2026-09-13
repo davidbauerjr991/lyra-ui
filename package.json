@@ -74,6 +74,9 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7"
   },
+  "overrides": {
+    "@radix-ui/react-dismissable-layer": "1.1.15"
+  },
   "devDependencies": {
     "@storybook/addon-a11y": "^8.6.18",
     "@storybook/addon-essentials": "^8.6.18",
