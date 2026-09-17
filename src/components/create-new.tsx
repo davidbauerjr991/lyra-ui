@@ -2521,19 +2521,33 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
           <span className="min-w-0 flex-1 truncate lyra-body-lg-emphasis text-lyra-fg-default">
             {headerTitle}
           </span>
-          <PopoverClose asChild>
-            <button
-              aria-label="Close"
-              className={cn(
-                "flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lyra-sm",
-                "text-lyra-fg-action transition-colors",
-                "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
-              )}
-            >
-              <X className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
-            </button>
-          </PopoverClose>
+          {/* Per explicit request, hidden entirely (not just disabled) while
+              `connecting` — once the agent has committed to dialing/starting
+              an interaction, there's no real "close and walk away" action
+              mid-connect (same reasoning `onEscapeKeyDown`'s back-step
+              exception above already applies to navigation); it reappears
+              the instant `connecting` clears, whether that's because the
+              call connected (`CONNECTING_DURATION_MS` elapsed, see that
+              constant's own doc comment) or the popover moved on to a new
+              screen. Applies to every screen sharing this one header, not
+              just the dialpad/Redial screen the request was prompted by —
+              `connecting` already only turns on for a real in-flight
+              start-call/dial-number action, never idle browsing. */}
+          {!connecting && (
+            <PopoverClose asChild>
+              <button
+                aria-label="Close"
+                className={cn(
+                  "flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lyra-sm",
+                  "text-lyra-fg-action transition-colors",
+                  "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+                )}
+              >
+                <X className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+              </button>
+            </PopoverClose>
+          )}
         </div>
 
         {/* Outbound flow's screen 1 — the group-row list itself. Per
@@ -3080,11 +3094,19 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                           header, fields in the body" split the "detail"
                           screen already uses for a picked contact. */}
                       {dialpadPhoneOptions ? (
+                        // `disabled={connecting}` — per explicit request,
+                        // matching the close button above and the "Select
+                        // outbound skill" field below: once "Dial Number"
+                        // has been clicked and the call is connecting, none
+                        // of this screen's own input fields should still be
+                        // editable underneath the disabled/"Connecting…"
+                        // button.
                         <Select
                           label="Select Phone"
                           value={dialpadSelectedPhone || undefined}
                           onValueChange={setDialpadSelectedPhone}
                           options={dialpadPhoneOptions}
+                          disabled={connecting}
                         />
                       ) : (
                         // No `placeholder` override here — PhoneInput's own
@@ -3095,12 +3117,14 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                         // dropdown is a Popover nested inside this
                         // component's own z-[9999] popover panel — same
                         // nested-popover case as the per-row channel flyout,
-                        // see CONTRIBUTING.md §5.
+                        // see CONTRIBUTING.md §5. `disabled={connecting}` —
+                        // same reasoning as the "Select Phone" branch above.
                         <PhoneInput
                           value={phone}
                           onChange={handlePhoneChange}
                           forceShowError={phoneDialAttempted}
                           dropdownClassName="z-[10003]"
+                          disabled={connecting}
                         />
                       )}
                       {/* Same `detailSkill`/`setDetailSkill` state (and the
@@ -3112,6 +3136,10 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                           tracked selections that could disagree. `mt-4`
                           (not a `space-y-4` on the parent) since this is
                           the one and only sibling PhoneInput has here. */}
+                      {/* `disabled={connecting}` — per explicit request,
+                          alongside the phone field above and the close
+                          button in the header: locked while a dial is
+                          in-flight. */}
                       <Select
                         label="Select outbound skill"
                         placeholder="Select outbound skill"
@@ -3119,6 +3147,7 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                         onValueChange={setDetailSkill}
                         options={outbound?.skillOptions ?? []}
                         className="mt-4"
+                        disabled={connecting}
                       />
                     </div>
                   ) : activeGroup.kind === "empty" ? (

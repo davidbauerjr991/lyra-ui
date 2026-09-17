@@ -385,17 +385,25 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
 
     // Fires `onAgentLegStatusChange` for a real connect/disconnect, not for
     // "connecting" (the in-between state — see that prop's own doc comment
-    // for why) and not for the very first render (an effect runs after
-    // mount too, which would otherwise fire this once for free on load with
-    // nothing having actually happened yet — `isFirstRender` below is what
-    // skips exactly that one run, same "skip the mount-time call" guard
-    // this kind of change-notification effect always needs).
-    const isFirstAgentLegRender = React.useRef(true);
+    // for why) and not on mount with nothing having actually happened yet.
+    // Guarded by comparing against the LAST SEEN value (same shape as
+    // `lastConnectAgentLegSignalRef` just above), not a `isFirstRender`
+    // boolean ref — this app renders under React 18 `<StrictMode>`
+    // (main.tsx), which in dev double-invokes this effect on mount
+    // (mount → cleanup → mount) without resetting any ref in between. A
+    // plain "first render" boolean flips to `false` on that first, PHANTOM
+    // invocation, so the second (real, kept) invocation then reads the flag
+    // as already-consumed and incorrectly treats the still-unchanged mount
+    // value as a genuine change — firing a spurious "Agent Leg Connected"
+    // toast on every fresh load. Comparing values instead is immune to
+    // that: both the phantom and the real invocation see the same
+    // `agentLegStatus` as `lastAgentLegStatusRef.current` (seeded from the
+    // same mount-time value), so neither one fires — only an actual later
+    // transition (e.g. a real disconnect, then reconnect) does.
+    const lastAgentLegStatusRef = React.useRef(agentLegStatus);
     React.useEffect(() => {
-      if (isFirstAgentLegRender.current) {
-        isFirstAgentLegRender.current = false;
-        return;
-      }
+      if (agentLegStatus === lastAgentLegStatusRef.current) return;
+      lastAgentLegStatusRef.current = agentLegStatus;
       if (agentLegStatus === "connected" || agentLegStatus === "disconnected") {
         onAgentLegStatusChange?.(agentLegStatus);
       }

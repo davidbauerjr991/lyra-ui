@@ -336,6 +336,8 @@ export type { AiPanelProps, AiPanelSuggestion, AiPanelContentProps } from "./com
 export type { AIProcessStep, AIProcessStepStatus } from "./components/ai-process";
 export { ContactOverview } from "./components/contact-overview";
 export type { ContactOverviewInfo, ContactOverviewProps } from "./components/contact-overview";
+export { CustomerContextOverview } from "./components/contact-overview";
+export type { CustomerContextOverviewInfo, CustomerContextOverviewProps } from "./components/contact-overview";
 export { ConversationMessage, ConversationDateStamp } from "./components/conversation-message";
 export { Draggable } from "./components/draggable";
 export type { DraggableProps, DraggableVariant, EmbeddablePanelContent } from "./components/draggable";

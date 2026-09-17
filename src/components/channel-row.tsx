@@ -249,7 +249,11 @@ export interface InteractionChannel {
   /** Keep the Consult/Transfer + Outcome overlay permanently visible
    *  instead of hover/focus-revealed — see `ChannelRowProps.
    *  alwaysShowOutcome`'s own doc comment for the full reasoning. Default:
-   *  false (every other consumer keeps the existing hover-reveal). */
+   *  true — per explicit request ("always display the outcome button in
+   *  the interactionNavItems - no longer have them display on hover
+   *  only"), every consumer gets the always-visible treatment without
+   *  needing to opt in individually. Pass `false` explicitly to keep the
+   *  old hover-reveal behavior for a specific row. */
   alwaysShowOutcome?: boolean;
   /** Show a standalone "Unassign & Dismiss" icon button in this overlay —
    *  see `ChannelRowProps.showDismissButton`'s own doc comment for the
@@ -766,9 +770,15 @@ interface ChannelRowProps {
    *  (no hover/focus-reveal, no `opacity-0`/`pointer-events-none`, and
    *  rendered in normal flow instead of `absolute` — this row's `showKebab`
    *  is typically `false` alongside this, so there's no longer a kebab
-   *  sitting to its right for `right-full` to anchor against) — per
-   *  explicit request (Agent Workspace 2.0 Phase 1 only). Default: false
-   *  (every other consumer keeps the existing hover-reveal behavior). */
+   *  sitting to its right for `right-full` to anchor against). Default:
+   *  true — per explicit follow-up request ("always display the outcome
+   *  button in the interactionNavItems - no longer have them display on
+   *  hover only... this can be a component level update"), flipped from
+   *  this component's own original opt-in default (previously `false`,
+   *  Agent Workspace 2.0 Phase 1 only) to an opt-OUT one: every consumer
+   *  now gets the always-visible treatment automatically. Pass `false`
+   *  explicitly for a row that still needs the old hover-reveal
+   *  behavior. */
   alwaysShowOutcome?: boolean;
   /** Render a standalone "Unassign & Dismiss" icon button (same icon/
    *  action as the kebab's own "Unassign & Dismiss" menu entry — see
@@ -807,9 +817,26 @@ interface ChannelRowProps {
 // buried in the dropdown) if their override happens to include either id.
 // `"separator"`/section-label entries pass through untouched — this only
 // ever needs to recognize `MenuItemDef`s by `id`.
-function stripPromotedChannelRowActions(items: MenuEntry[]): MenuEntry[] {
+//
+// "outcome" is always stripped — `alwaysShowOutcome` (see that prop's own
+// doc comment) now defaults to `true` for every consumer, so the standalone
+// Outcome button is always there; duplicating it into the dropdown too
+// would just be redundant. "consult-transfer" is conditional on
+// `keepConsultTransfer`, though — per explicit follow-up request ("in the
+// interactionNavItem move consult/transfer into the 3 dots more menu like
+// you did in the interaction itself"): a row with `showConsultTransfer`
+// `false` (no standalone icon) would otherwise have NO way to reach Consult
+// / Transfer at all once this always strips it from the kebab too. The
+// render call site below passes `keepConsultTransfer={!showConsultTransfer}`
+// — the standalone button and the kebab entry are mutually exclusive, never
+// both at once, same "no duplication" reasoning as `outcome` above.
+function stripPromotedChannelRowActions(items: MenuEntry[], options?: { keepConsultTransfer?: boolean }): MenuEntry[] {
+  const { keepConsultTransfer = false } = options ?? {};
   return items.filter(
-    (item) => typeof item === "string" || "sectionLabel" in item || (item.id !== "consult-transfer" && item.id !== "outcome")
+    (item) =>
+      typeof item === "string" ||
+      "sectionLabel" in item ||
+      ((keepConsultTransfer || item.id !== "consult-transfer") && item.id !== "outcome")
   );
 }
 
@@ -833,7 +860,7 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
   outcome,
   showConsultTransfer = true,
   showKebab = true,
-  alwaysShowOutcome = false,
+  alwaysShowOutcome = true,
   showDismissButton = false,
   onEndCall,
 }) => {
@@ -943,15 +970,19 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
         <span className="relative ml-auto flex h-6 shrink-0 items-center">
           <div
             className={
-              // Per explicit request (Agent Workspace 2.0 Phase 1 only):
-              // `alwaysShowOutcome` drops the hover/focus-reveal treatment
-              // entirely — no `opacity-0`, no `pointer-events-none`, no
-              // `absolute`/`right-full` positioning (which assumed a kebab
-              // sitting just to this overlay's right to anchor against;
-              // `showKebab` is typically `false` alongside this prop, so
-              // there'd be nothing left there to anchor to) — rendering
-              // this overlay as a normal, always-visible flex item in the
-              // row's own flow instead.
+              // `alwaysShowOutcome` (default `true` — see that prop's own
+              // doc comment for the "always visible by default" history)
+              // drops the hover/focus-reveal treatment entirely — no
+              // `opacity-0`, no `pointer-events-none`, no `absolute`/
+              // `right-full` positioning (originally added assuming a
+              // kebab sitting just to this overlay's right to anchor
+              // against, back when this was an opt-in, Phase-1-only prop
+              // with `showKebab` typically `false` alongside it) —
+              // rendering this overlay as a normal, always-visible flex
+              // item in the row's own flow instead, which now also just
+              // pushes a still-visible kebab further right rather than
+              // overlaying it, for every consumer that keeps `showKebab`
+              // at its own default.
               alwaysShowOutcome
                 ? "flex h-6 items-center gap-0"
                 : cn(
@@ -1084,7 +1115,7 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
           {showKebab && (
             <Tooltip content="More Options" placement="bottom" disabled={menuOpen}>
               <KebabMenuButton
-                items={stripPromotedChannelRowActions(menuItems)}
+                items={stripPromotedChannelRowActions(menuItems, { keepConsultTransfer: !showConsultTransfer })}
                 ariaLabel={`More options for ${label}`}
                 onOpenChange={(open) => {
                   setMenuOpen(open);

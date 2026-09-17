@@ -272,6 +272,39 @@
   --tw-ring-color: #facb33;
 }
 
+/* `.lyra-purple-soft-header-fix` — TEMPORARY, scoped override for the
+   Autosummary/Artifacts accordion headers (contact-overview.tsx,
+   agent-next-gen-customer-info-panel.tsx). Per explicit bug report
+   ("check if that's the correct dark mode version, it seems heavy"):
+   `--lyra-color-accent-purple-soft`'s dark-mode value (#4e39a8, L≈44%) sits
+   ~34 lightness points above the dark canvas (#141414), while every
+   sibling accent color that starts from the same very-pale light-mode
+   value (blue #d6e4ff, red #FFE0E0, pink #ffe0f5 → all L≈92-94 in light
+   mode) only rises ~26-29 points above that same canvas in dark mode
+   (blue #264c97 L≈37, red #a32424 L≈39, pink #91296e L≈36.5) — purple is
+   the outlier, undertransformed relative to its own light-mode starting
+   point, which is why it visibly pops/reads "heavier" than the rest of the
+   dark theme. #3c298e (L≈36, same hue/similar saturation) brings it back
+   in line with those siblings.
+
+   Deliberately NOT edited into `--lyra-color-accent-purple-soft` itself
+   yet — by explicit request, this is scoped to just these two headers
+   first so the corrected shade can be previewed before it's promoted to
+   the shared token, which would also repaint Tag's "purple" variant,
+   Icon's "info" variant, agent-notifications, and every purple chart
+   series in dark mode. TODO once approved: delete this rule + the light-
+   mode fallback below, and instead fix
+   `--lyra-color-accent-purple-soft: #3c298e;` in the `[data-theme="dark"]`
+   block above (line ~255) — then swap both consumers' `lyra-purple-soft-
+   header-fix` class back to the plain `bg-lyra-accent-purple-soft` they
+   used before this override. */
+.lyra-purple-soft-header-fix {
+  background-color: var(--lyra-color-accent-purple-soft);
+}
+[data-theme="dark"] .lyra-purple-soft-header-fix {
+  background-color: #3c298e;
+}
+
 /* ════════════════════════════════════════════════════
    Lyra Typography Scale (Inter)
    From Figma: Lyra Foundations (Beta)

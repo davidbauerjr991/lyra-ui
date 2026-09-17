@@ -12,9 +12,31 @@ const barVariants = cva(
   {
     variants: {
       variant: {
-        info:    "bg-lyra-bg-active-subtle border-lyra-bg-active-moderate",
-        warning: "bg-lyra-status-warning-subtle border-lyra-status-warning-strong/40",
-        error:   "bg-lyra-status-critical-subtle border-lyra-status-critical-strong/40",
+        info: "bg-lyra-bg-active-subtle border-lyra-bg-active-moderate",
+        // `warning`/`error` opacity-modified borders — NOT
+        // `border-lyra-status-*-strong/40`. That token resolves to a bare
+        // `var(--lyra-color-status-*-strong)` reference (see
+        // `tailwind-tokens.cjs`), not the `<r> <g> <b>`-component format
+        // Tailwind's `/<alpha>` modifier needs to synthesize an opacity
+        // variant; with a bare `var()` value Tailwind silently emits NO CSS
+        // rule at all for the class (confirmed by inspecting the built
+        // output — no `.border-lyra-status-warning-strong\/40` selector
+        // exists anywhere in it). The border then falls back to the
+        // browser's `currentColor` default, which is why this rendered as
+        // a plain (near-white in dark mode) border instead of warning-
+        // colored — this exact bug is what a follow-up report ("double
+        // check the warning outline dark mode state - it is white - this
+        // should still be warning color") caught in a consumer that
+        // exposes this border. `color-mix()` is the fix already
+        // established elsewhere in this library for the identical problem
+        // (see contact-overview.tsx's Next Best Action/success-summary
+        // borders) — it computes the alpha-blended color directly rather
+        // than relying on Tailwind's opacity-modifier synthesis, so it
+        // works with any color value regardless of format.
+        warning:
+          "bg-lyra-status-warning-subtle border-[color-mix(in_srgb,var(--lyra-color-status-warning-strong)_40%,transparent)]",
+        error:
+          "bg-lyra-status-critical-subtle border-[color-mix(in_srgb,var(--lyra-color-status-critical-strong)_40%,transparent)]",
       },
     },
     defaultVariants: { variant: "info" },

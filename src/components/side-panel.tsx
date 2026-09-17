@@ -90,6 +90,33 @@ export interface SidePanelProps extends React.HTMLAttributes<HTMLDivElement> {
   headerTabs?: React.ReactNode;
 
   footer?: React.ReactNode;
+
+  /**
+   * Suppresses the width transition for this render only — the panel's
+   * width jumps straight to its new value instead of sliding through the
+   * normal 250ms cubic-bezier `width` transition. Default `false` (normal
+   * animated open/close, same as always).
+   *
+   * This component has no notion of "full screen" itself — a consumer that
+   * fakes full-screen by flipping `pinned`/`width` together (rather than
+   * `InteriorPanel`'s own dedicated `allowFullScreen` toggle) is the one
+   * case that needs this: per explicit request ("I want the session
+   * details side panel to still animate in and out when docked on toggle,
+   * just not animate when it goes full screen"), that specific transition
+   * should be instant while a normal `open` toggle (still docked, not going
+   * full screen) keeps animating. See `CustomerInformationSidePanel`'s own
+   * `fullScreenJustToggled` ref (agent-next-gen-customer-info-panel.tsx)
+   * for the one real consumer of this — it computes the "did full screen
+   * just change" moment (this component can't, since it never sees a
+   * `fullScreen` prop) and passes `true` here for exactly the render(s)
+   * right after. A prior version of this component made EVERY width
+   * transition unconditionally `"none"` to fix that same full-screen case
+   * — overcorrected, since it silently killed the normal open/close
+   * animation for every consumer of this shared component, not just the
+   * one that needed the full-screen fix. This prop scopes the fix to
+   * exactly the case that asked for it instead.
+   */
+  instantWidthChange?: boolean;
 }
 
 const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
@@ -113,6 +140,7 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
       headerActions,
       headerTabs,
       footer,
+      instantWidthChange = false,
       children,
       ...props
     },
@@ -126,7 +154,16 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
     const { width: currentWidth, onMouseDown } = usePanelDragResize(
       side, width, minWidth, maxWidth, handleResizeStateChange, onWidthChange
     );
-    const widthTransition = isResizing ? "none" : "width 250ms cubic-bezier(0.4, 0, 0.2, 1)";
+    // Restored to a real conditional — see `instantWidthChange`'s own doc
+    // comment for why a prior version of this made this unconditionally
+    // `"none"`, and why that overcorrected. `isResizing` keeps drag-resizing
+    // snappy (no animated width while actively dragging, same as always);
+    // `instantWidthChange` is the caller-driven escape hatch for the
+    // full-screen-toggle case specifically. Anything else (a normal `open`
+    // toggle, still docked) animates through the 250ms cubic-bezier
+    // transition, same as this component's original default behavior.
+    const widthTransition =
+      isResizing || instantWidthChange ? "none" : "width 250ms cubic-bezier(0.4, 0, 0.2, 1)";
 
     const pinButton = onPinToggle ? (
       <PanelPinButton pinned={pinned} onToggle={onPinToggle} />

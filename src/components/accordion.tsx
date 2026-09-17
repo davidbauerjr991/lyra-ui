@@ -49,6 +49,23 @@ export interface AccordionItem {
   endSlot?: React.ReactNode;
   /** Prevent this item from being opened */
   disabled?: boolean;
+  /**
+   * Extra classes on this item's trigger row only (e.g. a tinted header
+   * background for a single item that wants to stand out from the rest of
+   * the accordion — see `contentClassName`'s doc comment for the matching
+   * body-side override, and `contact-overview.tsx`'s bespoke Autosummary/
+   * Customer Info items for the same header-tint treatment done by hand
+   * before this existed as a reusable prop). Merged after this row's own
+   * base trigger classes, so it can override them (background, e.g.) but
+   * still layers under the shared hover/active states.
+   */
+  headerClassName?: string;
+  /**
+   * Extra classes on this item's content wrapper only (e.g. a white body
+   * to contrast with a tinted `headerClassName` above, matching the
+   * Autosummary/Customer Info treatment). Merged after the base `p-4`.
+   */
+  contentClassName?: string;
 }
 
 export interface AccordionProps {
@@ -87,7 +104,25 @@ function AccordionRow({ item, isOnlyItem }: { item: AccordionItem; isOnlyItem: b
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-inset",
             item.disabled
               ? "cursor-not-allowed"
-              : "hover:bg-lyra-state-hover active:bg-lyra-state-pressed cursor-pointer"
+              : // A tinted `headerClassName` (e.g. `bg-lyra-accent-purple-
+                // soft`) needs its OWN hover treatment: the default
+                // `hover:bg-lyra-state-hover` overlay is a `:hover`-
+                // qualified selector, which carries higher CSS specificity
+                // than the plain `bg-lyra-accent-purple-soft` class
+                // regardless of which comes later in the `cn()` call — so
+                // it always painted a flat gray over the tint on hover
+                // instead of darkening it (caught by a follow-up report:
+                // "the hover on the artifact accordion is gray instead of
+                // the darker purple"). `hover:brightness-95`/`active:
+                // brightness-90` darken whatever background is already
+                // there instead of overlaying a fixed color on top of it —
+                // the same technique the bespoke Autosummary/Customer Info
+                // accordion headers already use for this exact reason
+                // (contact-overview.tsx).
+                item.headerClassName
+                ? "hover:brightness-95 active:brightness-90 cursor-pointer"
+                : "hover:bg-lyra-state-hover active:bg-lyra-state-pressed cursor-pointer",
+            item.headerClassName
           )}
         >
           {/* Title (+ icon) row + optional subhead below. Icon sits in its
@@ -161,7 +196,7 @@ function AccordionRow({ item, isOnlyItem }: { item: AccordionItem; isOnlyItem: b
           "data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up"
         )}
       >
-        <div className="p-4">{item.content}</div>
+        <div className={cn("p-4", item.contentClassName)}>{item.content}</div>
       </AccordionPrimitive.Content>
 
       {/* Divider — rendered after every item, including the last one, EXCEPT

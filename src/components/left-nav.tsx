@@ -235,7 +235,30 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
           aria-expanded={open}
           aria-label={open ? "Collapse sidebar" : "Expand sidebar"}
           className={cn(
-            // `z-30`, not `z-10` — per explicit bug report, this button was
+            // `z-[600]`, not `z-30` — per a further explicit bug report
+            // (agent-next-gen-v3's `AgentWorkspaceAdvancedPage`), this
+            // button's `-right-3` offset hangs it slightly past LeftNav's
+            // own right edge, into the main content column beside it — and
+            // once that column's "View customer info" `InteriorPanel`
+            // overlay needed to clear a `Popover`'s own `z-50` default (see
+            // that overlay's own `z-[500]` doc comment,
+            // AgentWorkspaceAdvancedPage.tsx), its full-width overlay
+            // started painting over this button in that shared sliver
+            // whenever it was open, even though this button sits outside
+            // that content column's own layout box. This toggle must stay
+            // reachable regardless of whatever panel/overlay the content
+            // column has open next to it — same "never hidden behind
+            // ANYTHING it happens to sit beside" principle already
+            // established for this same app's own toast stack (see that
+            // z-index's own doc comment) — so `600` clears that overlay
+            // with real headroom rather than trading one narrow miss for
+            // another. Was `z-30` before that (raised from `z-10`, per the
+            // ORIGINAL bug report below) — still clears every z-index this
+            // file's own rails use (topping out at `z-20`), just no longer
+            // enough once a content-column overlay elsewhere started using
+            // a triple-digit tier of its own.
+            //
+            // Original `z-10` → `z-30` bug report: this button was
             // rendering UNDER the sticky Home/`stickyCaption` rail
             // (`itemsFirst` branch below, and its mirrored `!itemsFirst`
             // sticky-bottom rail) whenever the two visually overlapped.
@@ -244,9 +267,8 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
             // own doc comment) — so this button's old `z-10` lost to their
             // `z-20` even though it's positioned and DOM-later, since
             // explicit z-index always wins over a lower one regardless of
-            // DOM order. `z-30` clears every z-index this file's rails use
-            // (currently topping out at `z-20`) with room to spare.
-            "absolute -right-3 top-[25px] z-30 flex h-5 w-5 items-center justify-center rounded-full border border-lyra-border-soft bg-lyra-bg-surface-base text-lyra-fg-secondary shadow-sm hover:bg-lyra-bg-surface-shell transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+            // DOM order.
+            "absolute -right-3 top-[25px] z-[600] flex h-5 w-5 items-center justify-center rounded-full border border-lyra-border-soft bg-lyra-bg-surface-base text-lyra-fg-secondary shadow-sm hover:bg-lyra-bg-surface-shell transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
             // Fixed regardless of `header` — this button must stay aligned
             // with the page's PageHeader row (an external, constant-height
             // sibling elsewhere in the layout), not shift based on whatever

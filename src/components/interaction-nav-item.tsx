@@ -480,7 +480,26 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     const severity: "success" | "warning" | "critical" | null = awaitingResponse ? awaitingSeverity ?? "critical" : null;
 
     const tone =
-      severity === "critical"
+      // Per explicit request ("a non-active interactionNavItem that is on
+      // hold should have the yellow background and border and avatar when
+      // collapsed — just the blue area"): wins outright ahead of
+      // `severity`, same "onHold beats everything else" precedent
+      // `expandedCardClassName` already establishes for the full card's own
+      // background/border below — just scoped to the compact tile's small
+      // avatar square specifically (the only place `tone` is read; the
+      // phone/pause channel-type icon and its badge just above this square
+      // are untouched). `!active` guards it per that same explicit
+      // request's own wording — an ACTIVE card's compact tile isn't in
+      // scope here (in practice the active interaction is shown via the
+      // real expanded card, not this tile, but the guard is explicit
+      // rather than relying on that always being true). Full-strength
+      // `border-lyra-status-warning-strong` (not the `/30` alpha every
+      // inactive severity branch below uses) to match `expandedCardClassName`'s
+      // own onHold border treatment — a held call is a stronger signal than
+      // an ordinary severity tint.
+      onHold && !active
+        ? { bg: "bg-lyra-status-warning-subtle", text: "text-lyra-status-warning-strong", border: "border-lyra-status-warning-strong" }
+        : severity === "critical"
         ? { bg: "bg-lyra-status-critical-subtle", text: "text-lyra-status-critical-strong", border: active ? "border-lyra-status-critical-strong" : "border-lyra-status-critical-medium/30" }
         : severity === "warning"
         ? { bg: "bg-lyra-status-warning-subtle", text: "text-lyra-status-warning-strong", border: active ? "border-lyra-status-warning-strong" : "border-lyra-status-warning-strong/30" }

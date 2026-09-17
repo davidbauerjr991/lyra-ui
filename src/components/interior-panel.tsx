@@ -239,7 +239,6 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
     const { width: currentWidth, onMouseDown } = usePanelDragResize(
       side, initialWidth, minWidth, maxWidth, handleResizeStateChange, handleWidthChange
     );
-    const widthTransition = isResizing ? "none" : "width 250ms cubic-bezier(0.4, 0, 0.2, 1)";
 
     // Keep border visible during the close animation so it doesn't snap away
     const [isClosing, setIsClosing] = useState(false);
@@ -308,6 +307,27 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       }
       prevExitFullScreenSignalRef.current = exitFullScreenSignal;
     }, [exitFullScreenSignal]);
+
+    // Full-screen toggling snaps the width instantly rather than sliding
+    // through the normal 250ms `widthTransition` below (per explicit
+    // request — full screen should happen immediately on click, not
+    // animate into place). The render where `isFullScreen` actually FLIPS
+    // is the one that needs the instant jump, in both directions (entering
+    // AND exiting); every other render — a drag-resize, or the panel's own
+    // open/close slide — should still use the normal animated transition.
+    // Tracked with a ref rather than comparing inline against a plain
+    // variable, since we need "did THIS render change the value" rather
+    // than "is it currently true," and a plain `useEffect` (not
+    // `useLayoutEffect`) is enough because the ref only needs to catch up
+    // before the NEXT render, not before this one paints.
+    const prevIsFullScreenRef = useRef(isFullScreen);
+    const fullScreenJustToggled = prevIsFullScreenRef.current !== isFullScreen;
+    useEffect(() => {
+      prevIsFullScreenRef.current = isFullScreen;
+    });
+    const widthTransition = isResizing || fullScreenJustToggled
+      ? "none"
+      : "width 250ms cubic-bezier(0.4, 0, 0.2, 1)";
 
     const fullScreenToggle = allowFullScreen ? (
       <Tooltip content={isFullScreen ? "Exit full screen" : "Full screen"} placement="bottom" asLabel>
