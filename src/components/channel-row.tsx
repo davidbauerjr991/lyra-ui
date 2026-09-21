@@ -878,6 +878,7 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
   alwaysShowOutcome = true,
   showDismissButton = false,
   onEndCall,
+  controlsDisabled = false,
 }) => {
   // `null` when not awaiting at all (the plain gray look below is
   // untouched); otherwise `awaitingSeverity`, defaulting to `"critical"` —
