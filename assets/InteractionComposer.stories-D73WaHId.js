@@ -1,0 +1,27 @@
+import{j as e}from"./jsx-runtime-D_zvdyIk.js";import{r as u}from"./index-DhMLlvMY.js";import{I as i}from"./interaction-composer-DGayhrMY.js";import"./_commonjsHelpers-CqkleIqs.js";import"./utils-BLSKlp9E.js";import"./textarea-BQ4XoVsE.js";import"./error-icon-solid-eVlwMcX6.js";import"./label-DV0nvecx.js";import"./index-0SMGJ9Xv.js";import"./index-2UU9FgV2.js";import"./index-D7lG0nq1.js";import"./tooltip-B7WaxDQZ.js";import"./index-3Mvvhvj2.js";import"./circle-help-DYnzmdO5.js";import"./createLucideIcon-aII_sYFw.js";import"./actions-_Mp4kUIL.js";import"./button-C_xtDadR.js";import"./index-1evVQkiP.js";import"./badge-CSIGLv9X.js";import"./chevron-down-gMYAX9-q.js";import"./tag-DKZdDztl.js";import"./x-CzxgOx-T.js";import"./select-DDPZKH4f.js";import"./index-pcZVUfq6.js";import"./index-Cjx2M-Ur.js";import"./index-CylpBFcA.js";import"./Combination-DrhKiBYc.js";import"./tslib.es6-Ytcc2UEA.js";import"./popover-DUzeR3mw.js";import"./index-BmfIz0--.js";import"./container-header-an86y9Fl.js";import"./checkbox-BRQPSInb.js";import"./minus-CVnigrff.js";import"./check-Dr3vGcdY.js";import"./scroll-chevron-CXy7dwCM.js";import"./chevron-right-BP9ksYh_.js";import"./chevron-left-CtyUClJQ.js";import"./chevron-up-dmEEfYqc.js";import"./search-CZxBQJsH.js";import"./input-BalbX2Cc.js";import"./date-picker-CMTD9DfI.js";import"./calendar-9XloSOmi.js";import"./calendar-t4SqpSdm.js";import"./time-picker-CoCVLIx4.js";import"./number-field-CnjudTfU.js";import"./clock-C3xVexPO.js";import"./paperclip-52JUKXJ-.js";import"./file-text-DK8c8V5C.js";import"./send-dvDSLghl.js";const y=[{id:"greeting",title:"Greeting",template:"Thank you for contacting us. How can I assist you today?"},{id:"acknowledge",title:"Acknowledge",template:"I understand your concern. Let me look into that for you."},{id:"escalate",title:"Escalate",template:"I'm escalating this to our specialist team right away."},{id:"timeline",title:"Processing Time",template:"Please allow {days} business days for this to take effect.",rich:!0,fields:[{key:"days",label:"Business Days",type:"select",options:[{value:"1–2",label:"1–2"},{value:"3–5",label:"3–5"},{value:"5–7",label:"5–7"},{value:"7–10",label:"7–10"}]}]},{id:"callback",title:"Schedule Callback",template:"I'll arrange a callback on {date} at {time} for you.",rich:!0,fields:[{key:"date",label:"Date",type:"date"},{key:"time",label:"Time",type:"time"}]},{id:"closing",title:"Closing",template:"Is there anything else I can help you with today?"}],de={title:"UI/InteractionComposer",component:i,parameters:{layout:"padded",backgrounds:{default:"lyra-shell"}},tags:["autodocs"]},s={name:"Default — With Quick Replies",render:()=>{const[r,o]=u.useState([]);return e.jsxs("div",{className:"flex w-[420px] flex-col gap-3",children:[r.length>0&&e.jsx("div",{className:"flex flex-col gap-2 rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-canvas p-3",children:r.map((t,a)=>e.jsx("div",{className:"ml-auto max-w-[85%] rounded-lyra-lg bg-lyra-bg-active-subtle px-3 py-2 lyra-body-md text-lyra-fg-default",children:t},a))}),e.jsx(i,{quickReplies:y,onSend:t=>o(a=>[...a,t])})]})}},l={name:"Plain — No Quick Replies",render:()=>{const[r,o]=u.useState([]);return e.jsxs("div",{className:"flex w-[420px] flex-col gap-3",children:[r.length>0&&e.jsx("div",{className:"flex flex-col gap-2 rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-canvas p-3",children:r.map((t,a)=>e.jsx("div",{className:"ml-auto max-w-[85%] rounded-lyra-lg bg-lyra-bg-active-subtle px-3 py-2 lyra-body-md text-lyra-fg-default",children:t},a))}),e.jsx(i,{onSend:t=>o(a=>[...a,t])})]})}};var m,n,p;s.parameters={...s.parameters,docs:{...(m=s.parameters)==null?void 0:m.docs,source:{originalSource:`{
+  name: "Default — With Quick Replies",
+  render: () => {
+    const [messages, setMessages] = useState<string[]>([]);
+    return <div className="flex w-[420px] flex-col gap-3">
+        {messages.length > 0 && <div className="flex flex-col gap-2 rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-canvas p-3">
+            {messages.map((msg, i) => <div key={i} className="ml-auto max-w-[85%] rounded-lyra-lg bg-lyra-bg-active-subtle px-3 py-2 lyra-body-md text-lyra-fg-default">
+                {msg}
+              </div>)}
+          </div>}
+        <InteractionComposer quickReplies={DEMO_QUICK_REPLIES} onSend={text => setMessages(prev => [...prev, text])} />
+      </div>;
+  }
+}`,...(p=(n=s.parameters)==null?void 0:n.docs)==null?void 0:p.source}}};var d,c,g;l.parameters={...l.parameters,docs:{...(d=l.parameters)==null?void 0:d.docs,source:{originalSource:`{
+  name: "Plain — No Quick Replies",
+  render: () => {
+    const [messages, setMessages] = useState<string[]>([]);
+    return <div className="flex w-[420px] flex-col gap-3">
+        {messages.length > 0 && <div className="flex flex-col gap-2 rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-canvas p-3">
+            {messages.map((msg, i) => <div key={i} className="ml-auto max-w-[85%] rounded-lyra-lg bg-lyra-bg-active-subtle px-3 py-2 lyra-body-md text-lyra-fg-default">
+                {msg}
+              </div>)}
+          </div>}
+        <InteractionComposer onSend={text => setMessages(prev => [...prev, text])} />
+      </div>;
+  }
+}`,...(g=(c=l.parameters)==null?void 0:c.docs)==null?void 0:g.source}}};const ce=["WithQuickReplies","Basic"];export{l as Basic,s as WithQuickReplies,ce as __namedExportsOrder,de as default};
