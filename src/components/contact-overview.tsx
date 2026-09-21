@@ -403,6 +403,30 @@ export interface CustomerContextOverviewInfo {
    *  `snapshot`/`customerCard`, this container always has SOMETHING to
    *  suggest. */
   nextBestAction?: string;
+  /** Replaces the "Next Best Action" container's normal plain-sentence
+   *  body (`nextBestAction` above, wrapped in a `<p>`) with arbitrary rich
+   *  content instead — e.g. an interactive question with selectable option
+   *  cards, for a consumer whose next-best-action isn't a single suggested
+   *  sentence but an actual decision the agent needs to make. `nextBestAction`
+   *  itself is left as-is when this is set (not read at all in that case) —
+   *  a caller can still populate it for callers/analytics that only care
+   *  about the plain-text summary, without it fighting this richer render.
+   *  `undefined` (the default) leaves the existing plain-sentence behavior
+   *  completely unaffected. */
+  nextBestActionContent?: React.ReactNode;
+  /** Drops the "Next Best Action" container's own accordion chrome
+   *  entirely (the sparkle-icon title bar, chevron, and success-green
+   *  background) — `nextBestActionContent` renders as a plain, uncollapsed
+   *  block instead, still in the same position among Customer Profile/
+   *  Contact Snapshot. Per explicit request, for a `nextBestActionContent`
+   *  whose own content already provides enough visual structure (e.g. a
+   *  question with its own bordered option cards, or a locked confirmation
+   *  block) that a second layer of accordion framing around it just reads
+   *  as redundant chrome. Only meaningful alongside `nextBestActionContent`
+   *  — has no effect on the plain-sentence `nextBestAction` fallback.
+   *  `undefined`/`false` (the default) keeps the normal accordion
+   *  treatment for every other consumer. */
+  nextBestActionBare?: boolean;
   /** Per explicit request ("put the customer summary content inside the
    *  customer profile accordion"): a short AI-style narrative — a few
    *  paragraphs recapping why this customer has contacted support before,
@@ -491,6 +515,8 @@ const CustomerContextOverview = React.forwardRef<HTMLDivElement, CustomerContext
       customerCard,
       snapshot,
       nextBestAction,
+      nextBestActionContent,
+      nextBestActionBare,
       detailedSummary,
       className,
       onViewCustomerInfo,
@@ -555,7 +581,7 @@ const CustomerContextOverview = React.forwardRef<HTMLDivElement, CustomerContext
         // in the ... next-best-action accordion content to md") this
         // section's own content, unlike its neutral siblings, reads one
         // step larger.
-        content: (
+        content: nextBestActionContent ?? (
           <p className="lyra-body-md text-lyra-fg-default">
             {nextBestAction ?? "Confirm the reason for contact and proceed with the customer's request."}
           </p>
@@ -584,7 +610,7 @@ const CustomerContextOverview = React.forwardRef<HTMLDivElement, CustomerContext
             "rounded-lyra-md border overflow-hidden transition-all ease-out",
             "duration-700",
             section.accent
-              ? "border-[color-mix(in_srgb,var(--lyra-color-status-info-strong)_25%,transparent)] bg-lyra-status-info-subtle"
+              ? "border-[color-mix(in_srgb,var(--lyra-color-status-success-strong)_25%,transparent)] bg-lyra-status-success-subtle"
               : "border-lyra-border-subtle bg-lyra-bg-control-subtle",
             i < enteredCount ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
           )}
@@ -846,12 +872,18 @@ const CustomerContextOverview = React.forwardRef<HTMLDivElement, CustomerContext
       );
     }
     if (nextBestActionSection) {
-      orderedItems.push(renderGenericSection(nextBestActionSection, entryIndex++));
+      orderedItems.push(
+        nextBestActionBare ? (
+          <div key="next-best-action">{nextBestActionSection.content}</div>
+        ) : (
+          renderGenericSection(nextBestActionSection, entryIndex++)
+        )
+      );
     }
     const orderedValues = [
       showCustomerProfile && "customer-profile",
       showContactSnapshot && "customer-snapshot",
-      nextBestActionSection && "next-best-action",
+      nextBestActionSection && !nextBestActionBare && "next-best-action",
     ].filter((v): v is string => typeof v === "string");
 
     return (

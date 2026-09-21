@@ -68,7 +68,7 @@ const preview: Preview = {
           "Custom Primitives",
           "Headless Primitives",
           "UI",
-          "Templates", ["Admin UIs", "Agent Next Gen", "Data Management", "Dashboards", "Forms"],
+          "Templates", ["Admin UIs", "Agent Next Gen", "Data Management", "Dashboards", "Forms", "Login"],
         ],
       },
     },

@@ -104,12 +104,24 @@ export interface KebabMenuButtonProps extends Omit<React.HTMLAttributes<HTMLElem
    * would silently hide the only visual cue that new notifications exist.
    */
   badge?: number;
+  /**
+   * Locks the trigger — no dropdown opens, dimmed/`cursor-not-allowed`
+   * styling matching `Button`'s own `disabled` look, rather than removing
+   * the kebab outright. First added for a caller that wants this exact
+   * "visible but locked" treatment for a temporary state (e.g. a session
+   * under active review) as opposed to a permanent one (a closed session
+   * already just omits this component entirely rather than rendering it
+   * disabled — see `TranscriptSessionSeparator`'s own `isClosed` gate,
+   * agent-next-gen-transcript.tsx).
+   */
+  disabled?: boolean;
 }
 
 const KebabMenuButton = React.forwardRef<HTMLButtonElement, KebabMenuButtonProps>(
-  ({ items, ariaLabel, className, as = "button", icon: iconProp, align = "right", onOpenChange, badge, onClick, ...rest }, ref) => {
+  ({ items, ariaLabel, className, as = "button", icon: iconProp, align = "right", onOpenChange, badge, onClick, disabled, ...rest }, ref) => {
     const triggerClassName = cn(
       "flex h-6 w-6 shrink-0 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary transition-colors hover:bg-lyra-state-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus",
+      disabled && "pointer-events-none opacity-40 hover:bg-transparent",
       className
     );
     const iconContent = iconProp ?? <MoreVertical className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />;
@@ -133,6 +145,7 @@ const KebabMenuButton = React.forwardRef<HTMLButtonElement, KebabMenuButtonProps
     // (to dismiss the tooltip on click) — this still has to run alongside
     // (not instead of) that, same as any other prop `Tooltip` injects.
     const handleTriggerClick = (e: React.MouseEvent<HTMLElement>) => {
+      if (disabled) return;
       onClick?.(e);
       e.stopPropagation();
     };
@@ -141,7 +154,8 @@ const KebabMenuButton = React.forwardRef<HTMLButtonElement, KebabMenuButtonProps
       as === "span" ? (
         <span
           role="button"
-          tabIndex={0}
+          tabIndex={disabled ? -1 : 0}
+          aria-disabled={disabled || undefined}
           aria-label={ariaLabel}
           className={triggerClassName}
           {...rest}
@@ -153,6 +167,7 @@ const KebabMenuButton = React.forwardRef<HTMLButtonElement, KebabMenuButtonProps
         <button
           type="button"
           aria-label={ariaLabel}
+          disabled={disabled}
           className={triggerClassName}
           {...rest}
           onClick={handleTriggerClick}

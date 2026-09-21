@@ -68,8 +68,10 @@ RadioGroup.displayName = "RadioGroup";
 interface RadioGroupItemProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type" | "onChange"> {
   /** Value for this radio option */
   value: string;
-  /** Label text */
-  label?: string;
+  /** Label content — usually plain text, but any node works (e.g. a
+   *  stacked title + description block for a richer option card) since
+   *  this just renders straight into a `<span>` either way. */
+  label?: React.ReactNode;
 }
 
 const RadioGroupItem = React.forwardRef<HTMLButtonElement, RadioGroupItemProps>(

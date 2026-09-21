@@ -19,8 +19,18 @@ export interface AIProcessProps {
   steps: AIProcessStep[];
   /** Header label (default: "Thought process") */
   label?: string;
-  /** Default expanded state */
+  /** Default expanded state — ignored once `expanded` is provided (see below). */
   defaultExpanded?: boolean;
+  /**
+   * Controlled expanded state. Omit for `AIProcess` to manage its own (via
+   * `defaultExpanded`) — e.g. so a caller can auto-collapse this once its
+   * steps finish, such as a done process that's taking up too much space,
+   * while the header toggle (`onExpandedChange`) still lets the agent
+   * reopen it afterward.
+   */
+  expanded?: boolean;
+  /** Fires whenever the header toggle is clicked, whether controlled or not. */
+  onExpandedChange?: (expanded: boolean) => void;
   className?: string;
 }
 
@@ -58,16 +68,25 @@ const AIProcess = React.forwardRef<HTMLDivElement, AIProcessProps>(
     steps,
     label = "Thought process",
     defaultExpanded = false,
+    expanded: expandedProp,
+    onExpandedChange,
     className,
   }, ref) => {
-  const [expanded, setExpanded] = React.useState(defaultExpanded);
+  const [internalExpanded, setInternalExpanded] = React.useState(defaultExpanded);
+  const isControlled = expandedProp !== undefined;
+  const expanded = isControlled ? expandedProp : internalExpanded;
+  const toggleExpanded = () => {
+    const next = !expanded;
+    if (!isControlled) setInternalExpanded(next);
+    onExpandedChange?.(next);
+  };
 
   return (
     <div ref={ref} className={cn("w-full", className)}>
       {/* Toggle header */}
       <button
         type="button"
-        onClick={() => setExpanded((v) => !v)}
+        onClick={toggleExpanded}
         className="flex items-center gap-1.5 text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors focus-visible:outline-none group"
       >
         <span className="lyra-body-md-emphasis">{label}</span>

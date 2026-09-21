@@ -97,6 +97,15 @@ export interface InteriorPanelProps extends React.HTMLAttributes<HTMLDivElement>
   /** Optional line below `headerTitle`, e.g. a record's name + id */
   headerSubhead?: string;
   headerIcon?: React.ReactNode;
+  /** Forwarded to `PanelHeader`/`ContainerHeader`'s own `onBack` — a real
+   *  back-arrow button to the left of `headerIcon`/the title, for content
+   *  that drills into a sub-view within this SAME panel rather than
+   *  opening a second, nested one (this component doesn't support
+   *  nesting). Omit for a panel with no drill-down navigation. */
+  onBack?: () => void;
+  /** Forwarded to `PanelHeader`/`ContainerHeader`'s own `backIcon`.
+   *  Default: lucide `ArrowLeft`. */
+  backIcon?: React.ReactNode;
   /**
    * Rendered inline immediately after `headerTitle`, same row (forwarded to
    * `PanelHeader`/`ContainerHeader`'s own `titleBadge` slot) — e.g. an
@@ -201,6 +210,8 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       headerTitle,
       headerSubhead,
       headerIcon,
+      onBack,
+      backIcon,
       headerTitleBadge,
       headerActions,
       headerTabs,
@@ -400,6 +411,8 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
               title={headerTitle}
               subhead={headerSubhead}
               icon={headerIcon}
+              onBack={onBack}
+              backIcon={backIcon}
               titleBadge={headerTitleBadge}
               actions={<>{headerActions}{fullScreenToggle}</>}
               tabs={headerTabs}

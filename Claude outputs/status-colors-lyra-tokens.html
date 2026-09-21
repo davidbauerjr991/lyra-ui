@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Status Colors → Lyra Tokens</title>
+<style>
+  body { margin: 0; padding: 24px 16px; background: #ffffff; color: #1a1a1a;
+         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .card { max-width: 980px; margin: 0 auto; border: 1px solid #d9d9d9; border-radius: 14px; overflow: hidden;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  table { width: 100%; border-collapse: collapse; font-size: 17px; }
+  thead th { background: #efefef; color: #1a1a1a; text-align: left; font-size: 18px; padding: 18px 20px;
+             border-bottom: 1px solid #d9d9d9; }
+  thead th + th, td + td { border-left: 1px solid #e3e3e3; }
+  tbody tr + tr td { border-top: 1px solid #e3e3e3; }
+  td { padding: 18px 20px; vertical-align: middle; background: #fff; }
+  .sw { display: inline-block; width: 26px; height: 26px; border-radius: 7px; vertical-align: middle;
+        margin-right: 10px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12); }
+  .hex { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #444; }
+  .tok { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14.5px; }
+  .tokhex { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; color: #777; }
+  .badge { display: inline-block; font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+           margin-left: 8px; vertical-align: middle; white-space: nowrap; }
+  .b-approx { background: #fdf0d2; color: #8a5a00; }
+  .b-none   { background: #ffebeb; color: #bd2a2a; }
+  .nearest { color: #888; font-size: 12.5px; display: block; margin-top: 3px; }
+  .note { max-width: 980px; margin: 14px auto 0; font-size: 13px; color: #666; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="card">
+<table>
+  <thead>
+    <tr><th>Status</th><th>Color</th><th>Closest lyra-ui Token (light theme)</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Open</td>
+      <td><span class="sw" style="background:#CC8605"></span><span class="hex">#CC8605</span></td>
+      <td><span class="sw" style="background:#8E6800"></span><span class="tok">--lyra-color-status-warning-strong</span> <span class="tokhex">#8E6800</span><span class="badge b-none">no close token</span>
+          <span class="nearest">right family, but the token is a much darker mustard; accent-orange-strong #A85000 is the other neighbor — nothing has this amber brightness</span></td>
+    </tr>
+    <tr>
+      <td>Pending</td>
+      <td><span class="sw" style="background:#007AB8"></span><span class="hex">#007AB8</span></td>
+      <td><span class="sw" style="background:#166CCA"></span><span class="tok">--lyra-color-bg-primary</span> <span class="tokhex">#166CCA</span><span class="badge b-approx">≈ approx</span>
+          <span class="nearest">chart blue is more cyan; the semantic status token would be status-info-strong #2D5BB9 (further off, more indigo)</span></td>
+    </tr>
+    <tr>
+      <td>Escalated</td>
+      <td><span class="sw" style="background:#A476D7"></span><span class="hex">#A476D7</span></td>
+      <td><span class="sw" style="background:#634DBD"></span><span class="tok">--lyra-color-accent-purple-strong</span> <span class="tokhex">#634DBD</span><span class="badge b-none">no close token</span>
+          <span class="nearest">nearest purple shown — token is a much deeper violet than this lavender; no medium/light purple exists</span></td>
+    </tr>
+    <tr>
+      <td>Resolved</td>
+      <td><span class="sw" style="background:#2EA86B"></span><span class="hex">#2EA86B</span></td>
+      <td><span class="sw" style="background:#64B96F"></span><span class="tok">--lyra-color-status-success-medium</span> <span class="tokhex">#64B96F</span><span class="badge b-approx">≈ approx</span>
+          <span class="nearest">chart green sits between success-medium (lighter, yellower) and success-strong #23722D (much darker)</span></td>
+    </tr>
+    <tr>
+      <td>Closed</td>
+      <td><span class="sw" style="background:#C2041A"></span><span class="hex">#C2041A</span></td>
+      <td><span class="sw" style="background:#BD2A2A"></span><span class="tok">--lyra-color-status-critical-strong</span> <span class="tokhex">#BD2A2A</span><span class="badge b-approx">≈ approx</span>
+          <span class="nearest">very close in weight; chart red is slightly more crimson/saturated (same value as bg-destructive / accent-red-strong)</span></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<p class="note">
+Matched against the 94 light-theme color tokens in lyra-ui/src/styles/lyra-tokens.css (alpha tokens composited on white),
+perceptual red-mean weighted distance. Badges: <b>≈ approx</b> = same family, noticeably different value ·
+<b>no close token</b> = nothing in the palette is near this color; nearest relative shown for reference.
+</p>
+</body>
+</html>

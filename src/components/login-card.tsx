@@ -43,6 +43,12 @@ export interface LoginCardProps {
    * header).
    */
   launchButtonLabel?: string;
+  /**
+   * Whether the card renders inside its modal chrome (background, border,
+   * drop shadow). Default: true. Set false to render the same content bare
+   * — e.g. when the surrounding page already supplies its own framing.
+   */
+  contained?: boolean;
   className?: string;
 }
 
@@ -72,6 +78,7 @@ const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
       defaultLaunching = false,
       onLaunch,
       launchButtonLabel,
+      contained = true,
       className,
     },
     ref
@@ -170,6 +177,7 @@ const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
         className={cn(
           "w-[360px] transition-opacity ease-out",
           fadingOut ? "opacity-0" : "opacity-100",
+          !contained && "bg-transparent border-0 shadow-none",
           className
         )}
         style={{ transitionDuration: `${CARD_FADE_DURATION}ms` }}

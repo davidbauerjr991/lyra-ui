@@ -281,6 +281,18 @@ export interface InteractionChannel {
    *  to leave this row exactly as before — no button, no space reserved
    *  for it. */
   onEndCall?: () => void;
+  /** Locks the Consult/Transfer, Outcome, and kebab ("More Options")
+   *  buttons in this row's trailing cluster — visibly present but
+   *  non-interactive (disabled), NOT hidden. Same "reviewing an AI agent's
+   *  still-live conversation before deciding whether to take it over"
+   *  reasoning as `TranscriptSessionSeparator`'s own `controlsReadOnly`
+   *  prop (agent-next-gen-transcript.tsx) — this is that same idea for
+   *  this row's own action cluster. `onEndCall`/`onDismiss`/`showDismiss
+   *  Button` are untouched by this: those already have their own
+   *  visibility gating for exactly this "not taken over yet" state, so
+   *  there's nothing for a disabled state to add there. Default: false
+   *  (every other consumer's cluster stays fully interactive, unchanged). */
+  controlsDisabled?: boolean;
 }
 
 /* ── Default menu items, per channel type ──
@@ -793,6 +805,9 @@ interface ChannelRowProps {
    *  own doc comment for the full reasoning. Omit (the default) to leave
    *  this row's trailing cluster exactly as before. */
   onEndCall?: () => void;
+  /** See `InteractionChannel.controlsDisabled`'s own doc comment. Default
+   *  false. */
+  controlsDisabled?: boolean;
 }
 
 // `direction` (see `InteractionChannel.direction`'s own doc comment) is

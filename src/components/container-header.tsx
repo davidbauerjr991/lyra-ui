@@ -1,5 +1,5 @@
 import * as React from "react";
-import { X } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import { Tooltip } from "./tooltip";
 import { cn } from "../lib/utils";
 
@@ -15,6 +15,20 @@ export interface ContainerHeaderProps extends React.HTMLAttributes<HTMLDivElemen
   title?: string;
   /** Optional icon to the left of the title */
   icon?: React.ReactNode;
+  /**
+   * Renders a real back-arrow button to the left of `icon`/the title
+   * (mirroring `onClose`'s own button — same size/hover/focus treatment,
+   * just on the leading edge) and calls this when clicked. For panel
+   * content that drills into a sub-view within the SAME panel (rather
+   * than opening a second, nested one — this design system's panels
+   * don't support nesting) and needs a way back out. Omit for a header
+   * with no drill-down navigation of its own (every existing consumer is
+   * unaffected).
+   */
+  onBack?: () => void;
+  /** Icon rendered inside the back button (only meaningful when `onBack`
+   *  is set). Default: lucide `ArrowLeft`. */
+  backIcon?: React.ReactNode;
   /** Actions rendered to the right of the title (buttons, badges, etc.) */
   actions?: React.ReactNode;
   /** Renders a built-in close button and calls this when clicked */
@@ -127,6 +141,8 @@ const ContainerHeader = React.forwardRef<HTMLDivElement, ContainerHeaderProps>(
     className,
     title,
     icon,
+    onBack,
+    backIcon = <ArrowLeft className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />,
     actions,
     onClose,
     closeIcon = <X className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />,
@@ -220,6 +236,17 @@ const ContainerHeader = React.forwardRef<HTMLDivElement, ContainerHeaderProps>(
             instead of a compact tag. */}
         {topSlot && <div className="self-start">{topSlot}</div>}
         <div className="flex items-center gap-2 min-w-0">
+          {onBack && (
+            <Tooltip content="Back" placement="bottom" asLabel>
+              <button
+                aria-label="Back"
+                onClick={onBack}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lyra-sm text-lyra-fg-action hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+              >
+                {backIcon}
+              </button>
+            </Tooltip>
+          )}
           {icon && <span className="flex-shrink-0 text-lyra-fg-secondary">{icon}</span>}
           <div className="min-w-0 flex-1">
             {(title || titleBadge) && (

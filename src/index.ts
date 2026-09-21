@@ -7,6 +7,8 @@ import "./lib/input-modality";
 
 /* ── Components ── */
 export { Button, buttonVariants } from "./components/button";
+export { Link, linkVariants } from "./components/link";
+export type { LinkProps } from "./components/link";
 export { TagsInput } from "./components/tags-input";
 export type { TagsInputProps } from "./components/tags-input";
 export { Tag, tagVariants } from "./components/tag";
@@ -104,8 +106,8 @@ export type {
   SessionDetailsInfo,
   SessionDetailsFingerprint,
 } from "./components/session-details";
-export { ChatMessage } from "./components/chat-message";
-export type { ChatMessageProps, ChatMessageTag } from "./components/chat-message";
+export { ChatMessage, AttachmentThumbnail } from "./components/chat-message";
+export type { ChatMessageProps, ChatMessageTag, AttachmentThumbnailProps } from "./components/chat-message";
 export {
   ChannelRow,
   ChatChannelRow,

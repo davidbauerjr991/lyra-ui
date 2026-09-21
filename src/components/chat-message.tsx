@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Copy, User } from "lucide-react";
+import { Copy, Image as ImageIcon, Maximize2, User } from "lucide-react";
 import { cn } from "../lib/utils";
 import { ActionIconButton } from "./actions";
 import { Button } from "./button";
@@ -63,6 +63,51 @@ import { TagPicker, type TagPickerOption } from "./tag-picker";
    auto-measurement); leave it unset (the default) to let this component
    decide for itself. The bubble's own 80%/100% max-width has no equivalent
    override prop — nothing has asked for one yet. */
+
+/** A thumbnail for an inline image attachment, with a hover-reveal
+ *  `Maximize2` affordance. Not part of `ChatMessage` itself (an earlier
+ *  pass wired an `imageAttachment` prop through it, then dropped it per
+ *  explicit correction — the one consuming app that needed this rendered
+ *  its attachment somewhere other than a chat bubble entirely) — exported
+ *  standalone so any caller that wants this exact thumbnail treatment can
+ *  use it directly. `src` is optional: pass a real image URL/import to
+ *  render it filling the box (`object-cover`), or omit it for a generic
+ *  placeholder (a photo icon + this filename as a caption) when there's no
+ *  real image to show — this app mostly has no backend/image storage, so
+ *  most callers omit `src`. */
+export interface AttachmentThumbnailProps {
+  filename: string;
+  alt: string;
+  src?: string;
+  onClick?: () => void;
+  className?: string;
+}
+
+export function AttachmentThumbnail({ filename, alt, src, onClick, className }: AttachmentThumbnailProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`Expand image: ${alt}`}
+      className={cn(
+        "group/image relative mt-2 flex h-32 w-48 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-lyra-md border border-lyra-border-subtle bg-lyra-bg-control-subtle",
+        className
+      )}
+    >
+      {src ? (
+        <img src={src} alt={alt} className="absolute inset-0 h-full w-full object-cover" />
+      ) : (
+        <>
+          <ImageIcon className="h-8 w-8 text-lyra-fg-secondary" strokeWidth={1.5} aria-hidden="true" />
+          <span className="lyra-body-xs text-lyra-fg-secondary truncate max-w-[90%] px-2">{filename}</span>
+        </>
+      )}
+      <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-lyra-bg-surface-inverse/0 opacity-0 transition-opacity group-hover/image:opacity-100 group-hover/image:bg-lyra-bg-surface-inverse/30">
+        <Maximize2 className="h-5 w-5 text-lyra-fg-on-primary" strokeWidth={1.5} aria-hidden="true" />
+      </span>
+    </button>
+  );
+}
 
 export interface ChatMessageTag {
   id: string;

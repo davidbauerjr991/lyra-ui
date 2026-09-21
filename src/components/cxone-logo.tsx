@@ -4,14 +4,24 @@ import cxoneLogoLight from "../assets/cxone-logo.svg";
 import cxoneLogoDark from "../assets/cxone-logo-dark.svg";
 import { cn } from "../lib/utils";
 
-interface CXoneLogoProps extends React.HTMLAttributes<HTMLDivElement> {}
+const CXONE_LOGO_SIZES = {
+  sm: "h-4",
+  md: "h-6",
+} as const;
+
+type CXoneLogoSize = keyof typeof CXONE_LOGO_SIZES;
+
+interface CXoneLogoProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Wordmark height. Default: "sm" (16px, the existing AppMenu-footer size). "md" is 24px, for contexts where the logo is the primary visual (e.g. a login screen). */
+  size?: CXoneLogoSize;
+}
 
 /**
  * NICE CXone wordmark logo.
  * Automatically swaps between light and dark variants based on [data-theme].
  */
 export const CXoneLogo = React.forwardRef<HTMLDivElement, CXoneLogoProps>(
-  ({ className, ...props }, ref) => {
+  ({ className, size = "sm", ...props }, ref) => {
     const [isDark, setIsDark] = useState(
       () =>
         typeof document !== "undefined" &&
@@ -32,7 +42,7 @@ export const CXoneLogo = React.forwardRef<HTMLDivElement, CXoneLogoProps>(
         <img
           src={isDark ? cxoneLogoDark : cxoneLogoLight}
           alt="NICE CXone"
-          className="h-4"
+          className={CXONE_LOGO_SIZES[size]}
         />
       </div>
     );
