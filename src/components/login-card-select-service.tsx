@@ -19,14 +19,12 @@ import { Select } from "./select";
    request — "Sign In" is now a standalone full-width action, and "Get The
    App" sits directly below it with no separator/paragraph in between.
 
-   The "SELECT A SERVICE" eyebrow above the dropdown isn't `Select`'s own
-   `label` prop — `Select` only renders that at plain `lyra-label` weight
-   with no uppercase option, so a real uppercase/bold eyebrow isn't an
-   available override there. Uses the same manual
-   `lyra-body-sm-emphasis uppercase tracking-wide` composition already
-   established for section eyebrows elsewhere (donut-chart.tsx,
-   create-new.tsx's group headers) instead of fabricating an unsupported
-   `Select` prop. */
+   "Select a Service" is `Select`'s own `label` prop — an earlier pass hand-
+   rolled an uppercase eyebrow above the dropdown instead (since the source
+   screenshot showed it in all caps), but per a later explicit request the
+   label isn't uppercase after all, so the real `label` prop is the correct,
+   simpler choice now — no reason to keep a custom composition once nothing
+   about it actually differs from what `Select` already renders. */
 
 const SERVICE_OPTIONS = [
   { value: "agent-desktop", label: "Agent Desktop" },
@@ -56,11 +54,8 @@ const LoginCardSelectService = React.forwardRef<HTMLDivElement, LoginCardSelectS
         <div className="flex flex-col px-6 pb-6 pt-6">
           <CXoneLogo size="md" className="mb-6" />
 
-          <p className="lyra-body-sm-emphasis uppercase tracking-wide text-lyra-fg-default">
-            Select a Service
-          </p>
           <Select
-            className="mt-1.5"
+            label="Select a Service"
             placeholder="Select a Service"
             options={SERVICE_OPTIONS}
             value={service}

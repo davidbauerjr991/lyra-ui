@@ -15,28 +15,13 @@ import { PasswordInput } from "./password-input";
    action, a "Clear All Fields" link, a "Password Expired" status line, and
    the same copyright + "Contact Us" footer `LoginCardLiveVox` uses.
 
-   The screenshot's uppercase field labels ("LOGIN ID", "OLD PASSWORD", etc.)
-   aren't `Input`/`PasswordInput`'s own `label` prop — both render through the
-   shared `Label` component (label.tsx), which has no uppercase option and no
-   className passthrough for its text. Same situation as
-   `LoginCardSelectService`'s "SELECT A SERVICE" eyebrow: uses the manual
-   `lyra-body-sm-emphasis uppercase tracking-wide` composition already
-   established for section eyebrows (donut-chart.tsx, create-new.tsx) above
-   each field instead of fabricating an unsupported label override, and
-   passes no `label` prop to the fields themselves to avoid a double label. */
-
-function FieldEyebrow({ children, muted = false }: { children: React.ReactNode; muted?: boolean }) {
-  return (
-    <p
-      className={cn(
-        "lyra-body-sm-emphasis uppercase tracking-wide",
-        muted ? "text-lyra-fg-secondary" : "text-lyra-fg-default"
-      )}
-    >
-      {children}
-    </p>
-  );
-}
+   Field labels ("Login ID", "Old Password", etc.) are `Input`/`PasswordInput`'s
+   own `label` prop — an earlier pass hand-rolled an uppercase eyebrow above
+   each field instead (matching the source screenshot's all-caps look), but
+   per a later explicit request none of these labels should be uppercase, so
+   the real `label` prop is the correct, simpler choice — no reason to
+   bypass it once nothing about it actually differs from the custom
+   composition it replaced. */
 
 export interface LoginCardChangePasswordProps {
   /** Read-only login ID shown at the top. Default: "anil_u15_4" (the demo value from the source screenshot) */
@@ -78,25 +63,13 @@ const LoginCardChangePassword = React.forwardRef<HTMLDivElement, LoginCardChange
         <div className="flex flex-col gap-4 px-6 pb-6 pt-6">
           <CXoneLogo size="md" />
 
-          <div>
-            <FieldEyebrow muted>Login ID</FieldEyebrow>
-            <Input value={loginId} disabled className="mt-1.5" />
-          </div>
+          <Input label="Login ID" value={loginId} disabled />
 
-          <div>
-            <FieldEyebrow>Old Password</FieldEyebrow>
-            <PasswordInput value={oldPassword} onChange={setOldPassword} className="mt-1.5" />
-          </div>
+          <PasswordInput label="Old Password" value={oldPassword} onChange={setOldPassword} />
 
-          <div>
-            <FieldEyebrow>New Password</FieldEyebrow>
-            <PasswordInput value={newPassword} onChange={setNewPassword} className="mt-1.5" />
-          </div>
+          <PasswordInput label="New Password" value={newPassword} onChange={setNewPassword} />
 
-          <div>
-            <FieldEyebrow>Confirm Password</FieldEyebrow>
-            <PasswordInput value={confirmPassword} onChange={setConfirmPassword} className="mt-1.5" />
-          </div>
+          <PasswordInput label="Confirm Password" value={confirmPassword} onChange={setConfirmPassword} />
 
           <Button size="lg" className="mt-2 w-full" disabled={!canSubmit} onClick={handleChangePassword}>
             Change Password
