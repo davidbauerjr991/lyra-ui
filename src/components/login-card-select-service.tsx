@@ -1,12 +1,10 @@
 import * as React from "react";
-import { ChevronLeft } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Button } from "./button";
 import { Container } from "./container";
 import { CXoneLogo } from "./cxone-logo";
 import { Link } from "./link";
 import { Select } from "./select";
-import { Separator } from "./separator";
 
 /* ── Component ──
    Third LoginCard-style variant — a "choose a service" step, distinct from
@@ -15,7 +13,11 @@ import { Separator } from "./separator";
    both other variants. The source screenshot had no header row, but a
    `CXoneLogo` (same "md" size as `LoginCardLiveVox`'s) was added above the
    eyebrow/dropdown per explicit request, matching the branded-header
-   treatment the other two variants already have.
+   treatment the other two variants already have. The original screenshot's
+   "Back" button, the `Separator` below the buttons, and the "Download the
+   Agent Desktop Native App..." paragraph were removed per a later explicit
+   request — "Sign In" is now a standalone full-width action, and "Get The
+   App" sits directly below it with no separator/paragraph in between.
 
    The "SELECT A SERVICE" eyebrow above the dropdown isn't `Select`'s own
    `label` prop — `Select` only renders that at plain `lyra-label` weight
@@ -33,8 +35,6 @@ const SERVICE_OPTIONS = [
 ];
 
 export interface LoginCardSelectServiceProps {
-  /** Called when "Back" is clicked */
-  onBack?: () => void;
   /** Called with the selected service value when "Sign In" is clicked (only enabled once a service is selected) */
   onSignIn?: (service: string) => void;
   /** Whether the card renders inside its modal chrome (background, border, drop shadow). Default: true. */
@@ -43,7 +43,7 @@ export interface LoginCardSelectServiceProps {
 }
 
 const LoginCardSelectService = React.forwardRef<HTMLDivElement, LoginCardSelectServiceProps>(
-  ({ onBack, onSignIn, contained = true, className }, ref) => {
+  ({ onSignIn, contained = true, className }, ref) => {
     const [service, setService] = React.useState("");
     const canSignIn = service !== "";
 
@@ -67,34 +67,22 @@ const LoginCardSelectService = React.forwardRef<HTMLDivElement, LoginCardSelectS
             onValueChange={setService}
           />
 
-          <div className="mt-6 flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={onBack}>
-              <ChevronLeft className="h-4 w-4" strokeWidth={1.5} />
-              Back
-            </Button>
-            <Button
-              className={cn(
-                "flex-1",
-                // `Button`'s base disabled state only dims the solid primary
-                // color (`disabled:opacity-40`) — this screenshot's disabled
-                // "Sign In" is a flat light-gray/gray-text look instead, so
-                // it's overridden with the same disabled tokens `Select`'s
-                // own disabled trigger already uses (select.tsx).
-                "disabled:bg-lyra-bg-disabled disabled:text-lyra-fg-disabled disabled:opacity-100"
-              )}
-              disabled={!canSignIn}
-              onClick={() => onSignIn?.(service)}
-            >
-              Sign In
-            </Button>
-          </div>
-
-          <Separator className="my-6" />
-
-          <p className="text-center lyra-body-md text-lyra-fg-secondary">
-            Download the Agent Desktop Native App so you can get desktop notifications and launch directly from your
-            computer.
-          </p>
+          <Button
+            size="lg"
+            className={cn(
+              "mt-6 w-full",
+              // `Button`'s base disabled state only dims the solid primary
+              // color (`disabled:opacity-40`) — this screenshot's disabled
+              // "Sign In" is a flat light-gray/gray-text look instead, so
+              // it's overridden with the same disabled tokens `Select`'s
+              // own disabled trigger already uses (select.tsx).
+              "disabled:bg-lyra-bg-disabled disabled:text-lyra-fg-disabled disabled:opacity-100"
+            )}
+            disabled={!canSignIn}
+            onClick={() => onSignIn?.(service)}
+          >
+            Sign In
+          </Button>
 
           <div className="mt-4 flex justify-center">
             <Link size="md">Get The App</Link>

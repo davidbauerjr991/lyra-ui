@@ -819,39 +819,48 @@ interface ChannelRowProps {
 // icon={...} />` — every other wrapper (`ChatChannelRow`/`EmailChannelRow`/
 // `WhatsAppChannelRow`) still hardcodes its own `icon`, untouched.
 
-// "consult-transfer"/"outcome" are promoted out of this row's own kebab
-// into their own standalone icon buttons (rendered just to its left, see
-// `ChannelRow` below) — per explicit request, scoped to `InteractionNavItem`
-// specifically, NOT to `ChannelTab`/`ChannelToggle` (the record-header tab
-// bar), which still show both inside their own kebab dropdown via the
-// unmodified `buildDigitalMenuItems`/`buildVoiceMenuItems`. Filtered here
-// (rather than never including them in the first place) so a consumer
-// passing a custom `InteractionChannel.menuItems` override still has those
-// two ids recognized/stripped the same way the default lists do, instead of
-// silently double-showing them (once as a standalone button, once still
-// buried in the dropdown) if their override happens to include either id.
-// `"separator"`/section-label entries pass through untouched — this only
-// ever needs to recognize `MenuItemDef`s by `id`.
+// "consult-transfer"/"outcome"/"unassign-dismiss" are promoted out of this
+// row's own kebab into their own standalone icon buttons (rendered just to
+// its left, see `ChannelRow` below) — per explicit request, scoped to
+// `InteractionNavItem` specifically, NOT to `ChannelTab`/`ChannelToggle`
+// (the record-header tab bar), which still show all three inside their own
+// kebab dropdown via the unmodified `buildDigitalMenuItems`/
+// `buildVoiceMenuItems`. Filtered here (rather than never including them in
+// the first place) so a consumer passing a custom `InteractionChannel.
+// menuItems` override still has those ids recognized/stripped the same way
+// the default lists do, instead of silently double-showing them (once as a
+// standalone button, once still buried in the dropdown) if their override
+// happens to include any of them. `"separator"`/section-label entries pass
+// through untouched — this only ever needs to recognize `MenuItemDef`s by
+// `id`.
 //
-// "outcome" is always stripped — `alwaysShowOutcome` (see that prop's own
-// doc comment) now defaults to `true` for every consumer, so the standalone
-// Outcome button is always there; duplicating it into the dropdown too
-// would just be redundant. "consult-transfer" is conditional on
-// `keepConsultTransfer`, though — per explicit follow-up request ("in the
+// "outcome"/"unassign-dismiss" are always stripped — `alwaysShowOutcome`
+// (see that prop's own doc comment) now defaults to `true` for every
+// consumer, and the standalone Dismiss icon (`showDismissButton`, see its
+// own doc comment) is unconditional for every `InteractionNavItem` row too
+// (per a later explicit follow-up request — "unassign and dismiss should
+// not be available in the more options in the interactionNavItem more
+// options menu" — since the standalone icon is always there now, keeping
+// this in the dropdown too would only ever be redundant, never the sole
+// path to it). "consult-transfer" is conditional on `keepConsultTransfer`,
+// though — per an earlier explicit follow-up request ("in the
 // interactionNavItem move consult/transfer into the 3 dots more menu like
 // you did in the interaction itself"): a row with `showConsultTransfer`
 // `false` (no standalone icon) would otherwise have NO way to reach Consult
 // / Transfer at all once this always strips it from the kebab too. The
 // render call site below passes `keepConsultTransfer={!showConsultTransfer}`
 // — the standalone button and the kebab entry are mutually exclusive, never
-// both at once, same "no duplication" reasoning as `outcome` above.
+// both at once, same "no duplication" reasoning as `outcome`/
+// `unassign-dismiss` above.
 function stripPromotedChannelRowActions(items: MenuEntry[], options?: { keepConsultTransfer?: boolean }): MenuEntry[] {
   const { keepConsultTransfer = false } = options ?? {};
   return items.filter(
     (item) =>
       typeof item === "string" ||
       "sectionLabel" in item ||
-      ((keepConsultTransfer || item.id !== "consult-transfer") && item.id !== "outcome")
+      ((keepConsultTransfer || item.id !== "consult-transfer") &&
+        item.id !== "outcome" &&
+        item.id !== "unassign-dismiss")
   );
 }
 
@@ -1024,9 +1033,36 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
             }
           >
             {showConsultTransfer && (
-              <Button variant="icon" size="icon-sm" title="Consult / Transfer" className="shrink-0 text-lyra-fg-secondary">
+              <Button
+                variant="icon"
+                size="icon-sm"
+                title="Consult / Transfer"
+                disabled={controlsDisabled}
+                className="shrink-0 text-lyra-fg-secondary"
+              >
                 <ConsultTransferIcon />
               </Button>
+            )}
+            {/* Kebab ("More Options") — per explicit request, sits
+                immediately to the left of Outcome now, rather than as the
+                trailing-most element of the whole cluster (its original
+                spot, still where `stripPromotedChannelRowActions`'s own
+                doc comment above describes it). Purely a position change:
+                still the same `showKebab`/`menuItems`/`onMenuOpenChange`
+                wiring, just moved inside this same flex row instead of
+                being a sibling `span` after it closes. */}
+            {showKebab && (
+              <Tooltip content="More Options" placement="bottom" disabled={menuOpen}>
+                <KebabMenuButton
+                  items={stripPromotedChannelRowActions(menuItems, { keepConsultTransfer: !showConsultTransfer })}
+                  ariaLabel={`More options for ${label}`}
+                  disabled={controlsDisabled}
+                  onOpenChange={(open) => {
+                    setMenuOpen(open);
+                    onMenuOpenChange?.(open);
+                  }}
+                />
+              </Tooltip>
             )}
             {outcome ? (
               <Popover
@@ -1068,6 +1104,7 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
                   variant="icon"
                   size="icon-sm"
                   title="Outcome"
+                  disabled={controlsDisabled}
                   className="shrink-0 text-lyra-fg-secondary"
                   onClick={(e) => e.stopPropagation()}
                 >
@@ -1091,7 +1128,13 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
                 </Button>
               </Popover>
             ) : (
-              <Button variant="icon" size="icon-sm" title="Outcome" className="shrink-0 text-lyra-fg-secondary">
+              <Button
+                variant="icon"
+                size="icon-sm"
+                title="Outcome"
+                disabled={controlsDisabled}
+                className="shrink-0 text-lyra-fg-secondary"
+              >
                 <SuccessIconSolid className="h-4 w-4 text-lyra-status-info-strong" />
               </Button>
             )}
@@ -1128,18 +1171,6 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
               </Button>
             )}
           </div>
-          {showKebab && (
-            <Tooltip content="More Options" placement="bottom" disabled={menuOpen}>
-              <KebabMenuButton
-                items={stripPromotedChannelRowActions(menuItems, { keepConsultTransfer: !showConsultTransfer })}
-                ariaLabel={`More options for ${label}`}
-                onOpenChange={(open) => {
-                  setMenuOpen(open);
-                  onMenuOpenChange?.(open);
-                }}
-              />
-            </Tooltip>
-          )}
         </span>
       ) : (
         onDismiss && (
@@ -1278,6 +1309,9 @@ export interface ChannelRowInstanceProps {
   /** Passed straight through to `ChannelRow` — see `InteractionChannel.
    *  onEndCall`'s own doc comment. */
   onEndCall?: () => void;
+  /** Passed straight through to `ChannelRow` — see `InteractionChannel.
+   *  controlsDisabled`'s own doc comment. */
+  controlsDisabled?: boolean;
   /** Read (not forwarded) by `VoiceChannelRow`/`SmsChannelRow` only, to pick
    *  a direction-aware icon — see `InteractionChannel.direction`'s own doc
    *  comment. Every other wrapper ignores this. */
@@ -1352,7 +1386,21 @@ const VoiceChannelRow: React.FC<ChannelRowInstanceProps> = ({ menuItems, removab
     icon={<VoiceDirectionIcon direction={direction} className="h-3 w-3" />}
     label="Voice"
     variant={CHANNEL_TYPE_TAG_VARIANT.voice}
-    menuItems={menuItems ?? buildVoiceMenuItems(onDismiss)}
+    // `buildDigitalMenuItems`, not `buildVoiceMenuItems` — per explicit
+    // request ("the more options for the interactionNavItem should be the
+    // same as the more options in the contact"): the app's own session-row
+    // kebab (`TranscriptSessionSeparator`, agent-next-gen-transcript.tsx —
+    // "the contact"'s own more-options menu) has always shown the same
+    // fixed Send Transcript/Download Transcript/Translate Messages set
+    // regardless of channel type, voice included — it never had a
+    // recording-specific branch. This row's kebab defaulting to
+    // `buildVoiceMenuItems` (Listen to Recording/Download Recording
+    // instead) was the one place that diverged from that "same content
+    // everywhere" list. `ChannelTab`/`ChannelToggle` (the record-header tab
+    // bar's own, separate kebab, further down this file) still pick
+    // `buildVoiceMenuItems` for voice — untouched, since only
+    // `InteractionNavItem`'s copy was reported as mismatched.
+    menuItems={menuItems ?? buildDigitalMenuItems(onDismiss)}
     showMenu={removable !== false}
     onDismiss={onDismiss}
   />

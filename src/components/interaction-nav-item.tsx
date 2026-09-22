@@ -646,6 +646,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                   alwaysShowOutcome={ch.alwaysShowOutcome}
                   showDismissButton={ch.showDismissButton}
                   onEndCall={ch.onEndCall}
+                  controlsDisabled={ch.controlsDisabled}
                   direction={ch.direction}
                   // Keeps the hover-preview popover open (and its close
                   // timer disarmed) for as long as this row's own kebab

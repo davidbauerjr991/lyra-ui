@@ -4,6 +4,8 @@ import { cn } from "../../lib/utils";
 import { LoginCard } from "../login-card";
 import { LoginCardLiveVox } from "../login-card-livevox";
 import { LoginCardSelectService } from "../login-card-select-service";
+import { LoginCardIeUnsupported } from "../login-card-ie-unsupported";
+import { LoginCardChangePassword } from "../login-card-change-password";
 
 /* ── Login template ──
    Full-page login/launch screen. "Default" mirrors agent-next-gen-v3's own
@@ -28,6 +30,8 @@ const LOGIN_CARD_VARIANTS: Record<string, (contained: boolean) => ReactNode> = {
   ),
   livevox: (contained) => <LoginCardLiveVox contained={contained} />,
   "select-service": (contained) => <LoginCardSelectService contained={contained} />,
+  "ie-unsupported": (contained) => <LoginCardIeUnsupported contained={contained} />,
+  "change-password": (contained) => <LoginCardChangePassword contained={contained} />,
 };
 
 type LoginCardVariant = keyof typeof LOGIN_CARD_VARIANTS;
