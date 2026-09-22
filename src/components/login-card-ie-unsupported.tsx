@@ -12,7 +12,9 @@ import brokenIconSrc from "../assets/empty-state-broken.svg";
    two body paragraphs plus a third sentence with an inline `Link`, which
    doesn't fit that single-slot shape, so it's hand-composed the same way
    `LoginCardLiveVox`/`LoginCardSelectService` already compose their own
-   centered secondary text + inline `Link` combinations. */
+   secondary text + inline `Link` combinations. Left-aligned per explicit
+   request (the source screenshot was centered, but the card reads better
+   left-aligned like the other variants' content). */
 
 export interface LoginCardIeUnsupportedProps {
   /** Called when the "contact us" link is clicked */
@@ -29,7 +31,7 @@ const LoginCardIeUnsupported = React.forwardRef<HTMLDivElement, LoginCardIeUnsup
       variant="modal"
       className={cn("w-[360px]", !contained && "bg-transparent border-0 shadow-none", className)}
     >
-      <div className="flex flex-col items-center gap-4 px-6 pb-6 pt-6 text-center">
+      <div className="flex flex-col items-start gap-4 px-6 pb-6 pt-6 text-left">
         <img src={brokenIconSrc} alt="" className="h-[72px] w-[72px]" />
 
         <p className="lyra-heading-md text-lyra-fg-default">IE is no longer supported</p>

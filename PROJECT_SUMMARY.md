@@ -1182,6 +1182,20 @@ silently.
 ### Follow-up: LoginCardSelectService — Back button, Separator, and download paragraph removed (2026-09-22)
 - Per explicit request, removed the "Back" `Button` (and its `onBack` prop), the `Separator` below the buttons, and the "Download the Agent Desktop Native App..." paragraph. "Sign In" is now a standalone full-width `Button` (`size="lg"`, same disabled-token override as before) instead of sharing a `flex-1`/`flex-1` row with "Back"; "Get The App" now sits directly below it with no separator/paragraph in between. `ChevronLeft`/`Separator` imports removed as no longer used.
 
+### LoginCardPairAuthenticator (`src/components/login-card-pair-authenticator.tsx`) — sixth "Pair authenticator app" Templates/Login variant (2026-09-22)
+- Sixth `LoginCard`-style component — a 2FA-pairing step: heading, instruction copy, a QR code, a "Can't scan the QR code?" `Link`, and a `flex-1`/`flex-1` Back/Next button row (the same shape `LoginCardSelectService` used before its own Back button was removed). `CXoneLogo` header and the copyright + "Contact Us" footer added per explicit request, matching `LoginCardLiveVox`'s treatment.
+- **No real QR/TOTP secret is wired up** — per explicit request ("use a placeholder QR code for now"), added a local `PlaceholderQrCode` helper that renders a static, QR-*shaped* inline SVG (three real finder-pattern corners + a deterministic noise fill, not real encoded data) rather than pulling in a QR-generation library or a generated placeholder-image URL. Meant to be swapped for a real value later; nothing else in the component depends on its content.
+- Added to `LoginTemplate.stories.tsx`'s `LOGIN_CARD_VARIANTS` map as `"pair-authenticator"`.
+
+### Follow-up: LoginCardIeUnsupported and LoginCardPairAuthenticator left-aligned (2026-09-22)
+- **`LoginCardIeUnsupported`**: originally centered (matching its screenshot) — per explicit request, its outer wrapper switched from `items-center ... text-center` to `items-start ... text-left`, so the icon/heading/paragraphs now read left-aligned like the other variants' content.
+- **`LoginCardPairAuthenticator`**: this entry previously said `CXoneLogo` was deliberately centered "unlike every other variant" — that's superseded now. Per explicit request, the logo, heading, and instruction paragraph (everything above the QR code) switched to left-aligned (outer wrapper now `items-start ... text-left`), while the QR code, "Can't scan the QR code?" link, and the copyright footer stay centered individually via `self-center` (plus `text-center` on the footer `<p>`, since its own text still wraps to multiple lines) — those three read better centered under a left-aligned header even though the surrounding layout no longer is.
+
+### LoginCardAccessDenied (`src/components/login-card-access-denied.tsx`) — eighth "Access Denied" Templates/Login variant (2026-09-22)
+- Eighth `LoginCard`-style component — same shape as `LoginCardIeUnsupported` (icon + heading + secondary body copy + a "contact us" sentence with an inline `Link`), just one body paragraph instead of two. Icon is `src/assets/empty-state-access-denied.svg` (its first consumer), imported directly as an `<img>` at the same `72px` size as `LoginCardIeUnsupported`'s icon.
+- Left-aligned from the start per explicit request (the source screenshot was centered) — same `items-start ... text-left` treatment `LoginCardIeUnsupported` was switched to in the prior entry, so this one didn't need a separate alignment follow-up.
+- Added to `LoginTemplate.stories.tsx`'s `LOGIN_CARD_VARIANTS` map as `"access-denied"`.
+
 ## Typography Presets Added This Session
 - `.lyra-body-xs` / `.lyra-body-xs-emphasis`: `font-size: 10px; line-height: 14px;` (weight 400 / 500), `letter-spacing: 0.01rem` — one step below `lyra-body-sm` (12px/16px), added for small numeric labels (e.g. `InteractionNavItem`'s compact-mode elapsed-time text) that need to be smaller than any existing preset. Added to both lyra-tokens.css and storybook.css (kept in sync, per convention), and registered in Typography.stories.tsx's `presets` table so it shows up in the "Presets" story alongside every other size.
 
