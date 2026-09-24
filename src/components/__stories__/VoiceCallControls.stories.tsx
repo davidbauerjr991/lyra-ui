@@ -101,3 +101,32 @@ export const NoAddVideo: Story = {
     showAddVideo: false,
   },
 };
+
+/* ── Narrow — overflow menu ──
+   Forces this bar's own measured width below 600px (a fixed-width wrapper,
+   same "constrain the container, not the viewport" approach every other
+   width-driven story in this design system uses) so `controlsMenu`
+   (voice-call-controls.tsx's own top doc comment) is on: Mask/Record/
+   Keypad/Transcript collapse out of the row entirely into the "\u22ef"
+   overflow trigger \u2014 open it to find them, plus Keypad's dialpad
+   still reachable as a flyout off its own row. Hold and Volume stay in
+   the row as their own icon-only buttons either side of the trigger. */
+function NarrowOverflowMenuDemo() {
+  const elapsedSeconds = useElapsedSeconds(58);
+  return (
+    <div style={{ width: 520 }}>
+      <VoiceCallControls
+        onHangUp={() => {}}
+        elapsedSeconds={elapsedSeconds}
+        customerLabel="Marcus Webb"
+        customerInitials="MW"
+        onToggleTranscript={() => {}}
+      />
+    </div>
+  );
+}
+
+export const NarrowOverflowMenu: Story = {
+  name: "Narrow (<600px) \u2014 Overflow Menu",
+  render: () => <NarrowOverflowMenuDemo />,
+};

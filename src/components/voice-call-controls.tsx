@@ -124,6 +124,8 @@ import { Popover } from "./popover";
 import { Slider } from "./slider";
 import { Spinner } from "./spinner";
 import { Tooltip } from "./tooltip";
+import { KebabMenuButton } from "./kebab-menu-button";
+import type { MenuEntry } from "./menu";
 import type { ToastItem } from "./toast";
 import {
   Pause,
@@ -141,6 +143,7 @@ import {
   VolumeX,
   FileText,
   User,
+  MoreHorizontal,
 } from "lucide-react";
 
 /** Renders a tick count (seconds since the call started) as "MM:SS" — same
@@ -698,7 +701,7 @@ export function VoiceCallControls({
   const barRef = useRef<HTMLDivElement>(null);
   const [collapseHeight, setCollapseHeight] = useState<number | null>(null);
 
-  // Hold/Mask/Record/Keypad/Transcript/Volume switch to icon-only 24px
+  // Hold/Mask/Record/Keypad/Transcript/Volume switch to icon-only 40px
   // buttons (`CompactCallControlButton` — see its own doc comment) once
   // THIS CARD's own rendered width drops below 991px, per explicit
   // request. Measured via `ResizeObserver` against `cardRef` (the actual
@@ -709,16 +712,49 @@ export function VoiceCallControls({
   // its container gives it (a docked panel, a full-width page, etc.) —
   // same "measure my own container" reasoning `ScheduleToolbar`'s own
   // `containerRef`/`isWide`/`isCompact` already establishes
-  // (schedule-panel.tsx). Mute/Add video/End Call are unaffected — the
-  // request named only the other six controls.
+  // (schedule-panel.tsx).
+  //
+  // A SECOND, narrower breakpoint (per a later explicit follow-up request
+  // — "when the call controls go below 768px make the mute/video/end call
+  // buttons icon buttons 40px"): those three trailing controls keep their
+  // visible label text all the way down through the first breakpoint (the
+  // reference screenshot for THIS request still shows "Mute"/"Add video"/
+  // "End Call" as text at a width where Hold-through-Volume have already
+  // gone icon-only), then also drop to icon-only 40px once the card
+  // narrows further still, past 768px. Same `ResizeObserver` callback,
+  // same `cardRef` target — just a second threshold check alongside the
+  // first, not a separate observer.
+  //
+  // A THIRD, narrower breakpoint still (per a later explicit follow-up
+  // request — "as the call controls goes below 600px add a more (3 dots)
+  // button and put transcript, keypad, mask and record in the menu"):
+  // those four controls (already icon-only since the first breakpoint)
+  // collapse further, out of the row entirely, into a single
+  // `KebabMenuButton` "more" trigger (`MoreHorizontal`, the same "⋮"-style
+  // overflow pattern `KebabMenuButton` already provides elsewhere in this
+  // design system — see that component's own doc comment) — Hold and
+  // Volume stay in the row as their own icon-only buttons; only
+  // Mask/Record/Keypad/Transcript move into the menu. Keypad's own dialpad
+  // body reuses `MenuItemDef`'s `submenuContent` escape hatch (menu.tsx) —
+  // the same flyout mechanism a nested `submenu` uses — rather than a
+  // separate `Popover`, since a `Popover` trigger nested inside
+  // `KebabMenuButton`'s own Radix dropdown would fight that dropdown for
+  // the same outside-click/Escape handling.
   const CONTROLS_COMPACT_BREAKPOINT = 991;
+  const CONTROLS_ICON_ONLY_BREAKPOINT = 768;
+  const CONTROLS_MENU_BREAKPOINT = 600;
   const cardRef = useRef<HTMLDivElement>(null);
   const [controlsCompact, setControlsCompact] = useState(false);
+  const [controlsIconOnly, setControlsIconOnly] = useState(false);
+  const [controlsMenu, setControlsMenu] = useState(false);
   useEffect(() => {
     const el = cardRef.current;
     if (!el) return;
     const ro = new ResizeObserver(([entry]) => {
-      setControlsCompact(entry.contentRect.width < CONTROLS_COMPACT_BREAKPOINT);
+      const width = entry.contentRect.width;
+      setControlsCompact(width < CONTROLS_COMPACT_BREAKPOINT);
+      setControlsIconOnly(width < CONTROLS_ICON_ONLY_BREAKPOINT);
+      setControlsMenu(width < CONTROLS_MENU_BREAKPOINT);
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -751,6 +787,74 @@ export function VoiceCallControls({
       }, HANG_UP_HOLD_MS)
     );
   };
+
+  // Mask/Record/Keypad/Transcript's own menu-item equivalents, built once
+  // per render for the `controlsMenu` (<600px) overflow `KebabMenuButton`
+  // just below — see that render site's own doc comment. Icons/handlers
+  // mirror each control's own wide/compact button exactly, just addressed
+  // through `MenuItemDef` instead of `WideCallControlButton`/
+  // `CompactCallControlButton`. Keypad's dialpad reuses `submenuContent`
+  // rather than nesting its own `Popover` (see this file's own top doc
+  // comment for why). `useMemo` isn't used here — this array is cheap to
+  // rebuild and only matters while `controlsMenu` is actually true.
+  const overflowMenuItems: MenuEntry[] = [
+    {
+      id: "mask",
+      label: "Mask",
+      icon: <AudioLines className="h-4 w-4" strokeWidth={1.5} />,
+      active: masked,
+      disabled: isEnding,
+      onClick: () => {
+        const next = !masked;
+        setMasked(next);
+        if (next && recording) {
+          setRecording(false);
+        }
+        onAddToast?.({ variant: "info", title: next ? "Voice masking on" : "Voice masking off" });
+        if (next && recording) {
+          onAddToast?.({ variant: "info", title: "Recording stopped" });
+        }
+      },
+    },
+    {
+      id: "record",
+      label: recording ? "Stop" : "Record",
+      icon: (
+        <Circle
+          className={cn("h-4 w-4", recording && "fill-lyra-status-critical-strong text-lyra-status-critical-strong")}
+          strokeWidth={1.5}
+        />
+      ),
+      active: recording,
+      disabled: recordDisabled,
+      onClick: () => {
+        if (recordDisabled) return;
+        const next = !recording;
+        setRecording(next);
+        onAddToast?.({ variant: next ? "success" : "info", title: next ? "Recording started" : "Recording stopped" });
+      },
+    },
+    {
+      id: "keypad",
+      label: "Keypad",
+      icon: <Grid3x3 className="h-4 w-4" strokeWidth={1.5} />,
+      active: keypadOpen,
+      disabled: isEnding,
+      submenuContent: <DialPad />,
+    },
+    ...(onToggleTranscript
+      ? [
+          {
+            id: "transcript",
+            label: "Transcript",
+            icon: <FileText className="h-4 w-4" strokeWidth={1.5} />,
+            active: transcriptOpen,
+            disabled: isEnding,
+            onClick: onToggleTranscript,
+          } satisfies MenuEntry,
+        ]
+      : []),
+  ];
 
   return (
     // Per explicit request/reference screenshot: this bar floats as its own
@@ -1014,15 +1118,67 @@ export function VoiceCallControls({
               disabled={isEnding}
             />
           )}
-          {controlsCompact ? (
-            <Tooltip content="Mask" placement="top">
-              <CompactCallControlButton
+          {/* Below 600px (`controlsMenu`, this file's own top doc
+              comment): Mask/Record/Keypad/Transcript disappear from the
+              row entirely and move into a single `KebabMenuButton`
+              overflow trigger instead — Hold and Volume stay put as
+              their own icon-only buttons either side of it. */}
+          {controlsMenu ? (
+            <KebabMenuButton
+              items={overflowMenuItems}
+              ariaLabel="More call controls"
+              icon={<MoreHorizontal className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />}
+              className="h-10 w-10 rounded-lyra-sm text-lyra-fg-secondary hover:text-lyra-fg-default"
+              disabled={isEnding}
+            />
+          ) : (
+            <>
+            {controlsCompact ? (
+              <Tooltip content="Mask" placement="top">
+                <CompactCallControlButton
+                  icon={<AudioLines className="h-5 w-5" strokeWidth={1.5} />}
+                  active={masked}
+                  aria-label="Mask"
+                  onClick={() => {
+                    const next = !masked;
+                    setMasked(next);
+                    if (next && recording) {
+                      setRecording(false);
+                    }
+                    onAddToast?.({ variant: "info", title: next ? "Voice masking on" : "Voice masking off" });
+                    if (next && recording) {
+                      onAddToast?.({ variant: "info", title: "Recording stopped" });
+                    }
+                  }}
+                  disabled={isEnding}
+                />
+              </Tooltip>
+            ) : (
+              <WideCallControlButton
+                // The source app this was ported from swaps between
+                // `AudioLines`/`AudioLinesOff` here (a slashed icon while
+                // masking the real voice signal is engaged, mirroring `Mic`/
+                // `MicOff` just below) — `AudioLinesOff` needs lucide-react
+                // >=1.33.0, newer than lyra-ui's own pinned `^0.468.0`, so this
+                // stays a single `AudioLines` glyph with the toggle conveyed by
+                // `active`'s blue tint alone instead — same "one icon, tint-only
+                // toggle" convention Keypad/Transcript/Volume already use in
+                // this file. Swap back to the two-icon version once lyra-ui's
+                // own lucide-react dependency is bumped past that.
                 icon={<AudioLines className="h-5 w-5" strokeWidth={1.5} />}
+                label="Mask"
                 active={masked}
-                aria-label="Mask"
                 onClick={() => {
                   const next = !masked;
                   setMasked(next);
+                  // Per explicit request ("when voice masking is on
+                  // recording must turn off and become disabled"): masking
+                  // the real voice signal and recording it are mutually
+                  // exclusive, so turning masking ON forces any in-progress
+                  // recording off — the Record button itself is disabled
+                  // just below for as long as masking stays on, so there's
+                  // no way to start a new one until masking is turned back
+                  // off.
                   if (next && recording) {
                     setRecording(false);
                   }
@@ -1031,207 +1187,172 @@ export function VoiceCallControls({
                     onAddToast?.({ variant: "info", title: "Recording stopped" });
                   }
                 }}
+                // See `isEnding`'s own doc comment above.
                 disabled={isEnding}
               />
-            </Tooltip>
-          ) : (
-            <WideCallControlButton
-              // The source app this was ported from swaps between
-              // `AudioLines`/`AudioLinesOff` here (a slashed icon while
-              // masking the real voice signal is engaged, mirroring `Mic`/
-              // `MicOff` just below) — `AudioLinesOff` needs lucide-react
-              // >=1.33.0, newer than lyra-ui's own pinned `^0.468.0`, so this
-              // stays a single `AudioLines` glyph with the toggle conveyed by
-              // `active`'s blue tint alone instead — same "one icon, tint-only
-              // toggle" convention Keypad/Transcript/Volume already use in
-              // this file. Swap back to the two-icon version once lyra-ui's
-              // own lucide-react dependency is bumped past that.
-              icon={<AudioLines className="h-5 w-5" strokeWidth={1.5} />}
-              label="Mask"
-              active={masked}
-              onClick={() => {
-                const next = !masked;
-                setMasked(next);
-                // Per explicit request ("when voice masking is on
-                // recording must turn off and become disabled"): masking
-                // the real voice signal and recording it are mutually
-                // exclusive, so turning masking ON forces any in-progress
-                // recording off — the Record button itself is disabled
-                // just below for as long as masking stays on, so there's
-                // no way to start a new one until masking is turned back
-                // off.
-                if (next && recording) {
-                  setRecording(false);
-                }
-                onAddToast?.({ variant: "info", title: next ? "Voice masking on" : "Voice masking off" });
-                if (next && recording) {
-                  onAddToast?.({ variant: "info", title: "Recording stopped" });
-                }
-              }}
-              // See `isEnding`'s own doc comment above.
-              disabled={isEnding}
-            />
-          )}
-          {/* Record — `Tooltip`'s `content` now covers two reasons to
-              show it: the existing masked-explanation text (unchanged), OR,
-              once icon-only below 991px (`controlsCompact`), the button's
-              own label (there's no visible label text left to read it
-              off). `disabled` only suppresses it when NEITHER applies. */}
-          <Tooltip
-            content={masked ? "Recording disabled while masking is on" : recording ? "Stop" : "Record"}
-            placement="top"
-            disabled={!masked && !controlsCompact}
-          >
-            {controlsCompact ? (
-              <CompactCallControlButton
-                icon={<Circle
-                  className={cn("h-5 w-5", recording && "fill-lyra-status-critical-strong text-lyra-status-critical-strong")}
-                  strokeWidth={1.5}
-                />}
-                active={recording}
-                aria-label={recording ? "Stop" : "Record"}
-                aria-disabled={recordDisabled}
-                className={recordDisabled ? "opacity-40" : undefined}
-                onClick={() => {
-                  if (recordDisabled) return;
-                  const next = !recording;
-                  setRecording(next);
-                  onAddToast?.({ variant: next ? "success" : "info", title: next ? "Recording started" : "Recording stopped" });
-                }}
-                onKeyDown={(e) => {
-                  if (recordDisabled && (e.key === "Enter" || e.key === " ")) {
-                    e.preventDefault();
-                  }
-                }}
-              />
-            ) : (
-              <WideCallControlButton
-                icon={
-                  <Circle
+            )}
+            {/* Record — `Tooltip`'s `content` now covers two reasons to
+                show it: the existing masked-explanation text (unchanged), OR,
+                once icon-only below 991px (`controlsCompact`), the button's
+                own label (there's no visible label text left to read it
+                off). `disabled` only suppresses it when NEITHER applies. */}
+            <Tooltip
+              content={masked ? "Recording disabled while masking is on" : recording ? "Stop" : "Record"}
+              placement="top"
+              disabled={!masked && !controlsCompact}
+            >
+              {controlsCompact ? (
+                <CompactCallControlButton
+                  icon={<Circle
                     className={cn("h-5 w-5", recording && "fill-lyra-status-critical-strong text-lyra-status-critical-strong")}
                     strokeWidth={1.5}
-                  />
-                }
-                label={recording ? "Stop" : "Record"}
-                active={recording}
-                // NOT a native `disabled` here (unlike every other control in
-                // this bar) — this is the one button in the bar whose
-                // disabled state has an explanation attached (the `Tooltip`
-                // above), and `Button`'s own `disabled:pointer-events-none`
-                // plus the native `disabled` attribute's own focus removal
-                // would make that explanation unreachable for EVERYONE: a
-                // mouse user can't hover a `pointer-events-none` element to
-                // trigger the tooltip, and a keyboard/screen-reader user
-                // can't tab to an element the browser has removed from the
-                // tab order at all. `aria-disabled` instead keeps this
-                // button hoverable and focusable — Radix's `Tooltip.Trigger`
-                // opens on either (tooltip.tsx) — while `recordDisabled`
-                // below still blocks the actual click/keyboard-activate
-                // behavior and paints the same dimmed look, so it reads and
-                // behaves as disabled without hiding WHY.
-                aria-disabled={recordDisabled}
-                className={recordDisabled ? "opacity-40" : undefined}
-                onClick={() => {
-                  if (recordDisabled) return;
-                  const next = !recording;
-                  setRecording(next);
-                  onAddToast?.({ variant: next ? "success" : "info", title: next ? "Recording started" : "Recording stopped" });
-                }}
-                onKeyDown={(e) => {
-                  // `aria-disabled` alone doesn't stop a real `<button>` from
-                  // still activating on Enter/Space — `onClick`'s own guard
-                  // above already no-ops the actual toggle, but this also
-                  // stops the keypress from doing anything else a plain
-                  // button might (e.g. a parent row's own click handler,
-                  // same "stop it here" precedent this app's Outcome popover
-                  // already sets for a different bubbling concern — see
-                  // `stopSyntheticBubble`, channel-row.tsx).
-                  if (recordDisabled && (e.key === "Enter" || e.key === " ")) {
-                    e.preventDefault();
+                  />}
+                  active={recording}
+                  aria-label={recording ? "Stop" : "Record"}
+                  aria-disabled={recordDisabled}
+                  className={recordDisabled ? "opacity-40" : undefined}
+                  onClick={() => {
+                    if (recordDisabled) return;
+                    const next = !recording;
+                    setRecording(next);
+                    onAddToast?.({ variant: next ? "success" : "info", title: next ? "Recording started" : "Recording stopped" });
+                  }}
+                  onKeyDown={(e) => {
+                    if (recordDisabled && (e.key === "Enter" || e.key === " ")) {
+                      e.preventDefault();
+                    }
+                  }}
+                />
+              ) : (
+                <WideCallControlButton
+                  icon={
+                    <Circle
+                      className={cn("h-5 w-5", recording && "fill-lyra-status-critical-strong text-lyra-status-critical-strong")}
+                      strokeWidth={1.5}
+                    />
                   }
-                }}
-              />
-            )}
-          </Tooltip>
-          {/* Keypad — no more wrapping `Tooltip` (see the block comment a
-              few controls up for why) — `Popover`'s own Radix trigger
-              still clones its click/ref/aria props straight onto its
-              immediate child, which is exactly what `WideCallControlButton`
-              being `forwardRef`+`...rest` is for (see that component's own
-              doc comment). `aria-label` set directly on it (flows through
-              its own `...rest` spread) is now redundant with its own
-              visible label text, but harmless to leave. */}
-          <Popover
-            open={keypadOpen && !isEnding}
-            onOpenChange={(next: boolean) => {
-              if (!isEnding) setKeypadOpen(next);
-            }}
-            placement="top"
-            bodyPadding={false}
-            content={<DialPad />}
-          >
-            {controlsCompact ? (
-              // Native `title` (not `Tooltip`) — `Tooltip`'s own
-              // `asChild`/`Slot` cloning and `Popover`'s do the same thing
-              // to the same immediate child, so nesting one inside the
-              // other here silently drops whichever one's props land on a
-              // plain (non-forwardRef, non-rest-spreading) wrapper
-              // component instead of the real `<button>`. A native title
-              // attribute needs no such wiring and still names the button
-              // for anyone hovering it.
-              <CompactCallControlButton
-                icon={<Grid3x3 className="h-5 w-5" strokeWidth={1.5} />}
-                active={keypadOpen}
-                aria-label="Keypad"
-                title="Keypad"
-                disabled={isEnding}
-              />
+                  label={recording ? "Stop" : "Record"}
+                  active={recording}
+                  // NOT a native `disabled` here (unlike every other control in
+                  // this bar) — this is the one button in the bar whose
+                  // disabled state has an explanation attached (the `Tooltip`
+                  // above), and `Button`'s own `disabled:pointer-events-none`
+                  // plus the native `disabled` attribute's own focus removal
+                  // would make that explanation unreachable for EVERYONE: a
+                  // mouse user can't hover a `pointer-events-none` element to
+                  // trigger the tooltip, and a keyboard/screen-reader user
+                  // can't tab to an element the browser has removed from the
+                  // tab order at all. `aria-disabled` instead keeps this
+                  // button hoverable and focusable — Radix's `Tooltip.Trigger`
+                  // opens on either (tooltip.tsx) — while `recordDisabled`
+                  // below still blocks the actual click/keyboard-activate
+                  // behavior and paints the same dimmed look, so it reads and
+                  // behaves as disabled without hiding WHY.
+                  aria-disabled={recordDisabled}
+                  className={recordDisabled ? "opacity-40" : undefined}
+                  onClick={() => {
+                    if (recordDisabled) return;
+                    const next = !recording;
+                    setRecording(next);
+                    onAddToast?.({ variant: next ? "success" : "info", title: next ? "Recording started" : "Recording stopped" });
+                  }}
+                  onKeyDown={(e) => {
+                    // `aria-disabled` alone doesn't stop a real `<button>` from
+                    // still activating on Enter/Space — `onClick`'s own guard
+                    // above already no-ops the actual toggle, but this also
+                    // stops the keypress from doing anything else a plain
+                    // button might (e.g. a parent row's own click handler,
+                    // same "stop it here" precedent this app's Outcome popover
+                    // already sets for a different bubbling concern — see
+                    // `stopSyntheticBubble`, channel-row.tsx).
+                    if (recordDisabled && (e.key === "Enter" || e.key === " ")) {
+                      e.preventDefault();
+                    }
+                  }}
+                />
+              )}
+            </Tooltip>
+            {/* Keypad — no more wrapping `Tooltip` (see the block comment a
+                few controls up for why) — `Popover`'s own Radix trigger
+                still clones its click/ref/aria props straight onto its
+                immediate child, which is exactly what `WideCallControlButton`
+                being `forwardRef`+`...rest` is for (see that component's own
+                doc comment). `aria-label` set directly on it (flows through
+                its own `...rest` spread) is now redundant with its own
+                visible label text, but harmless to leave. */}
+            <Popover
+              open={keypadOpen && !isEnding}
+              onOpenChange={(next: boolean) => {
+                if (!isEnding) setKeypadOpen(next);
+              }}
+              placement="top"
+              bodyPadding={false}
+              content={<DialPad />}
+            >
+              {controlsCompact ? (
+                // Native `title` (not `Tooltip`) — `Tooltip`'s own
+                // `asChild`/`Slot` cloning and `Popover`'s do the same thing
+                // to the same immediate child, so nesting one inside the
+                // other here silently drops whichever one's props land on a
+                // plain (non-forwardRef, non-rest-spreading) wrapper
+                // component instead of the real `<button>`. A native title
+                // attribute needs no such wiring and still names the button
+                // for anyone hovering it.
+                <CompactCallControlButton
+                  icon={<Grid3x3 className="h-5 w-5" strokeWidth={1.5} />}
+                  active={keypadOpen}
+                  aria-label="Keypad"
+                  title="Keypad"
+                  disabled={isEnding}
+                />
+              ) : (
+                <WideCallControlButton
+                  icon={<Grid3x3 className="h-5 w-5" strokeWidth={1.5} />}
+                  label="Keypad"
+                  active={keypadOpen}
+                  aria-label="Keypad"
+                  // See `isEnding`'s own doc comment above — `handleHangUp`
+                  // also force-closes this popover directly (`setKeypadOpen
+                  // (false)`) rather than relying on this alone, since
+                  // `disabled` only blocks NEW opens, not one already open.
+                  disabled={isEnding}
+                />
+              )}
+            </Popover>
+            {/* Transcript — per an earlier explicit follow-up request ("take
+                the transcript button out of the volume dropdown and put it to
+                the left of the volume button"): its own plain
+                `WideCallControlButton`, same as every other control in this
+                centered cluster. Static "Transcript" label regardless of
+                `transcriptOpen` (same convention Mask already uses — a
+                static label, with `active` tinting alone signaling on/off —
+                "Show transcript"/"Hide transcript" was fine as hover-only
+                `Tooltip` content, but doesn't fit this button's fixed 80px
+                column as a permanently-visible label without wrapping or
+                truncating). `onToggleTranscript` omitted entirely still
+                hides this trigger. */}
+            {onToggleTranscript && (controlsCompact ? (
+              <Tooltip content="Transcript" placement="top">
+                <CompactCallControlButton
+                  icon={<FileText className="h-5 w-5" strokeWidth={1.5} />}
+                  active={transcriptOpen}
+                  aria-label="Transcript"
+                  onClick={onToggleTranscript}
+                  disabled={isEnding}
+                />
+              </Tooltip>
             ) : (
               <WideCallControlButton
-                icon={<Grid3x3 className="h-5 w-5" strokeWidth={1.5} />}
-                label="Keypad"
-                active={keypadOpen}
-                aria-label="Keypad"
-                // See `isEnding`'s own doc comment above — `handleHangUp`
-                // also force-closes this popover directly (`setKeypadOpen
-                // (false)`) rather than relying on this alone, since
-                // `disabled` only blocks NEW opens, not one already open.
-                disabled={isEnding}
-              />
-            )}
-          </Popover>
-          {/* Transcript — per an earlier explicit follow-up request ("take
-              the transcript button out of the volume dropdown and put it to
-              the left of the volume button"): its own plain
-              `WideCallControlButton`, same as every other control in this
-              centered cluster. Static "Transcript" label regardless of
-              `transcriptOpen` (same convention Mask already uses — a
-              static label, with `active` tinting alone signaling on/off —
-              "Show transcript"/"Hide transcript" was fine as hover-only
-              `Tooltip` content, but doesn't fit this button's fixed 80px
-              column as a permanently-visible label without wrapping or
-              truncating). `onToggleTranscript` omitted entirely still
-              hides this trigger. */}
-          {onToggleTranscript && (controlsCompact ? (
-            <Tooltip content="Transcript" placement="top">
-              <CompactCallControlButton
                 icon={<FileText className="h-5 w-5" strokeWidth={1.5} />}
+                label="Transcript"
                 active={transcriptOpen}
-                aria-label="Transcript"
                 onClick={onToggleTranscript}
+                // See `isEnding`'s own doc comment above.
                 disabled={isEnding}
               />
-            </Tooltip>
-          ) : (
-            <WideCallControlButton
-              icon={<FileText className="h-5 w-5" strokeWidth={1.5} />}
-              label="Transcript"
-              active={transcriptOpen}
-              onClick={onToggleTranscript}
-              // See `isEnding`'s own doc comment above.
-              disabled={isEnding}
-            />
-          ))}
+            ))}
+            </>
+          )}
           <CompactVolumeButton volume={volume} onVolumeChange={setVolume} disabled={isEnding} compact={controlsCompact} />
           {/* Right separator — see the leading one's own doc comment
               (this slot's opening `<div>`, above) for why this lives here,
@@ -1246,19 +1367,33 @@ export function VoiceCallControls({
               this icon visibly darker than the rest of the bar. Behavior
               unchanged; no more wrapping `Tooltip` (see the block comment
               a few controls up for why). */}
-          <WideCallControlButton
-            icon={muted ? <MicOff className="h-5 w-5" strokeWidth={1.5} /> : <Mic className="h-5 w-5" strokeWidth={1.5} />}
-            label={muted ? "Unmute" : "Mute"}
-            active={muted}
-            strong
-            // Per explicit request ("make the mute / video buttons
-            // outline icon buttons") — see `WideCallControlButton`'s own
-            // `variant` doc comment.
-            variant="outline"
-            onClick={() => setMuted((m) => !m)}
-            // See `isEnding`'s own doc comment above.
-            disabled={isEnding}
-          />
+          {controlsIconOnly ? (
+            <Tooltip content={muted ? "Unmute" : "Mute"} placement="top">
+              <CompactCallControlButton
+                icon={muted ? <MicOff className="h-5 w-5" strokeWidth={1.5} /> : <Mic className="h-5 w-5" strokeWidth={1.5} />}
+                active={muted}
+                strong
+                variant="outline"
+                aria-label={muted ? "Unmute" : "Mute"}
+                onClick={() => setMuted((m) => !m)}
+                disabled={isEnding}
+              />
+            </Tooltip>
+          ) : (
+            <WideCallControlButton
+              icon={muted ? <MicOff className="h-5 w-5" strokeWidth={1.5} /> : <Mic className="h-5 w-5" strokeWidth={1.5} />}
+              label={muted ? "Unmute" : "Mute"}
+              active={muted}
+              strong
+              // Per explicit request ("make the mute / video buttons
+              // outline icon buttons") — see `WideCallControlButton`'s own
+              // `variant` doc comment.
+              variant="outline"
+              onClick={() => setMuted((m) => !m)}
+              // See `isEnding`'s own doc comment above.
+              disabled={isEnding}
+            />
+          )}
           {/* Add video — same `strong` darkening as Mute per the reference
               screenshot (only visible in practice where `showAddVideo` is
               true, i.e. Phase 2 — Phase 1 hides this button entirely, see
@@ -1277,7 +1412,27 @@ export function VoiceCallControls({
               and (per the same "label the buttons again" request as every
               other control here) a visible label instead of a hover-only
               `Tooltip`. */}
-          {showAddVideo && (
+          {showAddVideo && (controlsIconOnly ? (
+            <Tooltip content={videoAdded ? "Remove video" : "Add video"} placement="top">
+              <CompactCallControlButton
+                icon={videoAdded ? <Video className="h-5 w-5" strokeWidth={1.5} /> : <VideoOff className="h-5 w-5" strokeWidth={1.5} />}
+                active={videoAdded}
+                strong
+                variant="outline"
+                aria-label={videoAdded ? "Remove video" : "Add video"}
+                onClick={() => {
+                if (onToggleVideo) {
+                  onToggleVideo();
+                  return;
+                }
+                const next = !localVideoAdded;
+                setLocalVideoAdded(next);
+                onAddToast?.({ variant: "info", title: next ? "Video added to call" : "Video removed from call" });
+              }}
+                disabled={isEnding}
+              />
+            </Tooltip>
+          ) : (
             <WideCallControlButton
               icon={videoAdded ? <Video className="h-5 w-5" strokeWidth={1.5} /> : <VideoOff className="h-5 w-5" strokeWidth={1.5} />}
               label={videoAdded ? "Remove video" : "Add video"}
@@ -1288,8 +1443,6 @@ export function VoiceCallControls({
               // `variant` doc comment.
               variant="outline"
               onClick={() => {
-                // Real window when wired; decorative local fallback
-                // otherwise — see `onToggleVideo`'s own doc comment above.
                 if (onToggleVideo) {
                   onToggleVideo();
                   return;
@@ -1301,7 +1454,7 @@ export function VoiceCallControls({
               // See `isEnding`'s own doc comment above.
               disabled={isEnding}
             />
-          )}
+          ))}
           {/* End Call — per explicit request ("make the leave button big
               and red and have it say 'end call'"): this used to be a plain
               icon-only `CompactCallControlButton` with `critical` styling
@@ -1353,20 +1506,48 @@ export function VoiceCallControls({
               the bar disabling alongside it) that the click registered
               while `onHangUp` itself is deferred behind the exit
               animation (see `isEnding`'s own doc comment above). */}
-          <Button
-            variant="destructive"
-            size="lg"
-            className="h-auto shrink-0 gap-1.5"
-            onClick={handleHangUp}
-            disabled={isEnding}
-          >
-            {isEnding ? (
-              <Spinner variant="circle" size="sm" color="inverse" label="Hanging up" />
-            ) : (
-              <PhoneOff className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />
-            )}
-            {isEnding ? "Hanging Up..." : "End Call"}
-          </Button>
+          {/* Below 768px (`controlsIconOnly`, this file's own top doc
+              comment): same `variant="destructive"` `Button`, just
+              icon-only at a fixed 40px (`h-10 w-10`, matching every other
+              icon-only control at this width — `CompactCallControlButton`
+              itself isn't reused here since End Call is deliberately a
+              plain `Button`, not part of that shared icon-button
+              component, per this block's own doc comment above) instead
+              of the icon+"End Call"/"Hanging Up..." text column, with a
+              `Tooltip` standing in for the now-hidden label. */}
+          {controlsIconOnly ? (
+            <Tooltip content={isEnding ? "Hanging Up..." : "End Call"} placement="top">
+              <Button
+                variant="destructive"
+                size="icon"
+                className="h-10 w-10 shrink-0"
+                onClick={handleHangUp}
+                disabled={isEnding}
+                aria-label={isEnding ? "Hanging Up..." : "End Call"}
+              >
+                {isEnding ? (
+                  <Spinner variant="circle" size="sm" color="inverse" label="Hanging up" />
+                ) : (
+                  <PhoneOff className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />
+                )}
+              </Button>
+            </Tooltip>
+          ) : (
+            <Button
+              variant="destructive"
+              size="lg"
+              className="h-auto shrink-0 gap-1.5"
+              onClick={handleHangUp}
+              disabled={isEnding}
+            >
+              {isEnding ? (
+                <Spinner variant="circle" size="sm" color="inverse" label="Hanging up" />
+              ) : (
+                <PhoneOff className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />
+              )}
+              {isEnding ? "Hanging Up..." : "End Call"}
+            </Button>
+          )}
         </div>
       </div>
     </div>
