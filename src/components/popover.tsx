@@ -135,6 +135,13 @@ export interface PopoverProps {
    * exactly as before.
    */
   virtualAnchorRef?: React.RefObject<HTMLElement | null>;
+  /**
+   * Accessible name for the popover panel (Radix renders it as
+   * `role="dialog"`, which must be named — axe aria-dialog-name). Defaults
+   * to `title` when one is passed; set it explicitly for title-less
+   * popovers (e.g. a listbox or picker panel).
+   */
+  "aria-label"?: string;
 }
 
 /* ── Arrow ──
@@ -237,6 +244,7 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
   asAnchor = false,
   modal = false,
   virtualAnchorRef,
+  "aria-label": ariaLabel,
 }, ref) => (
   <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange} modal={modal}>
     {asAnchor ? (
@@ -258,6 +266,7 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
         onCloseAutoFocus={onCloseAutoFocus}
         onEscapeKeyDown={onEscapeKeyDown}
         onInteractOutside={onInteractOutside}
+        aria-label={ariaLabel ?? title}
         onPointerMove={stopSyntheticBubble}
         onPointerLeave={stopSyntheticBubble}
         onFocus={stopSyntheticBubble}

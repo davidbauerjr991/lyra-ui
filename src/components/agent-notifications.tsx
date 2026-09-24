@@ -185,7 +185,7 @@ function useAgentNotificationsContent({
       {notifications.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-10 gap-2">
           <Bell className="h-8 w-8 text-lyra-fg-disabled" strokeWidth={1} />
-          <p className="lyra-body-md text-lyra-fg-disabled">No notifications</p>
+          <p className="lyra-body-md text-lyra-fg-secondary">No notifications</p>
         </div>
       ) : (
         notifications.map((n, i) => (
@@ -205,7 +205,11 @@ function useAgentNotificationsContent({
                   its whole row's text blue, but a notification row's text
                   should stay neutral regardless of read state; only the
                   background/accent bar should tint. */}
+              {/* `itemRole="button"` — these rows sit in a plain panel, not a
+                  `role="menu"`, so the default "menuitem" role had no valid
+                  parent (axe aria-required-parent). */}
               <MenuItem
+                itemRole="button"
                 onClick={() => onNotificationClick?.(n)}
                 icon={<NotificationIcon type={n.type} icon={n.icon} />}
                 header={n.subtitle ? n.title : undefined}

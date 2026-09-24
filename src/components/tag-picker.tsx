@@ -146,6 +146,7 @@ const TagPicker = React.forwardRef<HTMLButtonElement, TagPickerProps>(
         // default 16px body inset would push every row in further, same
         // reasoning `Select`'s own multi-select `Popover` usage documents.
         bodyPadding={false}
+        aria-label={triggerLabel}
         className="w-[220px]"
         // Radix's default behavior returns focus to the trigger
         // (`ActionIconButton` below) when the popover closes. That trigger
@@ -256,7 +257,7 @@ const TagPicker = React.forwardRef<HTMLButtonElement, TagPickerProps>(
                       aria-hidden="true"
                       className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-lyra-fg-default opacity-0 transition-opacity group-hover/item:opacity-100 group-active/item:opacity-100"
                     />
-                    <Checkbox checked={isSelected} tabIndex={-1} className="pointer-events-none" />
+                    <Checkbox decorative checked={isSelected} className="pointer-events-none" />
                     <span className="min-w-0 flex-1 truncate text-lyra-fg-default">{option.label}</span>
                   </button>
                 );

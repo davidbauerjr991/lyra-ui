@@ -237,9 +237,11 @@ const ConversationMessage = React.forwardRef<HTMLDivElement, ConversationMessage
             {/* Alert helper — inline below bubble */}
             {alert && <AlertRow alert={alert} />}
 
-            {/* Timestamp */}
+            {/* Timestamp — fg-secondary, not fg-disabled: a timestamp is real
+                information, and the disabled token only reaches ~1.9:1
+                (WCAG 1.4.3). */}
             {timestamp && (
-              <span className="lyra-body-sm text-lyra-fg-disabled px-1">{timestamp}</span>
+              <span className="lyra-body-sm text-lyra-fg-secondary px-1">{timestamp}</span>
             )}
           </div>
         </div>

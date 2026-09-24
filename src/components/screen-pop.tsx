@@ -207,6 +207,7 @@ function useScreenPopContent({
     headerContent: (
       <Select
         placeholder="Select an app..."
+        aria-label="Screen pop app"
         options={SCREEN_POP_APPS}
         value={currentApp}
         onValueChange={handleAppChange}

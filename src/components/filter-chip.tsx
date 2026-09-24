@@ -272,6 +272,7 @@ const FilterChip = React.forwardRef<HTMLButtonElement, FilterChipProps>(
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={operatorOpen}
+        aria-label={`${label} operator`}
         className={cn(
           "inline-flex items-center gap-1.5 h-8 px-2 transition-colors whitespace-nowrap",
           segmentColor,

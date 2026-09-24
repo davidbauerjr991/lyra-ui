@@ -77,7 +77,10 @@ export function getPillInlineStyles(
     case "subtle":
       return { backgroundColor: soft, color: strong };
     case "solid":
-      return { backgroundColor: strong, color: "var(--lyra-color-fg-on-primary)" };
+      // fg-inverse, not fg-on-primary: white in light mode (unchanged), but
+      // near-black in dark mode, where every accent "-strong" stop turns
+      // light — white text on those was 1.2–1.6:1 (WCAG 1.4.3 needs 4.5:1).
+      return { backgroundColor: strong, color: "var(--lyra-color-fg-inverse)" };
   }
 }
 
@@ -94,11 +97,16 @@ const circleBadgeVariants = cva(
       /** Color */
       variant: {
         default:  "bg-lyra-bg-primary text-lyra-fg-on-primary",
-        info:     "bg-lyra-bg-active-strong text-lyra-fg-on-primary",
-        success:  "bg-lyra-status-success-strong text-white",
-        warning:  "bg-lyra-status-warning-strong text-white",
-        critical: "bg-lyra-status-critical-strong text-white",
-        neutral:  "bg-lyra-fg-secondary text-white",
+        // `text-lyra-fg-inverse` (white in light mode, near-black in dark)
+        // instead of white/fg-on-primary: these status fills turn light in
+        // dark mode, where white text measured 1.5–3.1:1 (WCAG 1.4.3).
+        // Light mode is unchanged. `default` keeps fg-on-primary — its
+        // bg-primary stays dark blue in both themes.
+        info:     "bg-lyra-bg-active-strong text-lyra-fg-inverse",
+        success:  "bg-lyra-status-success-strong text-lyra-fg-inverse",
+        warning:  "bg-lyra-status-warning-strong text-lyra-fg-inverse",
+        critical: "bg-lyra-status-critical-strong text-lyra-fg-inverse",
+        neutral:  "bg-lyra-fg-secondary text-lyra-fg-inverse",
       },
       /** Size — controls diameter and text size */
       size: {
@@ -172,6 +180,12 @@ const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>((props, ref) => {
       max = 99,
       className,
       children,
+      // Pulled out of `rest` (rather than left to land there via the
+      // spread below) so the default label computed just below and any
+      // caller-supplied override can be resolved into one single value —
+      // needed to decide `role` as well as `aria-label` itself, not just
+      // to pick which one wins.
+      "aria-label": ariaLabelProp,
       ...rest
     } = props;
 
@@ -180,11 +194,30 @@ const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>((props, ref) => {
       label = count > max ? `${max}+` : String(count);
     }
 
+    // Caller-supplied `aria-label` (e.g. `InteractionNavItem`'s single-
+    // channel-type badge, interaction-nav-item.tsx) wins over the default
+    // "{n} notifications" reading; a `dot` badge never gets one (nothing to
+    // announce).
+    const resolvedAriaLabel =
+      ariaLabelProp ?? (dot ? undefined : count !== undefined ? `${count > max ? `${max}+` : count} notifications` : undefined);
+
     return (
       <span
         ref={ref}
         className={cn(circleBadgeVariants({ variant, size, dot }), className)}
-        aria-label={dot ? undefined : (count !== undefined ? `${count > max ? `${max}+` : count} notifications` : undefined)}
+        aria-label={resolvedAriaLabel}
+        // `role="img"` only when there's an actual label to announce — a
+        // bare, role-less `<span>` carrying `aria-label` is exactly what
+        // axe-core's `aria-allowed-attr` check flags as "not well
+        // supported" (some screen readers ignore `aria-label` on an
+        // element with no ARIA role at all). Same convention this repo
+        // already uses for a non-text element that exists purely to carry
+        // an `aria-label` (`PlaceholderQrCode`'s `role="img"`,
+        // login-card-pair-authenticator.tsx). A `dot` badge or a plain
+        // icon-glyph badge with no `aria-label` at all stays role-less,
+        // unchanged — `role="img"` with nothing to announce would be worse
+        // than no role.
+        role={resolvedAriaLabel ? "img" : undefined}
         {...rest}
       >
         {!dot && label}

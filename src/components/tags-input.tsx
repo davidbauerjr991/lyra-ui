@@ -210,6 +210,8 @@ const TagsInput = React.forwardRef<HTMLDivElement, TagsInputProps>(
               placeholder={tags.length === 0 ? placeholder : ""}
               className="flex-1 min-w-[120px] bg-transparent outline-none lyra-body-md text-lyra-fg-default placeholder:text-lyra-fg-disabled py-0.5"
               aria-label={label ?? "Add tags"}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? `${inputId}-error` : undefined}
               autoComplete="off"
             />
           )}
@@ -236,7 +238,7 @@ const TagsInput = React.forwardRef<HTMLDivElement, TagsInputProps>(
 
         {/* Error message */}
         {error && (
-          <div role="alert" className="flex items-center gap-1 mt-1.5">
+          <div id={`${inputId}-error`} role="alert" className="flex items-center gap-1 mt-1.5">
             <ErrorIconSolid
               className="h-3.5 w-3.5 flex-shrink-0 text-lyra-status-critical-strong"
               aria-hidden="true"

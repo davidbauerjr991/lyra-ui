@@ -261,7 +261,7 @@ export const AllColors: Story = {
           { name: "Green Soft", token: "lyra-accent-green-soft", value: "#d2f4d5", description: "Soft green background." },
           { name: "Green Strong", token: "lyra-accent-green-strong", value: "#21742c", description: "Strong green for text and icons." },
           { name: "Teal Soft", token: "lyra-accent-teal-soft", value: "#c4f0f3", description: "Soft teal background." },
-          { name: "Teal Strong", token: "lyra-accent-teal-strong", value: "#11737c", description: "Strong teal for text and icons." },
+          { name: "Teal Strong", token: "lyra-accent-teal-strong", value: "#11727b", description: "Strong teal for text and icons." },
           { name: "Blue Soft", token: "lyra-accent-blue-soft", value: "#d6e4ff", description: "Soft blue background." },
           { name: "Blue Strong", token: "lyra-accent-blue-strong", value: "#2558c1", description: "Strong blue for text and icons." },
           { name: "Purple Soft", token: "lyra-accent-purple-soft", value: "#e6e0ff", description: "Soft purple background." },

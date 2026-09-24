@@ -66,12 +66,19 @@ const RadioButtonGroup = React.forwardRef<HTMLDivElement, RadioButtonGroupProps>
     ref
   ) => {
     const isEffectivelyDisabled = disabled || readonly;
+    // Ids that name the radiogroup (its Label) and tie the error message to
+    // it — without them the group is unnamed and the error isn't announced
+    // with it (WCAG 1.3.1 / 3.3.1).
+    const autoId = React.useId();
+    const labelId = `${autoId}-label`;
+    const errorId = `${autoId}-error`;
 
     return (
       <div ref={ref} className={cn("flex flex-col", className)}>
         {/* Label */}
         {label && (
           <Label
+            id={labelId}
             label={label}
             labelHelpText={labelHelpText}
             required={required}
@@ -89,6 +96,9 @@ const RadioButtonGroup = React.forwardRef<HTMLDivElement, RadioButtonGroupProps>
           name={name}
           disabled={isEffectivelyDisabled}
           orientation={orientation}
+          aria-labelledby={label ? labelId : undefined}
+          aria-describedby={error ? errorId : undefined}
+          aria-invalid={error ? true : undefined}
         >
           {options.map((option) => (
             <RadioGroupItem
@@ -102,7 +112,7 @@ const RadioButtonGroup = React.forwardRef<HTMLDivElement, RadioButtonGroupProps>
 
         {/* Error message */}
         {error && (
-          <div role="alert" className="flex items-center gap-1 mt-2">
+          <div id={errorId} role="alert" className="flex items-center gap-1 mt-2">
             <ErrorIconSolid
               className="h-3.5 w-3.5 flex-shrink-0 text-lyra-status-critical-strong"
               aria-hidden="true"

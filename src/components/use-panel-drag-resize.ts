@@ -70,5 +70,31 @@ export function usePanelDragResize(
     [side, dragWidth, initialWidth, min, max, onResizeStateChange, onWidthChange]
   );
 
-  return { width: dragWidth ?? initialWidth, onMouseDown };
+  // Keyboard equivalent of the drag (WCAG 2.1.1) — wired onto the resize
+  // handle alongside `role="separator"`: Left/Right arrows move the edge 16px
+  // (64px with Shift), Home/End jump to min/max. Direction follows the
+  // handle's side so the edge moves the way the arrow points.
+  const onKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      const current = dragWidth ?? initialWidth;
+      const step = e.shiftKey ? 64 : 16;
+      // Handle sits on the panel's inner edge: a right-docked panel grows
+      // leftward, a left-docked one grows rightward.
+      const grow = side === "right" ? "ArrowLeft" : "ArrowRight";
+      const shrink = side === "right" ? "ArrowRight" : "ArrowLeft";
+      let next: number | null = null;
+      if (e.key === grow) next = current + step;
+      else if (e.key === shrink) next = current - step;
+      else if (e.key === "Home") next = min;
+      else if (e.key === "End") next = max;
+      if (next === null) return;
+      e.preventDefault();
+      next = Math.min(max, Math.max(min, next));
+      setDragWidth(next);
+      onWidthChange?.(next);
+    },
+    [side, dragWidth, initialWidth, min, max, onWidthChange]
+  );
+
+  return { width: dragWidth ?? initialWidth, onMouseDown, onKeyDown };
 }

@@ -115,10 +115,15 @@ export interface KebabMenuButtonProps extends Omit<React.HTMLAttributes<HTMLElem
    * agent-next-gen-transcript.tsx).
    */
   disabled?: boolean;
+  /** Controlled open state, passed straight to `MenuRadix`. Lets a parent
+   *  open the menu from its own keyboard shortcut — e.g. `Tab` opens its
+   *  kebab on Shift+F10, since that kebab is deliberately not focusable
+   *  inside the tab (see tabs.tsx). Omit for normal uncontrolled use. */
+  open?: boolean;
 }
 
 const KebabMenuButton = React.forwardRef<HTMLButtonElement, KebabMenuButtonProps>(
-  ({ items, ariaLabel, className, as = "button", icon: iconProp, align = "right", onOpenChange, badge, onClick, disabled, ...rest }, ref) => {
+  ({ items, ariaLabel, className, as = "button", icon: iconProp, align = "right", onOpenChange, badge, onClick, disabled, open, ...rest }, ref) => {
     const triggerClassName = cn(
       "flex h-6 w-6 shrink-0 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary transition-colors hover:bg-lyra-state-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus",
       disabled && "pointer-events-none opacity-40 hover:bg-transparent",
@@ -183,6 +188,7 @@ const KebabMenuButton = React.forwardRef<HTMLButtonElement, KebabMenuButtonProps
         items={items}
         align={align === "left" ? "start" : "end"}
         sideOffset={4}
+        open={open}
         onOpenChange={onOpenChange}
       />
     );

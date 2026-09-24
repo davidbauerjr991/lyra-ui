@@ -210,6 +210,9 @@ const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
                 needsPhoneNumber ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
               )}
               aria-hidden={!needsPhoneNumber}
+              // `inert` as well — aria-hidden alone left the collapsed
+              // section's fields tabbable (axe aria-hidden-focus).
+              inert={!needsPhoneNumber}
             >
               <div className={cn("min-h-0", needsPhoneNumber ? "overflow-visible" : "overflow-hidden")}>
                 <Separator
@@ -244,6 +247,9 @@ const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
                 needsStationId ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
               )}
               aria-hidden={!needsStationId}
+              // `inert` as well — aria-hidden alone left the collapsed
+              // section's fields tabbable (axe aria-hidden-focus).
+              inert={!needsStationId}
             >
               <div className={cn("min-h-0", needsStationId ? "overflow-visible" : "overflow-hidden")}>
                 <Separator
@@ -298,6 +304,9 @@ const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
               launching ? "grid-rows-[1fr] mt-4" : "grid-rows-[0fr]"
             )}
             aria-hidden={!launching}
+              // `inert` as well — aria-hidden alone left the collapsed
+              // section's fields tabbable (axe aria-hidden-focus).
+              inert={!launching}
           >
             <div className="overflow-hidden min-h-0">
               <div

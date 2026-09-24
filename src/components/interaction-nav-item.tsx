@@ -79,6 +79,28 @@ export interface InteractionNavItemProps {
    *  pass it (this file's own stories included) renders exactly as
    *  before. */
   awaitingSeverity?: "success" | "warning" | "critical";
+  /**
+   * True when this interaction was just assigned to the agent and hasn't
+   * been opened/acknowledged yet — a distinct signal from `awaitingResponse`
+   * above (a customer waiting on a reply): a card can be a brand-new
+   * assignment with no customer message pending at all, or vice versa, so
+   * this is its own independent flag rather than another `awaitingSeverity`
+   * tier. Per explicit request/reference screenshot: adds a small red dot
+   * to the FAR left of the customer name in the expanded header row (ahead
+   * of the open-channel-count/channel-type badge that would otherwise lead
+   * it), and, on the collapsed compact tile, a red dot at the bottom-right
+   * corner. That bottom-right dot is otherwise driven by
+   * `awaitingResponse`'s own success/warning/critical escalation (see
+   * `awaitingSeverity` above) — this is the one case where it's forced red
+   * regardless of that ladder, since "just assigned" is a red-worthy signal
+   * on its own even when nothing else here is overdue. Deliberately does
+   * NOT touch the avatar's top-left "!" badge — per explicit follow-up,
+   * that glyph is reserved for SLA-breach signaling
+   * (`severity === "critical"`, further down) and isn't overloaded with a
+   * second, unrelated meaning. Default `false` (every existing consumer
+   * renders exactly as before).
+   */
+  isNewAssignment?: boolean;
   /** Whether this is the currently-open/selected interaction. */
   active?: boolean;
   /** Tints the whole expanded card (background + outer border) with the
@@ -243,6 +265,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       elapsed,
       awaitingResponse = false,
       awaitingSeverity,
+      isNewAssignment = false,
       active = false,
       onHold = false,
       expanded = false,
@@ -479,6 +502,21 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     // behavior for any consumer that doesn't pass real wait-time data.
     const severity: "success" | "warning" | "critical" | null = awaitingResponse ? awaitingSeverity ?? "critical" : null;
 
+    // The compact tile's bottom-right corner dot (below) used to be driven
+    // purely by `severity` — a plain green/amber/red escalation ladder for
+    // `awaitingResponse`. Per explicit request, RED there now means "new
+    // assignment" specifically, not "critical/overdue": `isNewAssignment`
+    // forces it red even with nothing awaiting a response at all, and a
+    // merely-`critical`-severity card that ISN'T a new assignment no longer
+    // shows that dot (green/warning are untouched either way — only the
+    // red tier's meaning changed). See `isNewAssignment`'s own doc comment
+    // above for the full reasoning.
+    const cornerDotVariant: "success" | "warning" | "critical" | null = isNewAssignment
+      ? "critical"
+      : severity === "critical"
+      ? null
+      : severity;
+
     const tone =
       // Per explicit request ("a non-active interactionNavItem that is on
       // hold should have the yellow background and border and avatar when
@@ -515,12 +553,14 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     // mouse users.
     const handleKeyDown = (e: React.KeyboardEvent, activate: () => void = () => onClick?.()) => {
       // `e.target !== e.currentTarget` — keydown bubbles, and this handler
-      // is shared by the tile, the preview wrapper, and the real expanded
-      // card, each of which also contains real nested interactive
-      // descendants (the preview wrapper's Tab-trap loop below walks
-      // straight through several: "+" headerAction, a channel row's kebab,
-      // etc). Without this guard, Enter/Space pressed while focus is on one
-      // of THOSE bubbles up here too, and this always calls
+      // is now used only by the compact tile's own `handleTileKeyDown`
+      // below (the preview wrapper and the real expanded card each got a
+      // real, native `Button` instead — see the stretched-hit-target
+      // restructuring further down — so this guard only ever needs to
+      // matter for the tile's own nested interactive descendants inside
+      // its hover-preview popover). Without this guard, Enter/Space
+      // pressed while focus is on one of those bubbles up here too, and
+      // this always calls
       // `preventDefault()` — which silently cancels the focused element's
       // own native "Enter/Space triggers a click" default action before it
       // can fire. Same `target === currentTarget` guard `modal.tsx`/
@@ -556,6 +596,12 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     // is left alone — normal page order already handles that correctly.
     const previewContentRef = React.useRef<HTMLDivElement | null>(null);
 
+    // The real, invisible `Button` that now covers the whole hover-preview
+    // card (the stretched hit-target — see the restructuring further down)
+    // is the actual Tab-order entry point into the preview now that the
+    // wrapper div itself is no longer focusable.
+    const previewEntryButtonRef = React.useRef<HTMLButtonElement | null>(null);
+
     // Every element inside the preview a Tab press could land on, in DOM
     // (== visual) order — deliberately a plain allow-list query, not a
     // library, since this only ever needs to answer "is focus currently on
@@ -576,21 +622,31 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       // focus on the tile with nowhere for Tab to go.
       if (e.key === "Tab" && !e.shiftKey && previewContentRef.current) {
         e.preventDefault();
-        previewContentRef.current.focus();
+        previewEntryButtonRef.current?.focus();
       }
     };
-    const handlePreviewContentKeyDown = (e: React.KeyboardEvent) => {
-      handleKeyDown(e);
-      if (e.key !== "Tab") return;
-      const focusables = getPreviewFocusables();
-      if (e.shiftKey) {
-        if (document.activeElement === previewContentRef.current) {
-          e.preventDefault();
-          tileRef.current?.focus();
-        }
-        return;
+    // Handles the preview's own Shift+Tab-at-the-start case — the new
+    // invisible entry `Button` has no children, so a keydown on it only
+    // ever fires when focus is genuinely on that button itself (no
+    // `document.activeElement` check needed, unlike the trailing-edge case
+    // below which has to distinguish "the last real focusable" from
+    // everything else).
+    const handlePreviewEntryKeyDown = (e: React.KeyboardEvent) => {
+      if (e.key === "Tab" && e.shiftKey) {
+        e.preventDefault();
+        tileRef.current?.focus();
       }
-      const last = focusables.length > 0 ? focusables[focusables.length - 1] : previewContentRef.current;
+    };
+    // Stays on the wrapper div — still catches Tab bubbling up from any
+    // descendant — but now only handles the forward-Tab-off-the-last-
+    // focusable case: the div itself is no longer focusable/clickable (no
+    // more nested `role="button"`), so there's no Enter/Space activation or
+    // Shift+Tab-off-the-first-stop case left to handle here — both moved to
+    // `handlePreviewEntryKeyDown` above, on the new entry button.
+    const handlePreviewContentKeyDown = (e: React.KeyboardEvent) => {
+      if (e.key !== "Tab" || e.shiftKey) return;
+      const focusables = getPreviewFocusables();
+      const last = focusables.length > 0 ? focusables[focusables.length - 1] : previewEntryButtonRef.current;
       if (document.activeElement === last) {
         e.preventDefault();
         tileRef.current?.focus();
@@ -601,7 +657,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     // see the app-level `elapsed` prop's own call-site comment,
     // AgentNextGenPage.tsx) — appended conditionally so that doesn't leave
     // a dangling ", " with nothing after it.
-    const ariaLabel = `${displayName}${awaitingResponse ? ", awaiting response" : ""}${channelCount > 1 ? `, ${channelCount} open channels` : ""}${elapsed ? `, ${elapsed}` : ""}`;
+    const ariaLabel = `${displayName}${isNewAssignment ? ", new assignment" : ""}${awaitingResponse ? ", awaiting response" : ""}${channelCount > 1 ? `, ${channelCount} open channels` : ""}${elapsed ? `, ${elapsed}` : ""}`;
 
     // Header row + channel list — the expanded card's actual content,
     // factored out so it can be rendered both by the real expanded return
@@ -641,7 +697,17 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                   removable={ch.removable}
                   removeVariant={ch.removeVariant}
                   menuItems={ch.menuItems}
-                  showConsultTransfer={ch.showConsultTransfer}
+                  // Hidden from the standalone icon-button slot in both
+                  // expanded views (the real expanded card and the compact
+                  // tile's hover-preview — the only two places `ChannelRow`
+                  // renders here at all; the compact tile itself shows no
+                  // channel rows) per explicit request, regardless of
+                  // `ch.showConsultTransfer` — `stripPromotedChannelRowActions`
+                  // below still keeps "Consult / Transfer" reachable from the
+                  // row's own kebab menu (`keepConsultTransfer: true` exactly
+                  // because this is `false`), so the action itself isn't lost,
+                  // just moved out of the always-visible cluster.
+                  showConsultTransfer={false}
                   showKebab={ch.showKebab}
                   alwaysShowOutcome={ch.alwaysShowOutcome}
                   showDismissButton={ch.showDismissButton}
@@ -752,7 +818,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     );
 
     const cardBody = (
-      <>
+      <div className="relative z-[1] flex flex-col">
         {/* `px-3` (12px) — matches each channel row's own `px-3` below
             (channel-row.tsx's `ChannelRow`), so the whole card reads with
             one consistent 12px horizontal inset top to bottom rather than
@@ -768,6 +834,17 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
             bottom split read as visibly off-center rather than just a
             slightly-tight top inset above other content. */}
         <div className="flex items-center gap-2 px-3 pt-1 pb-1">
+          {/* "New assignment" indicator — per explicit request, the FAR
+              left of this row, ahead of even the open-channel-count/
+              channel-type badge just below (see `isNewAssignment`'s own
+              doc comment above). Plain dot (not the "!" glyph the compact
+              tile's own corner badge uses) — this row already has the
+              customer's name right next to it to carry the actual
+              meaning, so a plain color signal reads clearly without
+              needing its own icon here too. */}
+          {isNewAssignment && (
+            <Badge shape="circle" dot variant="critical" size="sm" className="shrink-0" aria-label="New assignment" />
+          )}
           {/* Open-channel count — per explicit request, shown once there's
               more than one open channel to actually count (a single-
               channel card's own channel type is normally obvious from its
@@ -882,20 +959,19 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
             <div className="flex flex-col">{channelRows}</div>
           )
         )}
-      </>
+      </div>
     );
 
     // The expanded card's own outer chrome (border/shadow/background),
     // shared between the real expanded return and the hover popover's
     // preview of it — same reasoning as `cardBody` above.
     const expandedCardClassName = cn(
-      "flex w-full cursor-pointer flex-col overflow-hidden rounded-lyra-sm border-y border-r text-left transition-colors",
+      "relative flex w-full cursor-pointer flex-col overflow-hidden rounded-lyra-sm border-y border-r text-left transition-colors",
       // Per `onHold`'s own doc comment above: overrides the plain surface
       // background unconditionally while true — a `bg-lyra-bg-surface-base`
       // ternary'd branch here rather than baked into the base string above,
       // same reasoning as the border override just below.
       onHold ? "bg-lyra-status-warning-subtle" : "bg-lyra-bg-surface-base",
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
       active ? "border-l-4" : "border-l",
       // Active cards get a permanent `shadow-md` (the "elevated" token per
       // Shadows.stories.tsx); inactive cards stay flat, hover or not — the
@@ -1032,12 +1108,17 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
               // lets it close, same as moving the mouse away.
               onFocus={openHoverCard}
               onBlur={scheduleCloseHoverCard}
-              role="button"
-              tabIndex={0}
-              onClick={onClick}
               onKeyDown={handlePreviewContentKeyDown}
+              // Mouse clicks anywhere on the card (name, a channel row,
+              // empty space) bubble up to here — `cardBody` paints ABOVE
+              // the stretched Button below, so the Button itself only ever
+              // receives keyboard/AT activation, whose synthesized click
+              // also bubbles here. Clicks on the card's own real controls
+              // (chevron, kebab, Outcome, etc.) already stopPropagation.
+              // A click handler on a non-interactive div is fine for a11y
+              // because the Button is the keyboard/AT equivalent.
+              onClick={onClick}
               ref={previewContentRef}
-              aria-label={ariaLabel}
               // `shadow-md` added here only (not baked into
               // `expandedCardClassName` itself, which the real expanded
               // card also uses and should stay flat) — always on while this
@@ -1047,6 +1128,33 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
               // shadow via `expandedCardClassName`.
               className={cn(expandedCardClassName, !active && "shadow-md")}
             >
+              {/* Stretched hit-target (CONTRIBUTING.md §0 — never a
+                  hand-rolled `<button>`): a real, invisible `Button`
+                  covering the whole preview, a sibling of `cardBody` rather
+                  than an ancestor of it, so nothing here nests one
+                  interactive element inside another (the axe-core
+                  `no-focusable-content` violation this whole restructuring
+                  fixes). `absolute inset-0` sizes it against this div's own
+                  `relative` (baked into `expandedCardClassName`); its
+                  default `z-index: auto` keeps it painting BELOW
+                  `cardBody`'s own `relative z-[1]` wrapper, so it never
+                  blocks clicks to any of `cardBody`'s real action buttons
+                  (CSS 2.1 painting order, category 6 vs. 3/5). Mouse clicks
+                  therefore land on `cardBody` and bubble to this div's
+                  onClick; the Button is the keyboard/AT entry point, and its
+                  synthesized click bubbles to the same handler. Visible
+                  chrome stripped via `className` overrides; the
+                  focus-visible ring it inherits from `Button`'s own base
+                  classes is what now traces the whole card's edge when
+                  Tab lands here, replacing the ring this div used to carry
+                  itself. */}
+              <Button
+                ref={previewEntryButtonRef}
+                variant="ghost"
+                aria-label={ariaLabel}
+                onKeyDown={handlePreviewEntryKeyDown}
+                className="absolute inset-0 h-full w-full p-0 hover:bg-transparent active:bg-transparent"
+              />
               {cardBody}
             </div>
           }
@@ -1118,6 +1226,15 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
               >
                 {hasCustomerName ? initials : <User className="h-4 w-4" strokeWidth={1.5} />}
               </span>
+              {/* Per explicit follow-up: the top-left "!" badge is
+                  reserved for SLA-breach signaling (`severity ===
+                  "critical"`, below) — `isNewAssignment` does NOT also
+                  render it here, only the bottom-right red dot
+                  (`cornerDotVariant`, further down) and the expanded
+                  header's own red dot (above `cardBody`). Overloading
+                  this corner's alert glyph with a second, unrelated
+                  meaning would make it ambiguous which one a red "!" was
+                  actually reporting. */}
               {channelCount > 1 && (
                 <span
                   className={cn(
@@ -1182,21 +1299,22 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                   )}
                 </span>
               )}
-              {severity && (
+              {cornerDotVariant && (
                 /* Bottom-right corner (was top-right), now a small `Badge`
                    dot (`size="sm"` — Badge's own size vocabulary) instead
                    of a bespoke span, so this dot indicator shares the same
                    implementation as every other corner badge in the
-                   library. `severity` ("success" | "warning" | "critical")
-                   lines up 1:1 with `Badge`'s own `BadgeCircleVariant`
-                   values — this is the actual "green dot, then amber, then
-                   red" indicator per explicit request, driven entirely by
-                   how `severity` escalates over time (see the app-level
-                   `getAwaitingSeverity`, AgentNextGenPage.tsx). */
+                   library. `cornerDotVariant` ("success" | "warning" |
+                   "critical") lines up 1:1 with `Badge`'s own
+                   `BadgeCircleVariant` values — green/amber still escalate
+                   with `awaitingResponse` exactly as before
+                   (`getAwaitingSeverity`, AgentNextGenPage.tsx); red now
+                   means "new assignment" specifically (see
+                   `cornerDotVariant`'s own doc comment above). */
                 <Badge
                   shape="circle"
                   dot
-                  variant={severity}
+                  variant={cornerDotVariant}
                   size="sm"
                   className="absolute bottom-[-2px] right-[-2px] ring-2 ring-lyra-bg-surface-shell"
                   aria-hidden="true"
@@ -1261,18 +1379,29 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     return (
       <div
         ref={ref}
-        role="button"
-        tabIndex={0}
+        // See the hover-preview wrapper's own onClick comment above: mouse
+        // clicks bubble here (cardBody sits above the stretched Button);
+        // the Button's own keyboard-synthesized click bubbles here too.
         onClick={handleExpandedCardActivate}
-        onKeyDown={(e) => handleKeyDown(e, handleExpandedCardActivate)}
-        aria-label={ariaLabel}
-        aria-current={active ? "true" : undefined}
         // `mb-2` (not baked into `expandedCardClassName`, which the compact
         // mode's hover-popover preview above also uses — that preview floats
         // in a Popover and shouldn't pick up a bottom margin) — same
         // per-item-not-parent-gap spacing as the compact tile above.
         className={cn(expandedCardClassName, "mb-2", className)}
       >
+        {/* Stretched hit-target (CONTRIBUTING.md §0 — never a hand-rolled
+            `<button>`): see the identical pattern on the hover-preview
+            wrapper above for the full stacking/painting-order reasoning.
+            It carries no onClick of its own: a real <button> turns
+            Enter/Space into a click that bubbles to the wrapper's onClick
+            above, so keyboard, screen reader and mouse all run the same
+            handler once. */}
+        <Button
+          variant="ghost"
+          aria-label={ariaLabel}
+          aria-current={active ? "true" : undefined}
+          className="absolute inset-0 h-full w-full p-0 hover:bg-transparent active:bg-transparent"
+        />
         {cardBody}
       </div>
     );

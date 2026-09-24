@@ -213,7 +213,14 @@ export interface DraggableHeaderControls {
   /** Spread onto a draggable handle element (float mode only — noop in docked). */
   gripProps: {
     onMouseDown: React.MouseEventHandler<HTMLElement>;
-    "aria-hidden": true;
+    /** Keyboard move (arrow keys, float mode) — see `onGripKeyDown`. */
+    onKeyDown: React.KeyboardEventHandler<HTMLElement>;
+    role?: "button";
+    tabIndex?: number;
+    "aria-label"?: string;
+    "aria-keyshortcuts"?: string;
+    /** Only set (true) in docked mode, where the grip does nothing. */
+    "aria-hidden"?: true;
     className: string;
   };
   /** Spread onto the dock/undock button. */
@@ -646,6 +653,75 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
        PROJECT_SUMMARY.md). Measuring the real element means this can't
        drift again, and works for any header a consumer renders as
        `children`'s first element, not just `ContainerHeader`. */
+    /* ── Keyboard equivalents of the mouse drag/resize handles (WCAG 2.1.1) ──
+       Arrow keys step 16px (64px with Shift); Home/End jump to min/max
+       width. Same clamps as the mouse handlers above. */
+    const keyStep = (e: React.KeyboardEvent) => (e.shiftKey ? 64 : 16);
+    const onGripKeyDown = (e: React.KeyboardEvent) => {
+      if (variant !== "float") return;
+      const step = keyStep(e);
+      const moves: Record<string, [number, number]> = {
+        ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step],
+      };
+      const d = moves[e.key];
+      if (!d) return;
+      e.preventDefault();
+      onInteract?.();
+      const next = { x: offset.x + d[0], y: offset.y + d[1] };
+      setOffset(clampOffsetIntoViewport(next, width, height) ?? next);
+    };
+    // Width change for the LEFT-edge handles (docked and float): ArrowLeft
+    // grows (the left edge moves left), ArrowRight shrinks.
+    const nextLeftEdgeWidth = (e: React.KeyboardEvent): number | null => {
+      const max = resolveMaxWidth(maxWidth, disableResponsiveMaxWidth);
+      const step = keyStep(e);
+      let w: number | null = null;
+      if (e.key === "ArrowLeft") w = width + step;
+      else if (e.key === "ArrowRight") w = width - step;
+      else if (e.key === "Home") w = minWidth;
+      else if (e.key === "End") w = max;
+      if (w === null) return null;
+      e.preventDefault();
+      return Math.min(max, Math.max(minWidth, w));
+    };
+    const onLeftEdgeKeyDown = (e: React.KeyboardEvent) => {
+      let w = nextLeftEdgeWidth(e);
+      if (w === null) return;
+      const rect = rootRef.current?.getBoundingClientRect();
+      if (rect) w = Math.min(w, rect.left + rect.width); // can't grow past the viewport's left edge
+      setWidth(w); onWidthChange?.(w);
+    };
+    const onFloatLeftEdgeKeyDown = (e: React.KeyboardEvent) => {
+      let w = nextLeftEdgeWidth(e);
+      if (w === null) return;
+      const rect = rootRef.current?.getBoundingClientRect();
+      if (rect) w = Math.min(w, rect.left + width); // left edge stays on screen
+      const delta = w - width; // right edge stays put: shift left by the growth
+      setWidth(w); onWidthChange?.(w);
+      setOffset((prev) => ({ x: prev.x - delta, y: prev.y }));
+    };
+    const onCornerKeyDown = (e: React.KeyboardEvent) => {
+      const step = keyStep(e);
+      const rect = rootRef.current?.getBoundingClientRect();
+      const maxW = Math.min(resolveMaxWidth(maxWidth, disableResponsiveMaxWidth), rect ? window.innerWidth - rect.left : Infinity);
+      const maxH = rect ? window.innerHeight - rect.top : Infinity;
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+        e.preventDefault();
+        const w = Math.min(maxW, Math.max(minWidth, width + (e.key === "ArrowRight" ? step : -step)));
+        setWidth(w); onWidthChange?.(w);
+      } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        setHeight(Math.min(maxH, Math.max(minHeight, height + (e.key === "ArrowDown" ? step : -step))));
+      }
+    };
+    // Shared a11y attrs for the grip (built-in and consumer-rendered): a real
+    // keyboard control in float mode; inert decoration in docked mode.
+    const gripA11yProps =
+      variant === "float"
+        ? { role: "button" as const, tabIndex: 0, "aria-label": "Move panel", "aria-keyshortcuts": "ArrowUp ArrowDown ArrowLeft ArrowRight" }
+        : { "aria-hidden": true as const };
+    const gripFocusClass = "rounded-lyra-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus";
+
     const BuiltInHeaderControls = (
       <div
         className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-2 pointer-events-none"
@@ -654,9 +730,10 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
         {/* Grip — float only */}
         {variant === "float" ? (
           <div
-            className="flex items-center pointer-events-auto cursor-grab active:cursor-grabbing text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors"
+            className={cn("flex items-center pointer-events-auto cursor-grab active:cursor-grabbing text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors", gripFocusClass)}
             onMouseDown={onDragMouseDown}
-            aria-hidden="true"
+            onKeyDown={onGripKeyDown}
+            {...gripA11yProps}
           >
             <GripVertical className="h-4 w-4" strokeWidth={1.5} />
           </div>
@@ -682,8 +759,9 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
     const headerControlProps: DraggableHeaderControls = {
       gripProps: {
         onMouseDown: onDragMouseDown,
-        "aria-hidden": true,
-        className: "flex items-center cursor-grab active:cursor-grabbing text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors",
+        onKeyDown: onGripKeyDown,
+        ...gripA11yProps,
+        className: cn("flex items-center cursor-grab active:cursor-grabbing text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors", gripFocusClass),
       },
       dockButtonProps: {
         type: "button",
@@ -750,6 +828,14 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
             <div
               key="edge-resize"
               onMouseDown={onLeftEdgeResizeDown}
+              onKeyDown={onLeftEdgeKeyDown}
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize panel"
+              aria-valuenow={Math.round(width)}
+              aria-valuemin={minWidth}
+              aria-valuemax={resolveMaxWidth(maxWidth, disableResponsiveMaxWidth)}
+              tabIndex={0}
               // z-30, not z-10 — per explicit request ("the interior panel
               // is overlaying on top of the drag icon so the dragged
               // containers cannot be resized when the interior panel is
@@ -761,10 +847,9 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
               // handle needs to stay interactive above ANY content this
               // container hosts, not just whatever z-index happened to be
               // in use when it was originally set to z-10.
-              className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize z-30 group/edge"
-              aria-hidden="true"
+              className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize z-30 group/edge focus-visible:outline-none"
             >
-              <div className="absolute inset-y-0 left-0 w-px bg-lyra-border-subtle group-hover/edge:bg-lyra-border-active transition-colors" />
+              <div className="absolute inset-y-0 left-0 w-px bg-lyra-border-subtle group-hover/edge:bg-lyra-border-active group-focus-visible/edge:w-0.5 group-focus-visible/edge:bg-lyra-border-focus transition-colors" />
             </div>
           )}
 
@@ -798,10 +883,17 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
         <div
           key="float-edge-resize"
           onMouseDown={onFloatLeftEdgeResizeDown}
-          className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize z-30 group/edge"
-          aria-hidden="true"
+          onKeyDown={onFloatLeftEdgeKeyDown}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize panel"
+          aria-valuenow={Math.round(width)}
+          aria-valuemin={minWidth}
+          aria-valuemax={resolveMaxWidth(maxWidth, disableResponsiveMaxWidth)}
+          tabIndex={0}
+          className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize z-30 group/edge focus-visible:outline-none"
         >
-          <div className="absolute inset-y-0 left-0 w-px bg-lyra-border-subtle group-hover/edge:bg-lyra-border-active transition-colors" />
+          <div className="absolute inset-y-0 left-0 w-px bg-lyra-border-subtle group-hover/edge:bg-lyra-border-active group-focus-visible/edge:w-0.5 group-focus-visible/edge:bg-lyra-border-focus transition-colors" />
         </div>
 
         {/* Bottom-right corner resize handle */}
@@ -812,8 +904,13 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
           // comment just above: stays interactive above any panel content
           // this container hosts (e.g. a `z-20` `InteriorPanel` docked
           // inside it), instead of being paintable-over by it.
-          className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize flex items-end justify-end pb-1 pr-1 group/resize z-30"
-          aria-hidden="true"
+          // Keyboard: arrows resize width (Left/Right) and height (Up/Down).
+          onKeyDown={onCornerKeyDown}
+          role="button"
+          tabIndex={0}
+          aria-label="Resize panel width and height"
+          aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight"
+          className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize flex items-end justify-end pb-1 pr-1 group/resize z-30 rounded-lyra-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
         >
           <svg width="10" height="10" viewBox="0 0 10 10" className="text-lyra-border-soft group-hover/resize:text-lyra-border-active transition-colors">
             <path d="M9 1L1 9M9 5L5 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />

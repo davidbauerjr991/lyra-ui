@@ -151,7 +151,7 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
       setIsResizing(r);
       onResizeStateChange?.(r);
     }, [onResizeStateChange]);
-    const { width: currentWidth, onMouseDown } = usePanelDragResize(
+    const { width: currentWidth, onMouseDown, onKeyDown: onResizeKeyDown } = usePanelDragResize(
       side, width, minWidth, maxWidth, handleResizeStateChange, onWidthChange
     );
     // Restored to a real conditional — see `instantWidthChange`'s own doc
@@ -172,11 +172,20 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
     const dragHandle = resizable ? (
       <div
         onMouseDown={onMouseDown}
-        className="absolute top-0 bottom-0 z-10 flex items-center justify-center group"
+        // Keyboard-operable "window splitter" (WCAG 2.1.1): focusable,
+        // arrow keys resize — see usePanelDragResize's onKeyDown.
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize panel"
+        aria-valuenow={Math.round(currentWidth)}
+        aria-valuemin={minWidth}
+        aria-valuemax={maxWidth}
+        tabIndex={0}
+        onKeyDown={onResizeKeyDown}
+        className="absolute top-0 bottom-0 z-10 flex items-center justify-center group focus-visible:outline-none"
         style={{ [side === "right" ? "left" : "right"]: -4, width: 8, cursor: "col-resize" }}
-        aria-hidden="true"
       >
-        <div className="w-0.5 h-8 rounded-full bg-lyra-border-soft opacity-0 group-hover:bg-lyra-bg-primary group-hover:opacity-100 transition-opacity" />
+        <div className="w-0.5 h-8 rounded-full bg-lyra-border-soft opacity-0 group-hover:bg-lyra-bg-primary group-hover:opacity-100 group-focus-visible:w-1 group-focus-visible:bg-lyra-border-focus group-focus-visible:opacity-100 transition-opacity" />
       </div>
     ) : null;
 

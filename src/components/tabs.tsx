@@ -1359,6 +1359,7 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
       severity,
       children,
       id,
+      onKeyDown,
       ...props
     },
     ref
@@ -1443,10 +1444,44 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
     // dropdown takes over, and stays visible over it (see
     // `KebabMenuButton.onOpenChange`'s doc comment for the full mechanism).
     const [menuOpen, setMenuOpen] = useState(false);
+    // The trailing kebab/remove controls are NOT focusable (a focusable
+    // control inside role="tab" is a nested-interactive violation — tab's
+    // children are presentational). Keyboard users reach them from the tab
+    // itself instead: Shift+F10 / the ContextMenu key opens the kebab menu,
+    // Delete/Backspace fires `onRemove` (advertised via aria-keyshortcuts).
+    // After a keyboard-opened menu closes, focus returns to the tab, since
+    // Radix's own focus return targets the (unfocusable) kebab span.
+    const buttonRef = useRef<HTMLButtonElement | null>(null);
+    const setButtonRef = useCallback(
+      (node: HTMLButtonElement | null) => {
+        buttonRef.current = node;
+        if (typeof ref === "function") ref(node);
+        else if (ref) (ref as React.MutableRefObject<HTMLButtonElement | null>).current = node;
+      },
+      [ref]
+    );
+    const keyboardMenuRef = useRef(false);
     const handleMenuOpenChange = (open: boolean) => {
       setMenuOpen(open);
       onMenuOpenChange?.(open);
+      if (!open && keyboardMenuRef.current) {
+        keyboardMenuRef.current = false;
+        setTimeout(() => buttonRef.current?.focus(), 0);
+      }
     };
+    const handleTabKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+      onKeyDown?.(e);
+      if (e.defaultPrevented || e.target !== e.currentTarget) return;
+      if (menuItems && ((e.key === "F10" && e.shiftKey) || e.key === "ContextMenu")) {
+        e.preventDefault();
+        keyboardMenuRef.current = true;
+        handleMenuOpenChange(true);
+      } else if (onRemove && !menuItems && (e.key === "Delete" || e.key === "Backspace")) {
+        e.preventDefault();
+        onRemove(e as unknown as React.MouseEvent);
+      }
+    };
+    const keyShortcuts = menuItems ? "Shift+F10" : onRemove ? "Delete" : undefined;
 
     useLayoutEffect(() => {
       const el = labelRef.current;
@@ -1460,11 +1495,12 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
 
     const button = (
       <button
-        ref={ref}
+        ref={setButtonRef}
         id={id}
         role="tab"
         aria-selected={active}
         aria-controls={panelId}
+        aria-keyshortcuts={keyShortcuts}
         tabIndex={active ? 0 : -1}
         className={cn(
           // `max-w-[22ch]` — a hard cap on any single tab's label width in
@@ -1492,6 +1528,7 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
           className
         )}
         {...props}
+        onKeyDown={handleTabKeyDown}
       >
         {icon && (
           <span aria-hidden="true" className={cn("flex-shrink-0 transition-colors", iconColorClass)}>
@@ -1521,22 +1558,30 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
             as="span"
             items={menuItems}
             ariaLabel={menuAriaLabel}
+            open={menuOpen}
             onOpenChange={handleMenuOpenChange}
+            // Mouse-only affordance: not focusable and hidden from AT — the
+            // tab's own Shift+F10 opens this same menu (see handleTabKeyDown).
+            tabIndex={undefined}
+            role={undefined}
+            aria-hidden="true"
             className={cn(
-              "h-5 w-5 flex-shrink-0",
+              // 24px (was 20px) — WCAG 2.5.8 minimum target size.
+              "h-6 w-6 flex-shrink-0",
               active ? activeTextClass : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary"
             )}
           />
         )}
         {onRemove && !menuItems && (
           <span
-            role="button"
-            tabIndex={0}
-            aria-label={removeLabel}
+            // Mouse-only affordance: not focusable and hidden from AT —
+            // keyboard users press Delete on the tab (handleTabKeyDown).
+            aria-hidden="true"
+            title={removeLabel}
             onClick={(e) => { e.stopPropagation(); onRemove(e); }}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onRemove(e as unknown as React.MouseEvent); } }}
             className={cn(
-              "flex h-5 w-5 items-center justify-center rounded-lyra-xs flex-shrink-0 transition-colors",
+              // h-6 w-6 (24px, was 20px) — WCAG 2.5.8 minimum target size.
+              "flex h-6 w-6 items-center justify-center rounded-lyra-xs flex-shrink-0 transition-colors",
               "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
               // Per explicit follow-up request ("make all the delete trash
               // icons in the tabs the same size and color as the tabs

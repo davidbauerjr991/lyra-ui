@@ -81,6 +81,14 @@ interface MenuItemDef {
   onDrop?: (e: React.DragEvent) => void;
   onDragEnd?: (e: React.DragEvent) => void;
   onDragLeave?: (e: React.DragEvent) => void;
+  /**
+   * MenuRadix only. Keyboard alternative to drag-reordering this row (WCAG
+   * 2.1.1): called with -1 (up) / +1 (down) on Alt+Shift+ArrowUp/Down while
+   * the row is focused. Typically `(dir) => dragHandlers.onKeyboardMove?.(
+   * key, dir)` from the same `useColumnReorder` instance as the drag
+   * handlers above. Focus stays on the moved row.
+   */
+  onKeyboardMove?: (direction: -1 | 1) => void;
   /** True while another row is being dragged over this one — adds a drop-
    *  target highlight (`bg-lyra-bg-active-moderate`, the same class
    *  `SortableTableHead`'s own `isDragOver` state uses). */

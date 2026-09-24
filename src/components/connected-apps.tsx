@@ -157,7 +157,7 @@ const ConnectedAppsPanel = React.forwardRef<HTMLDivElement, ConnectedAppsPanelPr
             <div className="flex flex-col items-center justify-center gap-1 px-4 py-8 text-center">
               <Activity className="h-6 w-6 text-lyra-fg-disabled mb-1" strokeWidth={1.4} />
               <p className="lyra-body-md-emphasis text-lyra-fg-secondary">No connected apps</p>
-              <p className="lyra-body-sm text-lyra-fg-disabled">Apps will appear here once connected.</p>
+              <p className="lyra-body-sm text-lyra-fg-secondary">Apps will appear here once connected.</p>
             </div>
           ) : (
             apps.map((app) => (

@@ -148,8 +148,8 @@ const PasswordInput = React.forwardRef<HTMLDivElement, PasswordInputProps>(
                 placement="right"
                 content={<RequirementsTooltip requirements={requirements} value={value} />}
               >
-                <button type="button" className="flex items-center text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors rounded-lyra-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2">
-                  <CircleHelp className="h-3.5 w-3.5" strokeWidth={1.5} />
+                <button type="button" className="flex items-center text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors rounded-lyra-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2" aria-label="Password requirements">
+                  <CircleHelp className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
                 </button>
               </Tooltip>
             )}

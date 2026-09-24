@@ -1100,7 +1100,7 @@ function WithOperatorsDemo() {
             }
           </button>
         </div>
-        <Input value={description} readonly className="w-full" />
+        <Input value={description} readonly aria-label="Filter description" className="w-full" />
       </div>
     </div>
   );

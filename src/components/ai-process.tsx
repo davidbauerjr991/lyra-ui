@@ -119,7 +119,7 @@ const AIProcess = React.forwardRef<HTMLDivElement, AIProcessProps>(
                       {step.label}
                     </span>
                     {step.description && (
-                      <span className="lyra-body-sm text-lyra-fg-disabled">{step.description}</span>
+                      <span className="lyra-body-sm text-lyra-fg-secondary">{step.description}</span>
                     )}
                   </div>
                 </div>

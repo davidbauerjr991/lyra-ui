@@ -255,6 +255,25 @@ function MenuRadixItem({ item }: { item: MenuItemDef }) {
       onDrop={item.onDrop}
       onDragEnd={item.onDragEnd}
       onDragLeave={item.onDragLeave}
+      data-menu-item-id={item.id}
+      aria-keyshortcuts={item.onKeyboardMove ? "Alt+Shift+ArrowUp Alt+Shift+ArrowDown" : undefined}
+      onKeyDown={
+        item.onKeyboardMove
+          ? (e) => {
+              if (!(e.altKey && e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown"))) return;
+              // Keyboard reorder — stop Radix's own arrow-key roving focus
+              // from also moving to the next row, then re-focus this row
+              // once React has moved it.
+              e.preventDefault();
+              e.stopPropagation();
+              const menu = e.currentTarget.closest('[role="menu"]');
+              item.onKeyboardMove!(e.key === "ArrowUp" ? -1 : 1);
+              requestAnimationFrame(() => {
+                menu?.querySelector<HTMLElement>(`[data-menu-item-id="${CSS.escape(String(item.id))}"]`)?.focus();
+              });
+            }
+          : undefined
+      }
       onSelect={(e) => {
         // Radix closes the menu on select by default, unlike bare Menu
         // (which has no concept of closing itself at all). closeOnSelect

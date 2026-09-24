@@ -129,6 +129,10 @@ export {
   SmsDirectionIcon,
 } from "./components/channel-row";
 export type { ChannelRowInstanceProps, ChannelTabProps, ChannelToggleProps, ChannelToggleGroupProps, PlainToggleTabProps, ChannelOutcomeConfig, ChannelDirection } from "./components/channel-row";
+export { OutcomePanel } from "./components/outcome-panel";
+export type { OutcomePanelProps } from "./components/outcome-panel";
+export { VoiceCallControls } from "./components/voice-call-controls";
+export type { VoiceCallControlsProps } from "./components/voice-call-controls";
 export { ActionIconButton, ActionAvatarButton } from "./components/actions";
 export type { ActionIconButtonProps, ActionAvatarButtonProps } from "./components/actions";
 export { ShellIconButton, ShellAvatarButton } from "./components/shell-button";

@@ -20,8 +20,13 @@ export interface EmptyStateProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Optional secondary line rendered under the message, smaller/muted */
   description?: React.ReactNode;
   /**
-   * Text color for the icon/message/description — `"disabled"` (default,
-   * `text-lyra-fg-disabled`, unchanged) is the original/most muted tone,
+   * Text color for the icon/message/description. Default is now
+   * `"secondary"` (2026-09-23): `"disabled"`'s `text-lyra-fg-disabled`
+   * measured ~2:1 in light mode and ~1.9:1 in dark, well under WCAG
+   * 1.4.3's 4.5:1 for real text — that token is only exempt on genuinely
+   * disabled controls. `"disabled"` stays available as an explicit opt-in
+   * but fails contrast wherever it's used for readable text.
+   * Original description: `"disabled"` is the original/most muted tone,
    * meant for a bounded "nothing here yet" box (a card body, a history
    * panel). `"secondary"` (`text-lyra-fg-secondary`, one step brighter) is
    * for a placeholder that needs to read clearly against a busier
@@ -36,7 +41,7 @@ export interface EmptyStateProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const EmptyState = React.forwardRef<HTMLDivElement, EmptyStateProps>(
-  ({ icon, message = "No data available", description, tone = "disabled", className, ...props }, ref) => {
+  ({ icon, message = "No data available", description, tone = "secondary", className, ...props }, ref) => {
     const toneClassName = tone === "secondary" ? "text-lyra-fg-secondary" : "text-lyra-fg-disabled";
     return (
       <div

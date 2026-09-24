@@ -168,7 +168,7 @@ function useAiPanelContent({
         {showHistory ? (
           <div className="flex flex-col gap-1 py-4">
             {historyContent ?? (
-              <p className="lyra-body-sm text-lyra-fg-disabled px-3">No conversation history.</p>
+              <p className="lyra-body-sm text-lyra-fg-secondary px-3">No conversation history.</p>
             )}
           </div>
         ) : isEmpty ? (
@@ -322,11 +322,10 @@ const AiPanel = React.forwardRef<HTMLDivElement, AiPanelProps>(
               title={title}
               icon={
                 dVariant === "float" ? (
-                  <div
-                    onMouseDown={gripProps.onMouseDown}
-                    aria-hidden={gripProps["aria-hidden"]}
-                    className="flex items-center cursor-grab active:cursor-grabbing text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors"
-                  >
+                  // Spreads Draggable's full gripProps (mouse drag + the
+                  // keyboard move: role/tabIndex/aria-label/onKeyDown and
+                  // focus ring) instead of picking fields one at a time.
+                  <div {...gripProps}>
                     <GripVertical className="h-4 w-4" strokeWidth={1.5} />
                   </div>
                 ) : (

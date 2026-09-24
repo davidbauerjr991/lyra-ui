@@ -221,10 +221,15 @@ const NumberField = React.forwardRef<HTMLDivElement, NumberFieldProps>(
               "placeholder:text-lyra-fg-disabled",
               (disabled || readonly) && "cursor-not-allowed"
             )}
+            // Arrow keys step the value (handleKeyDown), so this is a real
+            // spinbutton — aria-value* are only permitted with that role.
+            role="spinbutton"
             aria-label={label}
             aria-valuemin={min}
             aria-valuemax={max}
             aria-valuenow={current}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? `${inputId}-error` : undefined}
             autoComplete="off"
           />
 
@@ -257,7 +262,7 @@ const NumberField = React.forwardRef<HTMLDivElement, NumberFieldProps>(
 
         {/* Error */}
         {error && (
-          <div role="alert" className="flex items-center gap-1 mt-1.5">
+          <div id={`${inputId}-error`} role="alert" className="flex items-center gap-1 mt-1.5">
             <ErrorIconSolid
               className="h-3.5 w-3.5 flex-shrink-0 text-lyra-status-critical-strong"
               aria-hidden="true"

@@ -105,7 +105,9 @@
   --lyra-color-accent-green-soft: #d2f4d5;
   --lyra-color-accent-green-strong: #23722D;
   --lyra-color-accent-teal-soft: #C8EDEF;
-  --lyra-color-accent-teal-strong: #11737c;
+  /* #11737c → #11727b: one step darker so teal-strong text on teal-soft
+     clears WCAG 1.4.3's 4.5:1 (was 4.46:1; now 4.52:1). */
+  --lyra-color-accent-teal-strong: #11727b;
   --lyra-color-accent-blue-soft: #d6e4ff;
   --lyra-color-accent-blue-strong: #2D5BB9;
   --lyra-color-accent-purple-soft: #e6e0ff;

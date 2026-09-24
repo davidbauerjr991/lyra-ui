@@ -169,7 +169,16 @@ function ScheduleGrid({ days }: { days: Date[] }) {
     // it — a real, shipped bug in the reference app). Isolating this
     // subtree guarantees nothing in here can ever shadow chrome that lives
     // outside it, regardless of the exact ancestor stacking layout.
-    <div ref={scrollRef} className="relative isolate flex-1 min-h-0 overflow-auto">
+    <div
+      ref={scrollRef}
+      // Focusable + named so keyboard users can scroll the grid (the
+      // blocks inside aren't focusable) — WCAG 2.1.1, axe
+      // scrollable-region-focusable.
+      tabIndex={0}
+      role="region"
+      aria-label="Schedule"
+      className="relative isolate flex-1 min-h-0 overflow-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lyra-border-focus"
+    >
       <div style={{ minWidth: gridMinWidth }}>
         {/* Sticky header block: day-of-week row + "Shift" resource lane */}
         <div className="sticky top-0 z-20 bg-lyra-bg-surface-base">

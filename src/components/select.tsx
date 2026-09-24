@@ -181,6 +181,16 @@ interface SelectProps {
    * doesn't shrink to match a compact trigger.
    */
   size?: "sm" | "md";
+
+  /**
+   * Accessible name for a Select rendered without a visible `label` (e.g.
+   * in a toolbar or panel header). The trigger is a `role="combobox"`,
+   * which — unlike a plain button — does NOT take its name from its text
+   * content, so an unlabeled Select is otherwise announced with no name
+   * at all. Falls back to `placeholder` when omitted. Ignored while
+   * `label` is set (that wires `aria-labelledby` instead).
+   */
+  "aria-label"?: string;
 }
 
 const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
@@ -211,9 +221,12 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
       className,
       id,
       size = "md",
+      "aria-label": ariaLabelProp,
     },
     ref
   ) => {
+    // Name used only when there's no visible `label` — see the prop's doc.
+    const fallbackAriaLabel = label ? undefined : (ariaLabelProp ?? placeholder);
     // Radix always portals its content — see the prop's own doc comment
     // above. Referenced (as a no-op) purely so it's clear this isn't an
     // oversight.
@@ -482,9 +495,8 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                         onClick={toggleAll}
                       >
                         <Checkbox
+                          decorative
                           checked={allSelected ? true : someSelected ? "indeterminate" : false}
-                          tabIndex={-1}
-                          aria-hidden="true"
                         />
                         <span className="lyra-body-md text-lyra-fg-default">Select All</span>
                       </button>
@@ -507,6 +519,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                   onScroll={onListScroll}
                   role="listbox"
                   aria-labelledby={label ? `${inputId}-label` : undefined}
+                  aria-label={fallbackAriaLabel}
                   aria-multiselectable
                   className="flex-1 min-h-0 overflow-y-auto lyra-scrollbar-hide p-1"
                 >
@@ -548,9 +561,9 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                           )}
                         />
                         <Checkbox
+                          decorative
                           checked={isSelected}
                           disabled={isDisabledByLimit}
-                          tabIndex={-1}
                           className="pointer-events-none"
                         />
                         {/* Optional leading icon (`SelectOption.icon`) —
@@ -596,7 +609,9 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                 aria-haspopup="listbox"
                 aria-expanded={open}
                 aria-labelledby={label ? `${inputId}-label` : undefined}
+                aria-label={fallbackAriaLabel}
                 aria-invalid={error ? true : undefined}
+                aria-describedby={error ? `${inputId}-error` : undefined}
                 className={triggerClassName}
               >
                 <span className={cn("truncate", !multiDisplayText && "text-lyra-fg-disabled")}>
@@ -666,8 +681,8 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               disabled={disabled}
               aria-label={
                 isTriggerButton
-                  ? (trigger as React.ReactElement<any>).props["aria-label"]
-                  : label || placeholder
+                  ? (trigger as React.ReactElement<any>).props["aria-label"] ?? ariaLabelProp ?? label ?? placeholder
+                  : ariaLabelProp ?? (label || placeholder)
               }
               className={
                 isTriggerButton
@@ -682,7 +697,9 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               ref={ref}
               id={inputId}
               aria-labelledby={label ? `${inputId}-label` : undefined}
+              aria-label={fallbackAriaLabel}
               aria-invalid={error ? true : undefined}
+              aria-describedby={error ? `${inputId}-error` : undefined}
               className={cn(
                 triggerClassName,
                 "data-[state=open]:border-lyra-border-active data-[state=open]:ring-2 data-[state=open]:ring-lyra-border-active/20",

@@ -27,7 +27,13 @@ interface RadioGroupProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "on
 }
 
 const RadioGroup = React.forwardRef<HTMLDivElement, RadioGroupProps>(
-  ({ className, value, defaultValue, onValueChange, name, disabled, label, labelHelpText, required, orientation = "vertical", children, ...props }, ref) => {
+  ({ className, value, defaultValue, onValueChange, name, disabled, label, labelHelpText, required, orientation = "vertical", children,
+     // Pulled out of `props` so they land on the real role="radiogroup"
+     // element below, not the outer layout <div> (where they'd be ignored)
+     // — lets a wrapper like RadioButtonGroup name the group and wire its
+     // own error message.
+     "aria-labelledby": ariaLabelledBy, "aria-describedby": ariaDescribedBy, "aria-invalid": ariaInvalid,
+     ...props }, ref) => {
     const labelId = React.useId();
 
     return (
@@ -49,7 +55,9 @@ const RadioGroup = React.forwardRef<HTMLDivElement, RadioGroupProps>(
           name={name}
           disabled={disabled}
           orientation={orientation === "horizontal" ? "horizontal" : "vertical"}
-          aria-labelledby={label ? labelId : undefined}
+          aria-labelledby={label ? labelId : ariaLabelledBy}
+          aria-describedby={ariaDescribedBy}
+          aria-invalid={ariaInvalid}
           className={cn(
             "flex",
             orientation === "horizontal" ? "flex-row gap-6" : "flex-col gap-2"

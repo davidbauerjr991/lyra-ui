@@ -640,7 +640,10 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
             here risked both this one and the avatar's own inner Tooltip
             being open at once while hovering the avatar. Simplest fix:
             only one of the two tooltips is ever "live" per state. */}
-        <Tooltip content="Agent Status and More" placement="bottom" asLabel disabled={open || agentLegNeedsAttention}>
+        {/* No `asLabel`: it put aria-label on the wrapper <span> (no role —
+            axe aria-prohibited-attr); the <button> inside already carries
+            its own aria-label. */}
+        <Tooltip content="Agent Status and More" placement="bottom" disabled={open || agentLegNeedsAttention}>
           {/* Wrap the whole Popover (not just its trigger) in a plain span —
               Tooltip's own Trigger clones its hover/focus props onto its
               immediate child via Radix Slot, which only works on a plain
@@ -752,7 +755,13 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
             >
               <button
                 type="button"
-                aria-label="Agent Status and More"
+                aria-label={
+                  agentLegStatus === "disconnected"
+                    ? "Agent Status and More, agent leg disconnected"
+                    : agentLegStatus === "connecting"
+                    ? "Agent Status and More, agent leg connecting"
+                    : "Agent Status and More"
+                }
                 className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-lyra-sm hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
               >
                 {/* While the agent leg needs attention, wrap the avatar in
@@ -770,26 +779,18 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
                     }
                     placement="bottom"
                   >
+                    {/* Mouse-only shortcut: no role/tabIndex, so it isn't a
+                        focusable control nested inside the status <button>
+                        (axe nested-interactive). Keyboard and screen-reader
+                        users reach the same connect/reconnect action via
+                        the popover's own "Agent Leg" footer row, and the
+                        button's aria-label below announces the state. */}
                     <span
-                      role="button"
-                      tabIndex={0}
-                      aria-label={
-                        agentLegStatus === "connecting"
-                          ? "Connecting agent leg"
-                          : "Agent Leg Disconnected, Click To Connect"
-                      }
                       onClick={(e) => {
                         e.stopPropagation();
                         handleAgentLegToggle();
                       }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleAgentLegToggle();
-                        }
-                      }}
-                      className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
+                      className="shrink-0 rounded-full"
                     >
                       <Avatar initials={initials} src={avatarSrc} status={status} agentLegStatus={agentLegStatus} />
                     </span>

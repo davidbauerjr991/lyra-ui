@@ -87,9 +87,12 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
                     : "text-lyra-fg-secondary"
                 )}
                 aria-live="polite"
-                aria-label={`${charCount} of ${maxLength} characters used`}
               >
-                {charCount}/{maxLength}
+                {/* Visible "4/100" is hidden from AT and paired with a
+                    screen-reader-only sentence — `aria-label` on a role-less
+                    <span> isn't reliably announced (axe aria-prohibited-attr). */}
+                <span aria-hidden="true">{charCount}/{maxLength}</span>
+                <span className="sr-only">{`${charCount} of ${maxLength} characters used`}</span>
               </span>
             )}
           </div>

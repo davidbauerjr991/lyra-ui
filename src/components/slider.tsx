@@ -102,7 +102,6 @@ const Slider = React.forwardRef<HTMLDivElement, SliderProps>(
           onValueChange={([v]) => onChange?.(v)}
           disabled={disabled}
           className="relative flex w-full touch-none select-none items-center"
-          aria-label={label ?? "Slider"}
         >
           {/* Track: 6px container with 2px visual stripe for inactive portion */}
           <SliderPrimitive.Track
@@ -116,7 +115,10 @@ const Slider = React.forwardRef<HTMLDivElement, SliderProps>(
           </SliderPrimitive.Track>
 
           {/* Thumb */}
-          <SliderPrimitive.Thumb className={thumbClass} />
+          {/* Accessible name lives on the Thumb (the element with
+              role="slider"), not the Root span — a name on the Root is never
+              announced and leaves the focusable slider itself unnamed. */}
+          <SliderPrimitive.Thumb className={thumbClass} aria-label={label ?? "Slider"} />
         </SliderPrimitive.Root>
 
         {showTicks && (
@@ -155,7 +157,6 @@ const SliderRange = React.forwardRef<HTMLDivElement, SliderRangeProps>(
           onValueChange={(v) => onChange?.([v[0], v[1]])}
           disabled={disabled}
           className="relative flex w-full touch-none select-none items-center"
-          aria-label={label ?? "Range slider"}
         >
           {/* Track: 6px container with 2px visual stripe for inactive portion */}
           <SliderPrimitive.Track
@@ -169,8 +170,9 @@ const SliderRange = React.forwardRef<HTMLDivElement, SliderRangeProps>(
           </SliderPrimitive.Track>
 
           {/* Two thumbs */}
-          <SliderPrimitive.Thumb className={thumbClass} />
-          <SliderPrimitive.Thumb className={thumbClass} />
+          {/* Each thumb gets its own name — see the single-value Slider above. */}
+          <SliderPrimitive.Thumb className={thumbClass} aria-label={`${label ?? "Range"} minimum`} />
+          <SliderPrimitive.Thumb className={thumbClass} aria-label={`${label ?? "Range"} maximum`} />
         </SliderPrimitive.Root>
 
         {showTicks && (

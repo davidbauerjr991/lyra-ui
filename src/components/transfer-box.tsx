@@ -140,7 +140,7 @@ function Panel({ label, labelTooltip, items, highlighted, onToggle, onRangeToggl
           <Label label={label} disabled={disabled} readonly={readonly} />
           {labelTooltip && (
             <Tooltip content={labelTooltip} placement="top">
-              <button type="button" className="flex items-center text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors rounded-lyra-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2">
+              <button type="button" className="flex items-center text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors rounded-lyra-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2" aria-label={`More information about ${label}`}>
                 <CircleHelp className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
               </button>
             </Tooltip>

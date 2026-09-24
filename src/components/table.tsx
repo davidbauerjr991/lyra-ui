@@ -206,6 +206,11 @@ function ColumnResizeHandle({
       role="separator"
       aria-orientation="vertical"
       aria-label={label ? `Resize ${label} column` : "Resize column"}
+      // A focusable separator is a widget (ARIA "window splitter") and must
+      // expose its current/min/max value — axe aria-required-attr.
+      aria-valuenow={Math.round(currentWidth())}
+      aria-valuemin={minWidth}
+      aria-valuemax={maxWidth}
       tabIndex={0}
       draggable={false}
       // Stops both the native HTML5 drag (column reorder, SortableTableHead)
@@ -648,10 +653,26 @@ const SortableTableHead = React.forwardRef<HTMLTableCellElement, SortableTableHe
           className
         )}
         onClick={onSort}
+        data-column-key={columnKey}
+        aria-keyshortcuts={draggable && dragHandlers.onKeyboardMove ? "Alt+Shift+ArrowLeft Alt+Shift+ArrowRight" : undefined}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             onSort?.();
+          } else if (
+            draggable &&
+            dragHandlers.onKeyboardMove &&
+            e.altKey && e.shiftKey &&
+            (e.key === "ArrowLeft" || e.key === "ArrowRight")
+          ) {
+            // Keyboard column reorder. Re-focus this column's header after
+            // React moves it — reinserting a focused node can drop focus.
+            e.preventDefault();
+            const row = e.currentTarget.parentElement;
+            dragHandlers.onKeyboardMove(columnKey!, e.key === "ArrowLeft" ? -1 : 1);
+            requestAnimationFrame(() => {
+              row?.querySelector<HTMLElement>(`[data-column-key="${CSS.escape(columnKey!)}"]`)?.focus();
+            });
           }
         }}
         aria-sort={
@@ -711,6 +732,11 @@ interface ColumnDragHandlers {
   onDrop: (e: React.DragEvent, key: string) => void;
   onDragEnd: (e: React.DragEvent) => void;
   onDragLeave: (e: React.DragEvent) => void;
+  /** Keyboard alternative to drag-reordering (WCAG 2.1.1): moves `key` one
+   *  slot left (-1) or right (+1). `SortableTableHead` calls it on
+   *  Alt+Shift+ArrowLeft/Right while the header is focused. Optional so
+   *  hand-built handler objects keep type-checking. */
+  onKeyboardMove?: (key: string, direction: -1 | 1) => void;
 }
 
 interface UseColumnReorderReturn<K extends string> {
@@ -777,6 +803,17 @@ function useColumnReorder<K extends string>(initialOrder: K[]): UseColumnReorder
     setDragOverKey(null);
   }, []);
 
+  const onKeyboardMove = useCallback((key: string, direction: -1 | 1) => {
+    setColumnOrder((prev) => {
+      const from = prev.indexOf(key as K);
+      const to = from + direction;
+      if (from === -1 || to < 0 || to >= prev.length) return prev;
+      const next = [...prev];
+      [next[from], next[to]] = [next[to], next[from]];
+      return next;
+    });
+  }, []);
+
   const resetOrder = useCallback(() => {
     setColumnOrder(initialOrder);
   }, [initialOrder]);
@@ -784,7 +821,7 @@ function useColumnReorder<K extends string>(initialOrder: K[]): UseColumnReorder
   return {
     columnOrder,
     dragOverKey,
-    dragHandlers: { onDragStart, onDragOver, onDrop, onDragEnd, onDragLeave },
+    dragHandlers: { onDragStart, onDragOver, onDrop, onDragEnd, onDragLeave, onKeyboardMove },
     resetOrder,
   };
 }

@@ -67,6 +67,11 @@ const CheckboxGroup = React.forwardRef<HTMLFieldSetElement, CheckboxGroupProps>(
       defaultValues ?? []
     );
     const currentValues = isControlled ? values : internalValues;
+    // Per-instance id prefix — option ids used to be a bare
+    // `cbg-${option.value}`, which collides (duplicate ids, broken
+    // label/for) whenever two groups on a page share an option value.
+    const groupId = React.useId();
+    const errorId = `${groupId}-error`;
 
     const toggle = (value: string) => {
       if (readonly || disabled) return;
@@ -81,6 +86,7 @@ const CheckboxGroup = React.forwardRef<HTMLFieldSetElement, CheckboxGroupProps>(
       <fieldset
         ref={ref}
         disabled={disabled}
+        aria-describedby={error ? errorId : undefined}
         className={cn("border-0 p-0 m-0 min-w-0", className)}
       >
         {/* Legend / Label row */}
@@ -111,7 +117,7 @@ const CheckboxGroup = React.forwardRef<HTMLFieldSetElement, CheckboxGroupProps>(
             return (
               <Checkbox
                 key={option.value}
-                id={`cbg-${option.value}`}
+                id={`${groupId}-${option.value}`}
                 label={option.label}
                 checked={isChecked}
                 disabled={isOptionDisabled}
@@ -125,7 +131,7 @@ const CheckboxGroup = React.forwardRef<HTMLFieldSetElement, CheckboxGroupProps>(
 
         {/* Error message */}
         {error && (
-          <div role="alert" className="flex items-center gap-1 mt-2">
+          <div id={errorId} role="alert" className="flex items-center gap-1 mt-2">
             <ErrorIconSolid
               className="h-3.5 w-3.5 flex-shrink-0 text-lyra-status-critical-strong"
               aria-hidden="true"

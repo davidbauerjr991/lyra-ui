@@ -68,6 +68,9 @@ const ProgressBar = React.forwardRef<
       value={value}
       max={100}
       className={cn(trackVariants({ size }), "w-full", className)}
+      // Default accessible name (axe aria-progressbar-name) — a consumer's own
+      // aria-label/aria-labelledby in {...props} still wins.
+      aria-label={label ?? "Progress"}
       {...props}
     >
       <ProgressPrimitive.Indicator

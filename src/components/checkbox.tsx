@@ -21,14 +21,34 @@ interface CheckboxProps
   readonly?: boolean;
   /** Additional class applied to the wrapper div (only used when label is provided) */
   wrapperClassName?: string;
+  /**
+   * Render as a purely visual, non-focusable check indicator (an
+   * `aria-hidden` <span>, same look) instead of a real checkbox — for use
+   * INSIDE another interactive element that already owns the checked
+   * semantics, e.g. a listbox option with `aria-selected` (Select's
+   * multi-select rows, TagPicker). A real checkbox nested in a button is an
+   * interactive-inside-interactive violation (axe nested-interactive) and
+   * invalid HTML.
+   */
+  decorative?: boolean;
 }
 
 const Checkbox = React.forwardRef<
   React.ComponentRef<typeof CheckboxPrimitive.Root>,
   CheckboxProps
->(({ className, error, label, labelHelpText, required, readonly, wrapperClassName, disabled, id, onCheckedChange, ...props }, ref) => {
+>(({ className, error, label, labelHelpText, required, readonly, wrapperClassName, disabled, id, onCheckedChange, decorative, ...props }, ref) => {
   const autoId = React.useId();
   const checkboxId = id || (label ? autoId : undefined);
+
+  const indicator = (
+    <CheckboxPrimitive.Indicator className="flex items-center justify-center text-current" aria-hidden="true">
+      {props.checked === "indeterminate" ? (
+        <Minus className="h-3 w-3" strokeWidth={3} />
+      ) : (
+        <Check className="h-3 w-3" strokeWidth={3} />
+      )}
+    </CheckboxPrimitive.Indicator>
+  );
 
   const checkbox = (
     <CheckboxPrimitive.Root
@@ -38,6 +58,7 @@ const Checkbox = React.forwardRef<
       // Block changes in readonly mode without visually disabling
       onCheckedChange={readonly ? undefined : onCheckedChange}
       aria-readonly={readonly || undefined}
+      aria-invalid={error || undefined}
       className={cn(
         "peer h-4 w-4 shrink-0 rounded-lyra-xs border transition-colors",
 
@@ -90,18 +111,24 @@ const Checkbox = React.forwardRef<
 
         /* Disabled (applies on top of everything) */
         "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-lyra-border-soft",
+        /* Decorative mode renders a <span>, which never matches :disabled —
+           mirror the same treatment off Radix's own data-disabled attr. */
+        decorative && "inline-flex items-center justify-center data-[disabled]:opacity-40",
 
         className
       )}
       {...props}
+      // Decorative: Radix Slot merges everything above onto the <span>
+      // below (same classes/data-state, so it looks identical) — a span has
+      // no tabindex, so nothing here is focusable, and aria-hidden drops it
+      // from the accessibility tree.
+      asChild={decorative || undefined}
     >
-      <CheckboxPrimitive.Indicator className="flex items-center justify-center text-current" aria-hidden="true">
-        {props.checked === "indeterminate" ? (
-          <Minus className="h-3 w-3" strokeWidth={3} />
-        ) : (
-          <Check className="h-3 w-3" strokeWidth={3} />
-        )}
-      </CheckboxPrimitive.Indicator>
+      {decorative ? (
+        <span aria-hidden="true">{indicator}</span>
+      ) : (
+        indicator
+      )}
     </CheckboxPrimitive.Root>
   );
 
