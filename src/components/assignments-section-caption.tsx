@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowUpDown, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
+import { SlidersVertical, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
 import { Tooltip } from "./tooltip";
 import { Popover } from "./popover";
 import { RadioGroup, RadioGroupItem } from "./radio";
@@ -92,7 +92,13 @@ export function AssignmentsSortButton({
               triggering that second Tooltip, since only `title` opts a
               button into it. */}
           <ActionIconButton size="sm" aria-label={`Sort by: ${selectedLabel}`} aria-expanded={open}>
-            <ArrowUpDown className="h-3.5 w-3.5" strokeWidth={1.5} />
+            {/* Per explicit request ("use the sliders vertical instead of
+                the arrows vertical icon for the Sort By in the Assignments
+                panel") — swaps lucide's plain up/down-arrows glyph for its
+                "adjustments" one (two vertical tracks with handles),
+                matching the filter icon already used elsewhere in this
+                design system. */}
+            <SlidersVertical className="h-3.5 w-3.5" strokeWidth={1.5} />
           </ActionIconButton>
         </Popover>
       </span>

@@ -1,6 +1,6 @@
 import * as React from "react";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
-import { ChevronDown, Phone, MessageCircle, User, Sparkles, FileText } from "lucide-react";
+import { ChevronDown, Phone, MessageCircle, User, Sparkles, FileText, Activity } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Popover } from "./popover";
 import { MenuItem } from "./menu-item";
@@ -441,6 +441,18 @@ export interface CustomerContextOverviewInfo {
    *  suggested next step) — this is the longer narrative form of the same
    *  prior-contact context. Omit for no narrative summary to show. */
   detailedSummary?: string[];
+  /** Per explicit request ("replace the autosummary card in the contact
+   *  details with the content depicted in the screenshot of the real time
+   *  summary card"): a single flowing paragraph — grounded in this same
+   *  contact's real facts (the caller joins the exact same per-contact
+   *  `snapshot` lines `buildCustomerContextOverviewInfo` already computes,
+   *  agent-next-gen-shared-utils.ts — never placeholder/random copy), NOT
+   *  a bullet list. Only rendered by the "Real-Time Summary" container
+   *  (see `showRealTimeSummary`'s own doc comment below) — `snapshot`
+   *  itself is left completely untouched for the ordinary "Autosummary"
+   *  container every other consumer keeps using. Omit for a generic "no
+   *  summary available" fallback line. */
+  realTimeSummary?: string;
 }
 
 export interface CustomerContextOverviewProps extends CustomerContextOverviewInfo {
@@ -480,6 +492,36 @@ export interface CustomerContextOverviewProps extends CustomerContextOverviewInf
    *  `true` — every other consumer keeps showing this container exactly
    *  as before, mirroring `showCustomerProfile`'s identical pattern. */
   showContactSnapshot?: boolean;
+  /** Per explicit request ("replace the autosummary card in the contact
+   *  details with the content depicted in the screenshot of the real time
+   *  summary card ... ignore the edit/pin icons and keep it as an
+   *  accordion"), then a follow-up clarification ("do not modify the
+   *  autosummary card that is inline with the conversation - create a new
+   *  card and call it 'Real-Time Summary'"): a SEPARATE, opt-in container
+   *  — pulse (`Activity`) icon, "Real-Time Summary" title, `realTimeSummary`
+   *  rendered as one flowing paragraph (not `snapshot`'s bullet list),
+   *  a divider, then `realTimeSummaryUpdatedLabel` — that REPLACES
+   *  "Contact Snapshot"/"Autosummary" in this same slot when `true`,
+   *  rather than a new prop on that container itself. Deliberately no
+   *  "View Customer Contacts" link here (the reference screenshot has no
+   *  equivalent), and no pin/edit icons either — those belong to whatever
+   *  dashboard-widget chrome the reference screenshot came from, not this
+   *  accordion; this container still toggles open/closed exactly like its
+   *  two siblings (per "keep it as an accordion"). Defaults to `false` —
+   *  every existing consumer (in particular the main transcript column's
+   *  own `customerContextOverview` render, which must keep showing the
+   *  ORIGINAL "Autosummary" untouched per that follow-up clarification)
+   *  keeps rendering `showContactSnapshot`'s plain bullet-list container
+   *  exactly as before. `DetailsPanelAccordions` (agent-next-gen-customer-
+   *  info-panel.tsx) is the one caller that opts in. */
+  showRealTimeSummary?: boolean;
+  /** `"Updated 8 seconds ago"`-style caption shown under `realTimeSummary`,
+   *  below a divider — the caller owns the actual relative-time formatting
+   *  (this component just renders the string as-is), same "caller resolves
+   *  the content" division of labor every other pre-formatted string prop
+   *  here already follows (`customerCard.subtitle`, etc.). Only meaningful
+   *  alongside `showRealTimeSummary`; omit for no caption line at all. */
+  realTimeSummaryUpdatedLabel?: string;
 }
 
 /* ── CustomerContextOverview ──
@@ -518,12 +560,15 @@ const CustomerContextOverview = React.forwardRef<HTMLDivElement, CustomerContext
       nextBestActionContent,
       nextBestActionBare,
       detailedSummary,
+      realTimeSummary,
       className,
       onViewCustomerInfo,
       onViewInteractionHistory,
       showNextBestAction = true,
       showCustomerProfile = true,
       showContactSnapshot = true,
+      showRealTimeSummary = false,
+      realTimeSummaryUpdatedLabel,
     },
     ref
   ) => {
@@ -531,9 +576,14 @@ const CustomerContextOverview = React.forwardRef<HTMLDivElement, CustomerContext
     // `showCustomerProfile`/`showContactSnapshot` hide one or more (see
     // each prop's own doc comment) — either way a stable, synchronous
     // count (never derived from the `sections` array below, which is
-    // built AFTER this effect needs it).
+    // built AFTER this effect needs it). `showRealTimeSummary` shares
+    // `showContactSnapshot`'s own slot in this count (see
+    // `showRealTimeSummary`'s own doc comment — the two are mutually
+    // exclusive, never both counted).
     const SECTION_COUNT =
-      (showCustomerProfile ? 1 : 0) + (showContactSnapshot ? 1 : 0) + (showNextBestAction ? 1 : 0);
+      (showCustomerProfile ? 1 : 0) +
+      (showRealTimeSummary || showContactSnapshot ? 1 : 0) +
+      (showNextBestAction ? 1 : 0);
     // How many containers have started their entrance so far — ratchets up
     // one at a time on a staggered timer, never down, so a re-render mid-
     // stagger (e.g. a prop update) can't restart it.
@@ -756,6 +806,28 @@ const CustomerContextOverview = React.forwardRef<HTMLDivElement, CustomerContext
         )}
       </div>
     );
+
+    // "Real-Time Summary" content — see `showRealTimeSummary`'s own doc
+    // comment above for the full "why". A single flowing paragraph (not
+    // `snapshotBody`'s bullet list), a divider, then the caller-supplied
+    // "Updated X ago" caption — matching the reference screenshot's own
+    // content, minus the pin/edit icons and the drag handle (neither
+    // belongs on an accordion item; see that same doc comment). No "View
+    // Customer Contacts" link — the reference screenshot has no
+    // equivalent control.
+    const realTimeSummaryBody = (
+      <div className="flex flex-col gap-3 p-4">
+        <p className="lyra-body-md text-lyra-fg-default">
+          {realTimeSummary ?? "No real-time summary is available for this contact yet."}
+        </p>
+        {realTimeSummaryUpdatedLabel && (
+          <>
+            <div className="border-t border-lyra-border-subtle" />
+            <span className="lyra-body-sm text-lyra-fg-secondary">{realTimeSummaryUpdatedLabel}</span>
+          </>
+        )}
+      </div>
+    );
     // Stitches the two generic sections above back together with the
     // bespoke "Autosummary" item, in the original Customer Profile /
     // Contact Snapshot / Next Best Action order, while keeping a single
@@ -808,36 +880,44 @@ const CustomerContextOverview = React.forwardRef<HTMLDivElement, CustomerContext
         </AccordionPrimitive.Item>
       );
     }
-    if (showContactSnapshot) {
+    // `showRealTimeSummary` takes over this exact slot instead of
+    // "Contact Snapshot"/"Autosummary" — see that prop's own doc comment
+    // above for the full "why" (a caller opts into ONE or the other, never
+    // both at once in the same overview).
+    if (showRealTimeSummary || showContactSnapshot) {
       const i = entryIndex++;
       orderedItems.push(
         <AccordionPrimitive.Item
-          key="customer-snapshot"
-          value="customer-snapshot"
+          key={showRealTimeSummary ? "real-time-summary" : "customer-snapshot"}
+          value={showRealTimeSummary ? "real-time-summary" : "customer-snapshot"}
           className={cn(
             "rounded-lyra-md border border-lyra-border-subtle overflow-hidden transition-all ease-out duration-700",
             i < enteredCount ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
           )}
         >
           <AccordionPrimitive.Header>
-            {/* Light-purple header band + document icon + bold title —
-                matches this app's existing "Journey Summary" card
-                (`CopilotTabContent`, agent-next-gen-customer-info-
-                panel.tsx: `bg-lyra-accent-purple-soft` header over a plain
-                white body) rather than the other two sections' plain
-                neutral trigger row, per the reference mockup. Still a real
-                `AccordionPrimitive.Trigger` (the whole band toggles
-                open/closed, chevron included) even though the mockup
-                itself doesn't show a chevron — per explicit request
-                ("make this an accordion"), this stays genuinely
-                collapsible like its two siblings, not a static card.
-                Chevron is `h-5 w-5` (was `h-4 w-4` — per explicit bug
-                report, "make sure the accordion chevron size matches the
-                lyra-ui component - it looks smaller") to match
-                `renderGenericSection`'s own chevron exactly, same reasoning
-                that function's own doc comment gives for this whole
-                trigger row's padding/sizing already being shared across
-                every section. */}
+            {/* Light-purple header band + icon + bold title — matches this
+                app's existing "Journey Summary" card (`CopilotTabContent`,
+                agent-next-gen-customer-info-panel.tsx: `bg-lyra-accent-
+                purple-soft` header over a plain white body) rather than
+                the other two sections' plain neutral trigger row, per the
+                reference mockup. Still a real `AccordionPrimitive.Trigger`
+                (the whole band toggles open/closed, chevron included) even
+                though neither reference mockup shows a chevron — per
+                explicit request ("make this an accordion"/"keep it as an
+                accordion"), this stays genuinely collapsible like its two
+                siblings, not a static card. Chevron is `h-5 w-5` (was
+                `h-4 w-4` — per explicit bug report, "make sure the
+                accordion chevron size matches the lyra-ui component - it
+                looks smaller") to match `renderGenericSection`'s own
+                chevron exactly, same reasoning that function's own doc
+                comment gives for this whole trigger row's padding/sizing
+                already being shared across every section. Icon/label swap
+                per `showRealTimeSummary` — `Activity` (a pulse/waveform
+                glyph, matching the "Real-Time Summary" reference
+                screenshot) instead of `FileText`, "Real-Time Summary"
+                instead of "Autosummary" — everything else about this
+                header (color, sizing, chevron) is identical either way. */}
             {/* `lyra-purple-soft-header-fix` (lyra-tokens.css), not the
                 shared `bg-lyra-accent-purple-soft` class — per explicit
                 report ("check if that's the correct dark mode version, it
@@ -855,18 +935,43 @@ const CustomerContextOverview = React.forwardRef<HTMLDivElement, CustomerContext
                 promote-to-global follow-up. Light mode is untouched either
                 way (this class simply falls back to the real token
                 there). */}
-            <AccordionPrimitive.Trigger className="group w-full flex items-center gap-2 lyra-purple-soft-header-fix px-4 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-inset hover:brightness-95 cursor-pointer">
-              <FileText className="h-4 w-4 shrink-0 text-lyra-accent-purple-strong" strokeWidth={1.5} aria-hidden="true" />
-              <span className="flex-1 text-left lyra-body-md-emphasis text-lyra-fg-default truncate">Autosummary</span>
+            {/* Per explicit follow-up request ("make all the card headers
+                in the contact details subtle blue like the customer info
+                card") — `showRealTimeSummary` swaps this header's own
+                purple treatment for the EXACT same `bg-lyra-status-info-
+                subtle`/`text-lyra-status-info-strong` pairing "Customer
+                Info"'s own trigger just above already uses, rather than a
+                new blue variant of its own. Scoped to the `showRealTimeSummary`
+                branch only — the plain "Autosummary" container (every
+                consumer that never opts into "Real-Time Summary", e.g. the
+                main transcript column) keeps its original purple
+                treatment untouched. */}
+            <AccordionPrimitive.Trigger
+              className={cn(
+                "group w-full flex items-center gap-2 px-4 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-inset hover:brightness-95 cursor-pointer",
+                showRealTimeSummary ? "bg-lyra-status-info-subtle" : "lyra-purple-soft-header-fix"
+              )}
+            >
+              {showRealTimeSummary ? (
+                <Activity className="h-4 w-4 shrink-0 text-lyra-status-info-strong" strokeWidth={1.5} aria-hidden="true" />
+              ) : (
+                <FileText className="h-4 w-4 shrink-0 text-lyra-accent-purple-strong" strokeWidth={1.5} aria-hidden="true" />
+              )}
+              <span className="flex-1 text-left lyra-body-md-emphasis text-lyra-fg-default truncate">
+                {showRealTimeSummary ? "Real-Time Summary" : "Autosummary"}
+              </span>
               <ChevronDown
-                className="h-5 w-5 shrink-0 text-lyra-accent-purple-strong transition-transform duration-200 group-data-[state=open]:rotate-180"
+                className={cn(
+                  "h-5 w-5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180",
+                  showRealTimeSummary ? "text-lyra-status-info-strong" : "text-lyra-accent-purple-strong"
+                )}
                 strokeWidth={1.5}
                 aria-hidden="true"
               />
             </AccordionPrimitive.Trigger>
           </AccordionPrimitive.Header>
           <AccordionPrimitive.Content className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
-            <div className="bg-lyra-bg-surface-base">{snapshotBody}</div>
+            <div className="bg-lyra-bg-surface-base">{showRealTimeSummary ? realTimeSummaryBody : snapshotBody}</div>
           </AccordionPrimitive.Content>
         </AccordionPrimitive.Item>
       );
@@ -882,16 +987,27 @@ const CustomerContextOverview = React.forwardRef<HTMLDivElement, CustomerContext
     }
     const orderedValues = [
       showCustomerProfile && "customer-profile",
-      showContactSnapshot && "customer-snapshot",
+      showRealTimeSummary ? "real-time-summary" : showContactSnapshot && "customer-snapshot",
       nextBestActionSection && !nextBestActionBare && "next-best-action",
     ].filter((v): v is string => typeof v === "string");
 
     return (
-      <div ref={ref} className={cn("w-full pt-4 flex flex-col gap-3", className)}>
+      // Per explicit follow-up request ("update the gap between chat
+      // bubbles and other items to be 24px instead of 12px"): `gap-6`
+      // (1.5rem/24px), not the original `gap-3` (0.75rem/12px) — this is
+      // the container that actually spaces "Customer Info"/"Autosummary"/
+      // "Next Best Action" apart from each other (and, for a
+      // `nextBestActionBare` consumer like `MarcusWebbNextBestActionCard`,
+      // apart from whatever bare content — a chat bubble, in that case —
+      // takes "Next Best Action"'s spot in this same list). The outer
+      // wrapper's own `gap-3` never had any visible effect (it only ever
+      // wraps this one `AccordionPrimitive.Root` child), but is widened to
+      // match anyway for consistency.
+      <div ref={ref} className={cn("w-full pt-4 flex flex-col gap-6", className)}>
         <AccordionPrimitive.Root
           type="multiple"
           defaultValue={orderedValues}
-          className="flex flex-col gap-3"
+          className="flex flex-col gap-6"
         >
           {orderedItems}
         </AccordionPrimitive.Root>

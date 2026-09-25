@@ -7,9 +7,8 @@ import {
   Phone,
   TriangleAlert,
   CircleAlert,
-  User,
   UserX,
-  ArrowUpRight,
+  ArrowLeftRight,
   PhoneIncoming,
   PhoneOutgoing,
   CircleCheck,
@@ -54,12 +53,13 @@ const WhatsAppIcon = ({ className = "h-3 w-3" }: { className?: string }) => (
   </svg>
 );
 
-/** Person + redirect-arrow composite — no single Lucide icon covers "transfer". */
+/** Per explicit request ("update the consult/transfer icon to be 2 arrows
+ *  like in screenshot 2") — was a Person + redirect-arrow composite (no
+ *  single Lucide icon covered "transfer" at the time); replaced with
+ *  Lucide's own `ArrowLeftRight` (two opposing horizontal arrows), a
+ *  single glyph, so this is now a plain icon rather than a composed one. */
 const ConsultTransferIcon = () => (
-  <span className="relative inline-flex h-4 w-4 items-center justify-center" aria-hidden="true">
-    <User className="h-4 w-4" strokeWidth={1.5} />
-    <ArrowUpRight className="absolute -right-1 -top-1 h-2.5 w-2.5" strokeWidth={2.5} />
-  </span>
+  <ArrowLeftRight className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
 );
 
 /** Whether a channel was customer-initiated ("inbound") or agent-initiated
@@ -190,6 +190,14 @@ export interface InteractionChannel {
    *  supplied (checked first, via `??`) — omit to leave this row's plain
    *  clock+text behavior exactly as before (every other caller). */
   elapsedOverride?: React.ReactNode;
+  /** Per explicit request ("when a call is placed on hold, add an on hold
+   *  timer below the call timer in the call controls and in the
+   *  interaction nav item") — see `ChannelRowProps.onHoldElapsed`'s own
+   *  doc comment (this is the same field, just declared here on the
+   *  per-channel data object `InteractionNavItem` iterates over, same
+   *  split `elapsedOverride` above already has between this type and
+   *  `ChannelRowProps`). Omit to render nothing extra. */
+  onHoldElapsed?: string;
   /** Message preview for this channel. */
   preview?: string;
   /**
@@ -356,6 +364,14 @@ export function buildVoiceMenuItems(onDismiss?: () => void): MenuEntry[] {
 interface ChannelRowProps {
   icon: React.ReactNode;
   label: string;
+  /** Per explicit request ("when hovering on the channel chips - add a
+   *  tooltip that is {channel name} ie. inbound voice / outbound voice /
+   *  sms / chat / whatsapp / etc.") — the chip's own hover `Tooltip` text.
+   *  Defaults to `label` itself (plain "SMS"/"Chat"/"WhatsApp"/"Email") —
+   *  only `VoiceChannelRow` (below) overrides this, to a direction-aware
+   *  "Inbound Voice"/"Outbound Voice" when it has a real `direction`, same
+   *  as the explicit example only distinguished direction for voice. */
+  tooltipLabel?: string;
   /** This row's chip color when not `awaitingResponse` — see
    *  `CHANNEL_TYPE_TAG_VARIANT` above. `awaitingResponse` always overrides
    *  to "critical" (red) regardless of this value. */
@@ -454,6 +470,19 @@ interface ChannelRowProps {
   /** See `InteractionChannel.controlsDisabled`'s own doc comment. Default
    *  false. */
   controlsDisabled?: boolean;
+  /** Per explicit request ("when a call is placed on hold, add an on hold
+   *  timer below the call timer in the call controls and in the
+   *  interaction nav item") — an already-formatted "MM:SS" duration,
+   *  rendered as a NEW line ("On hold · MM:SS", in the same red/critical
+   *  color every other "needs attention" reading in this app uses)
+   *  directly below the existing preview/elapsed-timer row, not a
+   *  replacement for it (unlike this row's own pre-existing
+   *  `elapsedOverride`, which DOES swap out that whole row — see its own
+   *  doc comment — the two are deliberately different treatments for two
+   *  different requests). Omit to render nothing extra — every existing
+   *  consumer (including `channelOnHold`'s own `elapsedOverride` swap)
+   *  is unaffected. */
+  onHoldElapsed?: string;
 }
 
 // `direction` (see `InteractionChannel.direction`'s own doc comment) is
@@ -513,6 +542,7 @@ function stripPromotedChannelRowActions(items: MenuEntry[], options?: { keepCons
 const ChannelRow: React.FC<ChannelRowProps> = ({
   icon,
   label,
+  tooltipLabel,
   variant,
   elapsed,
   elapsedOverride,
@@ -534,6 +564,7 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
   showDismissButton = false,
   onEndCall,
   controlsDisabled = false,
+  onHoldElapsed,
 }) => {
   // `null` when not awaiting at all (the plain gray look below is
   // untouched); otherwise `awaitingSeverity`, defaulting to `"critical"` —
@@ -608,10 +639,12 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
           second signal, not a clarifying one. The chip's own color swap
           (`severity ?? variant` just below) still carries the same
           information on its own, unchanged. */}
-      <span className={cn(tagVariants({ variant: severity ?? variant, shape: "pill" }))}>
-        <span aria-hidden="true">{icon}</span>
-        {label}
-      </span>
+      <Tooltip content={tooltipLabel ?? label} placement="top">
+        <span className={cn(tagVariants({ variant: severity ?? variant, shape: "pill" }))}>
+          <span aria-hidden="true">{icon}</span>
+          {label}
+        </span>
+      </Tooltip>
       {/* Trailing button cluster — Consult/Transfer, Outcome, and the kebab
           — grouped together as siblings in ONE wrapper so all three read as
           a single unit in the code, with `gap-0` applied consistently
@@ -926,6 +959,13 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
         </span>
       ))}
     </div>
+    {/* On-hold timer — see `ChannelRowProps.onHoldElapsed`'s own doc
+        comment for why this is a new line, not a swap of the row above. */}
+    {onHoldElapsed && (
+      <span className="lyra-body-xs text-lyra-status-critical-strong">
+        On hold · {onHoldElapsed}
+      </span>
+    )}
     </div>
   </div>
   );
@@ -941,6 +981,9 @@ export interface ChannelRowInstanceProps {
   /** Passed straight through to `ChannelRow` — see `InteractionChannel.
    *  elapsedOverride`'s own doc comment. */
   elapsedOverride?: React.ReactNode;
+  /** Passed straight through to `ChannelRow` — see `InteractionChannel.
+   *  onHoldElapsed`'s own doc comment. */
+  onHoldElapsed?: string;
   preview?: string;
   highlighted?: boolean;
   isFirst?: boolean;
@@ -1053,6 +1096,9 @@ const VoiceChannelRow: React.FC<ChannelRowInstanceProps> = ({ menuItems, removab
     // Phase 1 & Phase 2 only).
     icon={<VoiceDirectionIcon direction={direction} className="h-3 w-3" />}
     label="Voice"
+    // See `ChannelRowProps.tooltipLabel`'s own doc comment — the one
+    // wrapper the explicit request called out for direction-aware text.
+    tooltipLabel={direction === "inbound" ? "Inbound Voice" : direction === "outbound" ? "Outbound Voice" : "Voice"}
     variant={CHANNEL_TYPE_TAG_VARIANT.voice}
     // `buildDigitalMenuItems`, not `buildVoiceMenuItems` — per explicit
     // request ("the more options for the interactionNavItem should be the

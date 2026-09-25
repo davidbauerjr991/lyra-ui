@@ -555,6 +555,18 @@ export interface VoiceCallControlsProps {
    *  provided — omit to leave this button exactly as before (a purely
    *  local, decorative toggle with no effect outside this component). */
   onHoldChange?: (onHold: boolean) => void;
+  /** Per explicit request ("when a call is placed on hold, add an on hold
+   *  timer below the call timer in the call controls and in the
+   *  interaction nav item") — seconds since this call was put on hold,
+   *  rendered as a second "On hold MM:SS" line directly below the running
+   *  call-duration timer, in the same red/critical color every other
+   *  "needs attention" reading in this app uses, whenever `onHold` is also
+   *  true. Only meaningful (and only rendered) while `onHold` is true;
+   *  ignored otherwise. Omit to render nothing extra — same "renders fine
+   *  without it" fallback every other optional prop here already follows,
+   *  so a caller that only tracks the plain `onHold` boolean (no start
+   *  timestamp) is unaffected. */
+  onHoldElapsedSeconds?: number;
   /** Per explicit request (Agent Workspace 2.0 Phase 1 only): hides the
    *  "Add video" button entirely. This bar's own divider just before it
    *  stays either way — it still separates the call-feature cluster from
@@ -611,6 +623,7 @@ export function VoiceCallControls({
   videoOpen,
   onHold: onHoldControlled,
   onHoldChange,
+  onHoldElapsedSeconds,
   showAddVideo = true,
   stretch = false,
   customerLabel,
@@ -938,24 +951,40 @@ export function VoiceCallControls({
           // icon+label `WideCallControlButton`s (each roughly h-16 now,
           // was h-8) so they don't sit flush against this card's own
           // border.
-          "w-full flex items-center justify-between gap-2 rounded-lg px-3 py-2"
+          "w-full grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-lg px-3 py-2"
         )}
       >
-        {/* Three real flex slots now (timer / main buttons+volume / dark
-            mute+video+End Call), replacing the former two-slot layout — per
-            explicit request/reference screenshot ("update the call control
-            button order to be like the attached screenshot"). The
-            screenshot's own left-to-right shape is: a timer alone at the
-            far left with a large gap after it, a centered cluster of
-            lighter/decorative controls, a divider, a visibly DARKER
-            mute+video pair, then a large red "End Call" button anchored to
-            the far right. `justify-between` on this row still does the
-            bookending work (leading/trailing slots `shrink-0`, middle slot
-            `flex-1`+`justify-center` claims whatever space is left and
-            centers its own contents within it) — same mechanism the old
-            two-slot layout already used, just with a third slot added and
-            the controls redistributed among all three. */}
-        <div className="flex shrink-0 items-center gap-2">
+        {/* Three real slots (customer identity+timer / main buttons+
+            volume / dark mute+video+End Call), replacing the former
+            two-slot layout — per explicit request/reference screenshot
+            ("update the call control button order to be like the attached
+            screenshot"). The screenshot's own left-to-right shape is: a
+            timer alone at the far left with a large gap after it, a
+            centered cluster of lighter/decorative controls, a divider, a
+            visibly DARKER mute+video pair, then a large red "End Call"
+            button anchored to the far right.
+
+            This row used to be a plain `flex justify-between` with
+            `shrink-0` leading/trailing slots and a `flex-1` middle one —
+            per a LATER explicit follow-up request/bug report ("the middle
+            buttons shift position when the name is longer... this
+            requires those containers to be equal width and not dependent
+            on the length of the customer name"), that's a CSS grid
+            instead: `grid-cols-[1fr_auto_1fr]` forces the leading and
+            trailing columns to the SAME width (whichever needs more room)
+            regardless of either one's own content, so the `auto` middle
+            column — and the decorative cluster centered within it — stays
+            genuinely fixed at the bar's true center instead of drifting
+            right as `customerLabel` grows. Under the old `flex`, only the
+            middle slot's own CONTENTS were centered within a box whose
+            left edge tracked the (variable-width) identity slot next to
+            it — never actually centered on the bar as a whole. Each of
+            the three columns keeps its own `min-w-0` (grid items default
+            to `min-width: auto`, sized to fit their content, same
+            overflow footgun flex has) so the identity slot's existing
+            name `truncate` can still do its job if its equal share ever
+            runs short, rather than forcing the whole bar wider. */}
+        <div className="flex min-w-0 items-center gap-2">
           {/* Avatar chip + identity line — added per explicit request/
               reference screenshot ("add the customer avatar. Add the name /
               number/email above the timer"). Only renders while the caller
@@ -1031,9 +1060,23 @@ export function VoiceCallControls({
               <span className="w-[34px] shrink-0 text-right tabular-nums">{formatElapsedTime(elapsedSeconds)}</span>
             </span>
           )}
+          {/* On-hold timer — see `onHoldElapsedSeconds`'s own doc comment.
+              A second line directly below the call timer above, not a
+              replacement for it (unlike `InteractionNavItem`'s own
+              `elapsedOverride` convention, channel-row.tsx) — this bar's
+              call timer keeps counting total call time regardless of hold
+              state, same as it always has. */}
+          {onHold && onHoldElapsedSeconds !== undefined && (
+            <span
+              className="lyra-body-sm text-lyra-status-critical-strong"
+              aria-label={`On hold ${formatElapsedTime(onHoldElapsedSeconds)}`}
+            >
+              On hold {formatElapsedTime(onHoldElapsedSeconds)}
+            </span>
+          )}
           </div>
         </div>
-        <div className="flex min-w-0 flex-1 items-stretch justify-center gap-1">
+        <div className="flex min-w-0 items-stretch justify-center gap-1">
           {/* Decorative cluster — Hold/Mask/Record/Keypad/Transcript/Volume,
               unchanged in behavior/styling from before, just relocated out
               of the old leading `justify-start` slot into this slot
@@ -1360,7 +1403,7 @@ export function VoiceCallControls({
               trailing boundary. */}
           <span aria-hidden="true" className="h-4 w-px shrink-0 self-center bg-lyra-border-subtle" />
         </div>
-        <div className="flex shrink-0 items-stretch gap-2">
+        <div className="flex min-w-0 items-stretch justify-end gap-2">
           {/* Mute — moved out of the centered cluster above and given
               `strong` (see `WideCallControlButton`'s own doc comment for
               what that darkens) per the reference screenshot, which shows

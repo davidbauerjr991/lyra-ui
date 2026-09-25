@@ -1032,12 +1032,20 @@ function ContactHistoryCard({ onSelectEntry, selectedEntryId }: ContactHistoryCa
                   <span className="lyra-body-sm text-lyra-fg-secondary">{entry.skillName}</span>
                 </div>
                 <div className="flex flex-col items-end gap-1.5 shrink-0">
-                  <Tag
-                    label={entry.channelLabel}
-                    variant={CONTACT_HISTORY_CHANNEL_TAG_VARIANT[entry.channelType]}
-                    shape="pill"
-                    icon={<ChannelIcon strokeWidth={1.5} />}
-                  />
+                  {/* Per explicit request ("when hovering on the channel
+                      chips - add a tooltip that is {channel name}") — this
+                      entry type has no `direction` field to distinguish
+                      Inbound/Outbound Voice (unlike agent-next-gen-v2's own
+                      parallel Contact History `Tag`, which does), so this
+                      tooltip is always just the plain `channelLabel`. */}
+                  <Tooltip content={entry.channelLabel} placement="top">
+                    <Tag
+                      label={entry.channelLabel}
+                      variant={CONTACT_HISTORY_CHANNEL_TAG_VARIANT[entry.channelType]}
+                      shape="pill"
+                      icon={<ChannelIcon strokeWidth={1.5} />}
+                    />
+                  </Tooltip>
                   <span className="lyra-body-sm text-lyra-fg-secondary whitespace-nowrap">{entry.timeAgo}</span>
                 </div>
               </div>

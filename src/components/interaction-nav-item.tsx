@@ -689,6 +689,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                   // clock+timer regardless of what `elapsedOverride` was set
                   // to.
                   elapsedOverride={ch.elapsedOverride}
+                  onHoldElapsed={ch.onHoldElapsed}
                   preview={ch.preview}
                   highlighted={highlighted}
                   isFirst={i === 0}
@@ -1343,7 +1344,19 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
               <span
                 className={cn(
                   "lyra-body-xs",
-                  severity === "critical"
+                  // `onHold` wins outright, ahead of `severity` — same
+                  // "held call is a stronger signal" precedent the outer
+                  // card's own border/background treatment already
+                  // establishes (see `onHold`'s own doc comment above).
+                  // Per explicit request, this counter now reads
+                  // `elapsed`'s own hold-time value (app-level `elapsed`
+                  // prop's own call-site comment) in the same red the rest
+                  // of the app already uses for "on hold"/critical states,
+                  // rather than staying plain gray while the tile's avatar
+                  // badge and border have already escalated.
+                  onHold
+                    ? "text-lyra-status-critical-strong"
+                    : severity === "critical"
                     ? "text-lyra-status-critical-strong"
                     : severity === "warning"
                     ? "text-lyra-status-warning-strong"

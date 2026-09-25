@@ -514,6 +514,25 @@ export interface CreateNewOutboundConfig {
    * instead of leaving it permanently toggled on.
    */
   hideContactList?: boolean;
+  /**
+   * Per explicit request (a voice-only deployment where "Dial Pad" is the
+   * ONLY group in `groups`): skips screen 1 (the group-row picker,
+   * `"outbound-menu"`) entirely when `groups` has exactly one entry — the
+   * popover opens straight onto that one group's own screen instead of a
+   * picker whose only possible choice is a single, pointless row. That
+   * screen also gets no back button (there's no real "back" destination,
+   * same reasoning as `dialpadRequest`'s own back-button suppression
+   * above) and its header falls back to `outboundTitle` (default "New
+   * Outbound") instead of the group's own `label` ("Dial Pad") — the
+   * trigger's own name is what the agent clicked, and with nothing to
+   * pick between, the group's generic label adds nothing.
+   *
+   * Has no effect when `groups.length !== 1` — a real picker still makes
+   * sense (and is still reachable) the moment there's more than one
+   * group, so this never hides a genuine choice. Default `false`; every
+   * existing consumer is unaffected.
+   */
+  skipGroupPicker?: boolean;
 }
 
 export interface CreateNewProps
@@ -554,6 +573,16 @@ export interface CreateNewProps
    * instead of the compact icon-only trigger. Used when the nav rail is open.
    */
   expanded?: boolean;
+  /** Per explicit request ("in phase 1, we cannot have 2 or more calls at
+   *  the same time, so if an agent is on an active call then disable the
+   *  new outbound button") — shown in this trigger's own `Tooltip` (in
+   *  place of `title`) while `disabled` (inherited from
+   *  `ButtonHTMLAttributes`, native) is true, so a disabled trigger still
+   *  says WHY rather than just sitting inert — same "explain a disabled
+   *  action" convention `blockedTooltip` already establishes elsewhere in
+   *  this file. Ignored while `disabled` is false/unset — every existing
+   *  caller that never disables this trigger at all is unaffected. */
+  disabledReason?: string;
 }
 
 /* ── Drill-down view stack ── */
@@ -1319,10 +1348,23 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
     // rather than firing immediately the way they used to;
     // `connectTimeoutRef`'s own effect above cancels this outright if the
     // agent closes the popover before then.
+    // Per explicit request ("when non-voice interactions are selected you
+    // don't need to have a connecting, just open the new interaction (only
+    // connect for voice)"): the "Connecting…" delay/spinner
+    // (`CONNECTING_DURATION_MS`'s own doc comment has the fuller "why" for
+    // voice) only applies when the channel actually being started is
+    // voice — every other channel (email, SMS, WhatsApp, chat, or a
+    // "custom" address that resolves to one of those) opens the new
+    // interaction immediately instead.
     const handleStartCall = () => {
       if (!detailSkill || connecting) return;
       if (detailChannel === "custom") {
         if (!customResolvedChannel || !customTrimmed) return;
+        if (customResolvedChannel !== "voice") {
+          onStartCall({ contact, channel: customResolvedChannel, phone: customTrimmed, skillId: detailSkill });
+          setOpen(false);
+          return;
+        }
         setConnecting(true);
         connectTimeoutRef.current = setTimeout(() => {
           connectTimeoutRef.current = null;
@@ -1332,6 +1374,11 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
         return;
       }
       if (!detailChannel) return;
+      if (detailChannel !== "voice") {
+        onStartCall({ contact, channel: detailChannel, phone: detailPhone, skillId: detailSkill });
+        setOpen(false);
+        return;
+      }
       setConnecting(true);
       connectTimeoutRef.current = setTimeout(() => {
         connectTimeoutRef.current = null;
@@ -1701,6 +1748,8 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
       title = "New Outbound",
       expanded = false,
       outbound,
+      disabled,
+      disabledReason,
       ...props
     },
     ref
@@ -1711,8 +1760,18 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     // top-level action list to land on first) — same fallback used by the
     // group Select's own default.
     const initialOutboundGroupId = outbound?.defaultGroupId ?? outbound?.groups[0]?.id;
+    // See `CreateNewOutboundConfig.skipGroupPicker`'s own doc comment —
+    // guarded on `groups.length === 1` here (not just the raw prop) so a
+    // consumer that passes `true` defensively/unconditionally never
+    // silently hides a real, more-than-one-choice picker if a second
+    // group is ever added back.
+    const skipGroupPicker = !!outbound?.skipGroupPicker && outbound.groups.length === 1;
     const [stack, setStack] = useState<Screen[]>(
-      isOutboundFlow ? [{ kind: "outbound-menu" }] : [{ kind: "root" }]
+      isOutboundFlow
+        ? skipGroupPicker
+          ? [{ kind: "group", groupId: initialOutboundGroupId ?? "" }]
+          : [{ kind: "outbound-menu" }]
+        : [{ kind: "root" }]
     );
     const [search, setSearch] = useState("");
     // Shared by the drill-down flow's screen-1 quick-dial field and the
@@ -1870,7 +1929,13 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     React.useEffect(() => {
       if (!open) {
         const t = setTimeout(() => {
-          setStack(isOutboundFlow ? [{ kind: "outbound-menu" }] : [{ kind: "root" }]);
+          setStack(
+            isOutboundFlow
+              ? skipGroupPicker
+                ? [{ kind: "group", groupId: initialOutboundGroupId ?? "" }]
+                : [{ kind: "outbound-menu" }]
+              : [{ kind: "root" }]
+          );
           setSearch("");
           setPhone({ countryCode: "us", number: "" });
           setPage(1);
@@ -2310,8 +2375,24 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     // opens the resulting interaction) and this popover's close are both
     // now deferred until the "Connecting…" window elapses; the effect above
     // cancels this outright if the agent closes the popover before then.
+    // Per explicit request ("when non-voice interactions are selected you
+    // don't need to have a connecting, just open the new interaction (only
+    // connect for voice)"): that deferral only happens for `detailChannel
+    // === "voice"` — every other channel opens the interaction right away,
+    // same carve-out as `OutboundAddButton`'s own identical
+    // `handleStartCall` above.
     const handleStartCall = () => {
       if (!outbound || !activeOutboundContact || !detailChannel || !detailSkill || connecting) return;
+      if (detailChannel !== "voice") {
+        outbound.onStartCall?.({
+          contact: activeOutboundContact,
+          channel: detailChannel,
+          phone: detailPhone,
+          skillId: detailSkill,
+        });
+        setOpen(false);
+        return;
+      }
       setConnecting(true);
       connectTimeoutRef.current = setTimeout(() => {
         connectTimeoutRef.current = null;
@@ -2403,6 +2484,7 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
           // without a separate "is this a redial" flag.
           (activeGroup?.kind === "dialpad" ? dialpadCustomerName : null) ??
           (activeGroup?.kind === "dialpad" && dialpadRequestActive ? "Redial Contact" : null) ??
+          (skipGroupPicker ? outbound?.outboundTitle ?? "New Outbound" : null) ??
           activeGroup?.label ??
           outbound?.outboundTitle ??
           "New Outbound"
@@ -2426,7 +2508,8 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
       (isDrillDown && screen.kind !== "root") ||
       (isOutboundFlow &&
         (screen.kind === "detail" || screen.kind === "group") &&
-        !(screen.kind === "group" && activeGroup?.kind === "dialpad" && dialpadRequestActive));
+        !(screen.kind === "group" && activeGroup?.kind === "dialpad" && dialpadRequestActive) &&
+        !(screen.kind === "group" && skipGroupPicker));
 
     // A single persistent button, not two JSX branches swapped by
     // `expanded` — its width/colors/padding and the label's reveal are all
@@ -2459,8 +2542,16 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
           "hover:bg-lyra-state-hover-primary active:bg-lyra-state-pressed-primary",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
           expanded ? "w-full px-4" : "w-9 px-0",
+          // Same `disabled:pointer-events-none disabled:opacity-40`
+          // treatment `buttonVariants` (button.tsx) already applies to
+          // every other disabled button in this design system, kept in
+          // sync by hand here since this trigger is a plain `<button>`,
+          // not `Button` — see `disabledReason`'s own doc comment for why
+          // this trigger needs to support `disabled` at all.
+          "disabled:pointer-events-none disabled:opacity-40",
           className
         )}
+        disabled={disabled}
         {...props}
       >
         <Plus className="h-4 w-4 flex-shrink-0" strokeWidth={1.5} aria-hidden="true" />
@@ -3508,8 +3599,18 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     // rail (see left-nav.tsx's `footer` slot / CreateNew.stories), so
     // the tooltip needs to open into the page rather than toward the
     // rail's own edge — see CONTRIBUTING.md §16.
+    // While genuinely `disabled` with a `disabledReason`, the tooltip stays
+    // available even in `expanded` mode (normally suppressed there, see
+    // this wrapper's own doc comment above) — the expanded button's own
+    // visible label already explains WHAT the button does, but not WHY
+    // it's currently inert, so the reason still needs a way to surface.
+    const showDisabledReason = !!disabled && !!disabledReason;
     return (
-      <Tooltip content={title} placement="right" disabled={expanded || open}>
+      <Tooltip
+        content={showDisabledReason ? disabledReason : title}
+        placement="right"
+        disabled={open || (expanded && !showDisabledReason)}
+      >
         <span className="flex w-full justify-center">{popover}</span>
       </Tooltip>
     );

@@ -300,6 +300,10 @@ export type { LoginCardProps, LoginCardPhoneSetup } from "./components/login-car
 export { AgentWelcomeMessage } from "./components/agent-welcome-message";
 export type { AgentWelcomeMessageProps } from "./components/agent-welcome-message";
 
+/* ── Avatar ── */
+export { Avatar, avatarVariants } from "./components/avatar";
+export type { AvatarProps, AvatarSize, AvatarShape, AvatarColor } from "./components/avatar";
+
 /* ── Icon ── */
 export { Icon, iconVariants, iconContainerVariants } from "./components/icon";
 export type { IconProps, IconSize, IconColor } from "./components/icon";
