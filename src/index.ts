@@ -65,7 +65,7 @@ export { AppMenu } from "./components/app-menu";
 export type { AppMenuItem, AppMenuGroup, AppMenuProps } from "./components/app-menu";
 export { AppNameMenu } from "./components/app-name-menu";
 export type { AppNameMenuProps } from "./components/app-name-menu";
-export { CreateNew, OutboundAddButton, useOutboundAddButton, looksLikeEmail, looksLikePhoneNumber } from "./components/create-new";
+export { CreateNew, AddChannelButton, useAddChannelButton, looksLikeEmail, looksLikePhoneNumber } from "./components/create-new";
 export type {
   CreateNewItem,
   CreateNewProps,
@@ -77,8 +77,8 @@ export type {
   CreateNewOutboundGroup,
   CreateNewChannelOption,
   CreateNewOutboundConfig,
-  OutboundAddButtonProps,
-  UseOutboundAddButtonResult,
+  AddChannelButtonProps,
+  UseAddChannelButtonResult,
 } from "./components/create-new";
 export { InteractionNavItem } from "./components/interaction-nav-item";
 export type { InteractionNavItemProps, InteractionChannel, ChannelType } from "./components/interaction-nav-item";

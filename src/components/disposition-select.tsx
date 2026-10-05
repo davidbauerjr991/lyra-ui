@@ -7,6 +7,7 @@ import { Menu, type MenuEntry } from "./menu";
 import { SearchInput } from "./search-input";
 import { FavoriteButton } from "./favorite-button";
 import { Label } from "./label";
+import { ErrorIconSolid } from "./icons/error-icon-solid";
 
 /* ── DispositionSelect ──
    Purpose-built replacement for a plain `Select` on the Outcome popover's
@@ -61,14 +62,35 @@ export interface DispositionSelectProps {
    *  kebab-triggered version). */
   dropdownClassName?: string;
   className?: string;
+  /** Shown (dimmed) in place of a label when `value` doesn't match any
+   *  option — e.g. an empty string, meaning nothing has been picked yet. */
+  placeholder?: string;
+  /** Error message — triggers error styling (red border/background on the
+   *  trigger) and renders this text below the field, same convention
+   *  `Input`/`Textarea`/`Select` already use (see each of those for the
+   *  identical pattern this mirrors). */
+  error?: string;
 }
 
 const DispositionSelect = React.forwardRef<HTMLDivElement, DispositionSelectProps>(
-  ({ label = "Disposition code", options, value, onValueChange, dropdownClassName, className }, ref) => {
+  (
+    {
+      label = "Disposition code",
+      options,
+      value,
+      onValueChange,
+      dropdownClassName,
+      className,
+      placeholder = "Select disposition code",
+      error,
+    },
+    ref
+  ) => {
     const [open, setOpen] = React.useState(false);
     const [search, setSearch] = React.useState("");
     const [favorites, setFavorites] = React.useState<Set<string>>(new Set());
     const contentRef = React.useRef<HTMLDivElement>(null);
+    const errorId = React.useId();
 
     // Clear search when the popover closes — same reset `AgentProfile`'s
     // own status search performs on close.
@@ -154,7 +176,8 @@ const DispositionSelect = React.forwardRef<HTMLDivElement, DispositionSelectProp
           ])),
     ];
 
-    const selectedLabel = options.find((o) => o.value === value)?.label ?? value;
+    const matchedOption = options.find((o) => o.value === value);
+    const selectedLabel = matchedOption?.label ?? (value || placeholder);
 
     return (
       <div ref={ref} className={className}>
@@ -193,9 +216,16 @@ const DispositionSelect = React.forwardRef<HTMLDivElement, DispositionSelectProp
             variant="outline"
             aria-haspopup="menu"
             aria-expanded={open}
-            className="h-9 w-full justify-between border-lyra-border-strong bg-lyra-bg-field font-normal text-lyra-fg-default hover:bg-lyra-bg-field hover:border-lyra-state-border-hover-neutral"
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? errorId : undefined}
+            className={cn(
+              "h-9 w-full justify-between font-normal",
+              error
+                ? "border-lyra-status-critical-strong bg-lyra-status-critical-subtle text-lyra-fg-default hover:border-lyra-status-critical-strong hover:bg-lyra-status-critical-subtle"
+                : "border-lyra-border-strong bg-lyra-bg-field text-lyra-fg-default hover:bg-lyra-bg-field hover:border-lyra-state-border-hover-neutral"
+            )}
           >
-            <span className="truncate">{selectedLabel}</span>
+            <span className={cn("truncate", !matchedOption && "text-lyra-fg-disabled")}>{selectedLabel}</span>
             <ChevronDown
               className={cn(
                 "h-4 w-4 shrink-0 text-lyra-fg-secondary transition-transform",
@@ -206,6 +236,12 @@ const DispositionSelect = React.forwardRef<HTMLDivElement, DispositionSelectProp
             />
           </Button>
         </Popover>
+        {error && (
+          <div id={errorId} role="alert" className="flex items-center gap-1 mt-1.5">
+            <ErrorIconSolid className="h-3.5 w-3.5 flex-shrink-0 text-lyra-status-critical-strong" aria-hidden="true" />
+            <span className="lyra-body-sm text-lyra-status-critical-strong">{error}</span>
+          </div>
+        )}
       </div>
     );
   }

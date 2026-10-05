@@ -66,8 +66,10 @@ export interface SidePanelProps extends React.HTMLAttributes<HTMLDivElement> {
   width?: number;
 
   headerTitle?: string;
-  /** Optional line below `headerTitle`, e.g. a record's name + id */
-  headerSubhead?: string;
+  /** Optional line below `headerTitle`, e.g. a record's name + id —
+   *  `ReactNode`, same widened type as `ContainerHeader`'s own `subhead`
+   *  this forwards straight into (see that prop's own doc comment). */
+  headerSubhead?: React.ReactNode;
   headerIcon?: React.ReactNode;
   /**
    * Rendered inline immediately after `headerTitle`, same row (forwarded

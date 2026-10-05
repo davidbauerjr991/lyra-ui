@@ -60,6 +60,11 @@ export interface ChannelOutcomeConfig {
   resolutionOptions: { label: string; dotColor: string }[];
   resolution: string;
   onResolutionChange: (value: string) => void;
+  /** Marks this channel as voice — voice interactions have no real Open/
+   *  Pending/Resolved/Closed disposition to log, so `voice: true` hides
+   *  the Status field entirely. Everything else in the popover (Tags/
+   *  Disposition/Summary/Cancel/Save) is unaffected. */
+  voice?: boolean;
   /** Every tag that could be applied — same `{label, variant}` shape
    *  `TagPicker`'s own `options` already uses, reused here (not
    *  redefined) so one shared tag palette works for both surfaces. */
@@ -81,6 +86,25 @@ export interface ChannelOutcomeConfig {
   onSave: () => void;
   /** "Cancel" clicked. */
   onCancel: () => void;
+  /** True once this channel's call has ended (voice only) — per explicit
+   *  request, swaps the footer from "Cancel"/"Save & Close" to
+   *  "Save & Redial"/"Save & Dismiss" instead, since ending a call folds
+   *  "wrap this call up" entirely into this popover rather than leaving it
+   *  split across a separate standalone dismiss icon. Unset/false leaves
+   *  the footer exactly as today — every existing caller/story is
+   *  unaffected. */
+  callEnded?: boolean;
+  /** "Save & Redial" clicked — only rendered while `callEnded` is true.
+   *  Called with the Outcome trigger's own DOM node (see
+   *  `buildOutcomePopoverSlots`'s `triggerRef` param) so the consumer can
+   *  anchor the resulting dial-pad popover right where this Outcome
+   *  popover itself was opened from, the same way Contact History's own
+   *  Redial button anchors its popover on itself — this Outcome popover's
+   *  OWN footer button isn't a safe anchor on its own, since it unmounts
+   *  the instant this popover closes. */
+  onSaveAndRedial?: (anchorEl: HTMLElement | null) => void;
+  /** "Save & Dismiss" clicked — only rendered while `callEnded` is true. */
+  onSaveAndDismiss?: () => void;
 }
 
 /** Local state the Outcome popover's own nested Resolution dropdown needs
@@ -118,7 +142,15 @@ const stopSyntheticBubble = (e: React.SyntheticEvent) => e.stopPropagation();
  *  icon button with `align="end"`, `ChannelTab` anchors the whole tab). */
 export function buildOutcomePopoverSlots(
   outcome: ChannelOutcomeConfig,
-  { resolutionMenuOpen, setResolutionMenuOpen, resolutionMenuView, setResolutionMenuView }: ReturnType<typeof useOutcomePopoverState>
+  { resolutionMenuOpen, setResolutionMenuOpen, resolutionMenuView, setResolutionMenuView }: ReturnType<typeof useOutcomePopoverState>,
+  // The Outcome trigger's own DOM node — a STABLE anchor that stays
+  // mounted across this popover opening/closing (unlike this footer's own
+  // "Save & Redial" button, or anything else inside this popover's own
+  // content). Each caller supplies a ref to ITS OWN trigger element (see
+  // each call site's own doc comment) — optional so an existing caller
+  // that hasn't wired one through yet still renders (falls back to
+  // `null`, same as omitting `onSaveAndRedial` entirely elsewhere).
+  triggerRef?: React.RefObject<HTMLElement | null>
 ): { header: React.ReactNode; footer: React.ReactNode; content: React.ReactNode } {
   return {
     // `onClick={stopSyntheticBubble}` on all three slots below — per
@@ -161,16 +193,41 @@ export function buildOutcomePopoverSlots(
     ),
     footer: (
       <div className="flex items-center justify-end gap-2 px-5 pb-4 pt-1" onClick={stopSyntheticBubble}>
-        <Button variant="outline" size="md" onClick={outcome.onCancel}>
-          Cancel
-        </Button>
-        <Button variant="default" size="md" onClick={outcome.onSave}>
-          Save &amp; Close
-        </Button>
+        {outcome.callEnded ? (
+          <>
+            {/* Per explicit request: once a call has ended, the agent
+                can't redial or dismiss the contact without first logging
+                a real disposition — same "never pre-populated, agent must
+                actually pick one" requirement the Disposition field's own
+                `error` state (above) already enforces visually; this is
+                the same rule enforced as an action gate on both buttons. */}
+            <Button
+              variant="outline"
+              size="md"
+              onClick={() => outcome.onSaveAndRedial?.(triggerRef?.current ?? null)}
+              disabled={!outcome.dispositionCode}
+            >
+              Save &amp; Redial
+            </Button>
+            <Button variant="default" size="md" onClick={outcome.onSaveAndDismiss} disabled={!outcome.dispositionCode}>
+              Save &amp; Dismiss
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="outline" size="md" onClick={outcome.onCancel}>
+              Cancel
+            </Button>
+            <Button variant="default" size="md" onClick={outcome.onSave}>
+              Save &amp; Close
+            </Button>
+          </>
+        )}
       </div>
     ),
     content: (
       <div className="flex flex-col gap-4 pb-2 pt-1" onClick={stopSyntheticBubble}>
+        {!outcome.voice && (
         <div>
           <Label label="Status" className="mb-1.5" />
           {/* Same colored-dot `Menu` the session-status pill's own dropdown
@@ -198,14 +255,14 @@ export function buildOutcomePopoverSlots(
             }}
             placement="bottom"
             align="start"
-            // `z-[10005]` — one tier above this popover's own, now-
-            // `z-[10003]`, parent (see that Popover's own doc comment at
+            // `z-[10001]` — one tier above this popover's own, now-
+            // `z-[9999]`, parent (see that Popover's own doc comment at
             // each call site) — "Select dropdown nested inside a popover
             // nested inside another popover" per CONTRIBUTING.md §4,
             // reused here even though this particular nested overlay is a
             // `Popover` (not a `Select`) since the table's tiers are about
             // nesting *depth*, not component identity.
-            className="z-[10005] w-[var(--radix-popover-trigger-width)]"
+            className="z-[10001] w-[var(--radix-popover-trigger-width)]"
             // `bodyPadding` defaults to `true` (`popover.tsx`'s own `px-5`
             // inset for plain body content) — a `bare` `Menu` already
             // supplies its own full-bleed row padding (`p-1` per row), so
@@ -330,6 +387,7 @@ export function buildOutcomePopoverSlots(
             </Button>
           </Popover>
         </div>
+        )}
         <div>
           <Label label="Tags" className="mb-1.5" />
           <Select
@@ -338,10 +396,10 @@ export function buildOutcomePopoverSlots(
             options={outcome.tagOptions.map((option) => ({ value: option.label, label: option.label }))}
             values={outcome.selectedTags}
             onValuesChange={outcome.onTagsChange}
-            // Same `z-[10005]` tier as the Resolution popover above — this
-            // dropdown is a `Select` nested inside this now-`z-[10003]`
+            // Same `z-[10001]` tier as the Resolution popover above — this
+            // dropdown is a `Select` nested inside this now-`z-[9999]`
             // "Log Outcome" popover, same depth, same failure mode.
-            dropdownClassName="z-[10005]"
+            dropdownClassName="z-[10001]"
           />
           {/* Applied tags render as removable pills BELOW the picker
               itself, per explicit request — `Select`'s own multi-select
@@ -375,7 +433,13 @@ export function buildOutcomePopoverSlots(
           value={outcome.dispositionCode}
           onValueChange={outcome.onDispositionChange}
           // Same reasoning as the Tags `Select` above.
-          dropdownClassName="z-[10005]"
+          dropdownClassName="z-[10001]"
+          // Per explicit request: never pre-populated (the consumer's own
+          // default draft now always starts this at `""`) — shown in an
+          // error state until the agent actually picks one. Purely
+          // derived from `dispositionCode` itself, so it clears the
+          // instant a real option is chosen.
+          error={!outcome.dispositionCode ? "Please select a disposition code" : undefined}
         />
         <Textarea
           label="Summary"
@@ -401,10 +465,21 @@ export interface OutcomePanelProps {
   children: React.ReactElement;
   /** Forwarded straight through to the underlying `Popover` — same
    *  defaults `ChannelRow`'s own standalone Outcome button uses
-   *  (`placement="bottom"`, `align="end"`, `z-[10003]`). */
+   *  (`placement="bottom"`, `align="end"`, `z-[9999]`). */
   className?: string;
   placement?: React.ComponentProps<typeof Popover>["placement"];
   align?: React.ComponentProps<typeof Popover>["align"];
+  /** Forwarded straight through to the underlying `Popover` — see that
+   *  prop's own doc comment (popover.tsx). Needed when the trigger this
+   *  panel wraps isn't the rightmost element of its own row (e.g. a kebab
+   *  or another control sits to its right): `align="end"` alone aligns to
+   *  the TRIGGER's own edge, which can leave this panel not fully covering
+   *  content below/beside that wider row. */
+  alignOffset?: number;
+  /** Forwarded straight through to the underlying `Popover` (default: 10). */
+  sideOffset?: number;
+  /** Forwarded straight through to the underlying `Popover` (default: true). */
+  showArrow?: boolean;
 }
 
 /** Standalone, ready-to-drop "Log Outcome" popover — see this file's own
@@ -417,22 +492,37 @@ export function OutcomePanel({
   className,
   placement = "bottom",
   align = "end",
+  alignOffset,
+  sideOffset,
+  showArrow,
 }: OutcomePanelProps) {
   const popoverState = useOutcomePopoverState();
-  const { header, footer, content } = buildOutcomePopoverSlots(outcome, popoverState);
+  // Own DOM node of the `children` trigger itself — passed to
+  // `buildOutcomePopoverSlots` as the "Save & Redial" anchor (see that
+  // function's own `triggerRef` param doc comment). Cloned onto `children`
+  // below rather than asking the caller to manage its own ref/pass one in,
+  // since `OutcomePanel`'s whole point is "drop this in with just a
+  // `ChannelOutcomeConfig` and a trigger" — Radix's own `Popover.Trigger
+  // asChild` (popover.tsx) already composes refs on a cloned child
+  // correctly, so this ref and Radix's own internal one both attach fine.
+  const triggerRef = React.useRef<HTMLElement | null>(null);
+  const { header, footer, content } = buildOutcomePopoverSlots(outcome, popoverState, triggerRef);
   return (
     <Popover
       open={outcome.open}
       onOpenChange={outcome.onOpenChange}
       placement={placement}
       align={align}
-      className={cn("z-[10003] w-80", className)}
+      alignOffset={alignOffset}
+      sideOffset={sideOffset}
+      showArrow={showArrow}
+      className={cn("z-[9999] w-80", className)}
       onCloseAutoFocus={(e) => e.preventDefault()}
       header={header}
       footer={footer}
       content={content}
     >
-      {children}
+      {React.cloneElement(children, { ref: triggerRef } as React.RefAttributes<HTMLElement>)}
     </Popover>
   );
 }

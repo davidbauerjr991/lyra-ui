@@ -588,6 +588,11 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
   // Outcome popover's own Resolution-dropdown state — see
   // `useOutcomePopoverState`'s own doc comment above.
   const outcomePopoverState = useOutcomePopoverState();
+  // This standalone Outcome trigger's own DOM node — a stable anchor for
+  // "Save & Redial" (see `buildOutcomePopoverSlots`'s own `triggerRef`
+  // param doc comment) that stays mounted across this popover opening and
+  // closing, unlike the popover's own footer button.
+  const outcomeTriggerRef = React.useRef<HTMLButtonElement>(null);
   return (
   <div
     onClick={onSelect}
@@ -765,68 +770,84 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
               </Tooltip>
             )}
             {outcome ? (
-              <Popover
-                open={outcome.open}
-                onOpenChange={outcome.onOpenChange}
-                placement="bottom"
-                align="end"
-                // `z-[10003]` — "Popover nested inside another popover" per
-                // CONTRIBUTING.md §4's own hierarchy table. This row (and so
-                // this whole button cluster) is reused verbatim as the
-                // compact LeftNav tile's hover-preview popover content
-                // (`InteractionNavItem`'s `!expanded` branch) — in that
-                // context this Popover really is nested one level inside
-                // another already-open `Popover`, both otherwise sharing
-                // the same unhelpful `z-50` default, so which one painted on
-                // top came down to DOM/portal mount order rather than any
-                // real stacking rule — the reported symptom (this popover
-                // rendering *underneath* the hover-preview card, and both
-                // flickering open/closed as the mouse crossed the
-                // ambiguous overlap where hit-testing disagreed with what
-                // was visually on top). Bumped unconditionally rather than
-                // only when actually nested, since a Popover always meant
-                // to read as "topmost, modal-like" has no reason to sit at
-                // a lower tier in its other (non-nested, always-expanded
-                // row) usage either — see the Resolution popover and the
-                // Tags/Disposition `Select`s below, raised to `z-[10005]`
-                // for the exact same reason one level deeper.
-                className="z-[10003] w-80"
-                // Same "don't hand focus back to the trigger on close" fix
-                // `TagPicker` already established (tag-picker.tsx) — this
-                // trigger is an icon `Button` with its own `title`-driven
-                // Tooltip, and Radix's default close behavior returning
-                // focus to it would immediately reopen that tooltip with no
-                // real hover intent behind it.
-                onCloseAutoFocus={(e) => e.preventDefault()}
-                {...buildOutcomePopoverSlots(outcome, outcomePopoverState)}
-              >
-                <Button
-                  variant="icon"
-                  size="icon-sm"
-                  title="Outcome"
-                  disabled={controlsDisabled}
-                  className="shrink-0 text-lyra-fg-secondary"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {/* Per explicit request ("make the outcome check button
-                      a solid blue circle"): swaps the outline `CircleCheck`
-                      lucide icon for this file's own `SuccessIconSolid` (a
-                      filled circle + white checkmark, recolorable via
-                      `text-*` since its circle is `fill="currentColor"`) —
-                      the same solid-icon convention `WarningIconSolid`
-                      above already uses. Kept the existing
-                      `text-lyra-status-info-strong` blue tint rather than
-                      the icon's "success" green default, matching the blue
-                      this Outcome icon has always used. The kebab-menu
-                      "Outcome" entries (`buildStandardKebabMenuOptions`/
-                      `buildVoiceKebabMenuOptions` above) keep the plain
-                      outline `CircleCheck` — they sit in a list alongside
-                      other plain outline icons (Send/FileDown/Languages/
-                      PlayCircle), where a solid badge would look
-                      inconsistent with its neighbors. */}
-                  <SuccessIconSolid className="h-4 w-4 text-lyra-status-info-strong" />
-                </Button>
-              </Popover>
+              // Tooltip wraps the Popover from the OUTSIDE, via a plain
+              // `<span className="inline-flex">` DOM element for Radix's
+              // `asChild` to clone onto — same composition `ChannelToggle`
+              // already uses for this exact popover a few hundred lines
+              // down. Relying on `Button`'s own `title`-driven auto-Tooltip
+              // (the previous approach here) has no way to suppress itself
+              // while the Popover it sits on top of is open — unlike this
+              // explicit `Tooltip`, which takes a `disabled` prop for
+              // exactly that. With no such gate, the "Outcome" hover label
+              // could still be showing (the pointer is still resting on
+              // this same button right after the click that opened the
+              // popover) at the same time as the newly-opened "Log
+              // Outcome" popover card, visibly bleeding out from behind/
+              // beside it — a real, reported bug, not just a hypothetical
+              // one. `disabled={outcome.open}` closes that gap the same
+              // way `menuOpen` already does for the kebab's "More Options"
+              // tooltip just above.
+              <Tooltip content="Outcome" placement="bottom" className="z-[10020]">
+                <span className="inline-flex">
+                  <Popover
+                    open={outcome.open}
+                    onOpenChange={outcome.onOpenChange}
+                    placement="bottom"
+                    align="end"
+                    // `z-[9999]` — "Popover nested inside another popover" per
+                    // CONTRIBUTING.md §4's own hierarchy table. This row (and so
+                    // this whole button cluster) is reused verbatim as the
+                    // compact LeftNav tile's hover-preview popover content
+                    // (`InteractionNavItem`'s `!expanded` branch) — in that
+                    // context this Popover really is nested one level inside
+                    // another already-open `Popover`, both otherwise sharing
+                    // the same unhelpful `z-50` default, so which one painted on
+                    // top came down to DOM/portal mount order rather than any
+                    // real stacking rule — the reported symptom (this popover
+                    // rendering *underneath* the hover-preview card, and both
+                    // flickering open/closed as the mouse crossed the
+                    // ambiguous overlap where hit-testing disagreed with what
+                    // was visually on top). Bumped unconditionally rather than
+                    // only when actually nested, since a Popover always meant
+                    // to read as "topmost, modal-like" has no reason to sit at
+                    // a lower tier in its other (non-nested, always-expanded
+                    // row) usage either — see the Resolution popover and the
+                    // Tags/Disposition `Select`s below, raised to `z-[10001]`
+                    // for the exact same reason one level deeper.
+                    className="z-[9999] w-80"
+                    onCloseAutoFocus={(e) => e.preventDefault()}
+                    {...buildOutcomePopoverSlots(outcome, outcomePopoverState, outcomeTriggerRef)}
+                  >
+                    <Button
+                      ref={outcomeTriggerRef}
+                      variant="icon"
+                      size="icon-sm"
+                      aria-label="Outcome"
+                      disabled={controlsDisabled}
+                      className="shrink-0 text-lyra-fg-secondary"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {/* Per explicit request ("make the outcome check button
+                          a solid blue circle"): swaps the outline `CircleCheck`
+                          lucide icon for this file's own `SuccessIconSolid` (a
+                          filled circle + white checkmark, recolorable via
+                          `text-*` since its circle is `fill="currentColor"`) —
+                          the same solid-icon convention `WarningIconSolid`
+                          above already uses. Kept the existing
+                          `text-lyra-status-info-strong` blue tint rather than
+                          the icon's "success" green default, matching the blue
+                          this Outcome icon has always used. The kebab-menu
+                          "Outcome" entries (`buildStandardKebabMenuOptions`/
+                          `buildVoiceKebabMenuOptions` above) keep the plain
+                          outline `CircleCheck` — they sit in a list alongside
+                          other plain outline icons (Send/FileDown/Languages/
+                          PlayCircle), where a solid badge would look
+                          inconsistent with its neighbors. */}
+                      <SuccessIconSolid className="h-4 w-4 text-lyra-status-info-strong" />
+                    </Button>
+                  </Popover>
+                </span>
+              </Tooltip>
             ) : (
               <Button
                 variant="icon"
@@ -1592,9 +1613,9 @@ const ChannelTab: React.FC<ChannelTabProps> = ({
             onOpenChange={outcome.onOpenChange}
             placement="bottom"
             align="start"
-            // Same `z-[10003]`/`onCloseAutoFocus` reasoning as `ChannelRow`'s
+            // Same `z-[9999]`/`onCloseAutoFocus` reasoning as `ChannelRow`'s
             // own Outcome popover — see that component's call site.
-            className="z-[10003] w-80"
+            className="z-[9999] w-80"
             onCloseAutoFocus={(e) => e.preventDefault()}
             // `tabElement` is `Tab`, which carries its own `onClick` (channel
             // selection) — without `asAnchor`, Radix's `Trigger` ALSO wires
@@ -1629,7 +1650,7 @@ const ChannelTab: React.FC<ChannelTabProps> = ({
                 e.preventDefault();
               }
             }}
-            {...buildOutcomePopoverSlots(outcome, outcomePopoverState)}
+            {...buildOutcomePopoverSlots(outcome, outcomePopoverState, anchorRef)}
           >
             {tabElement}
           </Popover>
@@ -1861,7 +1882,7 @@ const ChannelToggle: React.FC<ChannelToggleProps> = ({
               onOpenChange={outcome.onOpenChange}
               placement="bottom"
               align="start"
-              className="z-[10003] w-80"
+              className="z-[9999] w-80"
               onCloseAutoFocus={(e) => e.preventDefault()}
               asAnchor
               modal
@@ -1870,7 +1891,7 @@ const ChannelToggle: React.FC<ChannelToggleProps> = ({
                   e.preventDefault();
                 }
               }}
-              {...buildOutcomePopoverSlots(outcome, outcomePopoverState)}
+              {...buildOutcomePopoverSlots(outcome, outcomePopoverState, anchorRef)}
             >
               {toggleElement}
             </Popover>

@@ -42,7 +42,7 @@ export type AgentPresenceStatus = "available" | "busy" | "away" | "offline" | "i
 /** How long "Start Interaction"/"Dial Number" show their own "Connecting…"
  *  state (button disabled, spinner + label swapped in) before the actual
  *  call fires and this popover closes — shared by every button that starts
- *  a voice/digital interaction (`OutboundAddButton`'s own detail form,
+ *  a voice/digital interaction (`AddChannelButton`'s own detail form,
  *  `CreateNew`'s outbound-flow detail screen, and its dialpad group's "Dial
  *  Number") so they all read as the same, consistent transition. Per
  *  explicit request ("instead of using the call controls strip for the
@@ -277,7 +277,7 @@ export interface CreateNewOutboundContact extends CreateNewContact {
   openChannelTypes?: ChannelType[];
   /** This contact's own primary phone number — e.g. the "Home" entry a
    *  customer-info/directory surface shows for them — as opposed to
-   *  `phoneOptions` (`CreateNewOutboundConfig`/`OutboundAddButtonProps`),
+   *  `phoneOptions` (`CreateNewOutboundConfig`/`AddChannelButtonProps`),
    *  which is a flat, contact-agnostic list (originally shaped for the
    *  agent's own outbound caller-ID lines). When set, "Select Phone" (the
    *  detail form's Voice/SMS address field) lists this first and defaults
@@ -298,7 +298,7 @@ export interface CreateNewOutboundContact extends CreateNewContact {
    *  Select Phone/Outbound Skill/Start Interaction) entirely for this
    *  contact — picking any channel (row click, per-row hover flyout, or
    *  the header's own "Select Channel" field when reached via
-   *  `OutboundAddButton`'s `initialChannel`) calls `onStartCall`
+   *  `AddChannelButton`'s `initialChannel`) calls `onStartCall`
    *  immediately with resolved defaults (first available phone/address
    *  for that channel, first `skillOptions` entry) instead of pushing the
    *  form. Meant for records with no real per-contact address to choose
@@ -427,7 +427,7 @@ export interface CreateNewOutboundConfig {
   /** Imperatively opens the popover directly to the call-setup ("detail")
    *  screen for a specific contact+channel, bypassing this component's own
    *  group/contact list — e.g. `InteractionNavItem`'s own "Add Outbound"
-   *  button (`OutboundAddButton` below) already knows which contact and
+   *  button (`AddChannelButton` below) already knows which contact and
    *  channel to start, since the contact already has a live interaction
    *  card; re-picking the same contact from this popover's own list would
    *  be redundant. The contact is looked up across every group's
@@ -951,11 +951,11 @@ function firstAvailableChannel(
 /** Default value + selectable options for the outbound detail form's second
  *  field ("Select Phone"/"Select Email Address"/"Select WhatsApp Handle") —
  *  shared by `CreateNew`'s own "detail" screen (`defaultDetailValueFor`/
- *  `detailFieldMeta` below) AND `OutboundAddButton`'s self-contained detail
+ *  `detailFieldMeta` below) AND `AddChannelButton`'s self-contained detail
  *  form (below), so both agree on the exact same synthesized-address/
  *  already-open-address logic. Previously only `CreateNew` had this;
- *  hand-copying it for `OutboundAddButton` would be exactly the kind of
- *  three-copies drift `useOutboundAddButton`'s own doc comment describes
+ *  hand-copying it for `AddChannelButton` would be exactly the kind of
+ *  three-copies drift `useAddChannelButton`'s own doc comment describes
  *  fixing for the rest of this file. Email: `contact.email` first (mirrors
  *  `primaryPhone` below), falling back to a synthesized `name`-based
  *  address only when the contact has no real email on file — added
@@ -1042,7 +1042,7 @@ function parseDialpadPhoneNumber(raw: string): PhoneValue {
    this was a real, confusing bug: clicking "+" in the interaction record
    header's toggle row popped the detail form up next to the LeftNav's own
    "New Outbound" trigger instead of anywhere near the button the agent
-   actually clicked. Every consumer goes through `useOutboundAddButton`
+   actually clicked. Every consumer goes through `useAddChannelButton`
    below now, not `launchRequest` — that prop still exists on
    `CreateNewOutboundConfig` for other, unrelated integrations, but nothing
    in this file wires it to this button anymore.
@@ -1058,7 +1058,7 @@ function parseDialpadPhoneNumber(raw: string): PhoneValue {
    between this tier and the nested tier above it, so using the higher,
    nesting-safe tier unconditionally is correct (if slightly conservative)
    in both places. */
-export interface OutboundAddButtonProps {
+export interface AddChannelButtonProps {
   /** The contact this button adds another channel for — needed both to
    *  resolve the detail form's address field (`resolveOutboundDetailField`)
    *  and to hand back to `onStartCall`. */
@@ -1105,7 +1105,7 @@ export interface OutboundAddButtonProps {
   initialChannel?: ChannelType;
 }
 
-const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonProps>(
+const AddChannelButton = React.forwardRef<HTMLButtonElement, AddChannelButtonProps>(
   (
     {
       contact,
@@ -1602,15 +1602,15 @@ const OutboundAddButton = React.forwardRef<HTMLButtonElement, OutboundAddButtonP
     );
   }
 );
-OutboundAddButton.displayName = "OutboundAddButton";
+AddChannelButton.displayName = "AddChannelButton";
 
-/* ── useOutboundAddButton ──
+/* ── useAddChannelButton ──
    Every "Agent Next Gen" consumer (agent-next-gen-v1/AgentNextGenPage.tsx,
    AgentNextGenTemplate.stories.tsx, LeftNav.stories.tsx's "Agent Next Gen
    Left Nav" story, InteractionNavItem.stories.tsx) renders a live list of
    `InteractionNavItem` cards and wants the exact same "+" behavior on each
    one: look up that interaction's underlying outbound contact, and build an
-   `OutboundAddButton` scoped to whatever channels that contact actually
+   `AddChannelButton` scoped to whatever channels that contact actually
    supports. Before this hook existed, each of those files had its own
    hand-copied version of this exact logic — copies of the same ~15 lines
    meant to stay identical forever, which is exactly the kind of thing that
@@ -1620,16 +1620,16 @@ OutboundAddButton.displayName = "OutboundAddButton";
 
    No `launchRequest`/`onLaunchRequestHandled` anymore (this hook used to
    return both, for consumers to wire into their own separate `CreateNew`
-   instance) — `OutboundAddButton` is fully self-contained now (see its own
+   instance) — `AddChannelButton` is fully self-contained now (see its own
    doc comment in this file), so there's no other surface for a picked
    channel to hand off to. `CreateNewOutboundConfig.launchRequest` itself is
    untouched for any other integration that still wants it; this hook just
    doesn't use it anymore. */
-export interface UseOutboundAddButtonResult {
+export interface UseAddChannelButtonResult {
   /** Build the `headerAction` for one `InteractionNavItem` card, keyed by
    *  that interaction's id. Looks up the id in `outboundConfig.groups`;
    *  returns `null` when there's no matching contact (a quick-dialed number,
-   *  or a fixed demo card with no backing record) — `OutboundAddButton`
+   *  or a fixed demo card with no backing record) — `AddChannelButton`
    *  needs a real `CreateNewOutboundContact` to resolve its detail form's
    *  address field and to hand back to `onStartCall`, so there's nothing
    *  for it to add a channel through in that case. Previously rendered a
@@ -1640,7 +1640,7 @@ export interface UseOutboundAddButtonResult {
    *  for its id. Omitting the button here is the honest version of that
    *  fix: no dead-end control instead of one that quietly no-ops.
    *
-   *  `className` overrides `OutboundAddButton`'s own default small/ghost
+   *  `className` overrides `AddChannelButton`'s own default small/ghost
    *  look (its `className` merges last inside that component's own `cn()`
    *  call, so twMerge resolves conflicting utilities in favor of this) —
    *  e.g. the interaction record page header's own "+" sits next to a row
@@ -1650,7 +1650,7 @@ export interface UseOutboundAddButtonResult {
    *  other call site) to keep that original default untouched.
    *
    *  `options.label`/`options.showLabel` forward straight to
-   *  `OutboundAddButton`'s own same-named props — e.g. the interaction
+   *  `AddChannelButton`'s own same-named props — e.g. the interaction
    *  record page header wants a real "Add Channel" text button, not the
    *  icon-only look every other call site keeps.
    *
@@ -1658,7 +1658,7 @@ export interface UseOutboundAddButtonResult {
    *  — together they turn this into a dedicated single-channel button
    *  (e.g. one call per entry in `getAvailableChannels` below, each with
    *  that channel's own icon) instead of the default combined "pick any
-   *  channel" trigger. See `OutboundAddButtonProps`' own doc comments on
+   *  channel" trigger. See `AddChannelButtonProps`' own doc comments on
    *  both. */
   getHeaderAction: (
     interactionId: string,
@@ -1686,9 +1686,9 @@ export interface UseOutboundAddButtonResult {
   getAvailableChannels: (interactionId: string) => CreateNewChannelOption[];
 }
 
-export function useOutboundAddButton(
+export function useAddChannelButton(
   outboundConfig: Pick<CreateNewOutboundConfig, "groups" | "channelOptions" | "phoneOptions" | "skillOptions" | "onStartCall">
-): UseOutboundAddButtonResult {
+): UseAddChannelButtonResult {
   const contactsById = useMemo(
     () => new Map(outboundConfig.groups.flatMap((g) => g.contacts ?? []).map((c) => [c.id, c])),
     [outboundConfig]
@@ -1704,7 +1704,7 @@ export function useOutboundAddButton(
       if (!contact) return null;
       const channelOptions = outboundConfig.channelOptions.filter((c) => contact.channels.includes(c.id));
       return (
-        <OutboundAddButton
+        <AddChannelButton
           contact={contact}
           channelOptions={channelOptions}
           phoneOptions={outboundConfig.phoneOptions ?? []}
@@ -1794,7 +1794,7 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
       setPhone(next);
       if (phoneDialAttempted) setPhoneDialAttempted(false);
     };
-    // Same "Connecting…" window as `OutboundAddButton`'s own identical
+    // Same "Connecting…" window as `AddChannelButton`'s own identical
     // state (create-new.tsx, above) — see `CONNECTING_DURATION_MS`'s doc
     // comment. Shared here by BOTH `handleStartCall`/"Start Interaction"
     // (outbound flow's detail screen) and `handleDialNumber`/"Dial Number"
@@ -1803,7 +1803,7 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     const [connecting, setConnecting] = useState(false);
     const connectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     // Cancels a pending dial outright if the agent closes this popover
-    // while "Connecting…" is showing — unlike `OutboundAddButton`'s own
+    // while "Connecting…" is showing — unlike `AddChannelButton`'s own
     // version of this effect, this popover's other fields (`detailChannel`/
     // `phone`/etc.) have no equivalent "reset once closed" effect of their
     // own to piggyback on, so `connecting` gets a small effect all its own
@@ -1827,7 +1827,7 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     const [detailChannel, setDetailChannel] = useState<ChannelType | "">("");
     const [detailPhone, setDetailPhone] = useState("");
     // Defaults to the FIRST skill in `outbound.skillOptions`, not `""` —
-    // same reasoning/request as `OutboundAddButton`'s own identical state
+    // same reasoning/request as `AddChannelButton`'s own identical state
     // above ("when a new channel is launched, default to the first skill in
     // the list so the agent can immediately start the interaction without
     // having to choose"). Falls back to `""` when `outbound` itself (or its
@@ -2282,7 +2282,7 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
       // Deferred one tick: this is very often triggered by *closing* a
       // different, unrelated Radix Popover elsewhere on the page first (e.g.
       // InteractionNavItem's own "Add Outbound" flyout, see
-      // OutboundAddButton) — its onSelect fires (setting launchRequest) in
+      // AddChannelButton) — its onSelect fires (setting launchRequest) in
       // the very same click that closes it. Opening this popover
       // synchronously in that same tick raced with the other one's own
       // close/unmount and focus teardown: this popover's Radix dismissable
@@ -2358,7 +2358,7 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
 
     // Label + options for screen 2's second field, matching whichever
     // channel is currently selected — delegates to the same
-    // `resolveOutboundDetailField` `OutboundAddButton` uses (see that
+    // `resolveOutboundDetailField` `AddChannelButton` uses (see that
     // function's own doc comment): any address already in use for an open
     // interaction with this contact (there can be more than one, e.g. two
     // open SMS threads on different numbers) is dropped from the list
@@ -2379,7 +2379,7 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     // don't need to have a connecting, just open the new interaction (only
     // connect for voice)"): that deferral only happens for `detailChannel
     // === "voice"` — every other channel opens the interaction right away,
-    // same carve-out as `OutboundAddButton`'s own identical
+    // same carve-out as `AddChannelButton`'s own identical
     // `handleStartCall` above.
     const handleStartCall = () => {
       if (!outbound || !activeOutboundContact || !detailChannel || !detailSkill || connecting) return;
@@ -3618,4 +3618,4 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
 );
 CreateNew.displayName = "CreateNew";
 
-export { CreateNew, OutboundAddButton };
+export { CreateNew, AddChannelButton };

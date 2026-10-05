@@ -40,7 +40,7 @@ const DISPOSITION_OPTIONS: DispositionOption[] = [
  *  `InteractionChannel.outcome` field, channel-row.tsx). Not exported from
  *  the library itself — `OutcomePanel` only needs a `ChannelOutcomeConfig`
  *  object, however the consumer chooses to produce one. */
-function useDemoOutcome(initialTags: string[] = []): ChannelOutcomeConfig {
+function useDemoOutcome(initialTags: string[] = [], voice = false): ChannelOutcomeConfig {
   const [open, setOpen] = React.useState(false);
   const [resolution, setResolution] = React.useState("Open");
   const [selectedTags, setSelectedTags] = React.useState<string[]>(initialTags);
@@ -53,6 +53,7 @@ function useDemoOutcome(initialTags: string[] = []): ChannelOutcomeConfig {
     resolutionOptions: RESOLUTION_OPTIONS,
     resolution,
     onResolutionChange: setResolution,
+    voice,
     tagOptions: TAG_OPTIONS,
     selectedTags,
     onTagsChange: setSelectedTags,
@@ -77,6 +78,20 @@ const meta: Meta<typeof OutcomePanel> = {
     // tight Storybook iframe.
     layout: "padded",
   },
+  // `ChannelOutcomeConfig.voice` isn't a literal `OutcomePanel` prop (it
+  // lives inside the `outcome` config object, same as `resolution`/
+  // `selectedTags`/etc.), but it's exposed as its own top-level Storybook
+  // control here since it's the one field a consumer actually toggles per
+  // channel type rather than wiring up via local state — see
+  // `useDemoOutcome`'s own `voice` param, which each story's `render`
+  // threads through from `args.voice`.
+  args: { voice: false },
+  argTypes: {
+    voice: {
+      control: "boolean",
+      description: "Voice channel — hides the Status field (no real disposition to log).",
+    },
+  },
 };
 export default meta;
 type Story = StoryObj<typeof OutcomePanel>;
@@ -89,10 +104,15 @@ type Story = StoryObj<typeof OutcomePanel>;
    Outcome button (a `SuccessIconSolid` icon button) is shown separately
    below since that's the shape most consumers reaching for this panel
    outside a channel row will actually want to match. */
-function OutcomePanelDefaultDemo() {
-  const outcome = useDemoOutcome(["Technical"]);
+function OutcomePanelDefaultDemo({ voice }: { voice: boolean }) {
+  const outcome = useDemoOutcome(["Technical"], voice);
   return (
-    <OutcomePanel outcome={outcome}>
+    // `align="start"` + a tight `sideOffset` + no arrow — per explicit
+    // request, this plain-button trigger's popover should sit snug against
+    // and left-aligned with the button, rather than the icon-button
+    // call sites' `align="end"` (which stays the app default at those
+    // specific row-anchored call sites — see `ChannelRow`/`TranscriptSessionSeparator`).
+    <OutcomePanel outcome={outcome} align="start" sideOffset={2} showArrow={false}>
       <Button variant="outline" size="md" onClick={() => outcome.onOpenChange(true)}>
         Log Outcome
       </Button>
@@ -101,15 +121,15 @@ function OutcomePanelDefaultDemo() {
 }
 
 export const Default: Story = {
-  render: () => <OutcomePanelDefaultDemo />,
+  render: (args) => <OutcomePanelDefaultDemo voice={!!args.voice} />,
 };
 
 /* ── Icon trigger — matches ChannelRow's own button ──
    Same `SuccessIconSolid` "blue check" button `ChannelRow`'s standalone
    Outcome button renders (channel-row.tsx) — for a consumer that wants
    this exact look outside of a channel row. */
-function OutcomePanelIconTriggerDemo() {
-  const outcome = useDemoOutcome();
+function OutcomePanelIconTriggerDemo({ voice }: { voice: boolean }) {
+  const outcome = useDemoOutcome([], voice);
   return (
     <OutcomePanel outcome={outcome} placement="bottom" align="start">
       <Button
@@ -127,5 +147,5 @@ function OutcomePanelIconTriggerDemo() {
 
 export const IconTrigger: Story = {
   name: "Icon Trigger (matches ChannelRow)",
-  render: () => <OutcomePanelIconTriggerDemo />,
+  render: (args) => <OutcomePanelIconTriggerDemo voice={!!args.voice} />,
 };

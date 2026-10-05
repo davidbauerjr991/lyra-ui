@@ -150,7 +150,7 @@ export interface InteractionNavItemProps {
    * single-channel case, where the whole card goes instead. */
   onDismissChannel?: (channel: InteractionChannel) => void;
   /** Rendered at the end of the expanded card's header row, next to the
-   *  customer name — e.g. an "Add Outbound" button (see `OutboundAddButton`
+   *  customer name — e.g. an "Add Outbound" button (see `AddChannelButton`
    *  in `create-new.tsx`) letting the agent start another channel with this
    *  same contact without leaving the card. Kept as a generic slot (not a
    *  dedicated `onAddOutbound` prop) so this component has no direct
@@ -160,9 +160,9 @@ export interface InteractionNavItemProps {
    *  hovering the compact tile opens a popover previewing the full expanded
    *  card (see the compact-mode branch below), and that preview's header
    *  row renders this exact same `headerAction`. If whatever's passed here
-   *  opens its own popover (like `OutboundAddButton` does), make sure its
+   *  opens its own popover (like `AddChannelButton` does), make sure its
    *  z-index accounts for sometimes being nested inside that hover
-   *  popover — see `OutboundAddButton`'s own doc comment in create-new.tsx. */
+   *  popover — see `AddChannelButton`'s own doc comment in create-new.tsx. */
   headerAction?: React.ReactNode;
   /**
    * Controls which open channel is "current" (the blue-highlighted row on
@@ -1078,7 +1078,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
           // matching the real expanded card exactly, so this popover's own
           // default panel styling is stripped down to a bare, invisible
           // frame around it — same "let the real content supply its own
-          // chrome" convention `OutboundAddButton`'s Menu-in-Popover uses
+          // chrome" convention `AddChannelButton`'s Menu-in-Popover uses
           // in create-new.tsx.
           className="z-[9999] w-64 rounded-lyra-sm border-0 bg-transparent p-0 shadow-none"
           // The preview card below supplies its own complete chrome (see

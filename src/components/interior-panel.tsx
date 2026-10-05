@@ -39,6 +39,23 @@ function readNumberCookie(name: string): number | null {
    wider values in agent-next-gen-v2; the two thresholds are no longer tied
    to one shared value.
 
+   "Below the page header" is a statement about typical DOM placement, not
+   a rule this component enforces: the absolute-overlay layout above always
+   positions against the panel's nearest positioned ancestor, covering
+   whatever ELSE is inside that same ancestor — normally just the main
+   content column, but a page-level header mounted inside that same
+   ancestor (rather than outside it, as every other consumer does) gets
+   covered too. `overlayHeader` (below) is the documented opt-in for
+   exactly that: it doesn't move the panel in the DOM, it just guarantees
+   the panel is always in its overlay layout (never the width-squeezing
+   docked one) so it reliably covers such a header once mounted that way —
+   see that prop's own doc comment. Added to formalize what
+   agent-next-gen-v3's `InContactInteriorPanel` wrapper
+   (agent-next-gen-in-contact-panel.tsx) already did by hand with
+   `absoluteBreakpoint={Infinity}` + `maxWidth={Infinity}`, per an explicit
+   request to make it "a control in the interior panel... instead of its
+   own component."
+
    This is one of exactly two panel types in the design system — the other
    being `SidePanel` (over the page header, hover/pin, left or right).
    They're deliberately separate components with different behavior, not
@@ -66,7 +83,10 @@ export interface InteriorPanelProps extends React.HTMLAttributes<HTMLDivElement>
   resizable?: boolean;
   /** Min width when resizing, px (default: 350) */
   minWidth?: number;
-  /** Max width when resizing, px (default: 425) */
+  /** Max width when resizing, px. Default: 425 — unless `overlayHeader` is
+   *  true and this is left unset, in which case it defaults to unconstrained
+   *  (no resize cap), matching `InContactInteriorPanel`'s own
+   *  `maxWidth={Infinity}`. Passing this explicitly always wins either way. */
   maxWidth?: number;
   /** Fired when a resize drag starts (true) or ends (false) */
   onResizeStateChange?: (isResizing: boolean) => void;
@@ -189,6 +209,44 @@ export interface InteriorPanelProps extends React.HTMLAttributes<HTMLDivElement>
    */
   absoluteBreakpoint?: number;
 
+  /**
+   * Forces the panel permanently into its absolute-overlay layout (the
+   * same one `isNarrow`/`absoluteBreakpoint` switches to below the
+   * threshold above), regardless of how wide its parent container is —
+   * equivalent to `absoluteBreakpoint={Infinity}`, just named for what a
+   * consumer is actually opting into rather than the width-threshold
+   * mechanism underneath. Default: false (every existing consumer is
+   * unaffected).
+   *
+   * This is what lets the panel render OVER a page-level header instead of
+   * being squeezed beside the main content below one — but only because
+   * of where it's mounted, not anything this prop repositions on its own:
+   * the overlay always positions `absolute; top: 0` against the panel's
+   * nearest positioned (`relative`/etc.) ancestor, covering whatever else
+   * lives inside that SAME ancestor. Mount the panel inside a `relative`
+   * box that also contains the header (as a normal-flow sibling before the
+   * panel, the way agent-next-gen-v3's "Customer Information" overlay
+   * sits alongside its own record header — see `InContactConfiguration` in
+   * this component's own stories) and it renders on top of that header;
+   * mount it below/outside that header's own container (every other
+   * consumer's existing pattern — see the `Right`/`Left`/`WithFullScreen`/
+   * `WithTabs` stories) and this prop makes no visible difference to the
+   * header at all, only to whether the main content column ever gets
+   * squeezed instead of overlaid.
+   *
+   * Also defaults `maxWidth` to unconstrained when left unset (see that
+   * prop's own doc comment) — an overlay covering a header is meant to
+   * read as a full detail view, not a narrow drawer capped at 425px.
+   *
+   * Added to formalize agent-next-gen-v3's `InContactInteriorPanel`
+   * wrapper (agent-next-gen-in-contact-panel.tsx), which hardcoded this
+   * exact combination (`absoluteBreakpoint={Infinity}` +
+   * `maxWidth={Infinity}`) for its two "in-contact" overlay call sites —
+   * per an explicit request, that wrapper now sets this prop directly
+   * instead of the two it stood in for.
+   */
+  overlayHeader?: boolean;
+
   footer?: React.ReactNode;
 }
 
@@ -202,7 +260,7 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       closeIcon,
       resizable = true,
       minWidth = 350,
-      maxWidth = 425,
+      maxWidth: maxWidthProp,
       onResizeStateChange,
       onWidthChange,
       width,
@@ -218,12 +276,17 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       allowFullScreen = false,
       exitFullScreenSignal,
       absoluteBreakpoint = 1440,
+      overlayHeader = false,
       footer,
       children,
       ...props
     },
     ref
   ) => {
+    // See `maxWidth`'s own doc comment: unconstrained by default once
+    // `overlayHeader` opts the panel into always being a full overlay,
+    // unless the consumer set an explicit cap anyway.
+    const maxWidth = maxWidthProp ?? (overlayHeader ? Infinity : 425);
     // Resolution order: an explicit `width` prop always wins; otherwise a
     // previously drag-resized width remembered under `storageKey` (so it
     // survives even a full remount, e.g. navigating away and back);
@@ -275,7 +338,10 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
        this one hardcoded value. ── */
     const outerRef = useRef<HTMLDivElement>(null);
     const [parentWidth, setParentWidth] = useState(9999);
-    const isNarrow = parentWidth < absoluteBreakpoint;
+    // `overlayHeader` short-circuits this to permanently true — see that
+    // prop's own doc comment for why (equivalent to `absoluteBreakpoint`
+    // being `Infinity`, just named for the consumer's actual intent).
+    const isNarrow = overlayHeader || parentWidth < absoluteBreakpoint;
 
     const stableOuterRef = useCallback((el: HTMLDivElement | null) => {
       (outerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;

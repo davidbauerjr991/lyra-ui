@@ -331,11 +331,12 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
       setTimeout(() => setReconnectedIds((prev) => new Set([...prev, appId])), 2500);
     };
 
+    const MAX_FAVORITE_STATUSES = 5;
     const toggleFavoriteStatus = (s: AgentStatus) => {
       setFavoriteStatuses((prev) => {
         const next = new Set(prev);
         if (next.has(s)) next.delete(s);
-        else next.add(s);
+        else if (next.size < MAX_FAVORITE_STATUSES) next.add(s);
         return next;
       });
     };
@@ -421,9 +422,11 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
     // list below — every status row gets the same favorite star, including
     // rows inside the Favorites section itself, so a status can be
     // unfavorited from either place.
+    const favoritesAtCap = favoriteStatuses.size >= MAX_FAVORITE_STATUSES;
     const favoriteRightElement = (s: AgentStatus) => (
       <FavoriteButton
         favorited={favoriteStatuses.has(s)}
+        disabled={favoritesAtCap}
         onClick={() => toggleFavoriteStatus(s)}
         label={statusConfig[s].label}
         placement="left"

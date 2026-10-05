@@ -43,8 +43,14 @@ export interface ContainerHeaderProps extends React.HTMLAttributes<HTMLDivElemen
   closeIcon?: React.ReactNode;
   /** Typography class for the title (default: "lyra-heading-md") */
   titleClassName?: string;
-  /** Optional subtitle displayed below the title in body-sm secondary */
-  subhead?: string;
+  /** Optional subtitle displayed below the title in body-sm secondary.
+   *  `ReactNode` (not just a plain string) so a consumer can make this
+   *  text itself interactive — e.g. a customer's name rendered as a
+   *  clickable link with its own tooltip — rather than needing a second,
+   *  separate control bolted on elsewhere in the header for that. A plain
+   *  string remains valid (it's itself a `ReactNode`), so every existing
+   *  caller is unaffected. */
+  subhead?: React.ReactNode;
   /** Badge or tag rendered inline immediately after the title */
   titleBadge?: React.ReactNode;
   /**

@@ -20,7 +20,7 @@ import { Tooltip } from "../tooltip";
 import { ContainerHeader } from "../container-header";
 import { AgentProfile, type AgentStatus } from "../agent-profile";
 import { LeftNav, type NavItem } from "../left-nav";
-import { CreateNew, useOutboundAddButton, type CreateNewOutboundContact, type CreateNewOutboundConfig } from "../create-new";
+import { CreateNew, useAddChannelButton, type CreateNewOutboundContact, type CreateNewOutboundConfig } from "../create-new";
 import { InteractionNavItem, type InteractionChannel, type ChannelType } from "../interaction-nav-item";
 import { AssignmentsSectionCaption, type AssignmentSortValue } from "../assignments-section-caption";
 import { InteractionComposer, type InteractionComposerQuickReplyItem } from "../interaction-composer";
@@ -1285,9 +1285,9 @@ function AgentNextGenTemplate({
   // story, InteractionNavItem.stories.tsx) wants the exact same "+" behavior
   // on each InteractionNavItem card — look up that interaction's underlying
   // outbound contact and scope the flyout to whatever channels it actually
-  // supports. That's `useOutboundAddButton` (create-new.tsx) — a single
+  // supports. That's `useAddChannelButton` (create-new.tsx) — a single
   // shared implementation instead of hand-copied ones that could (and did)
-  // quietly drift out of sync. `OutboundAddButton` is fully self-contained
+  // quietly drift out of sync. `AddChannelButton` is fully self-contained
   // now (no more `launchRequest`/`onLaunchRequestHandled` — see its own doc
   // comment in create-new.tsx), so there's nothing to wire into this story's
   // own `CreateNew` instance anymore.
@@ -1298,7 +1298,7 @@ function AgentNextGenTemplate({
   // no-op "Start Interaction" instead of opening a card (same bug fixed in
   // agent-next-gen-v1/AgentNextGenPage.tsx and LeftNav.stories.tsx — see
   // either one's own comment on this line).
-  const { getHeaderAction } = useOutboundAddButton({ ...outboundConfig, onStartCall: handleStartCall });
+  const { getHeaderAction } = useAddChannelButton({ ...outboundConfig, onStartCall: handleStartCall });
 
   /* Shared app panel show/hide — same visibility state machine the AI +
      Notifications panels used before they were consolidated into this one

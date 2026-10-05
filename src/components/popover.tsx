@@ -28,6 +28,14 @@ export interface PopoverProps {
   align?: "start" | "center" | "end";
   /** Gap between the trigger and the content, in pixels (default: 10) */
   sideOffset?: number;
+  /** Shift along the alignment axis, in pixels (default: 0) — e.g. for
+   *  `align="end"`, a positive value pushes the content further past the
+   *  trigger's own aligned edge. Needed when the trigger is a small icon
+   *  that isn't actually the rightmost element of the row it sits in (a
+   *  kebab or another control sits to its right) — `align="end"` alone
+   *  aligns to the TRIGGER's edge, not the row's true visual edge, which
+   *  can leave content below/beside that row's own wider edge uncovered. */
+  alignOffset?: number;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   showArrow?: boolean;
@@ -230,6 +238,7 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
   placement = "bottom",
   align = "center",
   sideOffset = 10,
+  alignOffset = 0,
   open,
   onOpenChange,
   showArrow = true,
@@ -262,6 +271,7 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
         side={placement}
         align={align}
         sideOffset={sideOffset}
+        alignOffset={alignOffset}
         onOpenAutoFocus={onOpenAutoFocus}
         onCloseAutoFocus={onCloseAutoFocus}
         onEscapeKeyDown={onEscapeKeyDown}

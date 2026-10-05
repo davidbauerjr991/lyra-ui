@@ -155,7 +155,7 @@ interface SelectProps {
    * The dropdown defaults to `z-[9999]` (single) / `z-50` (multi, via
    * `Popover`'s own default), the base "portal wrapper" tier in
    * CONTRIBUTING.md §4. That's wrong when this `Select` itself renders
-   * inside a *higher* tier — e.g. `OutboundAddButton`'s own `z-[10003]`
+   * inside a *higher* tier — e.g. `AddChannelButton`'s own `z-[10003]`
    * "popover nested inside another popover" panel (create-new.tsx): the
    * dropdown would portal to `document.body` same as always, but at a
    * *lower* z-index than its own ancestor panel, so it paints underneath

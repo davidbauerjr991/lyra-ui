@@ -2,7 +2,7 @@ import * as React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { MessageSquare, Mail, Phone } from "lucide-react";
 import { InteractionNavItem, type InteractionChannel } from "../interaction-nav-item";
-import { CreateNew, useOutboundAddButton, type CreateNewOutboundConfig } from "../create-new";
+import { CreateNew, AddChannelButton, useAddChannelButton, type CreateNewOutboundConfig, type CreateNewOutboundContact } from "../create-new";
 import { WhatsAppIcon, type ChannelType, type ChannelOutcomeConfig } from "../channel-row";
 import { Badge } from "../badge";
 import { OUTBOUND_CONFIG } from "./create-new-outbound-mock";
@@ -242,7 +242,7 @@ const RAY_CHANNELS: InteractionChannel[] = [
    real "Log Outcome" popover once the row's own `outcome` field is set (see
    `ChannelOutcomeConfig`'s own doc comment in channel-row.tsx) — every
    story below that renders a full channel row (any "Expanded — ..." story,
-   plus "Header — Add Outbound Button" and "Compact — Hover Popover", which
+   plus "Header — Add Channel Button" and "Compact — Hover Popover", which
    both render the same full row inside their own header/hover-preview
    content) wires one up via `useOutcomeDemos` below, so the button is live
    everywhere it's visible. Compact tiles with no hover preview never render
@@ -666,17 +666,17 @@ export const ExpandedStack: Story = {
 /* ── Header (headerAction slot) ──
    `headerAction` is a generic `React.ReactNode` slot in the card's header
    row (see interaction-nav-item.tsx). The "Add Outbound" flow it's
-   demonstrating here is `OutboundAddButton` (create-new.tsx) — a fully
+   demonstrating here is `AddChannelButton` (create-new.tsx) — a fully
    self-contained popover. Clicking the "+" opens a small channel-picker
    flyout, and picking a channel swaps that same popover to the "Select
    Channel / Select Phone / Outbound Skill → Start Interaction" detail
    form, right where the "+" was clicked. There's no hand-off to a
    separate, remotely-anchored `CreateNew` instance — an earlier version
-   of `OutboundAddButton` routed a picked channel through `CreateNew`'s
+   of `AddChannelButton` routed a picked channel through `CreateNew`'s
    `launchRequest` prop into the LeftNav's own "New Outbound" popover,
    which visually opened in the wrong place. This story uses its own
    small, self-contained `CreateNewOutboundConfig` (below) and the real
-   `useOutboundAddButton` hook — the exact same hook every production
+   `useAddChannelButton` hook — the exact same hook every production
    consumer (AgentNextGenPage.tsx, AgentNextGenTemplate.stories.tsx,
    LeftNav.stories.tsx) uses. `CreateNew` itself is still rendered here
    (its own "New Outbound" trigger button included, same as every real
@@ -685,7 +685,16 @@ export const ExpandedStack: Story = {
    Popover" further below for the same `headerAction` rendered in compact
    mode instead — there's no header row on the compact tile itself, but
    hovering it opens a popover previewing the full expanded card, header
-   row included. */
+   row included.
+
+   `AddChannelButton`/`useAddChannelButton` were named `OutboundAddButton`/
+   `useOutboundAddButton` until an explicit rename request — this file's
+   own two stories below are the correct place to see them exercised (they
+   had briefly also gotten a separate standalone story file, since deleted
+   and folded back in here per a follow-up explicit request: "put it in the
+   interactionNavItem story"). See "Add Channel Button — Primitive" at the
+   very end of this file for `AddChannelButton` driven directly by its own
+   props, rather than through `getHeaderAction`. */
 
 const NAV_ITEM_HEADER_OUTBOUND_CONFIG: CreateNewOutboundConfig = {
   outboundTitle: "New Outbound",
@@ -709,9 +718,9 @@ const NAV_ITEM_HEADER_OUTBOUND_CONFIG: CreateNewOutboundConfig = {
 };
 
 export const NavItemHeader: Story = {
-  name: "Header — Add Outbound Button",
+  name: "Header — Add Channel Button",
   render: () => {
-    const { getHeaderAction } = useOutboundAddButton(NAV_ITEM_HEADER_OUTBOUND_CONFIG);
+    const { getHeaderAction } = useAddChannelButton(NAV_ITEM_HEADER_OUTBOUND_CONFIG);
     const outcomes = useOutcomeDemos(SOFIA_CHANNELS.length + RAY_CHANNELS.length + 1);
     const sofiaOutcomes = outcomes.slice(0, SOFIA_CHANNELS.length);
     const rayOutcomes = outcomes.slice(SOFIA_CHANNELS.length, SOFIA_CHANNELS.length + RAY_CHANNELS.length);
@@ -770,8 +779,8 @@ export const NavItemHeader: Story = {
    makes it "current," the kebab menu's "Unassign & Dismiss" works, and
    `headerAction`'s own "+" opens its channel flyout and can hand off into
    `CreateNew`'s call-setup screen exactly like it does in expanded mode
-   (see the "Header — Add Outbound Button" story above; this reuses the
-   exact same `NAV_ITEM_HEADER_OUTBOUND_CONFIG`/`useOutboundAddButton`
+   (see the "Header — Add Channel Button" story above; this reuses the
+   exact same `NAV_ITEM_HEADER_OUTBOUND_CONFIG`/`useAddChannelButton`
    wiring, just with `expanded={false}` cards). Moving the pointer from the
    tile into the popover (to actually click something) doesn't close it —
    see interaction-nav-item.tsx's `openHoverCard`/`scheduleCloseHoverCard`
@@ -784,7 +793,7 @@ export const NavItemHeader: Story = {
 export const CompactHoverCard: Story = {
   name: "Compact — Hover Popover",
   render: () => {
-    const { getHeaderAction } = useOutboundAddButton(NAV_ITEM_HEADER_OUTBOUND_CONFIG);
+    const { getHeaderAction } = useAddChannelButton(NAV_ITEM_HEADER_OUTBOUND_CONFIG);
     const outcomes = useOutcomeDemos(SOFIA_CHANNELS.length + RAY_CHANNELS.length + 1);
     const sofiaOutcomes = outcomes.slice(0, SOFIA_CHANNELS.length);
     const rayOutcomes = outcomes.slice(SOFIA_CHANNELS.length, SOFIA_CHANNELS.length + RAY_CHANNELS.length);
@@ -814,5 +823,36 @@ export const CompactHoverCard: Story = {
         />
       </div>
     );
+  },
+};
+
+
+/* ── Add Channel Button — Primitive ──
+   `AddChannelButton` itself, driven directly by its own props rather than
+   through `getHeaderAction` — no real screen instantiates it this way (see
+   both stories above for the real, production-matching usage), but it's a
+   legitimate, fully self-contained component on its own, and this is the
+   plain way to read its prop API on the Controls panel. */
+
+const ADD_CHANNEL_BUTTON_PRIMITIVE_CONTACT: CreateNewOutboundContact = {
+  id: "sofia-martinez",
+  name: "Sofia Martinez",
+  initials: "SM",
+  channels: ["voice", "email", "sms", "whatsapp"],
+};
+
+type AddChannelButtonPrimitiveStory = StoryObj<typeof AddChannelButton>;
+
+export const AddChannelButtonPrimitive: AddChannelButtonPrimitiveStory = {
+  name: "Add Channel Button — Primitive",
+  args: {
+    contact: ADD_CHANNEL_BUTTON_PRIMITIVE_CONTACT,
+    channelOptions: OUTBOUND_CONFIG.channelOptions,
+    phoneOptions: OUTBOUND_CONFIG.phoneOptions,
+    skillOptions: OUTBOUND_CONFIG.skillOptions,
+    onStartCall: (selection) => {
+      // eslint-disable-next-line no-console
+      console.log("Start call:", selection.channel, "→", selection.contact.name);
+    },
   },
 };

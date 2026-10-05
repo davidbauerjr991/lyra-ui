@@ -241,7 +241,7 @@ const MARCUS_WEBB_CUSTOMER_RECORD: CreateNewCustomerRecord = {
 // had NO real customer record behind them at all: every consumer that
 // resolves "the customer behind this id" (`handleOpenInteractionRow`'s own
 // `CREATE_NEW_CUSTOMERS.find(...) ?? CREATE_NEW_CUSTOMERS[0]` fallback,
-// `useOutboundAddButton`'s own contact lookup for the "+" Add Channel
+// `useAddChannelButton`'s own contact lookup for the "+" Add Channel
 // button) had nothing real to find for these 5 people, so different entry
 // points into "the same real case" silently diverged onto different
 // fallback ids — confirmed via screenshot/repro: reopening the same

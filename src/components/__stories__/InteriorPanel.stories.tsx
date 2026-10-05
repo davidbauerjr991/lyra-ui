@@ -217,3 +217,119 @@ export const Left: Story = {
     );
   },
 };
+
+/* ── In-Contact Configuration (agent-next-gen-v3) ──
+   Not a lyra-ui component — `InContactInteriorPanel` is an app-level
+   wrapper (agent-next-gen-v3/src/components/agent-next-gen-in-contact-
+   panel.tsx) around this exact `InteriorPanel`, hardcoding one shared
+   config so its callers can't drift (per that file's own doc comment,
+   written after an explicit audit found two callers — the "View customer
+   info" overlay and the Marcus Webb card's shared detail panel — had
+   silently diverged): `allowFullScreen`, `overlayHeader` (see that prop's
+   own doc comment — used to be hand-rolled here as
+   `absoluteBreakpoint={Infinity}` + `maxWidth={Infinity}` before
+   `overlayHeader` existed), and a `z-[5]` layering to sit under that
+   app's shared AI/Notifications/Search panel and left-nav collapse
+   chevron (app-specific, not reproduced here — `closeIcon` is left at
+   this component's own default `X` too, per that wrapper's own most
+   recent change).
+
+   Unlike every OTHER story on this page, the record header here
+   ("Liam Whitfield" — matching the real customer this scenario belongs to
+   in agent-next-gen-v3's own mock data) is mounted INSIDE the same
+   `relative` box the panel measures as its parent, not as a `PageHeader`
+   sibling above it — reproducing exactly how agent-next-gen-v3 mounts
+   `InContactInteriorPanel` alongside its own record header, per an
+   explicit follow-up request ("the incontactInteriorContainer is over
+   the page header ... this is desired behavior"). That placement is
+   what makes `overlayHeader` visibly cover the header once enabled —
+   the prop itself doesn't reposition anything (see its own doc comment);
+   toggle it off below to see the same markup fall back to a normal
+   width-squeezing docked panel that leaves the header alone, same as
+   `InteriorPanel` everywhere else in this file. */
+function InContactConfigurationDemo({
+  overlayHeader = true,
+  containerWidth = 1600,
+}: {
+  overlayHeader?: boolean;
+  containerWidth?: number;
+}) {
+  const [open, setOpen] = useState(true);
+  return (
+    // No `maxWidth: "100%"` cap here (unlike this file's other sized
+    // demos) — deliberately: capping to the visible canvas pane would
+    // silently clamp this box under 1440px on most real screens/panel
+    // widths (the Controls panel alone easily eats enough width for
+    // that), which forces `isNarrow` (interior-panel.tsx) true on its
+    // own regardless of the `containerWidth` control OR `overlayHeader`
+    // — exactly the "toggling overlayHeader off still shows it covering
+    // the header" bug report. Letting the box render at its literal
+    // `containerWidth` (scrolling the canvas horizontally if needed)
+    // means the ResizeObserver this component reads actually sees the
+    // width the slider says, so `overlayHeader: false` at a wide
+    // `containerWidth` genuinely reaches the docked, non-covering branch.
+    <div
+      className="h-[500px] relative flex flex-col overflow-hidden rounded-lyra-lg border border-lyra-border-subtle"
+      style={{ width: containerWidth }}
+    >
+      <div className="flex items-center justify-between gap-3 border-b border-lyra-border-subtle bg-lyra-bg-surface-base px-4 py-3">
+        <span className="lyra-heading-sm text-lyra-fg-default">Liam Whitfield</span>
+        <Button onClick={() => setOpen((v) => !v)}>Toggle Panel</Button>
+      </div>
+      <div className="flex-1 bg-lyra-bg-surface-base" />
+      <InteriorPanel
+        side="right"
+        open={open}
+        headerTitle="Customer Information"
+        headerSubhead="Liam Whitfield · CST-10296"
+        allowFullScreen
+        overlayHeader={overlayHeader}
+        className="z-[5]"
+        onClose={() => setOpen(false)}
+      >
+        <div className="flex flex-col gap-4 px-4 py-4">
+          <Input label="Name" placeholder="Enter name" />
+          <Input label="Description" placeholder="Enter description" />
+          <Input label="Value" placeholder="Enter value" />
+        </div>
+      </InteriorPanel>
+    </div>
+  );
+}
+
+type InContactConfigurationStory = StoryObj<typeof InContactConfigurationDemo>;
+
+export const InContactConfiguration: InContactConfigurationStory = {
+  name: "Interior Panel — In-Contact Configuration (agent-next-gen-v3)",
+  // `meta.component` is `InteriorPanel`, so the Controls addon auto-infers
+  // a control for every ONE of ITS props (side/open/resizable/minWidth/
+  // storageKey/headerTitle/...) — real for the plain InteriorPanel stories
+  // above, but this story renders `InContactConfigurationDemo` instead
+  // (its own args don't map 1:1 onto InteriorPanel — same reason
+  // AgentSearch.stories.tsx's own `AgentSearchDemo` wrapper exists), which
+  // only reads `overlayHeader`/`containerWidth` out of `args` — every
+  // other inferred control was doing nothing when clicked, exactly the
+  // "controls don't seem to do anything" bug report. `controls.include`
+  // scopes the panel to just the two args this story's `render` actually
+  // consumes, instead of quietly ignoring the rest.
+  parameters: {
+    controls: { include: ["overlayHeader", "containerWidth"] },
+  },
+  args: {
+    overlayHeader: true,
+    containerWidth: 1600,
+  },
+  argTypes: {
+    overlayHeader: {
+      control: "boolean",
+      description:
+        "Same prop as InteriorPanel's own. On: always the absolute-overlay layout, so it covers the \"Liam Whitfield\" header row above (mounted inside the same relative box the panel measures as its parent). Off: falls back to InteriorPanel's plain width-squeezing docked behavior, which never covers anything.",
+    },
+    containerWidth: {
+      control: { type: "range", min: 600, max: 1800, step: 20 },
+      description:
+        "Width of the row InteriorPanel measures as its parent. With overlayHeader off, drag below 1440px (the Right story's own default breakpoint) to see it switch into the same overlay layout \"On\" forces permanently \u2014 and, since the header is co-located here, cover the header too, purely as a side effect of width rather than intent. That's the difference overlayHeader is for: a deliberate, width-independent guarantee instead of an incidental one.",
+    },
+  },
+  render: (args) => <InContactConfigurationDemo {...args} />,
+};

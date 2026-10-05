@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { LeftNav, NavRail, type NavItem } from "../left-nav";
 import { EmptyState } from "../empty-state";
-import { CreateNew, useOutboundAddButton, type CreateNewOutboundContact, type CreateNewOutboundConfig } from "../create-new";
+import { CreateNew, useAddChannelButton, type CreateNewOutboundContact, type CreateNewOutboundConfig } from "../create-new";
 import { InteractionNavItem, type InteractionChannel, type ChannelType } from "../interaction-nav-item";
 import { AssignmentsSectionCaption, type AssignmentSortValue } from "../assignments-section-caption";
 import { OUTBOUND_CONFIG } from "./create-new-outbound-mock";
@@ -514,9 +514,9 @@ export const AgentNextGen: Story = {
     // interaction's underlying outbound contact, scope the flyout to
     // whatever channels it actually supports, and render a fully
     // self-contained popover (channel picker + detail form) right where the
-    // "+" was clicked. That's `useOutboundAddButton` (create-new.tsx) — a
+    // "+" was clicked. That's `useAddChannelButton` (create-new.tsx) — a
     // single shared implementation instead of three hand-copied ones that
-    // could (and did) quietly drift out of sync. `OutboundAddButton` no
+    // could (and did) quietly drift out of sync. `AddChannelButton` no
     // longer hands off to a separate, remotely-anchored `CreateNew`
     // instance via `launchRequest`, so there's nothing to destructure here
     // beyond `getHeaderAction`.
@@ -528,7 +528,7 @@ export const AgentNextGen: Story = {
     // in agent-next-gen-v1/AgentNextGenPage.tsx and
     // AgentNextGenTemplate.stories.tsx — see either one's own comment on
     // this line).
-    const { getHeaderAction } = useOutboundAddButton({ ...outboundConfig, onStartCall: handleStartCall });
+    const { getHeaderAction } = useAddChannelButton({ ...outboundConfig, onStartCall: handleStartCall });
 
     // "Desk" is this page itself (see AgentDashboard/`Templates/Dashboards`'
     // PageHeader title) — active by default, and the only item here with no

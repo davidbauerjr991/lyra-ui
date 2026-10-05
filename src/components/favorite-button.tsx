@@ -68,22 +68,30 @@ export interface FavoriteButtonProps {
    *  z-[10000], which can render behind a higher-stacked host panel (e.g.
    *  AgentProfile's status menu, itself z-[10001]); see CONTRIBUTING.md §5. */
   tooltipClassName?: string;
+  /** When true the button is visually muted and inert (click/keyboard
+   *  handlers are suppressed). Used to enforce a cap on favorites. */
+  disabled?: boolean;
 }
 
 const FavoriteButton = React.forwardRef<HTMLButtonElement | HTMLSpanElement, FavoriteButtonProps>(
-  ({ favorited, onClick, label, placement = "left", className, as = "button", hoverGroup = "row", tooltipClassName }, ref) => {
-    const tooltipText = favorited ? "Remove from Favorites" : "Add to Favorites";
+  ({ favorited, onClick, label, placement = "left", className, as = "button", hoverGroup = "row", tooltipClassName, disabled }, ref) => {
+    const tooltipText = disabled && !favorited ? "Maximum favorites reached" : favorited ? "Remove from Favorites" : "Add to Favorites";
     const ariaLabel = favorited ? `Remove ${label} from Favorites` : `Add ${label} to Favorites`;
 
+    const isInert = disabled && !favorited;
     const rootClassName = cn(
       "flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lyra-sm transition-colors",
-      "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus",
-      favorited
-        ? "opacity-100"
-        : hoverGroup === "item"
-          ? "opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100"
-          : "opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100",
+      isInert
+        ? "cursor-not-allowed opacity-30"
+        : cn(
+            "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus",
+            favorited
+              ? "opacity-100"
+              : hoverGroup === "item"
+                ? "opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100"
+                : "opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100",
+          ),
       className
     );
 
@@ -104,6 +112,7 @@ const FavoriteButton = React.forwardRef<HTMLButtonElement | HTMLSpanElement, Fav
     // in that flow.
     const handleClick = (e: React.SyntheticEvent) => {
       e.stopPropagation();
+      if (isInert) return;
       onClick();
     };
 
@@ -121,7 +130,7 @@ const FavoriteButton = React.forwardRef<HTMLButtonElement | HTMLSpanElement, Fav
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
                 e.stopPropagation();
-                onClick();
+                if (!isInert) onClick();
               }
             }}
             className={rootClassName}

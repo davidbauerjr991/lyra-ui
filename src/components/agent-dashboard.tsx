@@ -54,7 +54,7 @@ import { ChatMessage } from "./chat-message";
    consumer (that app, `lyra-ux-templates`, and this library's own
    `Templates/Agent Next Gen` story) can render the exact same composition
    from one real component instead of three hand-copied ones — the same
-   motivation as `useOutboundAddButton` (create-new.tsx): identical demo
+   motivation as `useAddChannelButton` (create-new.tsx): identical demo
    content living in more than one place is exactly the kind of thing that
    quietly drifts. See CONTRIBUTING.md §"Composition over reimplementation" —
    every piece below is built from existing lyra-ui atoms (`DashboardCard`,
