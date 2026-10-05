@@ -7,7 +7,7 @@ import "../src/storybook.css";
    mechanism every component in this library (and the templates app) already
    reads via `document.documentElement.getAttribute("data-theme")` /
    `setAttribute("data-theme", ...)`. Also syncs the canvas background to the
-   current --lyra-color-bg-surface-shell value so the story canvas itself
+   current --lyra-color-bg-surface-base value so the story canvas itself
    isn't left on a stark white/dark mismatch.
 
    Note: this runs the DOM mutation directly in the decorator body (not in a
@@ -25,8 +25,11 @@ const withTheme: Decorator = (Story, context) => {
      tracking the token when something *other* than this toolbar flips
      data-theme (ProfileMenu's / AgentProfile's own dark mode toggle). A
      literal left the canvas stuck on the old theme's color while every
-     component flipped. */
-  document.body.style.backgroundColor = "var(--lyra-color-bg-surface-shell)";
+     component flipped. `--lyra-color-bg-surface-base` (white in light mode,
+     the dark-surface equivalent in dark mode — lyra-tokens.css) per explicit
+     request, replacing `--lyra-color-bg-surface-shell` (gray) — this only
+     changes the Storybook canvas itself, not any component's own styles. */
+  document.body.style.backgroundColor = "var(--lyra-color-bg-surface-base)";
 
   return React.createElement(Story);
 };
