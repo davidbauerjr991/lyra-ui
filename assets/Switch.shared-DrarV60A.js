@@ -1,0 +1,1 @@
+const e="You must accept the terms",t="Helpful context about this setting.",c=[{caption:"On",checked:!0},{caption:"Off",checked:!1},{caption:"Disabled off",checked:!1,disabled:!0},{caption:"Disabled on",checked:!0,disabled:!0}];export{t as H,e as R,c as S};

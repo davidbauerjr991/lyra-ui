@@ -1,0 +1,1 @@
+const e=[{value:"opt1",label:"Option 1"},{value:"opt2",label:"Option 2"},{value:"opt3",label:"Option 3"},{value:"opt4",label:"Option 4"},{value:"opt5",label:"Option 5"},{value:"opt6",label:"Option 6"}],a=Array.from({length:20},(t,l)=>({value:`item-${l+1}`,label:`Item label ${l+1}`})),o="Helpful context about this field.",p="Required";export{p as E,o as H,a as m,e as s};

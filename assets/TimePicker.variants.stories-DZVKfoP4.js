@@ -1,0 +1,21 @@
+import{j as e}from"./jsx-runtime-D_zvdyIk.js";import{T as r}from"./time-picker-BygXvaGp.js";import{r as m}from"./index-DhMLlvMY.js";import{t,E as v}from"./TimePicker.shared-CK07UbXq.js";import"./index-DRSiSFY5.js";import"./index-DGBzHazk.js";import"./index-2UU9FgV2.js";import"./_commonjsHelpers-CqkleIqs.js";import"./index-D7lG0nq1.js";import"./index-0SMGJ9Xv.js";import"./index-C-870Axa.js";import"./Combination-DrhKiBYc.js";import"./tslib.es6-Ytcc2UEA.js";import"./label-amkU61wz.js";import"./utils-BLSKlp9E.js";import"./tooltip-DKTByY8R.js";import"./circle-help-DYnzmdO5.js";import"./createLucideIcon-aII_sYFw.js";import"./time-picker-shared-C9vANgr4.js";import"./number-field-OvOJuudh.js";import"./error-icon-solid-eVlwMcX6.js";import"./chevron-up-dmEEfYqc.js";import"./chevron-down-gMYAX9-q.js";import"./select-DJKQGHZg.js";import"./index-pcZVUfq6.js";import"./index-4W-125c9.js";import"./index-CylpBFcA.js";import"./popover-Cbqqiubp.js";import"./container-header-i6DKumQe.js";import"./arrow-left-Bi_-X62A.js";import"./x-CzxgOx-T.js";import"./checkbox-CfX6-3Wq.js";import"./minus-CVnigrff.js";import"./check-Dr3vGcdY.js";import"./button-BLVj2C8E.js";import"./index-1evVQkiP.js";import"./badge-CJVmnMhy.js";import"./spinner-xIhFAlhc.js";import"./scroll-chevron-CXy7dwCM.js";import"./chevron-right-BP9ksYh_.js";import"./chevron-left-CtyUClJQ.js";import"./search-CZxBQJsH.js";import"./date-picker-shared-SHAoPv3f.js";import"./calendar-t4SqpSdm.js";import"./clock-C3xVexPO.js";const xe={title:"Custom Primitives/TimePicker/Variants",component:r,tags:["!autodocs"],parameters:{layout:"padded",backgrounds:{default:"lyra-shell"}}},o={name:"All Variants",render:()=>e.jsxs("div",{className:"flex flex-col gap-4 w-56",children:[e.jsx(r,{label:"Default"}),e.jsx(r,{label:"With default value",value:t(9,30)}),e.jsx(r,{label:"Disabled",disabled:!0}),e.jsx(r,{label:"Read-only",readonly:!0,value:t(14,30)}),e.jsx(r,{label:"Required",required:!0}),e.jsx(r,{label:"Error",error:v}),e.jsx(r,{label:"With menu",menu:!0}),e.jsx(r,{label:"With AM/PM select",ampmSelect:!0}),e.jsx(r,{label:"Small",size:"sm"}),e.jsx(r,{label:"Icon outside (old layout)",iconPlacement:"outside"})]})};function E(){const[a,s]=m.useState(),[j,P]=m.useState();return e.jsxs("div",{className:"flex flex-col gap-6 w-64 pb-[320px]",children:[e.jsx(r,{label:"Start Time",required:!0,value:a,onChange:s,error:a?void 0:"Select a start time."}),e.jsx(r,{label:"Typed time (try 25:99, then Tab)",value:j,onChange:P})]})}const i={name:"Error",render:()=>e.jsx(E,{})};function h(){const[a,s]=m.useState(t(9,30));return e.jsx("div",{className:"flex flex-col gap-6 w-64 pb-[340px]",children:e.jsx(r,{label:"Callback Time",labelHelpText:"Business hours only.",menu:!0,step:15,minTime:t(9),maxTime:t(17),value:a,onChange:s})})}const l={name:"Constraints",render:()=>e.jsx(h,{})};var n,p,c;o.parameters={...o.parameters,docs:{...(n=o.parameters)==null?void 0:n.docs,source:{originalSource:`{
+  name: "All Variants",
+  render: () => <div className="flex flex-col gap-4 w-56">
+      <TimePicker label="Default" />
+      <TimePicker label="With default value" value={timeAt(9, 30)} />
+      <TimePicker label="Disabled" disabled />
+      <TimePicker label="Read-only" readonly value={timeAt(14, 30)} />
+      <TimePicker label="Required" required />
+      <TimePicker label="Error" error={ERROR_TEXT} />
+      <TimePicker label="With menu" menu />
+      <TimePicker label="With AM/PM select" ampmSelect />
+      <TimePicker label="Small" size="sm" />
+      <TimePicker label="Icon outside (old layout)" iconPlacement="outside" />
+    </div>
+}`,...(c=(p=o.parameters)==null?void 0:p.docs)==null?void 0:c.source}}};var u,d,x;i.parameters={...i.parameters,docs:{...(u=i.parameters)==null?void 0:u.docs,source:{originalSource:`{
+  name: "Error",
+  render: () => <ErrorDemo />
+}`,...(x=(d=i.parameters)==null?void 0:d.docs)==null?void 0:x.source}}};var b,T,f;l.parameters={...l.parameters,docs:{...(b=l.parameters)==null?void 0:b.docs,source:{originalSource:`{
+  name: "Constraints",
+  render: () => <ConstraintsDemo />
+}`,...(f=(T=l.parameters)==null?void 0:T.docs)==null?void 0:f.source}}};const be=["AllVariants","ErrorState","Constraints"];export{o as AllVariants,l as Constraints,i as ErrorState,be as __namedExportsOrder,xe as default};
