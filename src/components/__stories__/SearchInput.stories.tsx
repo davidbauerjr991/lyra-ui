@@ -1,143 +1,142 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { SearchInput } from "../search-input";
+import { SAMPLE_QUERY } from "./SearchInput.shared";
 
 const meta: Meta<typeof SearchInput> = {
   title: "Custom Primitives/SearchInput",
   component: SearchInput,
   tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
-  argTypes: {
-    disabled: { control: "boolean" },
-    placeholder: { control: "text" },
-    /** "sm" (32px) is for dense contexts — a table toolbar's quick search
-     *  row is the motivating case — vs. the "md" (36px) default every
-     *  other field in the library uses. */
-    size: { control: "select", options: ["sm", "md"], name: "Size" },
-  },
 };
 
 export default meta;
-type Story = StoryObj<typeof SearchInput>;
 
-/* ── Default ── */
+/* Variants (states, submit button, full width) each have their own page under
+   "SearchInput/Variants" — see SearchInput.variants.stories.tsx. */
 
-export const Default: Story = {
+/* ── Default — one controls-driven story. Consolidates what used to be
+   Default, With Value (shows clear button) and Full Width into a single
+   playground. Fully controlled so typing, the clear button and the submit
+   button behave like the real component. ── */
+
+interface SearchInputDemoProps {
+  state?: "default" | "disabled" | "read-only";
+  startingValue?: "empty" | "filled";
+  submitButton?: boolean;
+  placeholder?: string;
+  size?: "sm" | "md";
+  maxWidth?: boolean;
+}
+
+function SearchInputDemo({
+  state = "default",
+  startingValue = "empty",
+  submitButton = false,
+  placeholder = "Search",
+  size = "md",
+  maxWidth = false,
+}: SearchInputDemoProps) {
+  const [value, setValue] = useState(startingValue === "filled" ? SAMPLE_QUERY : "");
+  const [submitted, setSubmitted] = useState<string | null>(null);
+  return (
+    <div className="flex flex-col gap-2">
+      <SearchInput
+        placeholder={placeholder}
+        size={size}
+        value={value}
+        onValueChange={setValue}
+        disabled={state === "disabled"}
+        readonly={state === "read-only"}
+        onSubmit={submitButton ? setSubmitted : undefined}
+        // Same bounds as the Input story's "Max width": 240–320px when on,
+        // otherwise the field stretches across its container.
+        className={maxWidth ? "min-w-[240px] max-w-[320px]" : undefined}
+      />
+      {submitted !== null && (
+        <p className="lyra-body-sm text-lyra-fg-secondary" role="status">
+          Submitted: {submitted}
+        </p>
+      )}
+    </div>
+  );
+}
+
+type SearchInputDemoStory = StoryObj<typeof SearchInputDemo>;
+
+export const Default: SearchInputDemoStory = {
   args: {
+    state: "default",
+    startingValue: "empty",
+    submitButton: false,
     placeholder: "Search",
     size: "md",
+    maxWidth: false,
   },
-  render: (args) => {
-    const [value, setValue] = useState("");
-    return (
-      <SearchInput
-        {...args}
-        value={value}
-        onValueChange={setValue}
-        className="w-[260px]"
-      />
-    );
+  parameters: {
+    controls: {
+      include: [
+        "state",
+        "startingValue",
+        "submitButton",
+        "placeholder",
+        "size",
+        "maxWidth",
+        "State",
+        "Starting value",
+        "Submit button",
+        "Placeholder",
+        "Size",
+        "Max width",
+      ],
+      sort: "none",
+    },
   },
-};
-
-/* ── With Value (shows clear button) ── */
-
-export const WithValue: Story = {
-  name: "With Value",
-  render: () => {
-    const [value, setValue] = useState("Agent Desktop");
-    return (
-      <SearchInput
-        placeholder="Search"
-        value={value}
-        onValueChange={setValue}
-        className="w-[260px]"
-      />
-    );
+  argTypes: {
+    state: {
+      name: "State",
+      control: "radio",
+      options: ["default", "disabled", "read-only"],
+      description: "Disabled blocks input. Read-only drops the hover, focus and clear button (`disabled`, `readonly`).",
+      table: { category: "Behavior" },
+    },
+    startingValue: {
+      name: "Starting value",
+      control: "radio",
+      options: ["empty", "filled"],
+      description: "Whether the field starts empty or with text in it, which shows the clear button.",
+      table: { category: "Behavior" },
+    },
+    submitButton: {
+      name: "Submit button",
+      control: "boolean",
+      description:
+        "Adds an arrow button that appears once there is text. Clicking it, or pressing Enter, runs the search (`onSubmit`).",
+      table: { category: "Behavior" },
+    },
+    placeholder: {
+      name: "Placeholder",
+      control: "text",
+      description: "Hint text shown while the field is empty.",
+      table: { category: "Content" },
+    },
+    size: {
+      name: "Size",
+      control: "radio",
+      options: ["sm", "md"],
+      description: "sm is 32px for dense contexts like a table toolbar. md is the 36px default every other field uses.",
+      table: { category: "Appearance" },
+    },
+    maxWidth: {
+      name: "Max width",
+      control: "boolean",
+      description: "Bounds the field between 240px and 320px instead of full width, matching Input. Off stretches it across its container.",
+      table: { category: "Appearance", defaultValue: { summary: "false" } },
+    },
   },
-};
-
-/* ── States ── */
-
-export const States: Story = {
-  name: "States",
-  render: () => {
-    const [val1, setVal1] = useState("");
-    const [val2, setVal2] = useState("");
-    const [val3, setVal3] = useState("");
-    const [val4, setVal4] = useState("Agent Desktop");
-
-    return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-2 gap-x-8 gap-y-4 items-start max-w-[600px]">
-          <div>
-            <span className="lyra-body-sm text-lyra-fg-secondary mb-2 block">
-              Default
-            </span>
-            <SearchInput
-              placeholder="Search"
-              value={val1}
-              onValueChange={setVal1}
-              aria-label="Search default"
-            />
-          </div>
-          <div>
-            <span className="lyra-body-sm text-lyra-fg-secondary mb-2 block">
-              Hover (hover to see)
-            </span>
-            <SearchInput
-              placeholder="Search"
-              value={val2}
-              onValueChange={setVal2}
-              aria-label="Search hover"
-            />
-          </div>
-          <div>
-            <span className="lyra-body-sm text-lyra-fg-secondary mb-2 block">
-              Focused (click to see)
-            </span>
-            <SearchInput
-              placeholder="Search"
-              value={val3}
-              onValueChange={setVal3}
-              aria-label="Search focused"
-            />
-          </div>
-          <div>
-            <span className="lyra-body-sm text-lyra-fg-secondary mb-2 block">
-              With value + clear
-            </span>
-            <SearchInput
-              placeholder="Search"
-              value={val4}
-              onValueChange={setVal4}
-              aria-label="Search with value"
-            />
-          </div>
-          <div>
-            <span className="lyra-body-sm text-lyra-fg-secondary mb-2 block">
-              Disabled
-            </span>
-            <SearchInput placeholder="Search" value="" disabled aria-label="Search disabled" />
-          </div>
-        </div>
-      </div>
-    );
-  },
-};
-
-/* ── Full Width ── */
-
-export const FullWidth: Story = {
-  name: "Full Width",
-  render: () => {
-    const [value, setValue] = useState("");
-    return (
-      <SearchInput
-        placeholder="Search"
-        value={value}
-        onValueChange={setValue}
-      />
-    );
-  },
+  render: (args) => (
+    // `key` remounts the demo when a control changes — `useState`'s initial
+    // value only applies on first mount.
+    <SearchInputDemo key={JSON.stringify(args)} {...args} />
+  ),
 };

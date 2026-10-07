@@ -136,6 +136,14 @@ interface PageHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   onPanelHoverEnd?: () => void;
   /** Called when the right (inner) panel toggle is clicked */
   onInnerPanelToggle?: () => void;
+  /** Whether the outer (left) panel is currently open — exposed as `aria-expanded` on the "Toggle left panel" button. Omit and no `aria-expanded` is rendered (previous behavior). */
+  panelOpen?: boolean;
+  /** `id` of the outer (left) panel element — exposed as `aria-controls` on the "Toggle left panel" button. */
+  panelControlsId?: string;
+  /** Whether the inner (right) panel is currently open — exposed as `aria-expanded` on the "Toggle right panel" button. Omit and no `aria-expanded` is rendered. */
+  innerPanelOpen?: boolean;
+  /** `id` of the inner (right) panel element — exposed as `aria-controls` on the "Toggle right panel" button. */
+  innerPanelControlsId?: string;
   /** Called when hovering over the right panel toggle (unpinned mode) */
   onInnerPanelHoverStart?: () => void;
   /** Called when hover leaves the right panel toggle (unpinned mode) */
@@ -210,6 +218,10 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
       onPanelHoverStart,
       onPanelHoverEnd,
       onInnerPanelToggle,
+      panelOpen,
+      panelControlsId,
+      innerPanelOpen,
+      innerPanelControlsId,
       onInnerPanelHoverStart,
       onInnerPanelHoverEnd,
       breadcrumb,
@@ -316,6 +328,8 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
                 <button
                   onClick={panelPinned ? onPanelToggle : undefined}
                   aria-label="Toggle left panel"
+                  aria-expanded={panelOpen}
+                  aria-controls={panelControlsId}
                   className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary transition-colors hover:bg-lyra-state-hover active:bg-lyra-state-pressed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
                 >
                   <PanelLeft className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />
@@ -448,6 +462,8 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
                 <button
                   onClick={onInnerPanelToggle}
                   aria-label="Toggle right panel"
+                  aria-expanded={innerPanelOpen}
+                  aria-controls={innerPanelControlsId}
                   className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary transition-colors hover:bg-lyra-state-hover active:bg-lyra-state-pressed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
                 >
                   <PanelRight className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />

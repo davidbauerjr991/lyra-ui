@@ -41,6 +41,21 @@
   display: none;
 }
 
+/* ── 24×24 minimum hit area for small icon buttons — kept in sync with
+   lyra-tokens.css; see that file for the full explanation. ── */
+.lyra-hit-24:not(.absolute):not(.fixed):not(.sticky) {
+  position: relative;
+}
+.lyra-hit-24::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 24px);
+  height: max(100%, 24px);
+  transform: translate(-50%, -50%);
+}
+
 /* ── Main container content grid (CSS container query) — kept in sync with
    lyra-tokens.css; see that file for the full explanation. ── */
 .lyra-container-grid-wrap {

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
 import { TagsInput } from "../tags-input";
+import { SAMPLE_TAGS, REQUIRED_ERROR } from "./TagsInput.shared";
 
 const meta: Meta<typeof TagsInput> = {
   title: "Custom Primitives/Tags Input",
@@ -10,108 +11,125 @@ const meta: Meta<typeof TagsInput> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof TagsInput>;
 
-export const Default: Story = {
-  render: () => {
-    const [tags, setTags] = useState<string[]>([]);
-    return (
-      <div className="w-96">
-        <TagsInput label="Tags" value={tags} onChange={setTags} placeholder="Add a tag…" />
-      </div>
-    );
-  },
-};
+/* Variants (states, max tags) each have their own page under
+   "Tags Input/Variants" — see TagsInput.variants.stories.tsx. */
 
-export const WithValues: Story = {
-  name: "With Values",
-  render: () => {
-    const [tags, setTags] = useState(["React", "TypeScript", "Tailwind"]);
-    return (
-      <div className="w-96">
-        <TagsInput
-          label="Technologies"
-          labelHelpText="Press Enter or Tab to add."
-          value={tags}
-          onChange={setTags}
-        />
-      </div>
-    );
-  },
-};
+/* ── Default — one controls-driven story. Consolidates what used to be
+   Default, With Values, Max Tags, With Error, Readonly and Disabled into a
+   single playground. Fully controlled so adding and removing tags behave
+   like the real component. ── */
 
-export const MaxTags: Story = {
-  name: "Max Tags",
-  render: () => {
-    const [tags, setTags] = useState(["Tag 1", "Tag 2"]);
-    return (
-      <div className="w-96">
-        <TagsInput
-          label="Labels (max 3)"
-          value={tags}
-          onChange={setTags}
-          maxTags={3}
-        />
-      </div>
-    );
-  },
-};
+interface TagsInputDemoProps {
+  state?: "default" | "required" | "error" | "disabled" | "read-only";
+  startingTags?: "none" | "some";
+  maxTags?: number;
+  label?: string;
+  labelHelpText?: string;
+  placeholder?: string;
+}
 
-export const WithError: Story = {
-  name: "With Error",
-  render: () => {
-    const [tags, setTags] = useState<string[]>([]);
-    return (
-      <div className="w-96">
-        <TagsInput
-          label="Tags"
-          required
-          value={tags}
-          onChange={setTags}
-          error="At least one tag is required"
-        />
-      </div>
-    );
-  },
-};
-
-export const Readonly: Story = {
-  render: () => (
+function TagsInputDemo({
+  state = "default",
+  startingTags = "none",
+  maxTags = 0,
+  label = "Tags",
+  labelHelpText = "",
+  placeholder = "Add a tag…",
+}: TagsInputDemoProps) {
+  const [tags, setTags] = useState<string[]>(startingTags === "some" ? SAMPLE_TAGS : []);
+  return (
     <div className="w-96">
       <TagsInput
-        label="Tags"
-        value={["React", "TypeScript", "Tailwind"]}
-        readonly
+        label={label}
+        labelHelpText={labelHelpText || undefined}
+        placeholder={placeholder}
+        value={tags}
+        onChange={setTags}
+        maxTags={maxTags > 0 ? maxTags : undefined}
+        required={state === "required" || state === "error"}
+        disabled={state === "disabled"}
+        readonly={state === "read-only"}
+        error={state === "error" ? REQUIRED_ERROR : undefined}
       />
     </div>
-  ),
-};
+  );
+}
 
-export const Disabled: Story = {
-  render: () => (
-    <div className="w-96">
-      <TagsInput
-        label="Tags"
-        value={["React", "TypeScript"]}
-        disabled
-      />
-    </div>
-  ),
-};
+type TagsInputDemoStory = StoryObj<typeof TagsInputDemo>;
 
-export const AllStates: Story = {
-  name: "All States",
-  render: () => {
-    const [tags, setTags] = useState(["React", "TypeScript"]);
-    return (
-      <div className="flex flex-col gap-6 max-w-sm">
-        <TagsInput label="Default" value={[]} onChange={() => {}} />
-        <TagsInput label="With values" value={tags} onChange={setTags} />
-        <TagsInput label="Max 3 tags" value={["Tag 1", "Tag 2"]} onChange={() => {}} maxTags={3} />
-        <TagsInput label="Readonly" value={["React", "TypeScript"]} readonly />
-        <TagsInput label="Disabled" value={["React"]} disabled />
-        <TagsInput label="Error" value={[]} onChange={() => {}} error="At least one tag is required" required />
-      </div>
-    );
+export const Default: TagsInputDemoStory = {
+  args: {
+    state: "default",
+    startingTags: "none",
+    maxTags: 0,
+    label: "Tags",
+    labelHelpText: "",
+    placeholder: "Add a tag…",
   },
+  parameters: {
+    controls: {
+      include: [
+        "state",
+        "startingTags",
+        "maxTags",
+        "label",
+        "labelHelpText",
+        "placeholder",
+        "State",
+        "Starting tags",
+        "Max tags",
+        "Label",
+        "Label help text",
+        "Placeholder",
+      ],
+      sort: "none",
+    },
+  },
+  argTypes: {
+    state: {
+      name: "State",
+      control: "select",
+      options: ["default", "required", "error", "disabled", "read-only"],
+      description:
+        "Required adds the required marker. Error shows an error message (`error`). Disabled and read-only lock the field.",
+      table: { category: "Behavior" },
+    },
+    startingTags: {
+      name: "Starting tags",
+      control: "radio",
+      options: ["none", "some"],
+      description: "Whether the field starts empty or with tags already added.",
+      table: { category: "Behavior" },
+    },
+    maxTags: {
+      name: "Max tags",
+      control: { type: "number", min: 0 },
+      description: "Most tags the field accepts. 0 means no limit (`maxTags`).",
+      table: { category: "Behavior" },
+    },
+    label: {
+      name: "Label",
+      control: "text",
+      description: "Text above the field (`label`).",
+      table: { category: "Content" },
+    },
+    labelHelpText: {
+      name: "Label help text",
+      control: "text",
+      description: "Help text shown next to the label (`labelHelpText`). Empty for none.",
+      table: { category: "Content" },
+    },
+    placeholder: {
+      name: "Placeholder",
+      control: "text",
+      description: "Hint text shown while the field is empty.",
+      table: { category: "Content" },
+    },
+  },
+  render: (args) => (
+    // `key` remounts the demo when a control changes — `useState`'s initial
+    // value only applies on first mount.
+    <TagsInputDemo key={JSON.stringify(args)} {...args} />
+  ),
 };

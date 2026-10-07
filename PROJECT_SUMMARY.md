@@ -2307,6 +2307,25 @@ Verified: `npm run lint` (`tsc --noEmit`) — matched the standing 3-error basel
 ### Select: Clear and item count (multi-select)
 2026-10-07. New opt-in `showClear` (Clear button on the Select All row, shown once something is selected) and `showCount` ("N items | M selected" footer line, shares the row with Apply / Cancel). Default false. Default story controls "Show clear" / "Show count"; Variants page "Clear and Count".
 
+### WCAG 2.2 AA fixes: Tree Menu, Left Nav, Tags Input, Overlay, Sparkline
+2026-10-07. From `lyra-sol-compare/ux-review/lyra-ada-review.html`. Keyboard / screen-reader only, no visual change; every new prop is optional and defaults to the old behavior.
+- Tree Menu (tree-menu.tsx): removed `role="tree"`/`treeitem`/`group` and the no-op `aria-expanded` on `<li>`. It is now a plain disclosure nav (nav > ul > li > button). Parent buttons get `aria-controls` pointing at the child `<ul>` id (`React.useId`). LeftNav and `NavRail` inherit this.
+- Left Nav (left-nav.tsx): new optional `navAriaLabel` on `LeftNav` and `NavRail` (defaults "Navigation menu" / "Main navigation" / "Navigation"). The "Collapsed" story now passes `overlay={false}`, because `overlay="auto"` below 1280px ignores `open`.
+- Tags Input (tags-input.tsx): Tab and "," are intercepted only when the field has non-whitespace text, so Tab / Shift+Tab leave an empty field (2.1.2). Enter is unchanged. Side effect: "," in an empty field is now typed.
+- Overlay (overlay.tsx): new `closeOnEscape` (default true), independent of `closeOnBackdropClick`. Also returns focus to the element that opened it: Radix's own trigger is a hidden, non-focusable span, so focus used to drop to `<body>`.
+- Sparkline (sparkline.tsx): new `aria-label` (wrapper gets `role="img"`) and `decorative` (`aria-hidden`, wins over the label). With neither, output is unchanged and a dev-only `console.warn` fires.
+- Not fixed: `Modal` (modal.tsx) still blocks Esc when `closeOnBackdropClick` is false, and v3's welcome modal relies on that. Collapsed Tree Menu child rows are still Tab stops while hidden.
+
+### WCAG 2.2 AA "minor issues" pass: Table, Page Header, Tag, Tag Picker, Filter Chip, Number Field, Email/Phone/Password Input, Dashboard Card, Link
+2026-10-07. From `lyra-sol-compare/ux-review/lyra-ada-review.html`. No visual change; every new prop is optional with the old behavior as default.
+- Shared: `.lyra-hit-24` (lyra-tokens.css + storybook.css) — a centered 24×24 `::before` hit area for small icon buttons, no layout change; skips `.absolute`/`.fixed`/`.sticky` elements. Used by Tag ×, Tag Picker clear, Password info/toggle, and the "Copy criteria" story buttons.
+- Table: resize handle shows a 2px `lyra-border-focus` line on keyboard focus (the old `/60` opacity on a `var()` token never rendered); documented `aria-label`; polite live region announces sort and keyboard column moves. Row checkbox names are a story concern (Table has no row data), so the stories now use "Select {name}" / "Select all rows".
+- Page Header: optional `panelOpen`/`panelControlsId`/`innerPanelOpen`/`innerPanelControlsId` -> `aria-expanded`/`aria-controls`. `SidePanel` no longer mounts its resize handle while closed, and the open handle has an inset focus ring.
+- Tag: 24px × hit area; Removable story moves focus after removal (next ×, previous, or the group). Tag Picker: search is a `combobox` (aria-activedescendant, ↓/↑/Home/End/Enter/Space), Esc returns focus to "Add tag" for keyboard users. Filter Chip: focus-after-remove in the Removable / Basic Group / With Operators stories.
+- Number Field: keyboard ring via `:focus-within` + modality attribute; Home/End/PageUp/PageDown. Steppers left at 18px (no room for 24px stacked; the input is the equivalent control).
+- Email/Phone/Password: `required` + `aria-required` reach the `<input>`; Phone country search is a combobox. Dashboard Card: sr-only "Up/Down/No change" before the delta; its Sparkline is now `decorative`. Link: optional `underline` ("hover" | "always") and `href` (renders `<a>`); "Inline in text" story.
+- Not fixed: stepper target size (above); `Modal` still blocks Esc when `closeOnBackdropClick` is false.
+
 ## Planned Future Work
 - Empty template
 - Edit template (settings/configure)

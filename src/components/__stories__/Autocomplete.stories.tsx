@@ -31,6 +31,11 @@ interface AutocompleteDemoProps {
   fieldState?: FieldState;
   loading?: boolean;
   filterOptions?: boolean;
+  startingValue?: string;
+  label?: string;
+  labelHelpText?: string;
+  placeholder?: string;
+  loadingMessage?: string;
 }
 
 function AutocompleteDemo({
@@ -41,22 +46,29 @@ function AutocompleteDemo({
   fieldState = "normal",
   loading = false,
   filterOptions = true,
+  startingValue = "none",
+  label = "Country",
+  labelHelpText = "",
+  placeholder = "",
+  loadingMessage = "Loading…",
 }: AutocompleteDemoProps) {
   const options = COUNTRIES.map((option) =>
     option.value === "jp" && disabledOption
       ? { ...option, label: "Japan — (Unavailable)", disabled: true }
       : option
   );
-  const [value, setValue] = useState<string | undefined>();
+  const [value, setValue] = useState<string | undefined>(startingValue === "none" ? undefined : startingValue);
 
   return (
     <div className="w-72">
       <Autocomplete
-        label="Country"
+        label={label}
+        labelHelpText={labelHelpText || undefined}
+        loadingMessage={loadingMessage}
         options={options}
         value={value}
         onChange={setValue}
-        placeholder={showAll ? "Search countries…" : "Type to search…"}
+        placeholder={placeholder || (showAll ? "Search countries…" : "Type to search…")}
         showAllOnEmpty={showAll}
         required={required}
         disabled={fieldState === "disabled"}
@@ -83,7 +95,32 @@ export const Default: AutocompleteDemoStory = {
   // handful of args its render function actually reads.
   parameters: {
     controls: {
-      include: ["showAll", "required", "fieldState", "disabledOption", "size", "loading", "filterOptions"],
+      include: [
+        "fieldState",
+        "startingValue",
+        "required",
+        "label",
+        "labelHelpText",
+        "placeholder",
+        "showAll",
+        "disabledOption",
+        "loading",
+        "loadingMessage",
+        "filterOptions",
+        "size",
+        "Field State",
+        "Starting Value",
+        "Required",
+        "Label",
+        "Label Help Text",
+        "Placeholder",
+        "Show All On Empty",
+        "Disabled Option",
+        "Loading",
+        "Loading Message",
+        "Filter Options",
+        "Size",
+      ],
       sort: "none",
     },
   },
@@ -95,8 +132,45 @@ export const Default: AutocompleteDemoStory = {
     fieldState: "normal",
     loading: false,
     filterOptions: true,
+    startingValue: "none",
+    label: "Country",
+    labelHelpText: "",
+    placeholder: "",
+    loadingMessage: "Loading…",
   },
   argTypes: {
+    startingValue: {
+      name: "Starting Value",
+      control: "select",
+      options: ["none", ...COUNTRIES.map((c) => c.value)],
+      description: "Which option is selected when the field first renders (`value`).",
+      table: { category: "Content" },
+    },
+    label: {
+      name: "Label",
+      control: "text",
+      description: "Field label (`label`).",
+      table: { category: "Content" },
+    },
+    labelHelpText: {
+      name: "Label Help Text",
+      control: "text",
+      description: "Optional help text beside the label (`labelHelpText`). Leave empty for none.",
+      table: { category: "Content" },
+    },
+    placeholder: {
+      name: "Placeholder",
+      control: "text",
+      description: "Input placeholder (`placeholder`). Empty uses a default that follows Show All On Empty.",
+      table: { category: "Content" },
+    },
+    loadingMessage: {
+      name: "Loading Message",
+      control: "text",
+      description: "Text shown and announced while loading (`loadingMessage`).",
+      if: { arg: "loading", truthy: true },
+      table: { category: "Content" },
+    },
     showAll: {
       name: "Show All On Empty",
       control: "boolean",

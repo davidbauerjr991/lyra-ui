@@ -16,7 +16,11 @@ export interface TagsInputProps {
   onChange?: (tags: string[]) => void;
   /** Placeholder shown in the input area */
   placeholder?: string;
-  /** Keys that confirm a tag (default: Enter, Tab) */
+  /**
+   * Keys that confirm a tag (default: Enter, Tab, ","). Enter always
+   * confirms; every other key only confirms (and is only intercepted) when
+   * the input has non-whitespace text, so an empty field never traps Tab.
+   */
   addKeys?: string[];
   /** Maximum number of tags allowed */
   maxTags?: number;
@@ -98,6 +102,12 @@ const TagsInput = React.forwardRef<HTMLDivElement, TagsInputProps>(
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (addKeys.includes(e.key)) {
+        // Enter always commits (and keeps its default-prevented behavior).
+        // Every other add key — Tab, "," — only intercepts when there's
+        // non-whitespace text to commit. With an empty field, Tab and
+        // Shift+Tab must keep their native focus movement, otherwise focus
+        // can never leave the input (WCAG 2.1.2 No Keyboard Trap).
+        if (e.key !== "Enter" && inputVal.trim() === "") return;
         e.preventDefault();
         addTag(inputVal);
         return;

@@ -113,6 +113,17 @@ const surfaceClassName = cn(
    with Select's multi-select listbox (same gap: no Radix primitive covers
    a plain scrollable list of custom rows). */
 
+/* Tracks whether the pointer or the keyboard last drove the menu, as
+   `data-input` on the surface, so the row focus ring can be keyboard-only. */
+const inputModalityProps = {
+  onPointerMove: (e: React.PointerEvent<HTMLElement>) => {
+    e.currentTarget.dataset.input = "pointer";
+  },
+  onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => {
+    e.currentTarget.dataset.input = "keyboard";
+  },
+};
+
 /* ── Entry rendering (recursive — used for top-level Content and every
    nested SubContent) ── */
 function renderEntries(entries: MenuEntry[]) {
@@ -164,6 +175,12 @@ function MenuRadixItem({ item }: { item: MenuItemDef }) {
     // look is unchanged for mouse users. Inset so the menu surface's
     // `overflow-hidden` can't clip it.
     "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lyra-border-focus",
+    // Radix focuses a row programmatically on pointer-move, and browsers
+    // still report that as `:focus-visible` if the last real input was a key
+    // press (e.g. the menu was opened from the keyboard). Surfaces track the
+    // latest input in `data-input` (see `inputModalityProps`), so the ring is
+    // suppressed whenever the pointer is what's driving the highlight.
+    "[[data-input=pointer]_&]:focus-visible:!ring-0",
     // Drag-to-reorder affordance/feedback — `dragOver` is the same "another
     // row is being dragged over this one" highlight `SortableTableHead` uses
     // (`bg-lyra-bg-active-moderate`), driven entirely by whatever hook the
@@ -249,6 +266,7 @@ function MenuRadixItem({ item }: { item: MenuItemDef }) {
             sideOffset={4}
             alignOffset={-4}
             className={surfaceClassName}
+            {...inputModalityProps}
             onClick={stopClickBubble}
           >
             {item.submenuContent ?? renderEntries(item.submenu!)}
@@ -351,6 +369,7 @@ const MenuRadix = React.forwardRef<HTMLButtonElement, MenuRadixProps>(
             align={align}
             sideOffset={sideOffset}
             className={cn(surfaceClassName, className)}
+            {...inputModalityProps}
             onAnimationEnd={recompute}
             onClick={stopClickBubble}
           >

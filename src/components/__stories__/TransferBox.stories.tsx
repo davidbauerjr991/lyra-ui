@@ -1,19 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
 import { TransferBox } from "../transfer-box";
-
-const SKILLS = [
-  "10DMT Service","10DMTClosure","10DMT_CT_AUTO","10DMT_CallEvents",
-  "ACD_API_Manual_Service","API_CC2_Quick_Connect","ATG Outbound Test",
-  "ATG_Contacts_Regression","ATG_Inbound","AccountNotRequired",
-  "BasicSkill","BillingSupport","CallbackQueue","CustomerRetention",
-  "DataEntry","EscalationTeam","FraudPrevention","GeneralInquiries",
-  "HighPrioritySupport","InboundSales","JuniorAgents","KnowledgeBase",
-  "Level1Support","Level2Support","Level3Support","MobileSupport",
-  "NightShift","OutboundCampaign","PremiumCustomers","QualityAssurance",
-].map((label) => ({ value: label.toLowerCase().replace(/\s+/g, "_"), label }));
-
-const PRESELECTED = ["api_cc2_quick_connect", "basicskill", "billingqueue"];
+import {
+  SKILLS,
+  PRESELECTED,
+  FEW_SELECTED,
+  TOOLTIP,
+  REQUIRED_ERROR,
+} from "./TransferBox.shared";
 
 const meta: Meta<typeof TransferBox> = {
   title: "Custom Primitives/TransferBox",
@@ -23,166 +17,125 @@ const meta: Meta<typeof TransferBox> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof TransferBox>;
 
-export const Interactive: Story = {
-  name: "Interactive",
-  render: () => {
-    const [value, setValue] = useState<string[]>(["atg_inbound"]);
-    const opts = [{ value: "api_hcl", label: "API_HCI" }, ...SKILLS];
-    return (
-      <TransferBox
-        options={opts} value={value} onChange={setValue}
-        availableLabel="Available" selectedLabel="Selected"
-        availableLabelTooltip="Select one or more skills for this Screen Pop"
-      />
-    );
-  },
-};
+/* Variants (every state side by side) have their own page under
+   "TransferBox/Variants" — see TransferBox.variants.stories.tsx. */
 
-const TOOLTIP = "Select one or more skills for this Screen Pop";
+/* ── Default — one controls-driven story. Consolidates what used to be
+   Interactive, Error, Max selection limit, Disabled and Read Only into a
+   single playground. Fully controlled so moving items between the two lists
+   updates real state. ── */
 
-export const WithError: Story = {
-  name: "Error",
-  render: () => {
-    const [value, setValue] = useState<string[]>([]);
-    return (
-      <TransferBox
-        options={SKILLS} value={value} onChange={setValue}
-        availableLabel="Available" selectedLabel="Selected"
-        availableLabelTooltip={TOOLTIP}
-        error="At least one skill must be selected."
-      />
-    );
-  },
-};
+interface TransferBoxDemoProps {
+  state?: "default" | "error" | "disabled" | "read-only";
+  startingSelection?: "none" | "few" | "several";
+  max?: number;
+  availableLabel?: string;
+  selectedLabel?: string;
+  availableLabelTooltip?: string;
+}
 
-export const WithMaxLimit: Story = {
-  name: "Max selection limit",
-  render: () => {
-    const [value, setValue] = useState<string[]>(PRESELECTED);
-    return (
-      <TransferBox
-        options={SKILLS} value={value} onChange={setValue}
-        availableLabel="Available" selectedLabel="Selected"
-        availableLabelTooltip={TOOLTIP}
-        max={5}
-      />
-    );
-  },
-};
+const STARTING = { none: [], few: FEW_SELECTED, several: PRESELECTED } as const;
 
-export const Disabled: Story = {
-  name: "Disabled",
-  render: () => (
-    <TransferBox
-      options={SKILLS}
-      value={["atg_inbound", "basicskill"]}
-      disabled
-      availableLabel="Available" selectedLabel="Selected"
-      availableLabelTooltip={TOOLTIP}
-    />
-  ),
-};
-
-export const Readonly: Story = {
-  name: "Read Only",
-  render: () => (
-    <TransferBox
-      options={SKILLS}
-      value={["atg_inbound", "basicskill", "billingqueue"]}
-      readonly
-      availableLabel="Available" selectedLabel="Selected"
-      availableLabelTooltip={TOOLTIP}
-    />
-  ),
-};
-
-function AllVariantsDemo() {
-  const [emptyValue, setEmptyValue] = useState<string[]>([]);
-  const [withItemsValue, setWithItemsValue] = useState<string[]>(["atg_inbound", "basicskill"]);
-  const [withSelectionsValue, setWithSelectionsValue] = useState<string[]>(PRESELECTED);
-
+function TransferBoxDemo({
+  state = "default",
+  startingSelection = "none",
+  max = 0,
+  availableLabel = "Available",
+  selectedLabel = "Selected",
+  availableLabelTooltip = TOOLTIP,
+}: TransferBoxDemoProps) {
+  const [value, setValue] = useState<string[]>([...STARTING[startingSelection]]);
   return (
-    <div className="flex flex-col gap-10">
-      <div>
-        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">Empty (no selections)</p>
-        <TransferBox
-          options={SKILLS}
-          value={emptyValue}
-          onChange={setEmptyValue}
-          availableLabel="Available"
-          selectedLabel="Selected"
-          availableLabelTooltip={TOOLTIP}
-        />
-      </div>
-
-      <div>
-        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">With items selected</p>
-        <TransferBox
-          options={SKILLS}
-          value={withItemsValue}
-          onChange={setWithItemsValue}
-          availableLabel="Available"
-          selectedLabel="Selected"
-          availableLabelTooltip={TOOLTIP}
-        />
-      </div>
-
-      <div>
-        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">With max selection limit (max 5)</p>
-        <TransferBox
-          options={SKILLS}
-          value={withSelectionsValue}
-          onChange={setWithSelectionsValue}
-          availableLabel="Available"
-          selectedLabel="Selected"
-          availableLabelTooltip={TOOLTIP}
-          max={5}
-        />
-      </div>
-
-      <div>
-        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">Error state</p>
-        <TransferBox
-          options={SKILLS}
-          value={[]}
-          onChange={() => {}}
-          availableLabel="Available"
-          selectedLabel="Selected"
-          availableLabelTooltip={TOOLTIP}
-          error="At least one skill must be selected."
-        />
-      </div>
-
-      <div>
-        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">Disabled</p>
-        <TransferBox
-          options={SKILLS}
-          value={["atg_inbound", "basicskill"]}
-          disabled
-          availableLabel="Available"
-          selectedLabel="Selected"
-          availableLabelTooltip={TOOLTIP}
-        />
-      </div>
-
-      <div>
-        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">Read only</p>
-        <TransferBox
-          options={SKILLS}
-          value={["atg_inbound", "basicskill", "billingqueue"]}
-          readonly
-          availableLabel="Available"
-          selectedLabel="Selected"
-          availableLabelTooltip={TOOLTIP}
-        />
-      </div>
-    </div>
+    <TransferBox
+      options={SKILLS}
+      value={value}
+      onChange={setValue}
+      max={max > 0 ? max : undefined}
+      availableLabel={availableLabel}
+      selectedLabel={selectedLabel}
+      availableLabelTooltip={availableLabelTooltip || undefined}
+      disabled={state === "disabled"}
+      readonly={state === "read-only"}
+      error={state === "error" ? REQUIRED_ERROR : undefined}
+    />
   );
 }
 
-export const AllVariants: Story = {
-  name: "All Variants",
-  render: () => <AllVariantsDemo />,
+type TransferBoxDemoStory = StoryObj<typeof TransferBoxDemo>;
+
+export const Default: TransferBoxDemoStory = {
+  args: {
+    state: "default",
+    startingSelection: "none",
+    max: 0,
+    availableLabel: "Available",
+    selectedLabel: "Selected",
+    availableLabelTooltip: TOOLTIP,
+  },
+  parameters: {
+    controls: {
+      include: [
+        "state",
+        "startingSelection",
+        "max",
+        "availableLabel",
+        "selectedLabel",
+        "availableLabelTooltip",
+        "State",
+        "Starting selection",
+        "Max selection",
+        "Available list title",
+        "Selected list title",
+        "Available list tooltip",
+      ],
+      sort: "none",
+    },
+  },
+  argTypes: {
+    state: {
+      name: "State",
+      control: "radio",
+      options: ["default", "error", "disabled", "read-only"],
+      description:
+        "Error shows an error message (`error`). Disabled blocks all interaction. Read-only shows the selection but blocks changes (`readonly`).",
+      table: { category: "Behavior" },
+    },
+    startingSelection: {
+      name: "Starting selection",
+      control: "radio",
+      options: ["none", "few", "several"],
+      description: "How many items start in the Selected list.",
+      table: { category: "Behavior" },
+    },
+    max: {
+      name: "Max selection",
+      control: { type: "number", min: 0 },
+      description: "Most items that can be selected. 0 means no limit (`max`).",
+      table: { category: "Behavior" },
+    },
+    availableLabel: {
+      name: "Available list title",
+      control: "text",
+      description: "Heading over the list of items still available (`availableLabel`).",
+      table: { category: "Content" },
+    },
+    selectedLabel: {
+      name: "Selected list title",
+      control: "text",
+      description: "Heading over the list of chosen items (`selectedLabel`).",
+      table: { category: "Content" },
+    },
+    availableLabelTooltip: {
+      name: "Available list tooltip",
+      control: "text",
+      description: "Help tooltip next to the Available heading (`availableLabelTooltip`). Empty for none.",
+      table: { category: "Content" },
+    },
+  },
+  render: (args) => (
+    // `key` remounts the demo when a control changes — `useState`'s initial
+    // value only applies on first mount.
+    <TransferBoxDemo key={JSON.stringify(args)} {...args} />
+  ),
 };

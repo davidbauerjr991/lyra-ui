@@ -32,6 +32,34 @@ export interface SparklineProps extends React.HTMLAttributes<HTMLDivElement> {
   strokeWidth?: number;
   /** Smoothed curve instead of sharp/linear points between data points. Default `false`. */
   smooth?: boolean;
+  /**
+   * Text alternative for the chart, e.g. `"Calls trend, last 7 days, up
+   * 12%"`. When set, the wrapper gets `role="img"` and this `aria-label`.
+   * Provide this unless the sparkline is `decorative`.
+   */
+  "aria-label"?: string;
+  /**
+   * Set when the same information is already shown as text nearby (e.g. the
+   * "+12.4% vs last week" line beside it), so assistive tech should skip the
+   * chart: the wrapper gets `aria-hidden="true"`. Takes precedence over
+   * `aria-label`.
+   */
+  decorative?: boolean;
+}
+
+// lyra-ui doesn't depend on @types/node; declare just what's read below
+// (module-scoped, so it can't clash with a consumer's own global typing).
+declare const process: { env: { NODE_ENV?: string } };
+
+// `process.env.NODE_ENV` is statically replaced by Vite/webpack (dev AND
+// build), so this is dead code in production bundles. The try/catch covers
+// an unreplaced, `process`-less browser environment.
+function isDevBuild(): boolean {
+  try {
+    return process.env.NODE_ENV !== "production";
+  } catch {
+    return false;
+  }
 }
 
 function withAlpha(hex: string, alpha: number): string {
@@ -45,8 +73,36 @@ function withAlpha(hex: string, alpha: number): string {
 }
 
 const Sparkline = React.forwardRef<HTMLDivElement, SparklineProps>(
-  ({ data, colorVar = "var(--lyra-color-border-active)", strokeWidth = 2, smooth = false, className, ...props }, ref) => {
+  (
+    {
+      data,
+      colorVar = "var(--lyra-color-border-active)",
+      strokeWidth = 2,
+      smooth = false,
+      "aria-label": ariaLabel,
+      decorative = false,
+      className,
+      ...props
+    },
+    ref
+  ) => {
     const themeVersion = useThemeVersion();
+
+    // Dev-only nudge: with neither prop the chart is an unlabeled canvas that
+    // screen readers can't describe (WCAG 1.1.1). Output is unchanged.
+    const hasTextAlternative = decorative || Boolean(ariaLabel);
+    React.useEffect(() => {
+      if (hasTextAlternative || !isDevBuild()) return;
+      console.warn(
+        'Sparkline: no text alternative. Pass aria-label="…" (renders role="img") or decorative (renders aria-hidden="true") when the value is already shown as text.'
+      );
+    }, [hasTextAlternative]);
+
+    const a11yProps: React.HTMLAttributes<HTMLDivElement> = decorative
+      ? { "aria-hidden": true }
+      : ariaLabel
+        ? { role: "img", "aria-label": ariaLabel }
+        : {};
 
     const option: EChartsOption = React.useMemo(() => {
       const lineColor = resolveCssColor(colorVar);
@@ -88,7 +144,7 @@ const Sparkline = React.forwardRef<HTMLDivElement, SparklineProps>(
     // adding another div around `Chart` here was a redundant, do-nothing
     // extra layer — confirmed live via DevTools showing two identical
     // `<div class="h-full w-full">` wrappers stacked around one `<canvas>`.
-    return <Chart ref={ref} option={option} className={className} {...props} />;
+    return <Chart ref={ref} option={option} className={className} {...props} {...a11yProps} />;
   }
 );
 Sparkline.displayName = "Sparkline";

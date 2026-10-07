@@ -236,8 +236,10 @@ export const inputShell = (disabled?: boolean, readonly?: boolean, size?: "sm" |
 
 /* ── Popover panel ── */
 
-export function TimePanel({ children, menu, wide, onCloseAutoFocus, onKeyDown }: {
+export function TimePanel({ children, menu, wide, onOpenAutoFocus, onCloseAutoFocus, onKeyDown }: {
   children: React.ReactNode; menu?: boolean; wide?: boolean;
+  /** Optional — overrides where focus goes when the panel opens (unset keeps Radix's default, or the field when `menu`). */
+  onOpenAutoFocus?: (e: Event) => void;
   /** Optional — passed straight to Radix's `Content` (unset keeps its default). */
   onCloseAutoFocus?: (e: Event) => void;
   onKeyDown?: React.KeyboardEventHandler<HTMLDivElement>;
@@ -247,7 +249,7 @@ export function TimePanel({ children, menu, wide, onCloseAutoFocus, onKeyDown }:
       side="bottom" sideOffset={6} align="start"
       avoidCollisions collisionPadding={4}
       // Menu mode keeps focus (and the caret) in the text field.
-      onOpenAutoFocus={menu ? (e) => e.preventDefault() : undefined}
+      onOpenAutoFocus={onOpenAutoFocus ?? (menu ? (e) => e.preventDefault() : undefined)}
       onCloseAutoFocus={onCloseAutoFocus}
       onKeyDown={onKeyDown}
       className={cn(

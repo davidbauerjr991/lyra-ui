@@ -173,7 +173,10 @@ const Tag = React.forwardRef<HTMLSpanElement, TagProps>(
               onClick={(e) => { e.stopPropagation(); onRemove(); }}
               aria-label={removeLabel ?? `Remove ${label}`}
               className={cn(
-                "rounded-full flex-shrink-0 transition-colors",
+                // `lyra-hit-24`: 24×24px click/tap target around the 12px ×
+                // (WCAG 2.5.8) — a centered ::before, so the tag's size and
+                // layout are unchanged.
+                "lyra-hit-24 rounded-full flex-shrink-0 transition-colors",
                 "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-lyra-border-focus",
                 tagRemoveHoverVariants({ variant })
               )}

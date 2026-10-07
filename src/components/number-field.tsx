@@ -86,19 +86,6 @@ const NumberField = React.forwardRef<HTMLDivElement, NumberFieldProps>(
     const [inputText, setInputText] = React.useState(formatValue(current, padWidth));
     const inputRef = React.useRef<HTMLInputElement>(null);
     const [focused, setFocused] = React.useState(false);
-    // Separate from `focused` above (which drives showing raw editable
-    // text regardless of input method) — per explicit follow-up request,
-    // the ring itself needs to know specifically whether THIS focus was
-    // keyboard-driven, not just whether the field is focused at all. This
-    // used to be captured via `e.target.matches(":focus-visible")` inside
-    // `onFocus`, but that has the same root-cause bug native
-    // `:focus-visible` has everywhere else in the library: it ALWAYS
-    // matches a text `<input>` on focus regardless of input method, mouse
-    // clicks included (confirmed via user report on a different field —
-    // see input-modality.ts's own fuller comment). Reads our own tracked
-    // input-modality attribute instead, which correctly distinguishes the
-    // two.
-    const [keyboardFocused, setKeyboardFocused] = React.useState(false);
 
     // Sync text from controlled value changes
     React.useEffect(() => {
@@ -128,6 +115,14 @@ const NumberField = React.forwardRef<HTMLDivElement, NumberFieldProps>(
     const handleKeyDown = (e: React.KeyboardEvent) => {
       if (e.key === "ArrowUp")   { e.preventDefault(); increment(); }
       if (e.key === "ArrowDown") { e.preventDefault(); decrement(); }
+      if (disabled || readonly) return;
+      // ARIA spinbutton keys. Home/End jump to min/max only when that bound
+      // is set (otherwise they keep moving the text caret); PageUp/PageDown
+      // step by 10× `step`.
+      if (e.key === "Home" && min !== undefined) { e.preventDefault(); applyChange(min); }
+      if (e.key === "End" && max !== undefined)  { e.preventDefault(); applyChange(max); }
+      if (e.key === "PageUp")   { e.preventDefault(); applyChange(current + step * 10); }
+      if (e.key === "PageDown") { e.preventDefault(); applyChange(current - step * 10); }
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -143,7 +138,6 @@ const NumberField = React.forwardRef<HTMLDivElement, NumberFieldProps>(
 
     const handleBlur = () => {
       setFocused(false);
-      setKeyboardFocused(false);
       // Reformat on blur
       setInputText(formatValue(current, padWidth));
     };
@@ -174,6 +168,13 @@ const NumberField = React.forwardRef<HTMLDivElement, NumberFieldProps>(
         <div
           className={cn(
             "relative flex w-full items-stretch rounded-lyra-sm border lyra-body-md transition-colors overflow-hidden",
+            // Keyboard focus ring (WCAG 2.4.7) — the same 2px ring as
+            // SearchInput/Input, driven live by CSS `:focus-within` plus our
+            // tracked input-modality attribute (so it's keyboard-only, never
+            // after a mouse click). `:focus-within` covers the text input
+            // and the (pointer-only) stepper buttons alike. Replaces a ring
+            // that was applied from React state captured once at focus time.
+            "[html[data-lyra-input-modality=keyboard]_&:focus-within]:outline-none [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-2 [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-lyra-border-focus [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-offset-2",
             size === "sm" ? "h-8" : "h-9",
             error
               ? "border-lyra-status-critical-strong bg-lyra-status-critical-subtle"
@@ -182,24 +183,7 @@ const NumberField = React.forwardRef<HTMLDivElement, NumberFieldProps>(
               : disabled
               ? "border-transparent bg-lyra-bg-disabled"
               : focused
-              ? // ADA-compliance focus indicator: same focus-visible ring
-                // buttons/tabs use (see input.tsx for the fuller comment).
-                // Driven by the `focused`/`keyboardFocused` state (not CSS
-                // `:focus-within`/`:focus-visible`) since the stepper
-                // buttons need their own separate inset ring below. Per
-                // explicit follow-up request, the bold outer ring is
-                // keyboard-only (`keyboardFocused`, sourced from our own
-                // tracked input-modality attribute — see its own doc
-                // comment above); there's no pre-unification mouse-focus
-                // ring to restore here (this field had none before), so
-                // mouse focus on its own goes back to just the plain
-                // border-color change, matching that true "before".
-                cn(
-                  "bg-lyra-bg-field",
-                  keyboardFocused
-                    ? "border-lyra-border-active ring-2 ring-lyra-border-focus ring-offset-2"
-                    : "border-lyra-border-active"
-                )
+              ? "bg-lyra-bg-field border-lyra-border-active"
               : "border-lyra-border-strong bg-lyra-bg-field hover:border-lyra-state-border-hover-neutral"
           )}
         >
@@ -213,7 +197,6 @@ const NumberField = React.forwardRef<HTMLDivElement, NumberFieldProps>(
             onChange={handleInputChange}
             onFocus={() => {
               setFocused(true);
-              setKeyboardFocused(document.documentElement.dataset.lyraInputModality === "keyboard");
             }}
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}

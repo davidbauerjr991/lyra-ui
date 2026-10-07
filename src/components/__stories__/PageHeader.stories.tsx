@@ -339,12 +339,14 @@ export const WithTogglePinned: Story = {
 
     return (
       <div className="flex h-[600px] rounded-lyra-lg border border-lyra-border-subtle overflow-hidden">
-        <SidePanel side="left" open={panelOpen} pinned headerTitle="Designer" />
+        <SidePanel id="page-header-pinned-panel" side="left" open={panelOpen} pinned headerTitle="Designer" />
         <div className="flex flex-1 flex-col overflow-hidden">
           <PageHeader
             title="Page Title"
             panelToggle="left"
             panelPinned
+            panelOpen={panelOpen}
+            panelControlsId="page-header-pinned-panel"
             onPanelToggle={() => setPanelOpen((v) => !v)}
             breadcrumb={{ label: "ParentName" }}
             actions={defaultActions}
@@ -373,6 +375,7 @@ export const WithToggleOverlay: Story = {
     return (
       <div className="relative flex h-[600px] rounded-lyra-lg border border-lyra-border-subtle overflow-hidden">
         <SidePanel
+          id="page-header-overlay-panel"
           side="left"
           open={panelOpen}
           pinned={false}
@@ -385,6 +388,8 @@ export const WithToggleOverlay: Story = {
             title="Page Title"
             panelToggle="left"
             panelPinned={false}
+            panelOpen={panelOpen}
+            panelControlsId="page-header-overlay-panel"
             onPanelHoverStart={onHoverStart}
             onPanelHoverEnd={onHoverEnd}
             breadcrumb={{ label: "ParentName" }}
@@ -408,12 +413,15 @@ export const WithInnerPanelToggle: Story = {
           <PageHeader
             title="Page Title"
             panelToggle="right"
+            innerPanelOpen={panelOpen}
+            innerPanelControlsId="page-header-inner-panel"
             onInnerPanelToggle={() => setPanelOpen((v) => !v)}
             actions={defaultActions}
           />
           <div className="flex flex-1 overflow-hidden">
             <div className="flex-1 bg-lyra-bg-surface-base" />
             <InteriorPanel
+              id="page-header-inner-panel"
               side="right"
               open={panelOpen}
               headerTitle="Details"

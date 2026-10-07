@@ -148,7 +148,7 @@ const PasswordInput = React.forwardRef<HTMLDivElement, PasswordInputProps>(
                 placement="right"
                 content={<RequirementsTooltip requirements={requirements} value={value} />}
               >
-                <button type="button" className="flex items-center text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors rounded-lyra-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2" aria-label="Password requirements">
+                <button type="button" className="lyra-hit-24 flex items-center text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors rounded-lyra-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2" aria-label="Password requirements">
                   <CircleHelp className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
                 </button>
               </Tooltip>
@@ -167,6 +167,10 @@ const PasswordInput = React.forwardRef<HTMLDivElement, PasswordInputProps>(
               readOnly={readonly}
               autoComplete={autoComplete}
               onBlur={onBlur}
+              // `required` used to reach only the label's asterisk — expose
+              // it on the real input too (WCAG 1.3.1 / 3.3.2).
+              required={required}
+              aria-required={required ? "true" : undefined}
               aria-invalid={!!error}
               aria-describedby={error ? errorId : undefined}
               className="flex-1 bg-transparent outline-none pl-3 pr-1 truncate placeholder:text-lyra-fg-disabled disabled:cursor-not-allowed"
@@ -181,7 +185,7 @@ const PasswordInput = React.forwardRef<HTMLDivElement, PasswordInputProps>(
               // no visible text content — no need to set it manually.
               <PasswordToggleField.Toggle
                 id={`${inputId}-toggle`}
-                className="pr-3 flex items-center text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors shrink-0 rounded-lyra-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+                className="lyra-hit-24 pr-3 flex items-center text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors shrink-0 rounded-lyra-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
               >
                 <PasswordToggleField.Icon
                   visible={<EyeOff className="h-4 w-4" strokeWidth={1.5} />}

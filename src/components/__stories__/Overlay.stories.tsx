@@ -1,13 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
-import { Overlay, OverlayBackdrop } from "../overlay";
-import { Container } from "../container";
+import { Overlay } from "../overlay";
 import { Button } from "../button";
-import { X } from "lucide-react";
-import { Tooltip } from "../tooltip";
+import { SampleModal, FRAME_CLASS } from "./Overlay.shared";
 
-const meta: Meta = {
+const meta: Meta<typeof Overlay> = {
   title: "Headless Primitives/Overlay",
+  component: Overlay,
   tags: ["autodocs"],
   parameters: {
     layout: "padded",
@@ -16,151 +15,85 @@ const meta: Meta = {
 };
 
 export default meta;
-type Story = StoryObj;
 
-/* ── Shared close button ── */
-function CloseButton({ onClick }: { onClick: () => void }) {
+/* Variants (dark, light, backdrop only with no portal) each have their own
+   page under "Overlay/Variants" — see Overlay.variants.stories.tsx. */
+
+/* ── Default — one controls-driven story. Consolidates the old Dark overlay,
+   Light overlay, Both Variants and Dismiss on backdrop click stories: "Look"
+   switches dark / light, and the two dismiss controls are independent
+   (`closeOnBackdropClick`, `closeOnEscape`). Open the overlay with the
+   button. ── */
+
+interface OverlayDemoProps {
+  look?: "dark" | "light";
+  closeOnBackdropClick?: boolean;
+  closeOnEscape?: boolean;
+}
+
+function OverlayDemo({ look = "dark", closeOnBackdropClick = false, closeOnEscape = true }: OverlayDemoProps) {
+  const [open, setOpen] = useState(false);
   return (
-    <Tooltip content="Close" placement="bottom" asLabel>
-      <button
-        aria-label="Close"
-        onClick={onClick}
-        className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
+    <div className={FRAME_CLASS}>
+      <Button onClick={() => setOpen(true)}>Open overlay</Button>
+      <Overlay
+        open={open}
+        variant={look}
+        closeOnBackdropClick={closeOnBackdropClick}
+        closeOnEscape={closeOnEscape}
+        onClose={() => setOpen(false)}
       >
-        <X className="h-5 w-5" strokeWidth={1.5} />
-      </button>
-    </Tooltip>
+        <SampleModal onClose={() => setOpen(false)} />
+      </Overlay>
+    </div>
   );
 }
 
-/* ── Shared modal ── */
-function SampleModal({ onClose }: { onClose: () => void }) {
-  return (
-    <Container
-      variant="modal"
-      headerTitle="Dialog Title"
-      headerActions={<CloseButton onClick={onClose} />}
-      className="w-[480px] max-w-[calc(100vw-2rem)]"
-    >
-      <div className="flex flex-col gap-4 px-5 pb-5 pt-2">
-        <p className="lyra-body-md text-lyra-fg-default">
-          This modal appears above the overlay. Press <kbd className="lyra-body-sm bg-lyra-bg-surface-canvas border border-lyra-border-subtle rounded px-1">Esc</kbd> or click outside to dismiss.
-        </p>
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={onClose}>Confirm</Button>
-        </div>
-      </div>
-    </Container>
-  );
-}
+type OverlayDemoStory = StoryObj<typeof OverlayDemo>;
 
-/* ══════════════════════════════════
-   Dark overlay (default)
-══════════════════════════════════ */
-export const Dark: Story = {
-  name: "Dark overlay",
-  render: () => {
-    const [open, setOpen] = useState(false);
-    return (
-      <div className="flex items-center justify-center h-64 bg-lyra-bg-surface-base rounded-lyra-lg border border-lyra-border-subtle">
-        <Button onClick={() => setOpen(true)}>Open with Dark Overlay</Button>
-
-        <Overlay open={open} variant="dark" onClose={() => setOpen(false)}>
-          <SampleModal onClose={() => setOpen(false)} />
-        </Overlay>
-      </div>
-    );
+export const Default: OverlayDemoStory = {
+  // Curated via `controls.include` (not by disabling props on `meta`) so the
+  // Docs page's autodocs table still lists every real Overlay prop.
+  // Storybook matches `include` against each control's display `name`, so
+  // both the names and the keys are listed.
+  parameters: {
+    controls: {
+      include: [
+        "look", "closeOnBackdropClick", "closeOnEscape",
+        "Look", "Dismiss on backdrop click", "Dismiss on Escape",
+      ],
+      sort: "none",
+    },
   },
-};
-
-/* ══════════════════════════════════
-   Light overlay
-══════════════════════════════════ */
-export const Light: Story = {
-  name: "Light overlay",
-  render: () => {
-    const [open, setOpen] = useState(false);
-    return (
-      <div className="flex items-center justify-center h-64 bg-lyra-bg-surface-base rounded-lyra-lg border border-lyra-border-subtle">
-        <Button onClick={() => setOpen(true)}>Open with Light Overlay</Button>
-
-        <Overlay open={open} variant="light" onClose={() => setOpen(false)}>
-          <SampleModal onClose={() => setOpen(false)} />
-        </Overlay>
-      </div>
-    );
+  args: {
+    look: "dark",
+    closeOnBackdropClick: false,
+    closeOnEscape: true,
   },
-};
-
-/* ══════════════════════════════════
-   Both side by side
-══════════════════════════════════ */
-export const BothVariants: Story = {
-  name: "Both Variants",
-  render: () => {
-    const [which, setWhich] = useState<"dark" | "light" | null>(null);
-    return (
-      <div className="flex gap-4 items-center justify-center h-64 bg-lyra-bg-surface-base rounded-lyra-lg border border-lyra-border-subtle">
-        <Button onClick={() => setWhich("dark")}>Dark</Button>
-        <Button variant="outline" onClick={() => setWhich("light")}>Light</Button>
-
-        {which && (
-          <Overlay open variant={which} onClose={() => setWhich(null)}>
-            <SampleModal onClose={() => setWhich(null)} />
-          </Overlay>
-        )}
-      </div>
-    );
+  argTypes: {
+    closeOnBackdropClick: {
+      name: "Dismiss on backdrop click",
+      control: "boolean",
+      description: "Clicking the backdrop closes the overlay (`closeOnBackdropClick`, default off).",
+      table: { category: "Behavior" },
+    },
+    closeOnEscape: {
+      name: "Dismiss on Escape",
+      control: "boolean",
+      description: "Escape closes the overlay (`closeOnEscape`, default on). Independent of backdrop click.",
+      table: { category: "Behavior" },
+    },
+    look: {
+      name: "Look",
+      control: "radio",
+      options: ["dark", "light"],
+      description:
+        "Dark: semi-transparent black. Light: frosted white with backdrop blur (`variant`). Both are deliberately static, theme-independent looks.",
+      table: { category: "Appearance" },
+    },
   },
-};
-
-/* ══════════════════════════════════
-   Dismiss on backdrop click
-══════════════════════════════════ */
-export const DismissOnClick: Story = {
-  name: "Dismiss on backdrop click",
-  render: () => {
-    const [open, setOpen] = useState(false);
-    return (
-      <div className="flex items-center justify-center h-64 bg-lyra-bg-surface-base rounded-lyra-lg border border-lyra-border-subtle">
-        <Button onClick={() => setOpen(true)}>Open modal</Button>
-        <Overlay open={open} variant="dark" closeOnBackdropClick onClose={() => setOpen(false)}>
-          <SampleModal onClose={() => setOpen(false)} />
-        </Overlay>
-      </div>
-    );
-  },
-};
-
-/* ══════════════════════════════════
-   OverlayBackdrop (no portal)
-══════════════════════════════════ */
-export const BackdropOnly: Story = {
-  name: "Backdrop only (no portal)",
-  render: () => {
-    const [open, setOpen] = useState(false);
-    return (
-      <div className="relative flex items-center justify-center h-64 bg-lyra-bg-surface-base rounded-lyra-lg border border-lyra-border-subtle overflow-hidden">
-        <p className="lyra-body-md text-lyra-fg-default">Page content behind the overlay</p>
-
-        <Button className="absolute bottom-4 right-4" onClick={() => setOpen(true)}>
-          Show backdrop
-        </Button>
-
-        {open && (
-          <>
-            <OverlayBackdrop
-              variant="dark"
-              className="absolute rounded-lyra-lg"
-              onClick={() => setOpen(false)}
-            />
-            <div className="absolute z-50">
-              <Button variant="outline" onClick={() => setOpen(false)}>Dismiss</Button>
-            </div>
-          </>
-        )}
-      </div>
-    );
-  },
+  render: (args) => (
+    // `key` remounts the demo when a control changes, closing any open overlay.
+    <OverlayDemo key={JSON.stringify(args)} {...args} />
+  ),
 };

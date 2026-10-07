@@ -330,7 +330,7 @@ const Autocomplete = React.forwardRef<HTMLDivElement, AutocompleteProps>(
                   {/* Hidden from assistive tech: the live region above already
                       announces `loadingMessage`. */}
                   <span aria-hidden="true" className="flex shrink-0">
-                    <Spinner variant="circle" size="sm" />
+                    <Spinner variant="bar" size="sm" />
                   </span>
                   {loadingMessage}
                 </div>

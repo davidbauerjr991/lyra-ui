@@ -2,6 +2,7 @@ import * as React from "react";
 import { ArrowRight, Search } from "lucide-react";
 import { cn } from "../lib/utils";
 import { ClearButton } from "./clear-button";
+import { Tooltip } from "./tooltip";
 
 interface SearchInputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type" | "size" | "onSubmit"> {
@@ -46,6 +47,17 @@ const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
 
     const searchLabel = props["aria-label"] || "Search";
 
+    // Clearing unmounts the clear button (it only renders while there's
+    // text), so a keyboard user who pressed it would lose focus to <body>.
+    // Keep our own handle on the input to hand focus back, and still honor
+    // the consumer's forwarded ref.
+    const inputRef = React.useRef<HTMLInputElement | null>(null);
+    const setRefs = (node: HTMLInputElement | null) => {
+      inputRef.current = node;
+      if (typeof ref === "function") ref(node);
+      else if (ref) (ref as React.MutableRefObject<HTMLInputElement | null>).current = node;
+    };
+
     return (
       <div className={cn("relative", className)} role="search" aria-label={searchLabel}>
         <Search
@@ -54,7 +66,7 @@ const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
           aria-hidden="true"
         />
         <input
-          ref={ref}
+          ref={setRefs}
           type="search"
           aria-label={searchLabel}
           value={value}
@@ -100,20 +112,33 @@ const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
         />
         {hasValue && !readonly && (
           <ClearButton
-            onClick={() => onValueChange?.("")}
-            className={cn("absolute top-1/2 -translate-y-1/2", onSubmit ? "right-9" : "right-2")}
+            // In the tab order (ClearButton defaults to `tabIndex={-1}`), so
+            // keyboard users can clear the field: input → clear → submit.
+            tabIndex={props.disabled ? -1 : 0}
+            disabled={props.disabled}
+            onClick={() => {
+              onValueChange?.("");
+              inputRef.current?.focus();
+            }}
+            className={cn(
+              "absolute top-1/2 -translate-y-1/2",
+              onSubmit ? "right-9" : "right-2",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
+            )}
             aria-label="Clear search"
           />
         )}
         {showSubmitButton && (
-          <button
-            type="button"
-            onClick={() => onSubmit(value ?? "")}
-            aria-label="Search"
-            className="absolute right-1 top-1/2 h-6 w-6 -translate-y-1/2 flex items-center justify-center rounded-lyra-sm bg-lyra-bg-primary text-lyra-fg-on-primary transition-colors hover:bg-lyra-state-hover-primary active:bg-lyra-state-pressed-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
-          >
-            <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} aria-hidden="true" />
-          </button>
+          <Tooltip content="Search">
+            <button
+              type="button"
+              onClick={() => onSubmit(value ?? "")}
+              aria-label="Search"
+              className="absolute right-1 top-1/2 h-6 w-6 -translate-y-1/2 flex items-center justify-center rounded-lyra-sm bg-lyra-bg-primary text-lyra-fg-on-primary transition-colors hover:bg-lyra-state-hover-primary active:bg-lyra-state-pressed-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+            >
+              <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} aria-hidden="true" />
+            </button>
+          </Tooltip>
         )}
       </div>
     );

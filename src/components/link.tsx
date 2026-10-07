@@ -21,28 +21,82 @@ import { cn } from "../lib/utils";
  *  button, same shape as `button.tsx`'s own `buttonVariants`. */
 
 const linkVariants = cva(
-  "inline-flex items-center gap-1.5 text-left text-lyra-fg-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2 rounded-lyra-xs disabled:pointer-events-none disabled:opacity-40",
+  "inline-flex items-center gap-1.5 text-left text-lyra-fg-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2 rounded-lyra-xs disabled:pointer-events-none disabled:opacity-40",
   {
     variants: {
       size: {
         sm: "lyra-body-sm",
         md: "lyra-body-md",
       },
+      // "hover" (default) is the original behavior: no underline at rest.
+      // "always" underlines at rest — needed when the link sits inside a
+      // sentence, where color alone can't distinguish it from the body text
+      // (WCAG 1.4.1 Use of Color).
+      underline: {
+        hover: "hover:underline",
+        always: "underline underline-offset-2",
+      },
     },
     defaultVariants: {
       size: "md",
+      underline: "hover",
     },
   }
 );
 
 export interface LinkProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof linkVariants> {}
+    VariantProps<typeof linkVariants> {
+  /**
+   * When set, renders an `<a>` (same styles) instead of a `<button>` — use it
+   * for real navigation to a URL; keep the default `<button>` for in-app
+   * actions ("open this panel"). Omitted by default, so existing usage still
+   * renders a `<button type="button">`.
+   */
+  href?: string;
+  /** Anchor-only (`href` set): where to open the URL. */
+  target?: React.HTMLAttributeAnchorTarget;
+  /** Anchor-only (`href` set): link relationship, e.g. `"noopener noreferrer"`. */
+  rel?: string;
+  /** Anchor-only (`href` set): download the target instead of navigating. */
+  download?: boolean | string;
+}
 
-const Link = React.forwardRef<HTMLButtonElement, LinkProps>(
-  ({ className, size, ...props }, ref) => (
-    <button ref={ref} type="button" className={cn(linkVariants({ size }), className)} {...props} />
-  )
+/** Renders a `<button>` by default and an `<a>` when `href` is set — the ref is typed for either element. */
+const Link = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, LinkProps>(
+  ({ className, size, underline, href, target, rel, download, disabled, onClick, ...props }, ref) => {
+    const classes = cn(linkVariants({ size, underline }), className);
+    if (href !== undefined) {
+      // `type` is a button attribute (a consumer-supplied `type="submit"`
+      // would be a bogus MIME hint on an anchor), so it isn't forwarded.
+      const { type: _buttonType, ...anchorProps } = props;
+      return (
+        <a
+          ref={ref as React.Ref<HTMLAnchorElement>}
+          href={disabled ? undefined : href}
+          target={target}
+          rel={rel ?? (target === "_blank" ? "noopener noreferrer" : undefined)}
+          download={download}
+          // An anchor has no `disabled` attribute: drop the href and expose
+          // the state with aria-disabled instead.
+          aria-disabled={disabled ? true : undefined}
+          className={cn(classes, disabled && "pointer-events-none opacity-40")}
+          onClick={onClick as unknown as React.MouseEventHandler<HTMLAnchorElement> | undefined}
+          {...(anchorProps as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
+        />
+      );
+    }
+    return (
+      <button
+        ref={ref as React.Ref<HTMLButtonElement>}
+        type="button"
+        disabled={disabled}
+        onClick={onClick}
+        className={classes}
+        {...props}
+      />
+    );
+  }
 );
 Link.displayName = "Link";
 

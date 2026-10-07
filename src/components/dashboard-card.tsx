@@ -361,6 +361,8 @@ function Metric({ metric, className }: MetricProps) {
             ) : (
               <span className={cn("shrink-0", trendMeta.colorClassName)} aria-hidden="true">—</span>
             )}
+            {/* The arrow/dash above is aria-hidden and the direction is also carried by color alone — spell it out for screen readers (WCAG 1.1.1 / 1.4.1). `sr-only` is absolutely positioned, so it doesn't change the row's layout. */}
+            <span className="sr-only">{trend.direction === "up" ? "Up" : trend.direction === "down" ? "Down" : "No change"}</span>
             <span className={trendMeta.colorClassName}>{formatTrendPercent(trend.percent)}</span>
             <span className="text-lyra-fg-secondary truncate">vs. last {trend.comparisonPeriod ?? "week"}</span>
           </span>
@@ -370,7 +372,8 @@ function Metric({ metric, className }: MetricProps) {
       </div>
       {metric.sparkline && (
         <div className="lyra-metric-sparkline">
-          <Sparkline data={metric.sparkline} colorVar={sparklineColorVar} />
+          {/* `decorative`: the metric's value (and trend, when set) is already shown as text right beside it. */}
+          <Sparkline data={metric.sparkline} colorVar={sparklineColorVar} decorative />
         </div>
       )}
     </div>

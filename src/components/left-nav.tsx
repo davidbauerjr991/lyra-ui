@@ -139,6 +139,17 @@ interface LeftNavProps extends React.HTMLAttributes<HTMLElement> {
    * state via `injectExpanded`, same as those two.
    */
   stickyCaption?: React.ReactNode;
+  /**
+   * Accessible name of the item rail's `<nav>` landmark — the expanded
+   * `TreeMenu` ("Navigation menu" by default) and the collapsed icon-only
+   * rail ("Main navigation" by default). Optional; omit it and both keep
+   * their existing names. Pass a distinct value when more than one nav
+   * landmark can be on the same page (e.g. a second nav rendered through
+   * `NavRail` in `footer`, "Channels") so screen-reader users can tell
+   * them apart (axe `landmark-unique`). Not the same as `aria-label`, which
+   * still names the outer `<aside>`.
+   */
+  navAriaLabel?: string;
 }
 
 /**
@@ -194,11 +205,15 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
       itemsFirst = false,
       headerFillsHeight = false,
       stickyCaption,
+      navAriaLabel,
       ...props
     },
     ref
   ) => {
     const treeItems = useMemo(() => toTreeItems(items), [items]);
+    // Spread only when set: passing `aria-label={undefined}` would override
+    // TreeMenu's own "Navigation menu" default, since props spread last.
+    const navLabelProps = navAriaLabel ? { "aria-label": navAriaLabel } : undefined;
 
     /* `overlay="auto"` (the default): track window width internally and
        engage overlay mode below `overlayBreakpoint`. Only wired up in auto
@@ -292,7 +307,7 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
     // scrolling — the bug this replaced (see left-nav.tsx's git history/
     // PROJECT_SUMMARY.md for the reference screenshot).
     const iconOnlyNav = (
-      <nav aria-label="Main navigation" className="flex flex-shrink-0 flex-col gap-0.5 items-center">
+      <nav aria-label={navAriaLabel ?? "Main navigation"} className="flex flex-shrink-0 flex-col gap-0.5 items-center">
         {items.map((item, i) => {
           const isActive =
             item.active ||
@@ -472,7 +487,7 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
                       hoverOpen ? "items-stretch" : "items-center"
                     )}
                   >
-                    {hoverOpen ? <TreeMenu items={treeItems} /> : iconOnlyNav}
+                    {hoverOpen ? <TreeMenu items={treeItems} {...navLabelProps} /> : iconOnlyNav}
                     {/* `stickyCaption` — see the inline-mode branch's own
                         copy of this rail for the full writeup; same
                         technique, same reasoning, just this mode's own
@@ -537,7 +552,7 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
                         className="pointer-events-none absolute inset-x-0 -top-8 h-8 bg-gradient-to-b from-transparent to-lyra-bg-surface-shell"
                       />
                     )}
-                    {hoverOpen ? <TreeMenu items={treeItems} /> : iconOnlyNav}
+                    {hoverOpen ? <TreeMenu items={treeItems} {...navLabelProps} /> : iconOnlyNav}
                   </div>
                 )}
               </div>
@@ -651,7 +666,7 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
                   open ? "items-stretch" : "items-center"
                 )}
               >
-                {open ? <TreeMenu items={treeItems} /> : iconOnlyNav}
+                {open ? <TreeMenu items={treeItems} {...navLabelProps} /> : iconOnlyNav}
                 {/* `stickyCaption` — per explicit follow-up request ("fix
                     the assignments header under the home button so it
                     doesn't scroll"): a consumer's section caption (e.g.
@@ -736,7 +751,7 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
                     className="pointer-events-none absolute inset-x-0 -top-8 h-8 bg-gradient-to-b from-transparent to-lyra-bg-surface-shell"
                   />
                 )}
-                {open ? <TreeMenu items={treeItems} /> : iconOnlyNav}
+                {open ? <TreeMenu items={treeItems} {...navLabelProps} /> : iconOnlyNav}
               </div>
             )}
           </div>
@@ -793,15 +808,31 @@ LeftNav.displayName = "LeftNav";
  * zero-risk addition that can't affect `LeftNav`'s own existing rail
  * rendering for any other consumer.
  */
-const NavRail = React.forwardRef<HTMLElement, { items: NavItem[]; expanded?: boolean; className?: string }>(
-  ({ items, expanded = false, className }, ref) => {
+const NavRail = React.forwardRef<
+  HTMLElement,
+  {
+    items: NavItem[];
+    expanded?: boolean;
+    className?: string;
+    /** Optional accessible name for this rail's `<nav>` ("Navigation menu" expanded / "Navigation" collapsed by default) — set it when another nav landmark shares the page. */
+    navAriaLabel?: string;
+  }
+>(
+  ({ items, expanded = false, className, navAriaLabel }, ref) => {
     if (expanded) {
-      return <TreeMenu ref={ref} items={toTreeItems(items)} className={cn("w-full", className)} />;
+      return (
+        <TreeMenu
+          ref={ref}
+          items={toTreeItems(items)}
+          className={cn("w-full", className)}
+          {...(navAriaLabel ? { "aria-label": navAriaLabel } : undefined)}
+        />
+      );
     }
     return (
       <nav
         ref={ref}
-        aria-label="Navigation"
+        aria-label={navAriaLabel ?? "Navigation"}
         className={cn("flex w-full flex-shrink-0 flex-col gap-0.5 items-center", className)}
       >
         {items.map((item, i) => {

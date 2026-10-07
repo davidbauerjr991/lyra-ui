@@ -171,7 +171,11 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
       <PanelPinButton pinned={pinned} onToggle={onPinToggle} />
     ) : null;
 
-    const dragHandle = resizable ? (
+    // Only rendered while the panel is open. A closed panel (width 0 /
+    // `visibility: hidden` content) used to keep this focusable separator
+    // mounted, so it was the first Tab stop on the page while invisible
+    // (WCAG 2.4.7 / 2.4.3). Unmounting it removes it from the Tab order.
+    const dragHandle = resizable && open ? (
       <div
         onMouseDown={onMouseDown}
         // Keyboard-operable "window splitter" (WCAG 2.1.1): focusable,
@@ -184,7 +188,10 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
         aria-valuemax={maxWidth}
         tabIndex={0}
         onKeyDown={onResizeKeyDown}
-        className="absolute top-0 bottom-0 z-10 flex items-center justify-center group focus-visible:outline-none"
+        // `ring-inset`: the panel clips its own overflow, so an outer ring on
+        // this 8px edge strip (half of it sits outside the panel) would be
+        // cut off — an inset ring is always fully visible on keyboard focus.
+        className="absolute top-0 bottom-0 z-10 flex items-center justify-center group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lyra-border-focus"
         style={{ [side === "right" ? "left" : "right"]: -4, width: 8, cursor: "col-resize" }}
       >
         <div className="w-0.5 h-8 rounded-full bg-lyra-border-soft opacity-0 group-hover:bg-lyra-bg-primary group-hover:opacity-100 group-focus-visible:w-1 group-focus-visible:bg-lyra-border-focus group-focus-visible:opacity-100 transition-opacity" />

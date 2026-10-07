@@ -119,6 +119,11 @@ function CollapsiblePanel({
   return (
     <div
       ref={wrapperRef}
+      // A collapsed panel is only squashed to zero height — its rows are still
+      // in the DOM, so Tab would walk through rows nobody can see. `inert`
+      // takes the whole closed panel out of the tab order and out of the
+      // accessibility tree, so Tab goes straight to the next visible row.
+      inert={!open}
       style={{
         height: height ?? 0,
         overflow: "hidden",
@@ -139,9 +144,11 @@ interface TreeMenuProps extends React.HTMLAttributes<HTMLElement> {
   /**
    * Where the expand/collapse chevron sits on every expandable row,
    * relative to the label — default `"right"` (chevron trailing, icon
-   * leading, the original layout). `"left"` swaps both ends: chevron
-   * leading, icon trailing. Applies at every depth (a nested row with its
-   * own `children` gets a chevron the same way a top-level one does).
+   * leading, the original layout). `"left"` moves only the chevron: it sits
+   * right after the row's icon (icon, chevron, label), or first when the row
+   * has no icon (chevron, label).
+   * Applies at every depth (a nested row with its own `children` gets a
+   * chevron the same way a top-level one does).
    */
   chevronPosition?: "left" | "right";
   /**
@@ -171,9 +178,14 @@ const TreeMenu = React.forwardRef<HTMLElement, TreeMenuProps>(
       className={cn("flex flex-col gap-0.5 py-1", className)}
       {...props}
     >
-      <ul role="tree" className="flex flex-col gap-0.5 list-none m-0 p-0">
+      {/* Plain disclosure nav (nav > ul > li > button) — no tree/treeitem/
+          group roles. Those roles promise arrow-key/Home/End navigation
+          that a list of independent buttons doesn't implement; a disclosure
+          pattern (Tab between items, Enter/Space to expand) is what this
+          actually does, and what assistive tech should announce. */}
+      <ul className="flex flex-col gap-0.5 list-none m-0 p-0">
         {items.map((item, i) => (
-          <li key={i} role="treeitem" aria-expanded={item.children && item.children.length > 0 ? undefined : undefined}>
+          <li key={i}>
             <TreeMenuRow item={item} chevronPosition={chevronPosition} exactSelection={exactSelection} />
           </li>
         ))}
@@ -207,6 +219,10 @@ function TreeMenuRow({
 }) {
   const [open, setOpen] = useState(item.defaultOpen ?? false);
   const hasChildren = Boolean(item.children && item.children.length > 0);
+  // Id of this row's child list, so the parent button can point at it via
+  // `aria-controls`. The list stays mounted while collapsed (CollapsiblePanel
+  // only animates its height), so the referenced element always exists.
+  const childListId = React.useId();
   // In `exactSelection` mode, a parent never inherits the active look from
   // a descendant — only this exact row's own `active` flag counts, and
   // "leaf active" styling (background pill, below) applies to ANY selected
@@ -239,11 +255,17 @@ function TreeMenuRow({
           item.onClick?.();
         }}
         aria-expanded={hasChildren ? open : undefined}
+        aria-controls={hasChildren ? childListId : undefined}
         aria-current={!hasChildren && item.active ? "page" : undefined}
         style={{ paddingLeft: paddingLeftPx, paddingRight: 10 }}
         className={cn(
           "relative flex w-full items-center gap-2.5 rounded-lyra-sm h-9 text-left lyra-body-md transition-colors",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
+          // Nested rows live inside `CollapsiblePanel`, whose `overflow: hidden`
+          // (needed for the height animation) clips an outside ring — its
+          // offset ring was cut off on the sides and bottom. Drawing the ring
+          // inside the row keeps it fully visible.
+          depth > 0 && "focus-visible:ring-inset focus-visible:ring-offset-0",
           isLeafActive
             ? "bg-lyra-bg-active-moderate text-lyra-fg-active-strong lyra-body-md-emphasis hover:bg-lyra-bg-active-moderate active:bg-lyra-bg-active-subtle"
             : isParentActive
@@ -290,9 +312,9 @@ function TreeMenuRow({
           );
           return chevronPosition === "left" ? (
             <>
+              {icon}
               {chevron}
               {label}
-              {icon}
             </>
           ) : (
             <>
@@ -333,9 +355,9 @@ function TreeMenuRow({
               className="absolute top-0 bottom-0 w-px bg-lyra-border-subtle"
               style={{ left: childGuideLeftPx }}
             />
-            <ul role="group" className="mt-0.5 flex flex-col gap-0.5 list-none m-0 p-0">
+            <ul id={childListId} className="mt-0.5 flex flex-col gap-0.5 list-none m-0 p-0">
               {item.children!.map((child, j) => (
-                <li key={j} role="treeitem">
+                <li key={j}>
                   <TreeMenuRow item={child} depth={depth + 1} chevronPosition={chevronPosition} exactSelection={exactSelection} />
                 </li>
               ))}

@@ -236,9 +236,16 @@ export const Collapsed: Story = {
   render: () => {
     const [open, setOpen] = useState(false);
     return (
+      // `overlay={false}` pins this story to the inline layout so it always
+      // renders as the 60px icon-only rail. With the default
+      // `overlay="auto"`, a window narrower than 1280px switches LeftNav into
+      // hover-overlay mode, where `open` is ignored and hovering the rail
+      // slides out the full 256px panel — so the story could look
+      // fully expanded and the icon-only state couldn't be reviewed.
       <LeftNav
         items={sampleItems}
         open={open}
+        overlay={false}
         onToggle={() => setOpen((v) => !v)}
       />
     );

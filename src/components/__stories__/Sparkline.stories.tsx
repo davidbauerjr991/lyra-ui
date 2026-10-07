@@ -1,72 +1,127 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { Sparkline } from "../sparkline";
+import { TREND_DATA, COLOR_VARS } from "./Sparkline.shared";
+import type { Trend, TrendColor } from "./Sparkline.shared";
 
-const meta = {
+const meta: Meta<typeof Sparkline> = {
   title: "Custom Primitives/Sparkline",
   component: Sparkline,
   tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
-  argTypes: {
-    data: { table: { disable: true } },
-  },
-} satisfies Meta<typeof Sparkline>;
-
-export default meta;
-type Story = StoryObj<typeof meta>;
-
-/* Same shape of series a "vs last week" metric trend would plot — jagged
-   but generally trending up, matching the reference screenshot. */
-const TREND_UP = [4, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16];
-const TREND_DOWN = [16, 14, 15, 12, 13, 10, 11, 8, 9, 6, 7, 4];
-const TREND_FLAT = [8, 9, 8, 7, 8, 9, 8, 8, 9, 8, 7, 8];
-
-/* ── Default ── */
-
-export const Default: Story = {
-  render: () => (
-    <div className="h-[60px] w-[160px]">
-      <Sparkline data={TREND_UP} />
-    </div>
-  ),
 };
 
-/* ── AllVariants ──
-   The three trend directions `DashboardCard`'s metric trend arrow also
-   uses (success/warning/critical) — Sparkline itself has no notion of
-   "trend direction," it just plots whatever `colorVar` it's given, but
-   these are the three colors a consumer pairs it with in practice. */
+export default meta;
 
-export const AllVariants: Story = {
-  name: "AllVariants",
-  render: () => (
-    <div className="flex flex-wrap gap-10">
-      <div className="flex flex-col items-center gap-2">
-        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary">Up (success)</p>
-        <div className="h-[60px] w-[160px]">
-          <Sparkline data={TREND_UP} colorVar="var(--lyra-color-status-success-strong)" />
-        </div>
-      </div>
+/* Variants (trend colors, smooth vs sharp, line widths, accessibility) each
+   have their own page under "Sparkline/Variants" — see
+   Sparkline.variants.stories.tsx. */
 
-      <div className="flex flex-col items-center gap-2">
-        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary">Flat (warning)</p>
-        <div className="h-[60px] w-[160px]">
-          <Sparkline data={TREND_FLAT} colorVar="var(--lyra-color-status-warning-strong)" />
-        </div>
-      </div>
+/* ── Default — one controls-driven story. Sparkline is display-only, so
+   there is no state to wire. "Accessibility" covers the labelled and
+   decorative cases (`aria-label` / `decorative`). ── */
 
-      <div className="flex flex-col items-center gap-2">
-        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary">Down (critical)</p>
-        <div className="h-[60px] w-[160px]">
-          <Sparkline data={TREND_DOWN} colorVar="var(--lyra-color-status-critical-strong)" />
-        </div>
-      </div>
+interface SparklineDemoProps {
+  trend?: Trend;
+  color?: TrendColor;
+  smooth?: boolean;
+  strokeWidth?: number;
+  accessibility?: "label" | "decorative";
+  accessibleLabel?: string;
+}
 
-      <div className="flex flex-col items-center gap-2">
-        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary">Default (active blue)</p>
-        <div className="h-[60px] w-[160px]">
-          <Sparkline data={TREND_UP} />
-        </div>
-      </div>
+function SparklineDemo({
+  trend = "up",
+  color = "default",
+  smooth = false,
+  strokeWidth = 2,
+  accessibility = "label",
+  accessibleLabel = "Calls trend, last 12 hours",
+}: SparklineDemoProps) {
+  return (
+    <div className="h-[60px] w-[160px]">
+      <Sparkline
+        data={TREND_DATA[trend]}
+        colorVar={COLOR_VARS[color]}
+        smooth={smooth}
+        strokeWidth={strokeWidth}
+        decorative={accessibility === "decorative"}
+        aria-label={accessibility === "label" ? accessibleLabel : undefined}
+      />
     </div>
+  );
+}
+
+type SparklineDemoStory = StoryObj<typeof SparklineDemo>;
+
+export const Default: SparklineDemoStory = {
+  // Curated via `controls.include` (not by disabling props on `meta`) so the
+  // Docs page's autodocs table still lists every real Sparkline prop.
+  // Storybook matches `include` against each control's display `name`, so
+  // both the names and the keys are listed.
+  parameters: {
+    controls: {
+      include: [
+        "accessibility", "accessibleLabel", "trend", "color", "smooth", "strokeWidth",
+        "Accessibility", "Accessible label", "Trend", "Color", "Smooth curve", "Line width",
+      ],
+      sort: "none",
+    },
+  },
+  args: {
+    accessibility: "label",
+    accessibleLabel: "Calls trend, last 12 hours",
+    trend: "up",
+    color: "default",
+    smooth: false,
+    strokeWidth: 2,
+  },
+  argTypes: {
+    accessibility: {
+      name: "Accessibility",
+      control: "radio",
+      options: ["label", "decorative"],
+      description:
+        "Label: announces a text alternative (`aria-label`). Decorative: hides the chart from assistive tech (`decorative`) when the value is already shown as text nearby.",
+      table: { category: "Behavior" },
+    },
+    accessibleLabel: {
+      name: "Accessible label",
+      control: "text",
+      description: "The text alternative announced for the chart (`aria-label`).",
+      if: { arg: "accessibility", eq: "label" },
+      table: { category: "Behavior" },
+    },
+    trend: {
+      name: "Trend",
+      control: "radio",
+      options: ["up", "flat", "down"],
+      description: "Which sample series is plotted (`data`).",
+      table: { category: "Content" },
+    },
+    color: {
+      name: "Color",
+      control: "radio",
+      options: ["default", "success", "warning", "critical"],
+      description:
+        "Line and fill color (`colorVar`). Default is the active blue; success / warning / critical match DashboardCard's trend arrows.",
+      table: { category: "Appearance" },
+    },
+    smooth: {
+      name: "Smooth curve",
+      control: "boolean",
+      description: "Smoothed curve instead of straight segments between points (`smooth`).",
+      table: { category: "Appearance" },
+    },
+    strokeWidth: {
+      name: "Line width",
+      control: "radio",
+      options: [1, 2, 3, 4],
+      description: "Line stroke width in px (`strokeWidth`).",
+      table: { category: "Appearance" },
+    },
+  },
+  render: (args) => (
+    // `key` remounts the demo when a control changes.
+    <SparklineDemo key={JSON.stringify(args)} {...args} />
   ),
 };

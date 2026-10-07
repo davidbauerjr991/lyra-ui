@@ -258,7 +258,9 @@ const DateRangePicker = React.forwardRef<HTMLDivElement, DateRangePickerProps>(
               // selected start day (Calendar `autoFocus`) instead of Radix's
               // default first-button focus, and bring focus back to the field
               // on close. Mouse-opened calendars keep Radix's default behavior.
-              onOpenAutoFocus={keyboardOpen ? (e) => e.preventDefault() : undefined}
+              // Mouse-opened: focus (and the caret) stays in the text field so the
+              // range can be typed while the calendar is open.
+              onOpenAutoFocus={keyboardOpen ? (e) => e.preventDefault() : (e) => { e.preventDefault(); inputRef.current?.focus(); }}
               onCloseAutoFocus={(e) => {
                 if (!keyboardOpenRef.current) return; // mouse: Radix default, as before
                 keyboardOpenRef.current = false;

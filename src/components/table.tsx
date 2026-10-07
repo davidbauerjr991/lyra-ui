@@ -185,6 +185,33 @@ function useColumnResize(
   return { widths, startResize, nudge, registerColumn, totalWidth };
 }
 
+/* ── Live announcements (WCAG 4.1.3 Status Messages) ──
+   `Table` renders one polite, visually-hidden live region and provides this
+   `announce` function; `SortableTableHead` calls it when its sort direction
+   changes ("Sorted by Name, ascending") and after a keyboard column move
+   ("Name moved to column 2"). A no-op outside a `Table`. */
+const TableAnnounceContext = React.createContext<((message: string) => void) | null>(null);
+
+/* ── Horizontal scroll ownership ──
+   The table itself never scrolls sideways. When resized columns add up to more
+   than the available width, only the body rows scroll horizontally; the header
+   row stays put and is kept in step by copying `scrollLeft` between the two
+   (either direction, so focusing a header control that scrolls the header
+   keeps the body aligned too). */
+interface TableScrollSync {
+  headerRef: React.MutableRefObject<HTMLTableSectionElement | null>;
+  bodyRef: React.MutableRefObject<HTMLTableSectionElement | null>;
+}
+const TableScrollSyncContext = React.createContext<TableScrollSync | null>(null);
+
+/** Assigns one DOM node to several refs (a forwarded ref plus an internal one). */
+function setRefs<T>(node: T | null, ...refs: Array<React.Ref<T> | undefined>) {
+  for (const r of refs) {
+    if (typeof r === "function") r(node);
+    else if (r) (r as React.MutableRefObject<T | null>).current = node;
+  }
+}
+
 /** Thin drag/keyboard handle rendered on a resizable column's right edge — shared by `TableHead` and `SortableTableHead` so their resize behavior can't drift apart. */
 function ColumnResizeHandle({
   columnKey,
@@ -231,24 +258,73 @@ function ColumnResizeHandle({
           ctx.nudge(columnKey, 10, currentWidth(), minWidth, maxWidth);
         }
       }}
-      className="absolute right-0 top-0 z-10 h-full w-2 -mr-1 cursor-col-resize touch-none select-none focus-visible:outline-none focus-visible:bg-lyra-border-active/60 hover:bg-lyra-border-active/40 active:bg-lyra-border-active"
+      // Keyboard focus: a solid 2px line (`lyra-border-focus`) at the handle's
+      // full height (= the header's height), drawn by `::after` so the
+      // handle's own hit area/layout is unchanged. The previous
+      // `focus-visible:bg-lyra-border-active/60` never rendered — Tailwind's
+      // `/60` opacity modifier can't be applied to a `var(--…)` color token,
+      // so the rule produced no color at all.
+      // Resizable-column indicator: a short, always-visible divider (`before:`)
+      // centered on the column's right edge, so users can see which headers
+      // can be dragged. It turns into the stronger active color while the
+      // handle is hovered or pressed; keyboard focus keeps the full-height
+      // line below (`after:`).
+      className="absolute right-0 top-0 z-10 h-full w-2 -mr-1 cursor-col-resize touch-none select-none focus-visible:outline-none before:pointer-events-none before:absolute before:left-[3px] before:top-1/2 before:h-4 before:w-px before:-translate-y-1/2 before:bg-lyra-border-strong before:content-[''] hover:before:bg-lyra-border-active active:before:bg-lyra-bg-surface-base after:pointer-events-none after:absolute after:inset-y-0 after:left-[3px] after:w-0.5 after:bg-lyra-border-focus after:content-[''] after:opacity-0 focus-visible:after:opacity-100 hover:bg-lyra-border-active/40 active:bg-lyra-border-active"
     />
   );
 }
 
 interface TableProps extends React.HTMLAttributes<HTMLTableElement> {
+  /** Accessible name for the table (forwarded to the `<table>` element), e.g. "Agent desktops". Optional; unset leaves the table unnamed, as before. */
+  "aria-label"?: string;
   /** Controlled `{ columnKey: width }` map (px) — pairs with `onColumnWidthsChange` for consumers that want to persist resized column widths. Uncontrolled (plain internal state) when omitted; resize still works fully without either prop. */
   columnWidths?: Record<string, number>;
   /** Called with the full updated widths map on every resize (drag or keyboard) */
   onColumnWidthsChange?: (widths: Record<string, number>) => void;
 }
 
+/** Narrowest a flexible column can be squeezed (px). This is the one rule for
+ *  when a table scrolls sideways: the table's content width is the sum of every
+ *  column's width — fixed columns (checkbox, actions, resized columns) at their
+ *  own width, every other column at this floor. While the table is at least
+ *  that wide the columns share it; narrower than that, the columns stop
+ *  shrinking and the body rows scroll sideways instead. */
+const COLUMN_MIN_WIDTH = 80;
+
 const Table = React.forwardRef<HTMLTableElement, TableProps>(
   ({ className, columnWidths, onColumnWidthsChange, style, ...props }, ref) => {
     const resize = useColumnResize(columnWidths, onColumnWidthsChange);
+    const [announcement, setAnnouncement] = useState("");
+    const wrapperRef = useRef<HTMLDivElement | null>(null);
+    const [contentFloor, setContentFloor] = useState<number | undefined>(undefined);
+    // Re-measured after every render (cheap; only sets state on a change):
+    // columns being shown/hidden, resized, or added all change the sum.
+    React.useLayoutEffect(() => {
+      const headerCells = wrapperRef.current?.querySelectorAll<HTMLElement>("thead tr:first-child > th");
+      if (!headerCells || headerCells.length === 0) {
+        if (contentFloor !== undefined) setContentFloor(undefined);
+        return;
+      }
+      let sum = 0;
+      headerCells.forEach((th) => {
+        sum += getComputedStyle(th).flexShrink === "0" ? th.getBoundingClientRect().width : COLUMN_MIN_WIDTH;
+      });
+      const next = Math.ceil(sum);
+      if (next !== contentFloor) setContentFloor(next);
+    });
+    const scrollSync = React.useRef<TableScrollSync>({
+      headerRef: { current: null },
+      bodyRef: { current: null },
+    }).current;
     return (
       <ColumnResizeContext.Provider value={resize}>
-        <div className="relative w-full flex flex-col overflow-x-auto h-full" role="presentation">
+        <TableAnnounceContext.Provider value={setAnnouncement}>
+        <TableScrollSyncContext.Provider value={scrollSync}>
+        <div ref={wrapperRef} className="relative w-full flex flex-col overflow-hidden h-full" role="presentation">
+          {/* Polite, visually-hidden live region for sort / column-move announcements. */}
+          <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+            {announcement}
+          </div>
           <table
             ref={ref}
             role="table"
@@ -271,11 +347,21 @@ const Table = React.forwardRef<HTMLTableElement, TableProps>(
             // Normal top-down `align-items: stretch` then reliably carries
             // that width down through `<thead>`/`<tbody>`/`<tr>` without any
             // of them needing their own explicit width.
-            style={resize.totalWidth !== undefined ? { ...style, minWidth: resize.totalWidth } : style}
+            // The width floor is no longer set on the table itself (the table
+            // must not scroll sideways). It is published as a CSS variable and
+            // applied as a `min-width` on every row (`TableRow`), so the
+            // header and body rows are equally wide and only the body scrolls.
+            style={
+              contentFloor !== undefined
+                ? ({ ...style, "--lyra-table-min-width": `${contentFloor}px` } as React.CSSProperties)
+                : style
+            }
             className={cn("caption-bottom flex flex-col h-full", className)}
             {...props}
           />
         </div>
+        </TableScrollSyncContext.Provider>
+        </TableAnnounceContext.Provider>
       </ColumnResizeContext.Provider>
     );
   }
@@ -285,9 +371,19 @@ Table.displayName = "Table";
 const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
->(({ className, ...props }, ref) => (
+>(({ className, onScroll, ...props }, ref) => {
+  const sync = React.useContext(TableScrollSyncContext);
+  return (
   <thead
-    ref={ref}
+    ref={(node) => {
+      setRefs(node, ref);
+      if (sync) sync.headerRef.current = node;
+    }}
+    onScroll={(e) => {
+      onScroll?.(e);
+      const body = sync?.bodyRef.current;
+      if (body && body.scrollLeft !== e.currentTarget.scrollLeft) body.scrollLeft = e.currentTarget.scrollLeft;
+    }}
     role="rowgroup"
     // `flex flex-col` — explicit, not relied-on-by-accident. `<thead>`'s
     // native default is `display: table-header-group`, which only means
@@ -300,18 +396,33 @@ const TableHeader = React.forwardRef<
     // No `min-w-full`/`w-full` here — see the long comment on `Table`'s
     // `<table>` above for why an explicit width/min-width is actively wrong
     // here, not just unnecessary.
-    className={cn("flex flex-col bg-lyra-bg-surface-base flex-shrink-0", className)}
+    // `overflow-hidden`: the header never shows its own scrollbar; it is
+    // scrolled by the body (see `TableScrollSyncContext`). `scrollbar-gutter`
+    // reserves the same width the body's vertical scrollbar takes so the
+    // columns stay aligned.
+    className={cn("flex flex-col bg-lyra-bg-surface-base flex-shrink-0 overflow-hidden [scrollbar-gutter:stable]", className)}
     {...props}
   />
-));
+  );
+});
 TableHeader.displayName = "TableHeader";
 
 const TableBody = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
->(({ className, onKeyDown, ...props }, ref) => (
+>(({ className, onKeyDown, onScroll, ...props }, ref) => {
+  const sync = React.useContext(TableScrollSyncContext);
+  return (
   <tbody
-    ref={ref}
+    ref={(node) => {
+      setRefs(node, ref);
+      if (sync) sync.bodyRef.current = node;
+    }}
+    onScroll={(e) => {
+      onScroll?.(e);
+      const header = sync?.headerRef.current;
+      if (header && header.scrollLeft !== e.currentTarget.scrollLeft) header.scrollLeft = e.currentTarget.scrollLeft;
+    }}
     role="rowgroup"
     // Built-in ArrowUp/ArrowDown row-to-row keyboard navigation — moves
     // focus to the row directly above/below the one the key originated in
@@ -371,10 +482,13 @@ const TableBody = React.forwardRef<
     // instead of relying on `table-row-group`'s behavior with no real
     // `display:table` ancestor to belong to, and no `min-w-full`/`w-full`
     // (see the long comment on `Table`'s `<table>` for why).
-    className={cn("flex flex-col flex-1 [&_tr:last-child]:border-0", className)}
+    // The body is the scroll container: sideways when resized columns are
+    // wider than the table, and vertically (header stays in view).
+    className={cn("flex flex-col flex-1 min-h-0 overflow-auto [scrollbar-gutter:stable] [&_tr:last-child]:border-0", className)}
     {...props}
   />
-));
+  );
+});
 TableBody.displayName = "TableBody";
 
 interface TableRowProps extends React.HTMLAttributes<HTMLTableRowElement> {
@@ -398,10 +512,14 @@ interface TableRowProps extends React.HTMLAttributes<HTMLTableRowElement> {
 }
 
 const TableRow = React.forwardRef<HTMLTableRowElement, TableRowProps>(
-  ({ className, selectable = false, tabIndex, onKeyDown, ...props }, ref) => (
+  ({ className, selectable = false, tabIndex, onKeyDown, style, ...props }, ref) => (
     <tr
       ref={ref}
       role="row"
+      // Rows are as wide as the sum of the resized columns (a CSS variable
+      // set on the table), so cells never spill past the row's own border and
+      // hover background. No variable (no resizing) means no floor.
+      style={{ minWidth: "var(--lyra-table-min-width)", ...style }}
       tabIndex={selectable ? tabIndex ?? 0 : tabIndex}
       onKeyDown={(e) => {
         onKeyDown?.(e);
@@ -509,9 +627,9 @@ const TableHead = React.forwardRef<HTMLTableCellElement, TableHeadProps>(
         ref={setRefs}
         role="columnheader"
         title={title ?? (typeof children === "string" ? children : undefined)}
-        style={resizedWidth !== undefined ? { ...style, flex: `0 0 ${resizedWidth}px` } : style}
+        style={resizedWidth !== undefined ? { ...style, flex: `0 0 ${resizedWidth}px`, minWidth: resizedWidth } : style}
         className={cn(
-          "relative flex items-center h-10 px-3 text-left lyra-label text-lyra-fg-default border-b border-lyra-border-soft [&:has([role=checkbox])]:pr-0 [&:has([role=checkbox])]:w-[40px] min-w-0",
+          "relative flex items-center h-10 px-3 text-left lyra-label text-lyra-fg-default border-b border-lyra-border-soft [&:has([role=checkbox])]:pr-0 [&:has([role=checkbox])]:w-[40px] [&:has([role=checkbox])]:shrink-0 [&:has([role=checkbox])]:min-w-0 min-w-[80px] [&.shrink-0]:min-w-0",
           resizable && "pr-4",
           className
         )}
@@ -548,9 +666,9 @@ const TableCell = React.forwardRef<HTMLTableCellElement, TableCellProps>(
         ref={ref}
         role="cell"
         title={title ?? (typeof children === "string" ? children : undefined)}
-        style={resizedWidth !== undefined ? { ...style, flex: `0 0 ${resizedWidth}px` } : style}
+        style={resizedWidth !== undefined ? { ...style, flex: `0 0 ${resizedWidth}px`, minWidth: resizedWidth } : style}
         className={cn(
-          "flex items-center h-10 px-3 lyra-body-md text-lyra-fg-default [&:has([role=checkbox])]:pr-0 [&:has([role=checkbox])]:w-[40px] min-w-0",
+          "flex items-center h-10 px-3 lyra-body-md text-lyra-fg-default [&:has([role=checkbox])]:pr-0 [&:has([role=checkbox])]:w-[40px] [&:has([role=checkbox])]:shrink-0 [&:has([role=checkbox])]:min-w-0 min-w-[80px] [&.shrink-0]:min-w-0",
           className
         )}
         {...props}
@@ -586,6 +704,12 @@ interface SortableTableHeadProps
   minWidth?: number;
   /** Maximum width (px) a drag/keyboard resize can reach (default: 600) */
   maxWidth?: number;
+  /**
+   * An interactive control (e.g. a column menu button) placed right after the
+   * label text, so the label and control sit together at the left and the sort
+   * arrows stay on the right. Its clicks and key presses don't toggle the sort.
+   */
+  labelAction?: React.ReactNode;
 }
 
 const SortableTableHead = React.forwardRef<HTMLTableCellElement, SortableTableHeadProps>(
@@ -601,6 +725,7 @@ const SortableTableHead = React.forwardRef<HTMLTableCellElement, SortableTableHe
       resizable,
       minWidth = 80,
       maxWidth = 600,
+      labelAction,
       style,
       ...props
     },
@@ -618,6 +743,19 @@ const SortableTableHead = React.forwardRef<HTMLTableCellElement, SortableTableHe
       [ref]
     );
     const resizedWidth = columnKey ? resizeCtx?.widths[columnKey] : undefined;
+    const announce = React.useContext(TableAnnounceContext);
+
+    // Announce this column becoming the sorted one (not on mount, and not
+    // when it merely loses its sort because another column took over — that
+    // column announces itself).
+    const prevSortRef = useRef(sortDirection);
+    useEffect(() => {
+      if (prevSortRef.current !== sortDirection && sortDirection) {
+        const name = localRef.current?.textContent?.trim();
+        announce?.(`Sorted by ${name || "column"}, ${sortDirection === "asc" ? "ascending" : "descending"}`);
+      }
+      prevSortRef.current = sortDirection;
+    }, [sortDirection, announce]);
 
     // Registers this column's natural width so a sibling's first resize can
     // freeze it in place too (see `freezeIfFirstResize` in table.tsx).
@@ -642,9 +780,9 @@ const SortableTableHead = React.forwardRef<HTMLTableCellElement, SortableTableHe
         onDrop={draggable ? (e) => dragHandlers.onDrop(e, columnKey!) : undefined}
         onDragEnd={draggable ? dragHandlers.onDragEnd : undefined}
         onDragLeave={draggable ? dragHandlers.onDragLeave : undefined}
-        style={resizedWidth !== undefined ? { ...style, flex: `0 0 ${resizedWidth}px` } : style}
+        style={resizedWidth !== undefined ? { ...style, flex: `0 0 ${resizedWidth}px`, minWidth: resizedWidth } : style}
         className={cn(
-          "flex items-center h-10 px-3 text-left lyra-label text-lyra-fg-default border-b border-lyra-border-soft whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&:has([role=checkbox])]:w-[40px] min-w-0 relative",
+          "flex items-center h-10 px-3 text-left lyra-label text-lyra-fg-default border-b border-lyra-border-soft whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&:has([role=checkbox])]:w-[40px] [&:has([role=checkbox])]:shrink-0 [&:has([role=checkbox])]:min-w-0 min-w-[80px] [&.shrink-0]:min-w-0 relative",
           "group/sort cursor-pointer select-none hover:bg-lyra-state-hover active:bg-lyra-state-pressed transition-colors",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-inset",
           sortDirection && "border-b-2 border-b-lyra-bg-primary",
@@ -671,7 +809,12 @@ const SortableTableHead = React.forwardRef<HTMLTableCellElement, SortableTableHe
             const row = e.currentTarget.parentElement;
             dragHandlers.onKeyboardMove(columnKey!, e.key === "ArrowLeft" ? -1 : 1);
             requestAnimationFrame(() => {
-              row?.querySelector<HTMLElement>(`[data-column-key="${CSS.escape(columnKey!)}"]`)?.focus();
+              const moved = row?.querySelector<HTMLElement>(`[data-column-key="${CSS.escape(columnKey!)}"]`);
+              moved?.focus();
+              if (moved && row) {
+                const position = Array.from(row.children).indexOf(moved) + 1;
+                announce?.(`${moved.textContent?.trim() || "Column"} moved to column ${position}`);
+              }
             });
           }
         }}
@@ -684,12 +827,26 @@ const SortableTableHead = React.forwardRef<HTMLTableCellElement, SortableTableHe
         }
         {...props}
       >
-        <span className="flex-1 truncate">
-          {/* Render only text/string children inside the truncated span */}
-          {React.Children.map(children, (child) =>
-            typeof child === "string" || typeof child === "number" ? child : null
-          )}
-        </span>
+        {labelAction ? (
+          <span className="flex min-w-0 flex-1 items-center gap-1">
+            <span className="truncate">
+              {React.Children.map(children, (child) =>
+                typeof child === "string" || typeof child === "number" ? child : null
+              )}
+            </span>
+            {/* Stop clicks/keys here so using the control doesn't also sort. */}
+            <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+              {labelAction}
+            </span>
+          </span>
+        ) : (
+          <span className="flex-1 truncate">
+            {/* Render only text/string children inside the truncated span */}
+            {React.Children.map(children, (child) =>
+              typeof child === "string" || typeof child === "number" ? child : null
+            )}
+          </span>
+        )}
         <span
           aria-hidden="true"
           className={cn(
@@ -1206,7 +1363,12 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
     // with zero/few chips shown, instead of it floating left, adjacent).
     const filterChipsRow = filterDefs ? (
       <div className="relative flex items-center gap-2">
-        <div className="flex items-center gap-2 overflow-hidden">
+        {/* `overflow-hidden` clips anything outside this box, including a
+            chip's keyboard focus ring (2px ring + 2px offset = 4px outside
+            the chip). The padding gives the ring room inside the clip, and
+            the equal negative margin keeps the row's size and position the
+            same as before. */}
+        <div className="-m-1.5 flex items-center gap-2 overflow-hidden p-1.5">
           {visibleFilterDefs.map((f) => (
             <FilterChip
               key={f.key}
@@ -1221,7 +1383,11 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
         {/* Hidden measurement clone — see the "Content-aware filter-chip
             '+N' overflow" doc comment above for why this exists and how
             it's read. Absolutely positioned so it never affects this row's
-            own layout/width. */}
+            own layout/width. The outer `overflow-hidden` box clips it to this
+            row: a `visibility: hidden` element still counts toward its
+            ancestors' scrollable width, and with many filters the clone is
+            wider than the screen, which made the whole page scroll sideways. */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
         <div
           ref={filterChipsMeasureRef}
           aria-hidden="true"
@@ -1239,6 +1405,7 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
               <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.5} />
             </button>
           </div>
+        </div>
         </div>
       </div>
     ) : null;
@@ -1878,10 +2045,11 @@ interface TableGroupRowProps extends React.HTMLAttributes<HTMLTableRowElement> {
 }
 
 const TableGroupRow = React.forwardRef<HTMLTableRowElement, TableGroupRowProps>(
-  ({ className, label, count, expanded, onToggle, colSpan, ...props }, ref) => (
+  ({ className, label, count, expanded, onToggle, colSpan, style, ...props }, ref) => (
     <tr
       ref={ref}
       role="row"
+      style={{ minWidth: "var(--lyra-table-min-width)", ...style }}
       className={cn(
         // No `width`/`min-width` class — same corrected reasoning as
         // `TableRow` above: an explicit `min-w-full` replaces flexbox's own
@@ -1889,22 +2057,38 @@ const TableGroupRow = React.forwardRef<HTMLTableRowElement, TableGroupRowProps>(
         // it wouldn't actually let this row grow past 100% when needed.
         // Leaving both at their default lets stretch (100% baseline) and
         // the automatic minimum (content-aware) combine correctly instead.
-        "flex border-b border-lyra-border-subtle bg-lyra-bg-surface-shell cursor-pointer select-none hover:bg-lyra-state-hover transition-colors",
+        "flex border-b border-lyra-border-subtle bg-lyra-bg-surface-shell select-none hover:bg-lyra-state-hover transition-colors",
         className
       )}
-      onClick={onToggle}
       {...props}
     >
-      <td role="cell" className="flex items-center h-10 px-3 gap-2 w-full" colSpan={colSpan}>
-        {expanded ? (
-          <ChevronDown className="h-4 w-4 text-lyra-fg-secondary flex-shrink-0" strokeWidth={1.5} aria-hidden="true" />
-        ) : (
-          <ChevronRightIcon className="h-4 w-4 text-lyra-fg-secondary flex-shrink-0" strokeWidth={1.5} aria-hidden="true" />
-        )}
-        <span className="lyra-body-md-emphasis text-lyra-fg-default">{label}</span>
-        <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-lyra-round bg-lyra-bg-active-moderate lyra-body-sm-emphasis text-lyra-fg-active-strong">
-          {count}
-        </span>
+      <td role="cell" className="flex w-full" colSpan={colSpan}>
+        {/* A real button, so the group is reachable with Tab and toggles on
+            Enter / Space (WCAG 2.1.1), and exposes its open/closed state to
+            assistive tech (`aria-expanded`, WCAG 4.1.2). It fills the whole
+            row, so the click target is the same as before. */}
+        <button
+          type="button"
+          aria-expanded={expanded}
+          onClick={onToggle}
+          className="flex h-10 w-full cursor-pointer items-center gap-2 px-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lyra-border-focus"
+        >
+          {expanded ? (
+            <ChevronDown className="h-4 w-4 text-lyra-fg-secondary flex-shrink-0" strokeWidth={1.5} aria-hidden="true" />
+          ) : (
+            <ChevronRightIcon className="h-4 w-4 text-lyra-fg-secondary flex-shrink-0" strokeWidth={1.5} aria-hidden="true" />
+          )}
+          <span className="lyra-body-md-emphasis text-lyra-fg-default">{label}</span>
+          <span
+            aria-hidden="true"
+            className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-lyra-round bg-lyra-bg-active-moderate lyra-body-sm-emphasis text-lyra-fg-active-strong"
+          >
+            {count}
+          </span>
+          {/* The visual count badge is a bare number; spell it out for
+              screen readers. */}
+          <span className="sr-only">{count === 1 ? "1 row" : `${count} rows`}</span>
+        </button>
       </td>
     </tr>
   )

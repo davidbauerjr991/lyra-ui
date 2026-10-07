@@ -57,7 +57,7 @@ export interface LoginCardProps {
 const LAUNCH_STEPS: { id: LaunchStepId; label: string }[] = [
   { id: "auth",  label: "Authenticating Agent" },
   { id: "sync",  label: "Checking Connection" },
-  { id: "queue", label: "Loading Queue" },
+  { id: "queue", label: "Loading Application" },
 ];
 
 const STEP_DURATION = 700;

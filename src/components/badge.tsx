@@ -87,6 +87,7 @@ export function getPillInlineStyles(
 /* ── Circle shape (formerly StatusBadge) ── */
 
 export type BadgeCircleVariant = "default" | "info" | "success" | "warning" | "critical" | "neutral";
+export type BadgeCircleFill = "solid" | "subtle";
 export type BadgeSize = "sm" | "md" | "lg";
 
 const circleBadgeVariants = cva(
@@ -94,25 +95,30 @@ const circleBadgeVariants = cva(
   "inline-flex items-center justify-center font-medium leading-none select-none shrink-0",
   {
     variants: {
-      /** Color */
+      /** Color — the semantic role; the actual classes come from `fill` below */
       variant: {
-        default:  "bg-lyra-bg-primary text-lyra-fg-on-primary",
-        // `text-lyra-fg-inverse` (white in light mode, near-black in dark)
-        // instead of white/fg-on-primary: these status fills turn light in
-        // dark mode, where white text measured 1.5–3.1:1 (WCAG 1.4.3).
-        // Light mode is unchanged. `default` keeps fg-on-primary — its
-        // bg-primary stays dark blue in both themes.
-        info:     "bg-lyra-bg-active-strong text-lyra-fg-inverse",
-        success:  "bg-lyra-status-success-strong text-lyra-fg-inverse",
-        warning:  "bg-lyra-status-warning-strong text-lyra-fg-inverse",
-        critical: "bg-lyra-status-critical-strong text-lyra-fg-inverse",
-        neutral:  "bg-lyra-fg-secondary text-lyra-fg-inverse",
+        default: "",
+        info: "",
+        success: "",
+        warning: "",
+        critical: "",
+        neutral: "",
+      },
+      /** Fill — solid (strong bg, inverse text) or subtle (tinted bg, strong text) */
+      fill: {
+        solid: "",
+        subtle: "",
       },
       /** Size — controls diameter and text size */
       size: {
         sm: "text-[10px] min-w-[16px] h-[16px] px-1 rounded-full",
         md: "text-[11px] min-w-[20px] h-[20px] px-1.5 rounded-full",
         lg: "text-[12px] min-w-[24px] h-[24px] px-2 rounded-full",
+      },
+      /** Bordered — 1px border (white on solid fills, role color on subtle) */
+      bordered: {
+        true: "border",
+        false: "",
       },
       /** Dot — no text, fixed circle */
       dot: {
@@ -121,6 +127,34 @@ const circleBadgeVariants = cva(
       },
     },
     compoundVariants: [
+      // Solid fills. `text-lyra-fg-inverse` (white in light mode, near-black
+      // in dark) instead of white/fg-on-primary: these status fills turn
+      // light in dark mode, where white text measured 1.5–3.1:1 (WCAG
+      // 1.4.3). Light mode is unchanged. `default` keeps fg-on-primary —
+      // its bg-primary stays dark blue in both themes.
+      { fill: "solid", variant: "default",  className: "bg-lyra-bg-primary text-lyra-fg-on-primary" },
+      { fill: "solid", variant: "info",     className: "bg-lyra-bg-active-strong text-lyra-fg-inverse" },
+      { fill: "solid", variant: "success",  className: "bg-lyra-status-success-strong text-lyra-fg-inverse" },
+      { fill: "solid", variant: "warning",  className: "bg-lyra-status-warning-strong text-lyra-fg-inverse" },
+      { fill: "solid", variant: "critical", className: "bg-lyra-status-critical-strong text-lyra-fg-inverse" },
+      { fill: "solid", variant: "neutral",  className: "bg-lyra-fg-secondary text-lyra-fg-inverse" },
+      // Subtle fills: tinted background with the role's strong text.
+      { fill: "subtle", variant: "default",  className: "bg-lyra-bg-active-subtle text-lyra-fg-active-strong" },
+      { fill: "subtle", variant: "info",     className: "bg-lyra-status-info-subtle text-lyra-status-info-strong" },
+      { fill: "subtle", variant: "success",  className: "bg-lyra-status-success-subtle text-lyra-status-success-strong" },
+      { fill: "subtle", variant: "warning",  className: "bg-lyra-status-warning-subtle text-lyra-status-warning-strong" },
+      { fill: "subtle", variant: "critical", className: "bg-lyra-status-critical-subtle text-lyra-status-critical-strong" },
+      { fill: "subtle", variant: "neutral",  className: "bg-lyra-state-hover text-lyra-fg-secondary" },
+      // Bordered: a solid fill gets a white border (separates it from
+      // whatever it's stacked on); a subtle fill gets the role's *solid*
+      // color as its border.
+      { bordered: true, fill: "solid", className: "border-white" },
+      { bordered: true, fill: "subtle", variant: "default", className: "border-lyra-bg-primary" },
+      { bordered: true, fill: "subtle", variant: "info", className: "border-lyra-bg-active-strong" },
+      { bordered: true, fill: "subtle", variant: "success", className: "border-lyra-status-success-strong" },
+      { bordered: true, fill: "subtle", variant: "warning", className: "border-lyra-status-warning-strong" },
+      { bordered: true, fill: "subtle", variant: "critical", className: "border-lyra-status-critical-strong" },
+      { bordered: true, fill: "subtle", variant: "neutral", className: "border-lyra-fg-secondary" },
       // Dot overrides: fixed square → circle, no padding
       { dot: true, size: "sm", className: "w-2 h-2 min-w-0 p-0 rounded-full" },
       { dot: true, size: "md", className: "w-3 h-3 min-w-0 p-0 rounded-full" },
@@ -128,6 +162,8 @@ const circleBadgeVariants = cva(
     ],
     defaultVariants: {
       variant: "default",
+      fill: "solid",
+      bordered: false,
       size: "md",
       dot: false,
     },
@@ -148,6 +184,10 @@ interface BadgeCircleProps extends React.HTMLAttributes<HTMLSpanElement> {
   shape: "circle";
   /** Semantic color role. Default "default". */
   variant?: BadgeCircleVariant;
+  /** Fill style — "solid" (default) or "subtle" (tinted background). */
+  fill?: BadgeCircleFill;
+  /** Adds a 1px border: white on a solid fill, the role's solid color on a subtle fill. Default false. */
+  bordered?: boolean;
   /** Diameter / text size. Default "md". */
   size?: BadgeSize;
   /**
@@ -174,6 +214,8 @@ const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>((props, ref) => {
     const {
       shape: _shape,
       variant = "default",
+      fill = "solid",
+      bordered = false,
       size = "md",
       dot = false,
       count,
@@ -204,7 +246,7 @@ const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>((props, ref) => {
     return (
       <span
         ref={ref}
-        className={cn(circleBadgeVariants({ variant, size, dot }), className)}
+        className={cn(circleBadgeVariants({ variant, fill, bordered, size, dot }), className)}
         aria-label={resolvedAriaLabel}
         // `role="img"` only when there's an actual label to announce — a
         // bare, role-less `<span>` carrying `aria-label` is exactly what

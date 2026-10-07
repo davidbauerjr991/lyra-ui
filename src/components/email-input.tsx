@@ -114,6 +114,11 @@ const EmailInput = React.forwardRef<HTMLInputElement, EmailInputProps>(
             readOnly={readonly}
             autoComplete="email"
             inputMode="email"
+            // `required` used to reach only the label's asterisk. Pass it to
+            // the real input too so assistive tech announces "required"
+            // (WCAG 1.3.1 / 3.3.2); a consumer-supplied prop below still wins.
+            required={required}
+            aria-required={required ? "true" : undefined}
             aria-invalid={!!error}
             aria-describedby={error ? errorId : undefined}
             className="flex-1 bg-transparent outline-none pl-3 pr-1 truncate placeholder:text-lyra-fg-disabled disabled:cursor-not-allowed"

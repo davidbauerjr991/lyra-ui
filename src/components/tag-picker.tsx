@@ -104,9 +104,31 @@ const TagPicker = React.forwardRef<HTMLButtonElement, TagPickerProps>(
     // the same `TagPicker` instance is reused across opens.
     const [search, setSearch] = React.useState("");
     const searchRef = React.useRef<HTMLInputElement>(null);
+
+    // Combobox wiring (WAI-ARIA combobox + listbox, "aria-activedescendant"
+    // variant): DOM focus stays in the search field while ↓/↑ move a
+    // virtual "active" option. Options stay real, Tab-reachable buttons too.
+    const baseId = React.useId();
+    const listboxId = `${baseId}-listbox`;
+    const optionId = (i: number) => `${baseId}-option-${i}`;
+    const [activeIndex, setActiveIndex] = React.useState(-1);
+
+    // The trigger's own ref (for returning focus on close) merged with the
+    // forwarded one.
+    const triggerRef = React.useRef<HTMLButtonElement | null>(null);
+    const setTriggerRef = React.useCallback(
+      (node: HTMLButtonElement | null) => {
+        triggerRef.current = node;
+        if (typeof ref === "function") ref(node);
+        else if (ref) (ref as React.MutableRefObject<HTMLButtonElement | null>).current = node;
+      },
+      [ref]
+    );
+
     React.useEffect(() => {
       if (!open) return;
       setSearch("");
+      setActiveIndex(-1);
       // Next-frame focus, same timing `Select`'s own searchable dropdown
       // uses — focusing synchronously on open can fight Radix's own
       // Popover open-focus handling.
@@ -116,6 +138,48 @@ const TagPicker = React.forwardRef<HTMLButtonElement, TagPickerProps>(
     const filtered = search.trim()
       ? options.filter((opt) => opt.label.toLowerCase().includes(search.trim().toLowerCase()))
       : options;
+
+    // Keep the active option valid as the filtered list changes, and scroll
+    // it into view as ↓/↑ move through a long list.
+    React.useEffect(() => {
+      setActiveIndex((i) => (i >= filtered.length ? filtered.length - 1 : i));
+    }, [filtered.length]);
+    React.useEffect(() => {
+      if (activeIndex < 0) return;
+      document.getElementById(optionId(activeIndex))?.scrollIntoView?.({ block: "nearest" });
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeIndex]);
+
+    const onSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      const count = filtered.length;
+      if (count === 0) return;
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          setActiveIndex((i) => (i + 1) % count);
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          setActiveIndex((i) => (i <= 0 ? count - 1 : i - 1));
+          break;
+        // Home/End jump between options only once arrow navigation has
+        // started; before that they keep moving the text caret.
+        case "Home":
+          if (activeIndex >= 0) { e.preventDefault(); setActiveIndex(0); }
+          break;
+        case "End":
+          if (activeIndex >= 0) { e.preventDefault(); setActiveIndex(count - 1); }
+          break;
+        case "Enter":
+          if (activeIndex >= 0) { e.preventDefault(); toggle(filtered[activeIndex]); }
+          break;
+        case " ":
+          // Space toggles the active option unless the user is typing a
+          // multi-word search (then it's just a space).
+          if (activeIndex >= 0 && search === "") { e.preventDefault(); toggle(filtered[activeIndex]); }
+          break;
+      }
+    };
 
     // Same hover-driven scroll-chevron affordance every other overflowing
     // dropdown list in this library uses (`Select`'s own multi-select
@@ -159,7 +223,17 @@ const TagPicker = React.forwardRef<HTMLButtonElement, TagPickerProps>(
         // the close action from re-triggering the tooltip; the picker was
         // opened by a click, not keyboard nav, so there's no keyboard-focus
         // chain here worth preserving.
-        onCloseAutoFocus={(e) => e.preventDefault()}
+        onCloseAutoFocus={(e) => {
+          e.preventDefault();
+          // Keyboard users (Esc, or toggling with the keyboard then
+          // leaving) get focus back on the "Add tag" trigger — otherwise it
+          // falls to <body> (WCAG 2.4.3). Pointer users keep the behavior
+          // described above: no focus return, so the tooltip doesn't pop
+          // back open.
+          if (document.documentElement.dataset.lyraInputModality === "keyboard") {
+            triggerRef.current?.focus();
+          }
+        }}
         header={
           // Fixed above the scrolling list (`Popover`'s own `header`/
           // `content` split — see popover.tsx), same layered structure and
@@ -174,9 +248,15 @@ const TagPicker = React.forwardRef<HTMLButtonElement, TagPickerProps>(
               <input
                 ref={searchRef}
                 type="text"
+                role="combobox"
                 aria-label="Search tags"
+                aria-expanded={open}
+                aria-controls={listboxId}
+                aria-autocomplete="list"
+                aria-activedescendant={activeIndex >= 0 && activeIndex < filtered.length ? optionId(activeIndex) : undefined}
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setActiveIndex(-1); }}
+                onKeyDown={onSearchKeyDown}
                 placeholder="Search tags"
                 className={cn(
                   "h-9 w-full rounded-lyra-sm border border-lyra-border-strong bg-lyra-bg-field pl-9 pr-9 lyra-body-md text-lyra-fg-default transition-colors",
@@ -189,7 +269,7 @@ const TagPicker = React.forwardRef<HTMLButtonElement, TagPickerProps>(
                 <button
                   type="button"
                   onClick={() => setSearch("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-lyra-xs text-lyra-fg-action hover:text-lyra-fg-default hover:bg-lyra-state-hover transition-colors"
+                  className="lyra-hit-24 absolute right-2 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-lyra-xs text-lyra-fg-action hover:text-lyra-fg-default hover:bg-lyra-state-hover transition-colors"
                   tabIndex={-1}
                   aria-label="Clear search"
                 >
@@ -223,6 +303,7 @@ const TagPicker = React.forwardRef<HTMLButtonElement, TagPickerProps>(
             <div
               ref={listRef}
               onScroll={onListScroll}
+              id={listboxId}
               role="listbox"
               aria-label={triggerLabel}
               aria-multiselectable
@@ -233,11 +314,13 @@ const TagPicker = React.forwardRef<HTMLButtonElement, TagPickerProps>(
                   {options.length === 0 ? "No tags available" : "No tags found"}
                 </div>
               )}
-              {filtered.map((option) => {
+              {filtered.map((option, index) => {
                 const isSelected = appliedLabels.includes(option.label);
+                const isActive = index === activeIndex;
                 return (
                   <button
                     key={option.label}
+                    id={optionId(index)}
                     type="button"
                     role="option"
                     aria-selected={isSelected}
@@ -245,7 +328,10 @@ const TagPicker = React.forwardRef<HTMLButtonElement, TagPickerProps>(
                     className={cn(
                       "group/item relative flex w-full items-center gap-2.5 rounded-lyra-sm px-3 py-2.5 lyra-body-md text-left transition-colors",
                       "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
-                      "focus:outline-none focus-visible:bg-lyra-state-hover"
+                      "focus:outline-none focus-visible:bg-lyra-state-hover",
+                      // Keyboard-active option (aria-activedescendant) — same
+                      // highlight as hover/focus.
+                      isActive && "bg-lyra-state-hover"
                     )}
                   >
                     {/* Left accent bar — visible on hover/press, matching
@@ -267,7 +353,7 @@ const TagPicker = React.forwardRef<HTMLButtonElement, TagPickerProps>(
           </div>
         }
       >
-        <ActionIconButton ref={ref} size={triggerSize} title={triggerLabel} className={className}>
+        <ActionIconButton ref={setTriggerRef} size={triggerSize} title={triggerLabel} className={className}>
           <Tags className="h-3.5 w-3.5" strokeWidth={1.5} />
         </ActionIconButton>
       </Popover>

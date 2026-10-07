@@ -434,6 +434,27 @@
   display: none;
 }
 
+/* WCAG 2.5.8 Target Size (Minimum): grows the CLICK/TAP area of a small
+   icon button (12–14px remove ×, info "i", etc.) to at least 24×24px
+   without changing its visual size or the surrounding layout. The extra
+   area is an absolutely positioned, centered ::before — it takes no space,
+   so nothing shifts. Never shrinks a button already larger than 24px
+   (`max(100%, 24px)`). The element must not clip overflow, and shouldn't
+   already use its own ::before. Adds `position: relative` unless the element is already
+   `.absolute`/`.fixed`/`.sticky` (those anchor the ::before themselves). */
+.lyra-hit-24:not(.absolute):not(.fixed):not(.sticky) {
+  position: relative;
+}
+.lyra-hit-24::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 24px);
+  height: max(100%, 24px);
+  transform: translate(-50%, -50%);
+}
+
 .lyra-container-grid-wrap {
   container-type: inline-size;
 }

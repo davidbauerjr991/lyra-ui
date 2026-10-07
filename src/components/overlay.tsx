@@ -32,6 +32,14 @@ export interface OverlayProps
    * Default: false — clicking the backdrop does nothing (modal stays open).
    */
   closeOnBackdropClick?: boolean;
+  /**
+   * Close the modal when Escape is pressed.
+   * Default: true — independent of `closeOnBackdropClick`. Set `false` only
+   * for a genuinely blocking modal; Escape is the standard way to dismiss a
+   * dialog (WAI-ARIA dialog pattern) and keyboard users have no other
+   * equivalent to a backdrop click.
+   */
+  closeOnEscape?: boolean;
   /** Portal container — defaults to document.body */
   container?: HTMLElement | null;
 }
@@ -48,11 +56,18 @@ export interface OverlayProps
  *
  * Props:
  *   closeOnBackdropClick — when true, clicking the backdrop dismisses the modal.
+ *   closeOnEscape — Escape dismisses the modal (default true); set false to block it.
  */
 const Overlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   OverlayProps
->(({ className, variant, open = false, onClose, closeOnBackdropClick = false, container, children, ...props }, ref) => (
+>(({ className, variant, open = false, onClose, closeOnBackdropClick = false, closeOnEscape = true, container, children, ...props }, ref) => {
+  // The Radix `Trigger` below is a hidden, non-focusable span, so Radix's own
+  // "return focus to the trigger on close" lands on nothing and focus falls
+  // to <body>. Remember whichever element had focus when the dialog opened
+  // (the consumer's real button) and hand focus back to it on close.
+  const openerRef = React.useRef<HTMLElement | null>(null);
+  return (
   <DialogPrimitive.Root open={open} onOpenChange={(v) => { if (!v) onClose?.(); }}>
     {/* Hidden trigger required by Radix internals — visually absent */}
     <DialogPrimitive.Trigger asChild>
@@ -69,10 +84,22 @@ const Overlay = React.forwardRef<
         <DialogPrimitive.Content
           className="fixed inset-0 z-50 flex items-center justify-center focus:outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
           aria-describedby={undefined}
+          onOpenAutoFocus={() => {
+            // Runs before Radix moves focus into the dialog, so
+            // `activeElement` is still the element that opened it.
+            openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+          }}
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            const opener = openerRef.current;
+            openerRef.current = null;
+            if (opener && opener.isConnected) opener.focus();
+          }}
           // Prevent Radix from closing on outside interaction — we handle it manually below
           onInteractOutside={(e) => e.preventDefault()}
-          // Allow Escape to always dismiss
-          onEscapeKeyDown={(e) => { if (!closeOnBackdropClick) e.preventDefault(); }}
+          // Escape dismisses by default; only an explicit `closeOnEscape={false}`
+          // blocks it. Deliberately independent of `closeOnBackdropClick`.
+          onEscapeKeyDown={(e) => { if (!closeOnEscape) e.preventDefault(); }}
           onClick={(e) => {
             // Close only when clicking the backdrop area (the Content wrapper itself),
             // not when clicking inside the modal content
@@ -85,7 +112,8 @@ const Overlay = React.forwardRef<
       )}
     </DialogPrimitive.Portal>
   </DialogPrimitive.Root>
-));
+  );
+});
 Overlay.displayName = "Overlay";
 
 /* ─────────────────────────────────────────────

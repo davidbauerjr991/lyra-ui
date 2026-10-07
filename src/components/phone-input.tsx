@@ -271,6 +271,12 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
     const [open,        setOpen]        = React.useState(false);
     const [search,      setSearch]      = React.useState("");
     const [activeIndex, setActiveIndex] = React.useState(-1);
+    // Ids so the search field (a combobox) can point at the country list and
+    // at its highlighted row via `aria-activedescendant` — focus never leaves
+    // the search field, so without this a screen reader hears nothing when ↓
+    // moves the highlight.
+    const listboxId = `${inputId}-countries`;
+    const optionDomId = (i: number) => `${inputId}-country-${i}`;
     const [touched,     setTouched]     = React.useState(false);
 
     const countryCode = value?.countryCode ?? defaultCountry;
@@ -353,6 +359,10 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
         autoComplete="tel"
         className="flex-1 bg-transparent outline-none px-3 truncate placeholder:text-lyra-fg-disabled disabled:cursor-not-allowed"
         aria-label={label ?? "Phone number"}
+        // `required` used to reach only the label's asterisk — expose it on
+        // the real input too (WCAG 1.3.1 / 3.3.2).
+        required={required}
+        aria-required={required ? "true" : undefined}
         aria-invalid={!!error}
         aria-describedby={error ? `${inputId}-error` : undefined}
       />
@@ -403,6 +413,9 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
             <PopoverPrimitive.Portal>
               <PopoverPrimitive.Content
                 onOpenAutoFocus={(e) => e.preventDefault()}
+                // Radix gives this content `role="dialog"`; axe
+                // `aria-dialog-name` requires it to have a name.
+                aria-label="Select country"
                 side="bottom" sideOffset={4} align="start"
                 avoidCollisions collisionPadding={4}
                 style={{ width: "var(--radix-popover-trigger-width)" }}
@@ -421,6 +434,12 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
                       ref={searchRef} type="text" value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       onKeyDown={handleSearchKeyDown}
+                      role="combobox"
+                      aria-label="Search countries"
+                      aria-expanded={open}
+                      aria-controls={listboxId}
+                      aria-autocomplete="list"
+                      aria-activedescendant={activeIndex >= 0 && activeIndex < filtered.length ? optionDomId(activeIndex) : undefined}
                       placeholder="Search country…"
                       className={cn(
                         "w-full h-8 pl-3 pr-8 rounded-lyra-sm border lyra-body-md",
@@ -458,9 +477,11 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
                     itemRole="option"
                     bare
                     aria-label="Countries"
+                    id={listboxId}
                     className="p-2"
                     items={filtered.map((c, i) => ({
                       id: `${c.code}-${c.dial}`,
+                      domId: optionDomId(i),
                       label: c.name,
                       icon: <span className="text-base leading-none">{flag(c.code)}</span>,
                       rightElement: <span className="lyra-body-sm text-lyra-fg-secondary tabular-nums">{c.dial}</span>,

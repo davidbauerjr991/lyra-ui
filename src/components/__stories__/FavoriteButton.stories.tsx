@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { useState } from "react";
 import { FavoriteButton } from "../favorite-button";
+import { DemoRow } from "./FavoriteButton.shared";
 
 const meta: Meta<typeof FavoriteButton> = {
   title: "Custom Primitives/FavoriteButton",
@@ -10,69 +10,99 @@ const meta: Meta<typeof FavoriteButton> = {
     layout: "padded",
     backgrounds: { default: "lyra-shell" },
   },
-  argTypes: {
-    placement: {
-      control: "select",
-      options: ["top", "bottom", "left", "right"],
-    },
-    favorited: { control: "boolean" },
-    onClick: { table: { disable: true } },
-  },
 };
 
 export default meta;
-type Story = StoryObj<typeof FavoriteButton>;
 
-/* A minimal stand-in for a list row (see ContactRow in create-new.tsx for
-   the real usage) — `group/row` is what FavoriteButton hooks into to only
-   reveal itself on hover/focus of the row it lives in. */
-// `w-full` — DemoRow fills whatever container it's placed in (a bare
-// `w-72` wrapper for the standalone stories below, or the `InList` list's
-// own flex column). A fixed width here previously fought the parent's
-// width in `InList` and overflowed it, producing overlapping/nested
-// borders instead of a clean stacked list.
-function DemoRow({ name, initiallyFavorited }: { name: string; initiallyFavorited?: boolean }) {
-  const [favorited, setFavorited] = useState(!!initiallyFavorited);
+/* Variants (not favorited, favorited, at the favorites cap, inside a list)
+   each have their own page under "FavoriteButton/Variants" — see
+   FavoriteButton.variants.stories.tsx. */
+
+/* ── Default — one controls-driven story. Consolidates what used to be
+   Default and All Variants into a single playground: a list row holding the
+   star. The star only appears on hover of the row until it is favorited.
+   `DemoRow` owns the favorited state, so clicking toggles for real. ── */
+
+interface FavoriteButtonDemoProps {
+  startsFavorited?: boolean;
+  disabled?: boolean;
+  label?: string;
+  placement?: "top" | "bottom" | "left" | "right";
+}
+
+function FavoriteButtonDemo({
+  startsFavorited = false,
+  disabled = false,
+  label = "Jamie Torres",
+  placement = "left",
+}: FavoriteButtonDemoProps) {
   return (
-    <div className="group/row flex w-full items-center justify-between rounded-lyra-sm border border-lyra-border-subtle px-3 py-2.5">
-      <span className="lyra-body-md text-lyra-fg-default">{name}</span>
-      <FavoriteButton favorited={favorited} onClick={() => setFavorited((v) => !v)} label={name} placement="left" />
+    <div className="w-72">
+      <DemoRow
+        name={label}
+        initiallyFavorited={startsFavorited}
+        disabled={disabled}
+        placement={placement}
+      />
     </div>
   );
 }
 
-export const Default: Story = {
-  name: "Default",
-  render: () => (
-    <div className="w-72">
-      <DemoRow name="Jamie Torres" />
-    </div>
-  ),
-};
+type FavoriteButtonDemoStory = StoryObj<typeof FavoriteButtonDemo>;
 
-export const AllVariants: Story = {
-  name: "All Variants",
-  render: () => (
-    <div className="flex w-72 flex-col gap-3">
-      <div>
-        <p className="lyra-body-sm text-lyra-fg-secondary mb-1.5">Not favorited — hover the row to reveal the star</p>
-        <DemoRow name="Jamie Torres" />
-      </div>
-      <div>
-        <p className="lyra-body-sm text-lyra-fg-secondary mb-1.5">Favorited — star stays visible without hovering</p>
-        <DemoRow name="Priya Nair" initiallyFavorited />
-      </div>
-    </div>
-  ),
-};
-
-export const InList: Story = {
-  name: "Inside a list",
-  render: () => (
-    <div className="flex w-72 flex-col gap-1 rounded-lyra-lg border border-lyra-border-subtle p-2">
-      <DemoRow name="Jamie Torres" initiallyFavorited />
-      <DemoRow name="Priya Nair" />
-      <DemoRow name="Wei Chen" />
-    </div>
+export const Default: FavoriteButtonDemoStory = {
+  args: {
+    startsFavorited: false,
+    disabled: false,
+    label: "Jamie Torres",
+    placement: "left",
+  },
+  parameters: {
+    controls: {
+      include: [
+        "startsFavorited",
+        "disabled",
+        "label",
+        "placement",
+        "Starts favorited",
+        "At favorites cap",
+        "Row name",
+        "Tooltip placement",
+      ],
+      sort: "none",
+    },
+  },
+  argTypes: {
+    startsFavorited: {
+      name: "Starts favorited",
+      control: "boolean",
+      description: "Whether the row starts favorited. A favorited star stays visible without hovering (`favorited`).",
+      table: { category: "Behavior" },
+    },
+    disabled: {
+      name: "At favorites cap",
+      control: "boolean",
+      description:
+        "Mutes and locks an un-favorited star, as when a cap on favorites is reached (`disabled`). A favorited one can still be removed.",
+      table: { category: "Behavior" },
+    },
+    label: {
+      name: "Row name",
+      control: "text",
+      description: "Name of the thing being favorited. Used in the accessible name (`label`).",
+      table: { category: "Content" },
+    },
+    placement: {
+      name: "Tooltip placement",
+      control: "radio",
+      options: ["top", "bottom", "left", "right"],
+      description: "Which side of the star the tooltip opens on (`placement`).",
+      table: { category: "Appearance" },
+    },
+  },
+  render: (args) => (
+    // `key` remounts the demo when a control changes — `useState`'s initial
+    // value only applies on first mount.
+    <FavoriteButtonDemo key={JSON.stringify(args)} {...args} />
   ),
 };

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import React, { useState, useCallback } from "react";
-import ReactDOM from "react-dom";
+import { useArgs } from "@storybook/preview-api";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   Table,
   TableHeader,
@@ -10,24 +10,26 @@ import {
   TableCell,
   SortableTableHead,
   TableToolbar,
-  TableFooter,
   ColumnToggle,
+  TableFooter,
   TableGroupRow,
-  ColumnHeaderContextMenu,
-  useColumnReorder,
-  useTableGrouping,
   useAutoFitRows,
 } from "../table";
-import type { ColumnToggleItem } from "../table";
 import type { SortDirection } from "../table";
-import { Button } from "../button";
-import { Input } from "../input";
-import { FilterChip } from "../filter-chip";
-import { ToggleGroup } from "../toggle-group";
-import { Pencil, Copy, Trash2, RefreshCw, Check, Plus, SlidersHorizontal } from "lucide-react";
 import { Checkbox } from "../checkbox";
-import { cn } from "../../lib/utils";
-import { CircleCheck, Minus, MoreVertical } from "lucide-react";
+import { MenuRadix } from "../menu-radix";
+import { CircleCheck, Minus, MoreVertical, ChevronDown, Group } from "lucide-react";
+import {
+  sortableData,
+  makeSortableData,
+  toolbarActionDefs,
+  defaultFilterDefs,
+  defaultToggleColumns,
+  filterValueFor,
+  emptyFilterValues,
+} from "./Table.shared";
+import { AdvancedSearchContent, asBuildString, asHasAnyFilters, emptyAsRoot } from "./Table.queryBuilder";
+import type { AsGroup } from "./Table.queryBuilder";
 
 const meta: Meta<typeof Table> = {
   title: "Custom Primitives/Table",
@@ -39,109 +41,19 @@ const meta: Meta<typeof Table> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof Table>;
 
-const sampleData = [
-  { id: 1, name: "Agent Desktop #1", published: true, description: "Back office", createdBy: "Jim Smith" },
-  { id: 2, name: "Agent Desktop #2", published: true, description: "Custom", createdBy: "Jim Smith" },
-  { id: 3, name: "Agent Desktop #3", published: false, description: "Knowledge Worker", createdBy: "Jim Smith" },
-  { id: 4, name: "Agent Desktop #4", published: true, description: "BPO", createdBy: "Jim Smith" },
-  { id: 5, name: "Agent Desktop #5", published: true, description: "Collections", createdBy: "Jim Smith" },
-];
+/* Variants (selected rows, reorderable and resizable columns, toolbar,
+   footer, column toggle, grouped rows, auto-fit, query builder) each have
+   their own page under "Table/Variants" — see Table.variants.stories.tsx. */
 
-export const Default: Story = {
-  render: () => (
-    <div className="h-[400px]">
-      <Table>
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead className="w-[40px] shrink-0"><Checkbox aria-label="Select row" /></TableHead>
-            <TableHead className="flex-[2]">Name</TableHead>
-            <TableHead className="flex-1">Published</TableHead>
-            <TableHead className="flex-[2]">Description</TableHead>
-            <TableHead className="flex-[1.3]">Created By</TableHead>
-            <TableHead className="w-[48px] shrink-0"><span className="sr-only">Actions</span></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sampleData.map((row) => (
-            <TableRow key={row.id}>
-              <TableCell className="w-[40px] shrink-0"><Checkbox aria-label="Select row" /></TableCell>
-              <TableCell className="flex-[2] text-lyra-fg-link cursor-pointer hover:underline">{row.name}</TableCell>
-              <TableCell className="flex-1">
-                {row.published ? (
-                  <CircleCheck className="h-5 w-5 text-lyra-status-success-strong" strokeWidth={1.5} />
-                ) : (
-                  <Minus className="h-5 w-5 text-lyra-fg-disabled" strokeWidth={1.5} />
-                )}
-              </TableCell>
-              <TableCell className="flex-[2]">{row.description}</TableCell>
-              <TableCell className="flex-[1.3]">{row.createdBy}</TableCell>
-              <TableCell className="w-[48px] shrink-0">
-                <button aria-label="More options" className="flex h-7 w-7 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-bg-surface-shell transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2">
-                  <MoreVertical className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
-                </button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  ),
-};
+/* ── Default — one controls-driven story. Consolidates what used to be
+   Default, With Selected Rows' selection and Sortable into a single
+   playground built from the same primitives (`Table`, `TableRow`,
+   `TableCell`, `SortableTableHead`). Fully controlled: row and header
+   checkboxes change the selection, and clicking a sortable header cycles
+   ascending, descending, off. ── */
 
-export const WithSelectedRows: Story = {
-  render: () => (
-    <div className="h-[400px]">
-      <Table>
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead className="w-[40px] shrink-0"><Checkbox checked="indeterminate" aria-label="Select all rows" /></TableHead>
-            <TableHead className="flex-[2]">Name</TableHead>
-            <TableHead className="flex-1">Published</TableHead>
-            <TableHead className="flex-[2]">Description</TableHead>
-            <TableHead className="flex-[1.3]">Created By</TableHead>
-            <TableHead className="w-[48px] shrink-0"><span className="sr-only">Actions</span></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sampleData.map((row) => (
-            <TableRow key={row.id} data-state={row.id <= 2 ? "selected" : undefined}>
-              <TableCell className="w-[40px] shrink-0"><Checkbox checked={row.id <= 2} aria-label="Select row" /></TableCell>
-              <TableCell className="flex-[2] text-lyra-fg-link cursor-pointer hover:underline">{row.name}</TableCell>
-              <TableCell className="flex-1">
-                {row.published ? (
-                  <CircleCheck className="h-5 w-5 text-lyra-status-success-strong" strokeWidth={1.5} />
-                ) : (
-                  <Minus className="h-5 w-5 text-lyra-fg-disabled" strokeWidth={1.5} />
-                )}
-              </TableCell>
-              <TableCell className="flex-[2]">{row.description}</TableCell>
-              <TableCell className="flex-[1.3]">{row.createdBy}</TableCell>
-              <TableCell className="w-[48px] shrink-0">
-                <button aria-label="More options" className="flex h-7 w-7 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-bg-surface-shell transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2">
-                  <MoreVertical className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
-                </button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  ),
-};
-
-/* ── Sortable ── */
-
-const sortableData = [
-  { id: 1, name: "Agent Desktop #1", description: "Back office", createdBy: "Alice Johnson" },
-  { id: 2, name: "Agent Desktop #2", description: "Custom", createdBy: "Bob Smith" },
-  { id: 3, name: "Agent Desktop #3", description: "Knowledge Worker", createdBy: "Charlie Lee" },
-  { id: 4, name: "Agent Desktop #4", description: "BPO", createdBy: "Diana Park" },
-  { id: 5, name: "Agent Desktop #5", description: "Collections", createdBy: "Eve Martinez" },
-];
-
-type SortKey = "name" | "description" | "createdBy";
+type SortKey = "name" | "description" | "createdBy" | "region" | "status";
 
 function nextDirection(current: SortDirection): SortDirection {
   if (current === null) return "asc";
@@ -149,7 +61,66 @@ function nextDirection(current: SortDirection): SortDirection {
   return null;
 }
 
-function SortableDemo() {
+interface TableDemoProps {
+  startingSelection?: "none" | "some" | "all";
+  sortable?: boolean;
+  resizable?: boolean;
+  toolbar?: boolean;
+  showSearch?: boolean;
+  showFilters?: boolean;
+  queryBuilder?: boolean;
+  filterCount?: number;
+  showColumns?: boolean;
+  showActions?: boolean;
+  showTitle?: boolean;
+  grouped?: boolean;
+  groupBy?: string;
+  footer?: boolean;
+  showDisplayCount?: boolean;
+  showRowsPerPage?: boolean;
+  showJumpButtons?: boolean;
+  autoFit?: boolean;
+  rowActions?: boolean;
+  rowCount?: number;
+  maxHeight?: boolean;
+  ariaLabel?: string;
+}
+
+/* Smallest width (px) each resizable column can be dragged down to. */
+const MIN_WIDTH: Record<SortKey, number> = { name: 120, description: 120, createdBy: 100, region: 90, status: 90 };
+
+function TableDemo({
+  startingSelection = "none",
+  sortable = false,
+  resizable = false,
+  toolbar = false,
+  showSearch = true,
+  showFilters: showFiltersArg = true,
+  queryBuilder = false,
+  filterCount = 2,
+  showColumns = true,
+  showActions = true,
+  showTitle = false,
+  grouped = false,
+  groupBy = "team",
+  footer = false,
+  showDisplayCount = true,
+  showRowsPerPage = true,
+  autoFit = false,
+  showJumpButtons = true,
+  rowActions = true,
+  rowCount = 5,
+  maxHeight = true,
+  ariaLabel = "Agent desktops",
+}: TableDemoProps) {
+  const data = useMemo(() => makeSortableData(rowCount), [rowCount]);
+  const [selected, setSelected] = useState<number[]>(
+    startingSelection === "all"
+      ? data.map((r) => r.id)
+      : startingSelection === "some"
+        ? data.slice(0, 2).map((r) => r.id)
+        : []
+  );
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDirection>(null);
 
@@ -164,893 +135,582 @@ function SortableDemo() {
     }
   };
 
-  const sorted = [...sortableData].sort((a, b) => {
-    if (!sortKey || !sortDir) return 0;
-    const aVal = a[sortKey].toLowerCase();
-    const bVal = b[sortKey].toLowerCase();
-    if (aVal < bVal) return sortDir === "asc" ? -1 : 1;
-    if (aVal > bVal) return sortDir === "asc" ? 1 : -1;
-    return 0;
-  });
+  // Toolbar state — only used while `toolbar` is on.
+  const [query, setQuery] = useState("");
+  const [filterValues, setFilterValues] = useState<Record<string, string[]>>(emptyFilterValues);
+  const [visibleCols, setVisibleCols] = useState<Set<string>>(new Set(defaultToggleColumns.map((c) => c.key)));
 
-  const dirFor = (key: SortKey): SortDirection =>
-    sortKey === key ? sortDir : null;
+  // The query builder replaces the filter chips — they are never shown together.
+  const showFilters = showFiltersArg && !queryBuilder;
 
-  return (
-    <div className="h-[400px]">
-      <Table>
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead className="w-[40px] shrink-0"><Checkbox aria-label="Select row" /></TableHead>
-            <SortableTableHead
-              className="flex-[2]"
-              sortDirection={dirFor("name")}
-              onSort={() => handleSort("name")}
-            >
-              Name
-            </SortableTableHead>
-            <SortableTableHead
-              className="flex-[2]"
-              sortDirection={dirFor("description")}
-              onSort={() => handleSort("description")}
-            >
-              Description
-            </SortableTableHead>
-            <SortableTableHead
-              className="flex-[1.3]"
-              sortDirection={dirFor("createdBy")}
-              onSort={() => handleSort("createdBy")}
-            >
-              Created By
-            </SortableTableHead>
-            <TableHead className="w-[48px] shrink-0"><span className="sr-only">Actions</span></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sorted.map((row) => (
-            <TableRow key={row.id}>
-              <TableCell className="w-[40px] shrink-0"><Checkbox aria-label="Select row" /></TableCell>
-              <TableCell className="flex-[2] text-lyra-fg-link cursor-pointer hover:underline">{row.name}</TableCell>
-              <TableCell className="flex-[2]">{row.description}</TableCell>
-              <TableCell className="flex-[1.3]">{row.createdBy}</TableCell>
-              <TableCell className="w-[48px] shrink-0">
-                <button aria-label="More options" className="flex h-7 w-7 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-bg-surface-shell transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2">
-                  <MoreVertical className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
-                </button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
-}
+  // Query builder state — only used while `queryBuilder` is on. Applying it
+  // is display-only here (its criteria describe people, not these rows).
+  const [qbRoot, setQbRoot] = useState<AsGroup>(emptyAsRoot);
+  const [qbApplied, setQbApplied] = useState<AsGroup | null>(null);
+  const [qbName, setQbName] = useState<string | undefined>(undefined);
+  const qbIsApplied = qbApplied !== null && asHasAnyFilters(qbApplied);
 
-export const Sortable: Story = {
-  name: "Sortable",
-  render: () => <SortableDemo />,
-};
-
-/* ── Reorderable + Sortable ── */
-
-type ReorderColKey = "name" | "description" | "createdBy";
-
-const reorderColumnConfig: Record<ReorderColKey, { label: string; flex: string }> = {
-  name: { label: "Name", flex: "flex-[2]" },
-  description: { label: "Description", flex: "flex-[2]" },
-  createdBy: { label: "Created By", flex: "flex-[1.3]" },
-};
-
-const reorderData = [
-  { id: 1, name: "Agent Desktop #1", description: "Back office", createdBy: "Alice Johnson" },
-  { id: 2, name: "Agent Desktop #2", description: "Custom", createdBy: "Bob Smith" },
-  { id: 3, name: "Agent Desktop #3", description: "Knowledge Worker", createdBy: "Charlie Lee" },
-  { id: 4, name: "Agent Desktop #4", description: "BPO", createdBy: "Diana Park" },
-  { id: 5, name: "Agent Desktop #5", description: "Collections", createdBy: "Eve Martinez" },
-];
-
-function ReorderableDemo() {
-  const [sortKey, setSortKey] = useState<ReorderColKey | null>(null);
-  const [sortDir, setSortDir] = useState<SortDirection>(null);
-  const { columnOrder, dragOverKey, dragHandlers } = useColumnReorder<ReorderColKey>([
-    "name",
-    "description",
-    "createdBy",
-  ]);
-
-  const handleSort = (key: ReorderColKey) => {
-    if (sortKey === key) {
-      const next: SortDirection = sortDir === null ? "asc" : sortDir === "asc" ? "desc" : null;
-      setSortDir(next);
-      if (next === null) setSortKey(null);
-    } else {
-      setSortKey(key);
-      setSortDir("asc");
+  const activeFilterDefs = defaultFilterDefs.slice(0, filterCount);
+  const q = toolbar && showSearch ? query.trim().toLowerCase() : "";
+  const matches = (r: (typeof sortableData)[number]) => {
+    if (q && ![r.name, r.description, r.createdBy].some((v) => v.toLowerCase().includes(q))) return false;
+    if (toolbar && showFilters) {
+      for (const { key } of activeFilterDefs) {
+        const picked = filterValues[key] ?? [];
+        if (picked.length > 0 && !picked.includes(filterValueFor(r, key))) return false;
+      }
     }
+    return true;
   };
+  // A column is hidden only when the toolbar's column toggle is shown and it is switched off.
+  const showCol = (key: string) => !(toolbar && showColumns) || visibleCols.has(key);
 
-  const sorted = [...reorderData].sort((a, b) => {
-    if (!sortKey || !sortDir) return 0;
-    const aVal = a[sortKey].toLowerCase();
-    const bVal = b[sortKey].toLowerCase();
+  const rows = data.filter(matches).sort((a, b) => {
+    if (!sortable || !sortKey || !sortDir) return 0;
+    const aVal = filterValueFor(a, sortKey).toLowerCase();
+    const bVal = filterValueFor(b, sortKey).toLowerCase();
     if (aVal < bVal) return sortDir === "asc" ? -1 : 1;
     if (aVal > bVal) return sortDir === "asc" ? 1 : -1;
     return 0;
   });
 
-  const dirFor = (key: ReorderColKey): SortDirection =>
-    sortKey === key ? sortDir : null;
+  // Footer pagination — only applied while `footer` is on. It uses the
+  // footer's normal page sizes (10 / 25 / 50 / 100).
+  const [page, setPage] = useState(1);
+  const [manualRowsPerPage, setRowsPerPage] = useState(10);
+  // Auto-fit (footer only): rows per page is however many rows fit in the
+  // table's own area, measured from its height — no extra container.
+  const autoFitRows = useAutoFitRows(40, 40, 3);
+  const useAuto = footer && autoFit;
+  const rowsPerPage = useAuto ? autoFitRows.rowsPerPage : manualRowsPerPage;
+  const totalPages = Math.max(1, Math.ceil(rows.length / rowsPerPage));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * rowsPerPage;
+  const visibleRows = footer ? rows.slice(pageStart, pageStart + rowsPerPage) : rows;
 
-  return (
-    <div className="h-[400px]">
-      <Table>
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead className="w-[40px] shrink-0"><Checkbox aria-label="Select row" /></TableHead>
-            {columnOrder.map((key) => {
-              const col = reorderColumnConfig[key];
-              return (
-                <SortableTableHead
-                  key={key}
-                  className={col.flex}
-                  sortDirection={dirFor(key)}
-                  onSort={() => handleSort(key)}
-                  columnKey={key}
-                  dragHandlers={dragHandlers}
-                  isDragOver={dragOverKey === key}
-                >
-                  {col.label}
-                </SortableTableHead>
-              );
-            })}
-            <TableHead className="w-[48px] shrink-0"><span className="sr-only">Actions</span></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sorted.map((row) => (
-            <TableRow key={row.id}>
-              <TableCell className="w-[40px] shrink-0"><Checkbox aria-label="Select row" /></TableCell>
-              {columnOrder.map((key) => {
-                const col = reorderColumnConfig[key];
-                return (
-                  <TableCell
-                    key={key}
-                    className={cn(
-                      col.flex,
-                      key === "name" && "text-lyra-fg-link cursor-pointer hover:underline"
-                    )}
-                  >
-                    {row[key]}
-                  </TableCell>
-                );
-              })}
-              <TableCell className="w-[48px] shrink-0">
-                <button aria-label="More options" className="flex h-7 w-7 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-bg-surface-shell transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2">
-                  <MoreVertical className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
-                </button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
-}
+  const allSelected = selected.length === data.length;
+  const headerChecked = allSelected ? true : selected.length > 0 ? "indeterminate" : false;
+  const dirFor = (key: SortKey): SortDirection => (sortKey === key ? sortDir : null);
 
-export const Reorderable: Story = {
-  name: "Reorderable",
-  render: () => <ReorderableDemo />,
-};
+  // Drag the thin strip on a header's right edge (or focus it and use the
+  // arrow keys) to resize. `columnKey` on the header and its cells is what
+  // applies a resize to the whole column — see the "Column resize" notes in
+  // table.tsx.
+  const resizeProps = (key: SortKey) =>
+    resizable ? { resizable: true, columnKey: key, minWidth: MIN_WIDTH[key] } : {};
+  const cellKey = (key: SortKey) => (resizable ? { columnKey: key } : {});
 
-/* ── Resizable ──
-   Drag the thin strip at each header's right edge (or focus it and use
-   Left/Right arrow keys) to resize that column. `columnKey` on both the
-   `TableHead` and its matching `TableCell`s is what keeps a resize applied
-   across the whole column instead of just the header — see the
-   "Column resize" comment block at the top of table.tsx for why that's
-   needed (this is a flex-based table, not a native `<table>`/`<colgroup>`,
-   so nothing syncs header/body cell widths automatically). */
+  // Grouping column — starts as the "Group by" control's value; the header
+  // menu buttons (shown while Grouped is on) change it, or clear it.
+  const [groupKey, setGroupKey] = useState<string | null>(grouped ? groupBy : null);
+  const groupingActive = grouped && groupKey !== null;
 
-type ResizeColKey = "name" | "description" | "createdBy";
-
-const resizeColumnConfig: Record<ResizeColKey, { label: string; flex: string; minWidth: number }> = {
-  name: { label: "Name", flex: "flex-[2]", minWidth: 120 },
-  description: { label: "Description", flex: "flex-[2]", minWidth: 120 },
-  createdBy: { label: "Created By", flex: "flex-[1.3]", minWidth: 100 },
-};
-
-function ResizableDemo() {
-  return (
-    <div className="h-[400px]">
-      <Table>
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead className="w-[40px] shrink-0"><Checkbox aria-label="Select row" /></TableHead>
-            {(Object.keys(resizeColumnConfig) as ResizeColKey[]).map((key) => {
-              const col = resizeColumnConfig[key];
-              return (
-                <TableHead key={key} className={col.flex} resizable columnKey={key} minWidth={col.minWidth}>
-                  {col.label}
-                </TableHead>
-              );
-            })}
-            <TableHead className="w-[48px] shrink-0"><span className="sr-only">Actions</span></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {reorderData.map((row) => (
-            <TableRow key={row.id}>
-              <TableCell className="w-[40px] shrink-0"><Checkbox aria-label="Select row" /></TableCell>
-              {(Object.keys(resizeColumnConfig) as ResizeColKey[]).map((key) => {
-                const col = resizeColumnConfig[key];
-                return (
-                  <TableCell key={key} className={col.flex} columnKey={key}>
-                    {row[key]}
-                  </TableCell>
-                );
-              })}
-              <TableCell className="w-[48px] shrink-0">
-                <button aria-label="More options" className="flex h-7 w-7 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-bg-surface-shell transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2">
-                  <MoreVertical className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
-                </button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
-}
-
-export const Resizable: Story = {
-  name: "Resizable",
-  render: () => <ResizableDemo />,
-};
-
-/* ── TableToolbar ── */
-
-const toolbarColumns: ColumnToggleItem[] = [
-  { key: "name", label: "Name" },
-  { key: "published", label: "Published" },
-  { key: "description", label: "Description" },
-  { key: "createdBy", label: "Created By" },
-  { key: "createdDate", label: "Created Date" },
-];
-
-const toolbarFilterDefs = [
-  {
-    key: "description",
-    label: "Description",
-    options: [
-      { value: "Back office", label: "Back office" },
-      { value: "Custom", label: "Custom" },
-      { value: "Knowledge Worker", label: "Knowledge Worker" },
-    ],
-  },
-  {
-    key: "createdBy",
-    label: "Created By",
-    options: [
-      { value: "Jim Smith", label: "Jim Smith" },
-      { value: "Alice Johnson", label: "Alice Johnson" },
-    ],
-  },
-];
-
-interface ToolbarDemoProps {
-  showSearch: boolean;
-  showFilters: boolean;
-  showColumns: boolean;
-  showActions: boolean;
-  showTitle: boolean;
-  toolbarPanelToggle: string;
-}
-
-function ToolbarDemo({ showSearch, showFilters, showColumns, showActions, showTitle, toolbarPanelToggle }: ToolbarDemoProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-  // `createdBy` starts pre-selected (not empty) so the toolbar's "Clear"
-  // button is visible on load, without needing to click a filter chip
-  // first — otherwise this demo would look like "Clear" was never added.
-  const [filterValues, setFilterValues] = useState<Record<string, string[]>>({ description: [], createdBy: ["Jim Smith"] });
-  const [visibleCols, setVisibleCols] = useState<Set<string>>(new Set(toolbarColumns.map((c) => c.key)));
-
-  return (
-    <div className="border border-lyra-border-subtle rounded-lyra-md overflow-hidden">
-      <TableToolbar
-        title={showTitle ? "Records" : undefined}
-        searchQuery={showSearch ? searchQuery : undefined}
-        onSearchChange={showSearch ? setSearchQuery : undefined}
-        filterDefs={showFilters ? toolbarFilterDefs : undefined}
-        filterValues={showFilters ? filterValues : undefined}
-        onFilterChange={showFilters ? (key, vals) => setFilterValues((p) => ({ ...p, [key]: vals })) : undefined}
-        onFilterClear={showFilters ? () => setFilterValues({ description: [], createdBy: [] }) : undefined}
-        actionDefs={showActions ? [
-          { key: "refresh", label: "Refresh", icon: <RefreshCw className="h-4 w-4" strokeWidth={1.5} /> },
-          { key: "edit",    label: "Edit",    icon: <Pencil   className="h-4 w-4" strokeWidth={1.5} /> },
-          { key: "copy",    label: "Copy",    icon: <Copy     className="h-4 w-4" strokeWidth={1.5} /> },
-          { key: "delete",  label: "Delete",  icon: <Trash2   className="h-4 w-4" strokeWidth={1.5} /> },
-        ] : undefined}
-        actions={showColumns ? (
-          <ColumnToggle columns={toolbarColumns} visibleColumns={visibleCols} onVisibilityChange={setVisibleCols} />
-        ) : undefined}
-        toolbarPanelToggle={toolbarPanelToggle === "none" ? undefined : toolbarPanelToggle as "left" | "right" | "both"}
-        onLeftPanelToggle={() => {}}
-        onRightPanelToggle={() => {}}
-      />
-    </div>
-  );
-}
-
-export const Toolbar: Story = {
-  name: "Toolbar",
-  parameters: {
-    controls: {
-      include: ["showSearch", "showFilters", "showColumns", "showActions", "showTitle", "toolbarPanelToggle"],
-    },
-  },
-  args: {
-    showSearch: true,
-    showFilters: true,
-    showColumns: true,
-    showActions: true,
-    showTitle: false,
-    toolbarPanelToggle: "none",
-  } as unknown as Record<string, unknown>,
-  argTypes: {
-    showSearch:         { control: "boolean", description: "Show quick search" },
-    showFilters:        { control: "boolean", description: "Show filter chips" },
-    showColumns:        { control: "boolean", description: "Show column toggle" },
-    showActions:        { control: "boolean", description: "Show action icon buttons" },
-    showTitle:          { control: "boolean", description: "Show title above search row" },
-    toolbarPanelToggle: { control: "select", options: ["none", "left", "right", "both"], description: "Panel toggle button(s)" },
-  } as unknown as Record<string, unknown>,
-  render: (args) => <ToolbarDemo {...(args as unknown as ToolbarDemoProps)} />,
-};
-
-/* ── TableFooter (Pagination) ── */
-
-interface FooterDemoProps {
-  showDisplayCount: boolean;
-  showRowsPerPage: boolean;
-  showJumpButtons: boolean;
-}
-
-function FooterDemo({ showDisplayCount, showRowsPerPage, showJumpButtons }: FooterDemoProps) {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const totalRecords = 53;
-  const totalPages = Math.ceil(totalRecords / rowsPerPage);
-  const start = (currentPage - 1) * rowsPerPage + 1;
-  const end = Math.min(currentPage * rowsPerPage, totalRecords);
-
-  return (
-    <TableFooter
-      currentPage={currentPage}
-      totalPages={totalPages}
-      onPageChange={setCurrentPage}
-      rowsPerPage={rowsPerPage}
-      onRowsPerPageChange={(val) => { setRowsPerPage(val); setCurrentPage(1); }}
-      totalRecords={totalRecords}
-      displayStart={start}
-      displayEnd={end}
-      showDisplayCount={showDisplayCount}
-      showRowsPerPage={showRowsPerPage}
-      showJumpButtons={showJumpButtons}
+  // A menu button for each header — the keyboard- and screen-reader-friendly
+  // way to group (Radix handles Enter/Space/arrows, Escape and returning
+  // focus). On sortable headers it goes through `SortableTableHead`'s
+  // `labelAction`, which keeps it next to the label on the left with the sort
+  // arrows on the right, and stops its clicks from also sorting.
+  const groupMenu = (key: string, label: string) => (
+    <MenuRadix
+      align="start"
+      modal={false}
+      className="w-56"
+      trigger={
+        <button
+          type="button"
+          aria-label={`${label} column menu`}
+          className="flex h-6 w-6 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
+        >
+          <ChevronDown className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+        </button>
+      }
+      items={[
+        groupKey === key
+          ? {
+              id: "ungroup",
+              label: "Ungroup rows",
+              icon: <Group className="h-4 w-4" strokeWidth={1.5} />,
+              onClick: () => setGroupKey(null),
+            }
+          : {
+              id: "group",
+              label: `Group by "${label}"`,
+              icon: <Group className="h-4 w-4" strokeWidth={1.5} />,
+              onClick: () => setGroupKey(key),
+            },
+      ]}
     />
   );
-}
 
-export const Footer: Story = {
-  name: "Footer (Pagination)",
-  argTypes: {
-    showDisplayCount: { control: "boolean", description: "Show display count (Displaying X-Y of Z)" },
-    showRowsPerPage:  { control: "boolean", description: "Show rows per page selector" },
-    showJumpButtons:  { control: "boolean", description: "Show jump to first/last page buttons" },
-  } as unknown as Record<string, unknown>,
-  args: {
-    showDisplayCount: true,
-    showRowsPerPage: true,
-    showJumpButtons: true,
-  } as unknown as Record<string, unknown>,
-  render: (args) => <FooterDemo {...(args as unknown as FooterDemoProps)} />,
-};
-
-/* ── ColumnToggle ── */
-
-const allColumns = [
-  { key: "name", label: "Name" },
-  { key: "published", label: "Published" },
-  { key: "description", label: "Description" },
-  { key: "createdBy", label: "Created By" },
-  { key: "customerCard", label: "Customer Card" },
-  { key: "createdDate", label: "Created Date" },
-  { key: "modifiedDate", label: "Modified Date" },
-  { key: "version", label: "Version" },
-];
-
-function ColumnToggleDemo() {
-  const [visible, setVisible] = useState<Set<string>>(
-    new Set(["name", "published", "description", "createdBy"])
-  );
-
-  return (
-    <div className="flex items-center gap-4">
-      <ColumnToggle
-        columns={allColumns}
-        visibleColumns={visible}
-        onVisibilityChange={setVisible}
-      />
-      <span className="lyra-body-sm text-lyra-fg-secondary">
-        {visible.size} of {allColumns.length} columns visible
+  // Label + menu button for the plain (non-sortable) headers.
+  const headerLabel = (key: string, label: string) =>
+    grouped ? (
+      <span className="flex items-center gap-1">
+        {label}
+        {groupMenu(key, label)}
       </span>
-    </div>
-  );
-}
+    ) : (
+      label
+    );
 
-export const ColumnVisibility: Story = {
-  name: "Column Toggle",
-  render: () => <ColumnToggleDemo />,
-};
+  const header = (key: SortKey, label: string, className: string) =>
+    sortable ? (
+      <SortableTableHead
+        className={className}
+        sortDirection={dirFor(key)}
+        onSort={() => handleSort(key)}
+        labelAction={grouped ? groupMenu(key, label) : undefined}
+        {...resizeProps(key)}
+      >
+        {label}
+      </SortableTableHead>
+    ) : (
+      <TableHead className={className} {...resizeProps(key)}>
+        {headerLabel(key, label)}
+      </TableHead>
+    );
 
-/* ── Grouped Rows ── */
+  // Grouping — rows of the current page, bucketed by the chosen column. Groups
+  // start expanded so turning it on never hides rows.
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const toggleGroup = (label: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  const groups = (() => {
+    const map = new Map<string, (typeof sortableData)[number][]>();
+    for (const row of visibleRows) {
+      const label = filterValueFor(row, groupKey ?? groupBy);
+      map.set(label, [...(map.get(label) ?? []), row]);
+    }
+    return Array.from(map, ([label, rows]) => ({ label, rows }));
+  })();
 
-type GroupColKey = "description" | "createdBy";
-
-const groupData = [
-  { id: 1, name: "Agent Desktop #1", description: "Back office", createdBy: "Jim Smith" },
-  { id: 2, name: "Agent Desktop #2", description: "Custom", createdBy: "Jim Smith" },
-  { id: 3, name: "Agent Desktop #3", description: "Knowledge Worker", createdBy: "Alice Johnson" },
-  { id: 4, name: "Agent Desktop #4", description: "BPO", createdBy: "Alice Johnson" },
-  { id: 5, name: "Agent Desktop #5", description: "Collections", createdBy: "Jim Smith" },
-  { id: 6, name: "Agent Desktop #6", description: "Back office", createdBy: "Bob Lee" },
-  { id: 7, name: "Agent Desktop #7", description: "Custom", createdBy: "Bob Lee" },
-  { id: 8, name: "Agent Desktop #8", description: "BPO", createdBy: "Alice Johnson" },
-];
-
-function GroupedDemo() {
-  const getValueForKey = useCallback(
-    (row: (typeof groupData)[number], key: string) => {
-      if (key === "name") return row.name;
-      if (key === "description") return row.description;
-      if (key === "createdBy") return row.createdBy;
-      return "";
-    },
-    []
-  );
-
-  const { groupByKey, groups, toggleGroup, collapsedGroups, setGroupByKey } =
-    useTableGrouping(groupData, getValueForKey);
-
-  const [contextMenuKey, setContextMenuKey] = useState<string | null>(null);
-
-  const handleContextMenu = (
-    e: React.MouseEvent,
-    columnKey: string,
-  ) => {
-    e.preventDefault();
-    setContextMenuKey(columnKey);
+  const renderRow = (row: (typeof sortableData)[number]) => {
+      const isSelected = selected.includes(row.id);
+      return (
+        <TableRow key={row.id} data-state={isSelected ? "selected" : undefined}>
+          <TableCell className="w-[40px] shrink-0">
+            <Checkbox
+              aria-label={`Select ${row.name}`}
+              checked={isSelected}
+              onCheckedChange={(checked) =>
+                setSelected((prev) =>
+                  checked === true ? [...prev, row.id] : prev.filter((id) => id !== row.id)
+                )
+              }
+            />
+          </TableCell>
+          {showCol("name") && (
+            <TableCell className="flex-[2] text-lyra-fg-link cursor-pointer hover:underline" {...cellKey("name")}>{row.name}</TableCell>
+          )}
+          {showCol("published") && (
+            <TableCell className="flex-1">
+              {row.published ? (
+                <CircleCheck className="h-5 w-5 text-lyra-status-success-strong" strokeWidth={1.5} />
+              ) : (
+                <Minus className="h-5 w-5 text-lyra-fg-disabled" strokeWidth={1.5} />
+              )}
+            </TableCell>
+          )}
+          {showCol("description") && (
+            <TableCell className="flex-[2]" {...cellKey("description")}>{row.description}</TableCell>
+          )}
+          {showCol("createdBy") && (
+            <TableCell className="flex-[1.3]" {...cellKey("createdBy")}>{row.createdBy}</TableCell>
+          )}
+          {showCol("region") && (
+            <TableCell className="flex-1" {...cellKey("region")}>{filterValueFor(row, "region")}</TableCell>
+          )}
+          {showCol("status") && (
+            <TableCell className="flex-1" {...cellKey("status")}>{filterValueFor(row, "status")}</TableCell>
+          )}
+          {rowActions && (
+            <TableCell className="w-[48px] shrink-0">
+              <button aria-label="More options" className="flex h-7 w-7 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-bg-surface-shell transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2">
+                <MoreVertical className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+              </button>
+            </TableCell>
+          )}
+        </TableRow>
+      );
   };
 
-  const colCount = 5;
-
-  const headerColumns: { key: string; label: string; flex: string }[] = [
-    { key: "name", label: "Name", flex: "flex-[2]" },
-    { key: "description", label: "Description", flex: "flex-[2]" },
-    { key: "createdBy", label: "Created By", flex: "flex-[1.3]" },
-  ];
-
   return (
-    <div className="h-[500px]">
-      <p className="lyra-body-sm text-lyra-fg-secondary mb-3">
-        Right-click any column header to group rows by that column.
-      </p>
-      <Table>
+    // Max height on: a fixed 400px box (the table scrolls inside it). Off: the
+    // box fills the page (the canvas's 1rem padding on each side is
+    // subtracted) and the footer, when shown, sits at the very bottom.
+    <div
+      className="flex flex-col"
+      style={{ height: maxHeight ? 400 : "calc(100vh - 2rem)" }}
+    >
+      {toolbar && (
+        <TableToolbar
+          title={showTitle ? "Agent desktops" : undefined}
+          searchQuery={showSearch ? query : undefined}
+          onSearchChange={showSearch ? setQuery : undefined}
+          recordCount={rows.length}
+          showAdvancedSearch={queryBuilder}
+          advancedSearchContent={
+            queryBuilder ? (
+              <AdvancedSearchContent
+                root={qbRoot}
+                onUpdate={(g) => {
+                  setQbRoot(g);
+                  if (qbApplied !== null && !asHasAnyFilters(g)) setQbApplied(null);
+                }}
+              />
+            ) : undefined
+          }
+          advancedSearchApplied={queryBuilder && qbIsApplied}
+          advancedSearchTitle={qbName}
+          advancedSearchDescription={qbIsApplied && qbApplied ? asBuildString(qbApplied) || undefined : undefined}
+          onAdvancedSearchApply={() => setQbApplied(qbRoot)}
+          onSaveSearch={(name) => {
+            setQbName(name);
+            setQbApplied(qbRoot);
+          }}
+          filterDefs={showFilters ? activeFilterDefs : undefined}
+          filterValues={showFilters ? filterValues : undefined}
+          onFilterChange={showFilters ? (key, vals) => setFilterValues((p) => ({ ...p, [key]: vals })) : undefined}
+          onFilterClear={
+            showFilters
+              ? () => setFilterValues(emptyFilterValues())
+              : queryBuilder
+                ? () => {
+                    setQbApplied(null);
+                    setQbRoot(emptyAsRoot());
+                    setQbName(undefined);
+                  }
+                : undefined
+          }
+          actionDefs={showActions ? toolbarActionDefs : undefined}
+          actions={
+            showColumns ? (
+              <ColumnToggle columns={defaultToggleColumns} visibleColumns={visibleCols} onVisibilityChange={setVisibleCols} />
+            ) : undefined
+          }
+        />
+      )}
+      <div ref={useAuto ? autoFitRows.containerRef : undefined} className="min-h-0 flex-1">
+      <Table aria-label={ariaLabel}>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             <TableHead className="w-[40px] shrink-0">
-              <Checkbox aria-label="Select all" />
+              <Checkbox
+                aria-label="Select all rows"
+                checked={headerChecked}
+                onCheckedChange={(checked) =>
+                  setSelected(checked === true ? data.map((r) => r.id) : [])
+                }
+              />
             </TableHead>
-            {headerColumns.map((col) => (
-              <TableHead
-                key={col.key}
-                className={cn(col.flex, "relative")}
-                onContextMenu={(e) => handleContextMenu(e, col.key)}
-              >
-                {col.label}
-                {contextMenuKey === col.key && (
-                  <ColumnHeaderContextMenu
-                    columnKey={col.key}
-                    columnLabel={col.label}
-                    currentGroupBy={groupByKey}
-                    onGroupBy={(key) => {
-                      setGroupByKey(key);
-                      setContextMenuKey(null);
-                    }}
-                    onClose={() => setContextMenuKey(null)}
-                  />
-                )}
+            {showCol("name") && header("name", "Name", "flex-[2]")}
+            {showCol("published") && <TableHead className="flex-1">{headerLabel("published", "Published")}</TableHead>}
+            {showCol("description") && header("description", "Description", "flex-[2]")}
+            {showCol("createdBy") && header("createdBy", "Created By", "flex-[1.3]")}
+            {showCol("region") && header("region", "Region", "flex-1")}
+            {showCol("status") && header("status", "Status", "flex-1")}
+            {rowActions && (
+              <TableHead className="w-[48px] shrink-0">
+                <span className="sr-only">Actions</span>
               </TableHead>
-            ))}
-            <TableHead className="w-[48px] shrink-0">
-              <span className="sr-only">Actions</span>
-            </TableHead>
+            )}
           </TableRow>
         </TableHeader>
         <TableBody>
-          {groupByKey && groups
+          {groupingActive
             ? groups.map((group) => (
-                <React.Fragment key={group.label}>
+                <Fragment key={group.label}>
                   <TableGroupRow
                     label={group.label}
                     count={group.rows.length}
-                    expanded={!collapsedGroups.has(group.label)}
+                    expanded={!collapsed.has(group.label)}
                     onToggle={() => toggleGroup(group.label)}
-                    colSpan={colCount}
                   />
-                  {!collapsedGroups.has(group.label) &&
-                    group.rows.map((row) => (
-                      <TableRow key={row.id}>
-                        <TableCell className="w-[40px] shrink-0">
-                          <Checkbox aria-label="Select row" />
-                        </TableCell>
-                        <TableCell className="flex-[2] text-lyra-fg-link cursor-pointer hover:underline">
-                          {row.name}
-                        </TableCell>
-                        <TableCell className="flex-[2]">
-                          {row.description}
-                        </TableCell>
-                        <TableCell className="flex-[1.3]">
-                          {row.createdBy}
-                        </TableCell>
-                        <TableCell className="w-[48px] shrink-0">
-                          <button
-                            aria-label="More options"
-                            className="flex h-7 w-7 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-bg-surface-shell transition-colors"
-                          >
-                            <MoreVertical
-                              className="h-4 w-4"
-                              strokeWidth={1.5}
-                            />
-                          </button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                </React.Fragment>
+                  {!collapsed.has(group.label) && group.rows.map(renderRow)}
+                </Fragment>
               ))
-            : groupData.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell className="w-[40px] shrink-0">
-                    <Checkbox aria-label="Select row" />
-                  </TableCell>
-                  <TableCell className="flex-[2] text-lyra-fg-link cursor-pointer hover:underline">
-                    {row.name}
-                  </TableCell>
-                  <TableCell className="flex-[2]">
-                    {row.description}
-                  </TableCell>
-                  <TableCell className="flex-[1.3]">
-                    {row.createdBy}
-                  </TableCell>
-                  <TableCell className="w-[48px] shrink-0">
-                    <button
-                      aria-label="More options"
-                      className="flex h-7 w-7 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-bg-surface-shell transition-colors"
-                    >
-                      <MoreVertical
-                        className="h-4 w-4"
-                        strokeWidth={1.5}
-                      />
-                    </button>
-                  </TableCell>
-                </TableRow>
-              ))}
+            : visibleRows.map(renderRow)}
         </TableBody>
       </Table>
-
-    </div>
-  );
-}
-
-export const Grouped: Story = {
-  name: "Grouped Rows",
-  render: () => <GroupedDemo />,
-};
-
-/* ── Auto-Fit Rows (Dashboard) ── */
-
-const autoFitData = Array.from({ length: 30 }, (_, i) => ({
-  id: i + 1,
-  name: `Agent Desktop #${i + 1}`,
-  description: ["Back office", "Custom", "Knowledge Worker", "BPO", "Collections"][i % 5],
-  createdBy: ["Jim Smith", "Alice Johnson", "Bob Lee"][i % 3],
-}));
-
-function AutoFitDemo() {
-  const { containerRef, rowsPerPage } = useAutoFitRows(40, 40, 3);
-  const [currentPage, setCurrentPage] = useState(1);
-
-  const totalRecords = autoFitData.length;
-  const totalPages = Math.max(1, Math.ceil(totalRecords / rowsPerPage));
-
-  // Reset to page 1 if rowsPerPage changes and current page is now out of range
-  React.useEffect(() => {
-    if (currentPage > totalPages) setCurrentPage(totalPages);
-  }, [rowsPerPage, totalPages, currentPage]);
-
-  const start = (currentPage - 1) * rowsPerPage;
-  const visibleRows = autoFitData.slice(start, start + rowsPerPage);
-  const displayStart = start + 1;
-  const displayEnd = Math.min(start + rowsPerPage, totalRecords);
-
-  return (
-    <div>
-      <p className="lyra-body-sm text-lyra-fg-secondary mb-3">
-        Dashboard variant — rows per page is automatically calculated from
-        container height (resize your browser to see it adapt). Pagination
-        adjusts dynamically.
-      </p>
-      <div
-        ref={containerRef}
-        className="border border-lyra-border-subtle rounded-lyra-lg overflow-hidden"
-        style={{ height: 360 }}
-      >
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="flex-[2]">Name</TableHead>
-              <TableHead className="flex-[2]">Description</TableHead>
-              <TableHead className="flex-[1.3]">Created By</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {visibleRows.map((row) => (
-              // `selectable` — demonstrates `TableRow`'s own built-in
-              // keyboard support (tabIndex/focus ring/Enter-Space,
-              // paired with `TableBody`'s own ArrowUp/ArrowDown row
-              // navigation) now that this row has a real per-row action
-              // (`onClick` below) worth reaching by keyboard, not just
-              // mouse. See `TableRow`'s own `selectable` doc comment
-              // (table.tsx) for the full behavior.
-              <TableRow key={row.id} selectable onClick={() => alert(`Opening ${row.name}`)}>
-                <TableCell className="flex-[2] text-lyra-fg-link cursor-pointer hover:underline">
-                  {row.name}
-                </TableCell>
-                <TableCell className="flex-[2]">{row.description}</TableCell>
-                <TableCell className="flex-[1.3]">{row.createdBy}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
       </div>
-      <TableFooter
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={setCurrentPage}
-        rowsPerPage={rowsPerPage}
-        totalRecords={totalRecords}
-        displayStart={displayStart}
-        displayEnd={displayEnd}
-      />
-    </div>
-  );
-}
-
-export const AutoFit: Story = {
-  name: "Auto-Fit (Dashboard)",
-  render: () => <AutoFitDemo />,
-};
-
-/* ── Advanced Search Toolbar story ── */
-
-/* ── Full filter-builder shared with the Advanced Search popover ── */
-
-const AS_TEXT_OPS = [
-  { value: "contains", label: "Contains" }, { value: "does-not-contain", label: "Does Not Contain" },
-  { value: "equals", label: "Equals" }, { value: "not-equals", label: "Not Equals" },
-  { value: "starts-with", label: "Starts With" }, { value: "ends-with", label: "Ends With" },
-];
-const AS_NUM_OPS = [
-  { value: "equals", label: "Equals" }, { value: "not-equals", label: "Not Equals" },
-  { value: "greater-than", label: "Greater Than" }, { value: "less-than", label: "Less Than" },
-];
-const AS_CRITERIA_DEFS: Record<string, { label: string; operators: typeof AS_TEXT_OPS; options: {value:string;label:string}[] }> = {
-  "first-name": { label: "First Name", operators: AS_TEXT_OPS, options: [{value:"jane",label:"Jane"},{value:"john",label:"John"},{value:"alice",label:"Alice"}] },
-  "last-name":  { label: "Last Name",  operators: AS_TEXT_OPS, options: [{value:"smith",label:"Smith"},{value:"jones",label:"Jones"}] },
-  "age":        { label: "Age",        operators: AS_NUM_OPS,  options: [{value:"25",label:"25"},{value:"30",label:"30"},{value:"40",label:"40"}] },
-  "gender":     { label: "Gender",     operators: [{value:"equals",label:"Equals"},{value:"not-equals",label:"Not Equals"}], options: [{value:"male",label:"Male"},{value:"female",label:"Female"},{value:"non-binary",label:"Non-binary"}] },
-  "department": { label: "Department", operators: AS_TEXT_OPS, options: [{value:"engineering",label:"Engineering"},{value:"design",label:"Design"},{value:"sales",label:"Sales"}] },
-  "status":     { label: "Status",     operators: [{value:"equals",label:"Equals"},{value:"not-equals",label:"Not Equals"}], options: [{value:"active",label:"Active"},{value:"inactive",label:"Inactive"},{value:"pending",label:"Pending"}] },
-};
-const AS_LOGIC_ITEMS = [{value:"and",label:"And"},{value:"or",label:"Or"},{value:"not",label:"Not"}];
-const AS_OP_LABELS: Record<string,string> = {
-  "contains":"Contains","does-not-contain":"Does Not Contain","equals":"Equals","not-equals":"Not Equals",
-  "starts-with":"Starts With","ends-with":"Ends With","greater-than":"Greater Than","less-than":"Less Than",
-};
-
-type AsLogic = "and"|"or"|"not";
-interface AsChip { uid:string; criteriaId:string; operator:string; values:string[] }
-interface AsGroup { id:string; logicOperator:AsLogic; chips:AsChip[]; subGroups:AsGroup[] }
-
-let _asUid = 100;
-const asNextUid = () => String(++_asUid);
-const asMakeChip = (id:string): AsChip => ({ uid:asNextUid(), criteriaId:id, operator:AS_CRITERIA_DEFS[id].operators[0].value, values:[] });
-const asMakeGroup = (): AsGroup => ({ id:asNextUid(), logicOperator:"and", chips:[], subGroups:[] });
-
-function asBuildString(g: AsGroup, depth=0): string {
-  const joiner = g.logicOperator==="not" ? " AND " : ` ${g.logicOperator.toUpperCase()} `;
-  const parts = [
-    ...g.chips.map(c => {
-      const def = AS_CRITERIA_DEFS[c.criteriaId];
-      const vals = c.values.length>0 ? c.values.map(v=>`'${def.options.find(o=>o.value===v)?.label??v}'`).join(", ") : "''";
-      return `${def.label} ${AS_OP_LABELS[c.operator]??c.operator} ${vals}`;
-    }),
-    ...g.subGroups.map(s=>asBuildString(s,depth+1)),
-  ].filter(Boolean);
-  if (!parts.length) return "";
-  const inner = parts.join(joiner);
-  if (g.logicOperator==="not") return `NOT (${inner})`;
-  return depth===0 && parts.length===1 ? inner : `(${inner})`;
-}
-
-// Portal-based criteria menu
-function AsCriteriaMenu({ onSelect }: { onSelect:(id:string)=>void }) {
-  const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState({top:0,left:0});
-  const btnRef = React.useRef<HTMLButtonElement>(null);
-  const menuRef = React.useRef<HTMLDivElement>(null);
-
-  const handleOpen = () => {
-    if (btnRef.current) { const r=btnRef.current.getBoundingClientRect(); setPos({top:r.bottom+4,left:r.left}); }
-    setOpen(v=>!v);
-  };
-  React.useEffect(() => {
-    if (!open) return;
-    const h=(e:MouseEvent)=>{
-      if (menuRef.current?.contains(e.target as Node)) return;
-      if (btnRef.current?.contains(e.target as Node)) return;
-      setOpen(false);
-    };
-    document.addEventListener("mousedown",h);
-    return ()=>document.removeEventListener("mousedown",h);
-  },[open]);
-
-  return (
-    <>
-      <Button ref={btnRef} variant="outline" size="md" onClick={handleOpen}>
-        <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Criteria
-      </Button>
-      {open && ReactDOM.createPortal(
-        <div ref={menuRef} style={{position:"fixed",top:pos.top,left:pos.left,zIndex:9999}}
-          className="min-w-[180px] rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg p-2">
-          {Object.entries(AS_CRITERIA_DEFS).map(([id,def])=>(
-            <button key={id} type="button" onClick={()=>{onSelect(id);setOpen(false);}}
-              className="w-full flex items-center px-3 py-2 lyra-body-md text-lyra-fg-default rounded-lyra-sm text-left hover:bg-lyra-state-hover transition-colors">
-              {def.label}
-            </button>
-          ))}
-        </div>, document.body
-      )}
-    </>
-  );
-}
-
-function AsGroupRow({ group, isRoot, onUpdate, onDelete }: {
-  group:AsGroup; isRoot?:boolean; onUpdate:(g:AsGroup)=>void; onDelete?:()=>void;
-}) {
-  const addChip=(id:string)=>onUpdate({...group,chips:[...group.chips,asMakeChip(id)]});
-  const removeChip=(uid:string)=>onUpdate({...group,chips:group.chips.filter(c=>c.uid!==uid)});
-  const updateChip=(uid:string,p:Partial<AsChip>)=>onUpdate({...group,chips:group.chips.map(c=>c.uid===uid?{...c,...p}:c)});
-  const addSub=()=>onUpdate({...group,subGroups:[...group.subGroups,asMakeGroup()]});
-  const updateSub=(id:string,g:AsGroup)=>onUpdate({...group,subGroups:group.subGroups.map(s=>s.id===id?g:s)});
-  const removeSub=(id:string)=>onUpdate({...group,subGroups:group.subGroups.filter(s=>s.id!==id)});
-
-  return (
-    <div className={!isRoot?"w-full border border-lyra-border-subtle rounded-lyra-md p-3 bg-lyra-bg-surface-canvas":"w-full"}>
-      <div className="flex items-center gap-2 mb-2">
-        <ToggleGroup items={AS_LOGIC_ITEMS} value={group.logicOperator}
-          onValueChange={v=>v&&onUpdate({...group,logicOperator:v as AsLogic})} />
-        <span className="lyra-body-sm text-lyra-fg-secondary">
-          {group.logicOperator==="and"?"All conditions must match":group.logicOperator==="or"?"Any one condition must match":"No conditions must match"}
-        </span>
-      </div>
-      <div className="flex flex-wrap items-center gap-2 w-full">
-        {group.chips.map(chip=>{
-          const def=AS_CRITERIA_DEFS[chip.criteriaId];
-          return (
-            <FilterChip key={chip.uid} label={def.label} operators={def.operators}
-              selectedOperator={chip.operator} onOperatorChange={op=>updateChip(chip.uid,{operator:op})}
-              options={def.options} selectedValues={chip.values}
-              onSelectionChange={vals=>updateChip(chip.uid,{values:vals})}
-              onRemove={()=>removeChip(chip.uid)} />
-          );
-        })}
-        <AsCriteriaMenu onSelect={addChip} />
-        <Button variant="outline" size="md" onClick={addSub}><Plus className="h-3.5 w-3.5" strokeWidth={2}/>Group</Button>
-        {!isRoot && onDelete && <Button variant="ghost" size="md" onClick={onDelete}>Delete</Button>}
-      </div>
-      {group.subGroups.length>0 && (
-        <div className="mt-3 flex flex-col gap-2">
-          {group.subGroups.map(sub=>(
-            <AsGroupRow key={sub.id} group={sub} onUpdate={g=>updateSub(sub.id,g)} onDelete={()=>removeSub(sub.id)} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function AdvancedSearchContent({ root, onUpdate }: { root: AsGroup; onUpdate: (g: AsGroup) => void }) {
-  const [copied, setCopied] = useState(false);
-  const description = asBuildString(root) || "No criteria defined";
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(description).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000);});
-  };
-
-  return (
-    <div className="flex flex-col gap-4 p-4 w-full">
-      <AsGroupRow group={root} isRoot onUpdate={onUpdate} />
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center justify-between">
-          <span className="lyra-label text-lyra-fg-default">Criteria Description</span>
-          <button type="button" onClick={handleCopy}
-            className="inline-flex items-center gap-1.5 lyra-body-sm text-lyra-fg-secondary hover:text-lyra-fg-default transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus rounded-lyra-xs px-1"
-            aria-label="Copy criteria description">
-            {copied?<><Check className="h-3.5 w-3.5 text-lyra-status-success-strong" strokeWidth={2}/>Copied</>
-                   :<><Copy className="h-3.5 w-3.5" strokeWidth={1.5}/>Copy</>}
-          </button>
-        </div>
-        <Input value={description} readonly className="w-full" />
-      </div>
-    </div>
-  );
-}
-
-export const AdvancedSearch: Story = {
-  name: "Toolbar — Query Builder",
-  render: () => {
-    const [appliedRoot, setAppliedRoot] = useState<AsGroup | null>(null);
-    const [root, setRoot] = useState<AsGroup>({ id:"as-root", logicOperator:"and", chips:[], subGroups:[] });
-    const [savedSearchName, setSavedSearchName] = useState<string | undefined>(undefined);
-
-    // Filters are "applied" only when Apply was last clicked AND root has actual chips/groups
-    const hasAnyFilters = (g: AsGroup): boolean =>
-      g.chips.length > 0 || g.subGroups.some(hasAnyFilters);
-
-    const isApplied = appliedRoot !== null && hasAnyFilters(appliedRoot);
-
-    const handleUpdate = (g: AsGroup) => {
-      setRoot(g);
-      // If applied filters exist but user removes all chips, auto-clear applied state
-      if (appliedRoot !== null && !hasAnyFilters(g)) setAppliedRoot(null);
-    };
-
-    return (
-      <div className="h-[400px] flex flex-col border border-lyra-border-subtle rounded-lyra-lg overflow-hidden">
-        <TableToolbar
-          searchQuery=""
-          onSearchChange={() => {}}
-          recordCount={320}
-          showAdvancedSearch
-          advancedSearchContent={<AdvancedSearchContent root={root} onUpdate={handleUpdate} />}
-          advancedSearchApplied={isApplied}
-          advancedSearchTitle={savedSearchName}
-          advancedSearchDescription={isApplied && appliedRoot ? (asBuildString(appliedRoot) || undefined) : undefined}
-          onAdvancedSearchApply={() => setAppliedRoot(root)}
-          onAdvancedSearchCancel={() => {/* just closes — filters preserved */}}
-          onSaveSearch={(name) => { setSavedSearchName(name); setAppliedRoot(root); }}
-          // Top-level toolbar "Clear" button (shown once `advancedSearchApplied`
-          // is true — see table.tsx's `hasActiveFilters`) resets the whole
-          // built query, not just its applied state, so the query builder
-          // panel reopens empty next time rather than still showing the
-          // old criteria.
-          onFilterClear={() => {
-            setAppliedRoot(null);
-            setRoot({ id: "as-root", logicOperator: "and", chips: [], subGroups: [] });
-            setSavedSearchName(undefined);
+      {footer && (
+        <TableFooter
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(n) => {
+            setRowsPerPage(n);
+            setPage(1);
           }}
+          totalRecords={rows.length}
+          displayStart={rows.length === 0 ? 0 : pageStart + 1}
+          displayEnd={Math.min(pageStart + rowsPerPage, rows.length)}
+          showDisplayCount={showDisplayCount}
+          showRowsPerPage={showRowsPerPage && !autoFit}
+          showJumpButtons={showJumpButtons}
         />
-      </div>
+      )}
+    </div>
+  );
+}
+
+type TableDemoStory = StoryObj<typeof TableDemo>;
+
+export const Default: TableDemoStory = {
+  args: {
+    startingSelection: "none",
+    sortable: false,
+    resizable: false,
+    toolbar: false,
+    showSearch: true,
+    showFilters: true,
+    queryBuilder: false,
+    filterCount: 2,
+    showColumns: true,
+    showActions: true,
+    showTitle: false,
+    grouped: false,
+    groupBy: "team",
+    footer: false,
+    showDisplayCount: true,
+    showRowsPerPage: true,
+    autoFit: false,
+    showJumpButtons: true,
+    rowActions: true,
+    rowCount: 5,
+    maxHeight: true,
+    ariaLabel: "Agent desktops",
+  },
+  parameters: {
+    controls: {
+      include: [
+        "startingSelection",
+        "sortable",
+        "resizable",
+        "toolbar",
+        "showSearch",
+        "showFilters",
+        "queryBuilder",
+        "Query builder",
+        "filterCount",
+        "showColumns",
+        "showActions",
+        "showTitle",
+        "grouped",
+        "groupBy",
+        "footer",
+        "showDisplayCount",
+        "showRowsPerPage",
+        "autoFit",
+        "Auto-fit rows",
+        "showJumpButtons",
+        "ariaLabel",
+        "rowActions",
+        "rowCount",
+        "maxHeight",
+        "Max height",
+        "Number of rows",
+        "Starting selection",
+        "Sortable columns",
+        "Resizable columns",
+        "Toolbar",
+        "Search",
+        "Filters",
+        "Number of filters",
+        "Column toggle",
+        "Action buttons",
+        "Title",
+        "Grouped",
+        "Group by",
+        "Footer",
+        "Display count",
+        "Rows per page",
+        "Jump buttons",
+        "Accessible label",
+        "Row actions column",
+      ],
+      sort: "none",
+    },
+  },
+  argTypes: {
+    startingSelection: {
+      name: "Starting selection",
+      control: "radio",
+      options: ["none", "some", "all"],
+      description:
+        "Which rows start selected. Selected rows are highlighted, and the header checkbox shows a dash when only some are selected.",
+      table: { category: "Behavior" },
+    },
+    sortable: {
+      name: "Sortable columns",
+      control: "boolean",
+      description: "Makes Name, Description and Created By sortable headers (`SortableTableHead`).",
+      table: { category: "Behavior" },
+    },
+    resizable: {
+      name: "Resizable columns",
+      control: "boolean",
+      description:
+        "Adds a drag handle on the right edge of the Name, Description and Created By headers (`resizable`, `columnKey`). Focus a handle and use the arrow keys to resize from the keyboard.",
+      table: { category: "Behavior" },
+    },
+    toolbar: {
+      name: "Toolbar",
+      control: "boolean",
+      description:
+        "Shows a toolbar above the table (`TableToolbar`) with a record count. Its own controls appear under Toolbar once this is on.",
+      table: { category: "Behavior" },
+    },
+    showSearch: {
+      name: "Search",
+      control: "boolean",
+      description: "Quick search in the toolbar. It filters the rows by name, description or creator (`searchQuery`).",
+      if: { arg: "toolbar", truthy: true },
+      table: { category: "Toolbar" },
+    },
+    showFilters: {
+      name: "Filters",
+      control: "boolean",
+      description: "Filter chips for Description and Created By that filter the rows (`filterDefs`).",
+      if: { arg: "toolbar", truthy: true },
+      table: { category: "Toolbar" },
+    },
+    queryBuilder: {
+      name: "Query builder",
+      control: "boolean",
+      description:
+        "A Query Builder button that opens a panel for building a query from criteria and And/Or/Not groups (`showAdvancedSearch`). It replaces the filter chips, so turning it on switches Filters off and Filters can't be turned back on while it is on. Applying a query is display-only in this demo.",
+      if: { arg: "toolbar", truthy: true },
+      table: { category: "Toolbar" },
+    },
+    filterCount: {
+      name: "Number of filters",
+      control: "select",
+      options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+      description:
+        "How many filter chips the toolbar shows, up to 10, added in this order: Description, Created By, Published, Team, Region, Status, Priority, Channel, Language, Tier. Each one filters the rows.",
+      if: { arg: "showFilters", truthy: true },
+      table: { category: "Toolbar" },
+    },
+    showColumns: {
+      name: "Column toggle",
+      control: "boolean",
+      description: "A menu to show or hide the table's columns (`ColumnToggle`).",
+      if: { arg: "toolbar", truthy: true },
+      table: { category: "Toolbar" },
+    },
+    showActions: {
+      name: "Action buttons",
+      control: "boolean",
+      description: "Refresh, Edit, Copy and Delete icon buttons (`actionDefs`). They don't do anything in this demo.",
+      if: { arg: "toolbar", truthy: true },
+      table: { category: "Toolbar" },
+    },
+    showTitle: {
+      name: "Title",
+      control: "boolean",
+      description: "Shows a title above the search row (`title`).",
+      if: { arg: "toolbar", truthy: true },
+      table: { category: "Toolbar" },
+    },
+    grouped: {
+      name: "Grouped",
+      control: "boolean",
+      description:
+        "Buckets the rows under collapsible group headers with a count (`TableGroupRow`). Groups start expanded. Each column header also gets a menu button to group by that column or ungroup.",
+      table: { category: "Behavior" },
+    },
+    groupBy: {
+      name: "Group by",
+      control: "select",
+      options: ["team", "region", "status", "published", "description", "createdBy"],
+      description:
+        "Which attribute the rows are grouped by. Description and Created By are unique per row here, so each makes one group per row; Team, Region, Status and Published give a few larger groups.",
+      if: { arg: "grouped", truthy: true },
+      table: { category: "Behavior" },
+    },
+    footer: {
+      name: "Footer",
+      control: "boolean",
+      description:
+        "Shows a pagination footer below the table (`TableFooter`). Its own controls appear under Footer once this is on.",
+      table: { category: "Behavior" },
+    },
+    showDisplayCount: {
+      name: "Display count",
+      control: "boolean",
+      description: "The “Displaying X–Y of Z” record count (`showDisplayCount`).",
+      if: { arg: "footer", truthy: true },
+      table: { category: "Footer" },
+    },
+    autoFit: {
+      name: "Auto-fit rows",
+      control: "boolean",
+      description:
+        "Rows per page is worked out from the table's height, so exactly as many rows as fit are shown and the footer pages through the rest (resize the window to see it adapt). The rows-per-page selector is hidden while this is on.",
+      if: { arg: "footer", truthy: true },
+      table: { category: "Footer" },
+    },
+    showRowsPerPage: {
+      name: "Rows per page",
+      control: "boolean",
+      description: "The rows-per-page selector (`showRowsPerPage`).",
+      if: { arg: "footer", truthy: true },
+      table: { category: "Footer" },
+    },
+    showJumpButtons: {
+      name: "Jump buttons",
+      control: "boolean",
+      description: "First-page and last-page buttons (`showJumpButtons`).",
+      if: { arg: "footer", truthy: true },
+      table: { category: "Footer" },
+    },
+    rowCount: {
+      name: "Number of rows",
+      control: "select",
+      options: [5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+      description: "Total rows in the table.",
+      table: { category: "Content" },
+    },
+    maxHeight: {
+      name: "Max height",
+      control: "boolean",
+      description:
+        "On: the table sits in a 400px box. Off: it fills the full page height and the footer is fixed to the bottom of the page.",
+      table: { category: "Appearance" },
+    },
+    ariaLabel: {
+      name: "Accessible label",
+      control: "text",
+      description: "Name read by screen readers for the table (`aria-label`).",
+      table: { category: "Content" },
+    },
+    rowActions: {
+      name: "Row actions column",
+      control: "boolean",
+      description: "Shows the ⋮ button at the end of each row.",
+      table: { category: "Appearance" },
+    },
+  },
+  render: function Render(args) {
+    // `useArgs` only works inside a story function, so it lives here rather
+    // than in a child component. Query builder and filter chips are mutually
+    // exclusive: while the query builder is on, Filters is switched off and
+    // stays off.
+    const [, updateArgs] = useArgs();
+    useEffect(() => {
+      if (args.queryBuilder && args.showFilters) updateArgs({ showFilters: false });
+    }, [args.queryBuilder, args.showFilters, updateArgs]);
+    return (
+      // `key` remounts the demo when a control changes — `useState`'s initial
+      // value only applies on first mount.
+      <TableDemo key={JSON.stringify(args)} {...args} />
     );
   },
 };
