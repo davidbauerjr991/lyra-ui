@@ -1,0 +1,1 @@
+import{j as s}from"./jsx-runtime-D_zvdyIk.js";import{P as o}from"./pencil-IFm_bK0G.js";import{C as t}from"./chevron-right-BP9ksYh_.js";const a="View customer info",n=s.jsx(o,{className:"h-3.5 w-3.5",strokeWidth:1.5,"aria-hidden":"true"}),c=s.jsx(t,{className:"h-3.5 w-3.5",strokeWidth:1.5,"aria-hidden":"true"});export{a as L,c,n as e};

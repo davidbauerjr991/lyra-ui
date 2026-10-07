@@ -1,0 +1,1 @@
+const t={"1-10":{label:"Rating (1–10)",min:1,max:10,start:5},"0-59-wrap":{label:"Minutes",min:0,max:59,padWidth:2,start:0},"0-100-step-5":{label:"Percentage",min:0,max:100,step:5,start:0}},a="Must be 0 or greater";export{a as N,t as R};

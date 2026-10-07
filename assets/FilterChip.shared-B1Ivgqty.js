@@ -1,0 +1,1 @@
+const t=Array.from({length:50},(l,a)=>({value:`option-${a+1}`,label:`Option ${a+1}`})),s=Array.from({length:50},(l,a)=>({value:`filter-${a+1}`,label:`Filter ${a+1}`})),e=["back-office","custom","bpo","collections"],o=[{value:"contains",label:"Contains"},{value:"equals",label:"Equals"},{value:"starts-with",label:"Starts With"}];export{e as S,t as a,s as b,o as s};

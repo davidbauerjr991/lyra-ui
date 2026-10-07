@@ -1,0 +1,6 @@
+import{j as t}from"./jsx-runtime-D_zvdyIk.js";import{T as e}from"./tooltip-DKTByY8R.js";import{M as s}from"./mic-BV_p_-VJ.js";import{c as a}from"./createLucideIcon-aII_sYFw.js";/**
+ * @license lucide-react v0.468.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const r=a("ImagePlus",[["path",{d:"M16 5h6",key:"1vod17"}],["path",{d:"M19 2v6",key:"4bpg5p"}],["path",{d:"M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5",key:"1ue2ih"}],["path",{d:"m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21",key:"1xmnt7"}],["circle",{cx:"9",cy:"9",r:"2",key:"af1f0g"}]]),m="Draft reply to the customer...",o="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover hover:text-lyra-fg-default transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus",d=t.jsxs(t.Fragment,{children:[t.jsx(e,{content:"Voice input",placement:"top",children:t.jsx("button",{type:"button","aria-label":"Voice input",className:o,children:t.jsx(s,{className:"h-4 w-4",strokeWidth:1.5})})}),t.jsx(e,{content:"Add image",placement:"top",children:t.jsx("button",{type:"button","aria-label":"Add image",className:o,children:t.jsx(r,{className:"h-4 w-4",strokeWidth:1.5})})})]});export{m as D,d as c};
