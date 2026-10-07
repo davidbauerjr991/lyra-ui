@@ -21,6 +21,15 @@ export interface TextareaProps
   maxLength?: number;
   /** Number of visible text rows (default 4) */
   rows?: number;
+  /**
+   * Grow with the text instead of scrolling: the height follows the content,
+   * starting at `rows` and stopping at `maxRows` (then it scrolls). The manual
+   * resize handle is hidden while this is on. Default: false (fixed height,
+   * `resize-y`, as before).
+   */
+  autoGrow?: boolean;
+  /** Tallest an `autoGrow` textarea gets, in rows (default 10). */
+  maxRows?: number;
 }
 
 /* ── Component ── */
@@ -36,6 +45,8 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
       error,
       maxLength,
       rows = 4,
+      autoGrow = false,
+      maxRows = 10,
       disabled,
       id,
       value,
@@ -48,15 +59,51 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     const autoId = React.useId();
     const inputId = id || autoId;
 
+    // Error message and (when set) the label's help text, so both are read with the field
+    const describedBy =
+      [error ? `${inputId}-error` : null, label && labelHelpText && !disabled ? `${inputId}-help` : null]
+        .filter(Boolean)
+        .join(" ") || undefined;
+
     // Track character count when maxLength is provided
     const [charCount, setCharCount] = React.useState<number>(() => {
       const initial = value ?? defaultValue ?? "";
       return String(initial).length;
     });
 
+    // Auto-grow: keep our own ref next to the forwarded one and resize to
+    // fit the content (capped at `maxRows`) after every change.
+    const innerRef = React.useRef<HTMLTextAreaElement | null>(null);
+    const setRefs = React.useCallback(
+      (node: HTMLTextAreaElement | null) => {
+        innerRef.current = node;
+        if (typeof ref === "function") ref(node);
+        else if (ref) (ref as React.MutableRefObject<HTMLTextAreaElement | null>).current = node;
+      },
+      [ref]
+    );
+    const fit = React.useCallback(() => {
+      const el = innerRef.current;
+      if (!el || !autoGrow) return;
+      const cs = getComputedStyle(el);
+      const line = parseFloat(cs.lineHeight) || 20;
+      const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+      const border = parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
+      el.style.height = "auto";
+      // border-box: scrollHeight covers content + padding, not the border
+      const wanted = el.scrollHeight + border;
+      const max = line * maxRows + pad + border;
+      el.style.height = `${Math.min(wanted, max)}px`;
+      el.style.overflowY = wanted > max ? "auto" : "hidden";
+    }, [autoGrow, maxRows]);
+    React.useLayoutEffect(() => {
+      fit();
+    }, [fit, value]);
+
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       if (maxLength !== undefined) setCharCount(e.target.value.length);
       onChange?.(e);
+      fit();
     };
 
     return (
@@ -100,7 +147,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
 
         {/* Textarea */}
         <textarea
-          ref={ref}
+          ref={setRefs}
           id={inputId}
           rows={rows}
           maxLength={maxLength}
@@ -110,7 +157,8 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           defaultValue={defaultValue}
           onChange={handleChange}
           className={cn(
-            "w-full rounded-lyra-sm border lyra-body-md transition-colors resize-y",
+            "w-full rounded-lyra-sm border lyra-body-md transition-colors",
+            autoGrow ? "resize-none" : "resize-y",
             "px-3 py-2",
             "placeholder:text-lyra-fg-disabled",
             // ADA-compliance focus indicator: same focus-visible ring
@@ -132,7 +180,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
               : "border-lyra-border-strong bg-lyra-bg-field text-lyra-fg-default hover:border-lyra-state-border-hover-neutral focus:border-lyra-border-active [html[data-lyra-input-modality=keyboard]_&:focus]:ring-lyra-border-focus [html:not([data-lyra-input-modality=keyboard])_&:focus]:ring-lyra-border-active/20"
           )}
           aria-invalid={error ? true : undefined}
-          aria-describedby={error ? `${inputId}-error` : undefined}
+          aria-describedby={describedBy}
           {...props}
         />
 

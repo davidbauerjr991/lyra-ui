@@ -26,6 +26,15 @@ interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "
    * horizontal padding, only the field's own height.
    */
   size?: "sm" | "md";
+  /**
+   * Show a live "12/50" character counter above the field (right-aligned,
+   * same treatment as `Textarea`). Needs `maxLength`; does nothing without
+   * it. Default: false — `maxLength` alone still just stops typing, as before.
+   *
+   * For password or search fields use `PasswordInput` / `SearchInput`
+   * instead of `Input` with a manual toggle/clear button.
+   */
+  showCount?: boolean;
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
@@ -42,6 +51,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       startIcon,
       endIcon,
       size = "md",
+      showCount = false,
+      maxLength,
+      onChange,
       ...props
     },
     ref
@@ -49,18 +61,73 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const autoId = React.useId();
     const inputId = id || autoId;
 
+    // Counter state — only used when `showCount` + `maxLength` are both set.
+    const counting = showCount && maxLength !== undefined;
+    const [typedCount, setTypedCount] = React.useState<number>(() =>
+      String(props.value ?? props.defaultValue ?? "").length
+    );
+    const charCount = props.value !== undefined ? String(props.value).length : typedCount;
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (counting) setTypedCount(e.target.value.length);
+      onChange?.(e);
+    };
+
+    // Error message and (when set) the label's help text, so both are read with the field
+    const describedBy =
+      [error ? `${inputId}-error` : null, label && labelHelpText && !disabled ? `${inputId}-help` : null]
+        .filter(Boolean)
+        .join(" ") || undefined;
+
+    const counter = counting && (
+      <span
+        className={cn(
+          "lyra-body-sm tabular-nums",
+          disabled || readonly
+            ? "text-lyra-fg-disabled"
+            : charCount >= maxLength!
+            ? "text-lyra-status-critical-strong"
+            : "text-lyra-fg-secondary"
+        )}
+        aria-live="polite"
+      >
+        {/* Visible "4/100" is hidden from AT and paired with a sr-only
+            sentence, same as Textarea's counter. */}
+        <span aria-hidden="true">{charCount}/{maxLength}</span>
+        <span className="sr-only">{`${charCount} of ${maxLength} characters used`}</span>
+      </span>
+    );
+
     return (
       <div className={className}>
-        {label && (
-          <Label
-            label={label}
-            labelFor={inputId}
-            labelHelpText={labelHelpText}
-            required={required}
-            disabled={disabled}
-            readonly={readonly}
-            className="mb-1.5"
-          />
+        {counting ? (
+          /* Label row — label left, counter right (mirrors Textarea) */
+          <div className="flex items-center justify-between mb-1.5">
+            {label ? (
+              <Label
+                label={label}
+                labelFor={inputId}
+                labelHelpText={labelHelpText}
+                required={required}
+                disabled={disabled}
+                readonly={readonly}
+              />
+            ) : (
+              <span />
+            )}
+            {counter}
+          </div>
+        ) : (
+          label && (
+            <Label
+              label={label}
+              labelFor={inputId}
+              labelHelpText={labelHelpText}
+              required={required}
+              disabled={disabled}
+              readonly={readonly}
+              className="mb-1.5"
+            />
+          )
         )}
 
         <div className="relative flex items-center">
@@ -117,7 +184,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
                 "bg-lyra-bg-disabled border-transparent text-lyra-fg-disabled cursor-not-allowed pointer-events-none"
             )}
             aria-invalid={error ? true : undefined}
-            aria-describedby={error ? `${inputId}-error` : undefined}
+            aria-describedby={describedBy}
+            maxLength={maxLength}
+            onChange={counting ? handleChange : onChange}
             {...props}
           />
           {endIcon && (

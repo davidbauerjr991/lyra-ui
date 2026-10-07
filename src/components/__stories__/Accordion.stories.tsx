@@ -1,324 +1,297 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
-import { Box, Clock } from "lucide-react";
-import {
-  Accordion,
-  AccordionHeadless,
-  AccordionHeadlessItem,
-  AccordionHeadlessContent,
-} from "../accordion";
-import { Tag } from "../tag";
-import { Button } from "../button";
-import { Metric } from "../dashboard-card";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "../table";
+import { Accordion } from "../accordion";
+import { Container } from "../container";
+import { cn } from "../../lib/utils";
+import { sampleItems, metricsSlot, richItem } from "./Accordion.shared";
 
 const meta: Meta<typeof Accordion> = {
   title: "Headless Primitives/Accordion",
   component: Accordion,
   tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
+  // Hide Accordion's own raw props from the Controls panel — this file's
+  // one story (Default) drives everything through AccordionDemo's own args
+  // (multi, showIcons, etc.) instead, and Storybook otherwise auto-infers
+  // controls for every real Accordion prop from its TS types (e.g. a
+  // "type" single/multiple radio) even though Default's render never reads
+  // those args, which just reads as a dead, confusing extra control.
+  argTypes: {
+    items: { table: { disable: true } },
+    type: { table: { disable: true } },
+    value: { table: { disable: true } },
+    values: { table: { disable: true } },
+    defaultValue: { table: { disable: true } },
+    defaultValues: { table: { disable: true } },
+    onValueChange: { table: { disable: true } },
+    onValuesChange: { table: { disable: true } },
+    className: { table: { disable: true } },
+    variant: { table: { disable: true } },
+  },
 };
 
 export default meta;
-type Story = StoryObj<typeof Accordion>;
 
-const icon = <Box className="h-5 w-5" strokeWidth={1.5} />;
+/* Full accent ("soft") color set from lyra-tokens.css — the same tokens
+   `accordion.tsx`'s own `headerClassName` doc comment demonstrates
+   (`bg-lyra-accent-purple-soft`) for tinting a single item's trigger row. */
+const ACCENT_COLORS = [
+  "slate",
+  "red",
+  "orange",
+  "yellow",
+  "lime",
+  "green",
+  "teal",
+  "blue",
+  "purple",
+  "pink",
+] as const;
+type AccentColor = (typeof ACCENT_COLORS)[number];
 
-const sampleItems = [
-  {
-    id: "1",
-    title: "Section Title",
-    icon,
-    content: (
-      <p className="lyra-body-md text-lyra-fg-secondary">
-        Content for section 1. This area expands when the item is opened.
-      </p>
-    ),
-  },
-  {
-    id: "2",
-    title: "Section Title",
-    icon,
-    content: (
-      <p className="lyra-body-md text-lyra-fg-secondary">
-        Content for section 2. Any React node can go here.
-      </p>
-    ),
-  },
-  {
-    id: "3",
-    title: "Section Title",
-    icon,
-    content: (
-      <p className="lyra-body-md text-lyra-fg-secondary">
-        Content for section 3.
-      </p>
-    ),
-  },
-];
-
-/* ── Screenshot 1 — all closed ── */
-
-export const Default: Story = {
-  render: () => <Accordion items={sampleItems} />,
+/* Literal class strings (not a template literal) so Tailwind's content
+   scanner — plain text regex over source files, not an AST walk — actually
+   finds and generates each one; `` `bg-lyra-accent-${c}-soft` `` built at
+   runtime would never match and would silently render untinted. */
+const ACCENT_HEADER_CLASSES: Record<AccentColor, string> = {
+  slate: "bg-lyra-accent-slate-soft",
+  red: "bg-lyra-accent-red-soft",
+  orange: "bg-lyra-accent-orange-soft",
+  yellow: "bg-lyra-accent-yellow-soft",
+  lime: "bg-lyra-accent-lime-soft",
+  green: "bg-lyra-accent-green-soft",
+  teal: "bg-lyra-accent-teal-soft",
+  blue: "bg-lyra-accent-blue-soft",
+  purple: "bg-lyra-accent-purple-soft",
+  pink: "bg-lyra-accent-pink-soft",
 };
 
-/* ── Screenshot 2 states ── */
+/* Variants (closed/open/disabled, no icons, subhead, end slot, rich header,
+   headless) each have their own page under "Accordion/Variants" — see
+   Accordion.variants.stories.tsx. */
 
-export const AllStates: Story = {
-  name: "All States",
-  render: () => (
-    <Accordion
-      type="multiple"
-      defaultValues={["2"]}
-      items={[
-        { ...sampleItems[0] },
-        { ...sampleItems[1] },
-        {
-          id: "disabled",
-          title: "Section Title",
-          icon,
-          disabled: true,
-          content: null,
-        },
-      ]}
-    />
-  ),
-};
+/* ── Default — consolidated single/multiple, icons, disabled-item, and
+   default-open, subhead and end-slot states into one controls-driven story
+   (previously seven separate stories: Default, Single — One Open,
+   Multiple — Many Open, No Icons, With Disabled Item, With Subhead,
+   With End Slot (Metrics)). Fully controlled so switching "multi" in
+   the Controls panel, or opening/closing items in the canvas, reflects
+   real Accordion state — e.g. turning "multi" on and opening more than
+   one item demonstrates several staying open at once, same as the old
+   "Multiple — Many Open" story did with a fixed default. ── */
 
-export const SingleOpen: Story = {
-  name: "Single — One Open",
-  render: () => (
-    <Accordion items={sampleItems} defaultValue="1" />
-  ),
-};
-
-export const MultipleOpen: Story = {
-  name: "Multiple — Many Open",
-  render: () => (
-    <Accordion
-      type="multiple"
-      defaultValues={["1", "3"]}
-      items={sampleItems}
-    />
-  ),
-};
-
-export const WithDisabledItem: Story = {
-  name: "With Disabled Item",
-  render: () => (
-    <Accordion
-      items={[
-        sampleItems[0],
-        { ...sampleItems[1], disabled: true },
-        sampleItems[2],
-      ]}
-      defaultValue="1"
-    />
-  ),
-};
-
-export const NoIcons: Story = {
-  name: "No Icons",
-  render: () => (
-    <Accordion
-      items={sampleItems.map(({ icon: _icon, ...item }) => item)}
-      defaultValue="2"
-    />
-  ),
-};
-
-
-export const WithSubhead: Story = {
-  name: "With Subhead",
-  render: () => (
-    <Accordion
-      items={[
-        {
-          id: "1",
-          title: "Section Title",
-          subhead: "Supporting description text",
-          icon,
-          content: <p className="lyra-body-md text-lyra-fg-secondary">Content for section 1.</p>,
-        },
-        {
-          id: "2",
-          title: "Section Title",
-          subhead: "Supporting description text",
-          icon,
-          content: <p className="lyra-body-md text-lyra-fg-secondary">Content for section 2.</p>,
-        },
-        {
-          id: "3",
-          title: "Section Title",
-          subhead: "Supporting description text",
-          icon,
-          disabled: true,
-          content: null,
-        },
-      ]}
-    />
-  ),
-};
-
-/* ── Rich content: title/subhead accept ReactNode (e.g. name + Tag, multi-line
-   summary), and content can be any component — here a Default-style Table ── */
-
-const richInteractions = [
-  { id: "1", when: "09/05/25 7:53 PM", agent: "Kevin Jensen",  status: "Closed", queue: "CXi SME Email", skill: "Email_General" },
-  { id: "2", when: "09/05/25 8:11 PM", agent: "Andres Arenas", status: "Closed", queue: "Chat_General",  skill: "Chat_General"  },
-  { id: "3", when: "09/07/25 12:56 PM", agent: "KrishnaCharan Mohanrao", status: "Closed", queue: "CXi SME Email", skill: "Email_General" },
-];
-
-export const WithRichHeaderAndTable: Story = {
-  name: "Rich Header + Table Content",
-  render: () => (
-    <Accordion
-      defaultValue="1"
-      items={[
-        {
-          id: "1",
-          title: (
-            <span className="inline-flex items-center gap-2">
-              Lily Chen
-              <Tag label="open" variant="success" shape="pill" />
-            </span>
-          ),
-          subhead: (
-            <span className="flex flex-col gap-0.5">
-              <span className="lyra-body-md text-lyra-fg-default">
-                Unaccompanied minor (age 11) stuck at ORD — connecting flight canceled
-              </span>
-              <span className="inline-flex items-center gap-1">
-                Atlas
-                <span aria-hidden="true">•</span>
-                <Clock className="h-3 w-3" strokeWidth={1.5} />
-                Wait: 1m
-                <span aria-hidden="true">•</span>
-                CST-21009
-              </span>
-            </span>
-          ),
-          content: (
-            <div className="rounded-lyra-lg border border-lyra-border-subtle overflow-hidden" style={{ height: 160 }}>
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="flex-1">Date/Time</TableHead>
-                    <TableHead className="flex-[1.3]">Name</TableHead>
-                    <TableHead className="flex-1">Status</TableHead>
-                    <TableHead className="flex-[1.3]">Queue</TableHead>
-                    <TableHead className="flex-[1.3]">Skill</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {richInteractions.map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell className="flex-1">{row.when}</TableCell>
-                      <TableCell className="flex-[1.3]">{row.agent}</TableCell>
-                      <TableCell className="flex-1">
-                        <span className="inline-flex items-center gap-1.5">
-                          <span className="h-2 w-2 rounded-full bg-lyra-status-critical-strong shrink-0" aria-hidden="true" />
-                          {row.status}
-                        </span>
-                      </TableCell>
-                      <TableCell className="flex-[1.3]">{row.queue}</TableCell>
-                      <TableCell className="flex-[1.3]">{row.skill}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ),
-        },
-      ]}
-    />
-  ),
-};
-
-/* ── endSlot — e.g. a couple of `Metric`s (`DashboardCard`'s own value+label
-   block, exported standalone) inline with a queue row, between the
-   title/subhead and the chevron. Rendered inside the same trigger button as
-   the rest of the row; see the doc comment on `endSlot` in accordion.tsx
-   for why it should stay display-only. `className="flex-none"` drops
-   `Metric`'s default `flex-1` — correct inside `DashboardCard`'s own equal-
-   width columns, not here where it should size to its own content. ── */
-
-export const WithEndSlot: Story = {
-  name: "With End Slot (Metrics)",
-  render: () => (
-    <Accordion
-      items={[
-        {
-          id: "1",
-          title: "Digital",
-          subhead: "12 contacts in queue",
-          endSlot: (
-            <>
-              <Metric className="flex-none" metric={{ value: 4, label: "Skills" }} />
-              <Metric className="flex-none" metric={{ value: 8, label: "Contacts" }} />
-            </>
-          ),
-          content: <p className="lyra-body-md text-lyra-fg-secondary">Content for section 1.</p>,
-        },
-        {
-          id: "2",
-          title: "Inbound Voice",
-          subhead: "5 contacts in queue",
-          endSlot: (
-            <>
-              <Metric className="flex-none" metric={{ value: 2, label: "Skills" }} />
-              <Metric className="flex-none" metric={{ value: 5, label: "Contacts" }} />
-            </>
-          ),
-          content: <p className="lyra-body-md text-lyra-fg-secondary">Content for section 2.</p>,
-        },
-      ]}
-    />
-  ),
-};
-
-/* ── Headless — trigger-less building blocks, external control ──
-   `AccordionHeadless`/`-Item`/`-Content` expose the same Radix mechanism
-   and height animation as `Accordion`, without its trigger row or divider
-   chrome, for layouts where some other element drives the open state (the
-   shape agent-next-gen-v2's transcript uses for Session Details: a pill
-   button toggles a fully-controlled single/collapsible root). */
-
-function HeadlessDemo() {
-  const [open, setOpen] = useState(true);
-  return (
-    <div className="w-[420px]">
-      <Button variant="outline" size="sm" onClick={() => setOpen((v) => !v)}>
-        {open ? "Hide details" : "Show details"}
-      </Button>
-      <AccordionHeadless
-        type="single"
-        collapsible
-        value={open ? "details" : ""}
-        onValueChange={() => {}}
-      >
-        <AccordionHeadlessItem value="details" className="border-none">
-          <AccordionHeadlessContent>
-            <p className="pt-3 lyra-body-md text-lyra-fg-secondary">
-              Collapsible content with the standard accordion height
-              animation — no built-in trigger row, no divider; the button
-              above owns the open state.
-            </p>
-          </AccordionHeadlessContent>
-        </AccordionHeadlessItem>
-      </AccordionHeadless>
-    </div>
-  );
+interface AccordionDemoProps {
+  multi?: boolean;
+  showIcons?: boolean;
+  disabledItem?: boolean;
+  defaultOpen?: "none" | "1" | "2" | "3";
+  showSubhead?: boolean;
+  showEndSlot?: boolean;
+  richHeader?: boolean;
+  richContent?: boolean;
+  container?: boolean;
+  separateContainers?: boolean;
+  padding?: boolean;
+  headerColor?: boolean;
+  headerColorValue?: AccentColor;
+  headerPadding?: "comfortable" | "compact";
+  variant?: "default" | "contained";
 }
 
-export const Headless: Story = {
-  render: () => <HeadlessDemo />,
+function AccordionDemo({
+  multi = false,
+  showIcons = true,
+  disabledItem = false,
+  defaultOpen = "none",
+  showSubhead = false,
+  showEndSlot = false,
+  richHeader = false,
+  richContent = false,
+  container = false,
+  separateContainers = false,
+  padding = true,
+  headerColor = false,
+  headerColorValue = "purple",
+  headerPadding = "comfortable",
+  variant = "default",
+}: AccordionDemoProps) {
+  // Without padding, the first/last trigger rows (and any `headerColor`
+  // tint) sit flush against the Container's edges — `overflow-hidden`
+  // clips their square corners to the Container's own `rounded-lyra-lg`,
+  // the same way the old "Rich Header + Table Content" variant's Table
+  // wrapper needed it for the same reason (content flush to a rounded edge).
+  const containerClassName = padding ? "p-4" : "overflow-hidden";
+  // Accordion's own trigger row defaults to `py-3.5` (14px) — "comfortable"
+  // needs no override; "compact" overrides it to `py-2.5` (10px) via
+  // `headerClassName`, which `cn()`'s `twMerge` correctly replaces `py-3.5`
+  // with rather than stacking both.
+  const headerPaddingClass = headerPadding === "compact" ? "py-2.5" : undefined;
+  const items = sampleItems.map((item) => ({
+    ...item,
+    icon: showIcons ? item.icon : undefined,
+    disabled: disabledItem && item.id === "2",
+    title: richHeader ? richItem.title : item.title,
+    subhead: richHeader
+      ? richItem.subhead
+      : showSubhead
+        ? "Supporting description text"
+        : undefined,
+    endSlot: showEndSlot ? metricsSlot(item.id) : undefined,
+    content: richContent ? richItem.content : item.content,
+    headerClassName: cn(
+      headerColor ? ACCENT_HEADER_CLASSES[headerColorValue] : undefined,
+      headerPaddingClass
+    ),
+  }));
+
+  const [value, setValue] = useState(defaultOpen === "none" ? "" : defaultOpen);
+  const [values, setValues] = useState<string[]>(
+    defaultOpen === "none" ? [] : [defaultOpen]
+  );
+  // Separate-containers mode: each item is its own single-item Accordion in
+  // its own Container, so "multi" (which governs one shared root's open/
+  // close behavior) doesn't apply — each card already opens/closes on its
+  // own. Tracked as its own set of open ids so every card can be open at
+  // once without a shared "single" root forcing the others shut.
+  const [separateOpenIds, setSeparateOpenIds] = useState<string[]>(
+    defaultOpen === "none" ? [] : [defaultOpen]
+  );
+
+  if (container && separateContainers) {
+    return (
+      <div className="flex flex-col gap-3">
+        {items.map((item) => (
+          <Container key={item.id} className={containerClassName}>
+            <Accordion
+              type="single"
+              items={[item]}
+              value={separateOpenIds.includes(item.id) ? item.id : ""}
+              onValueChange={(openId) =>
+                setSeparateOpenIds((prev) =>
+                  openId
+                    ? [...prev.filter((id) => id !== item.id), item.id]
+                    : prev.filter((id) => id !== item.id)
+                )
+              }
+            />
+          </Container>
+        ))}
+      </div>
+    );
+  }
+
+  const accordion = multi ? (
+    <Accordion
+      type="multiple"
+      items={items}
+      values={values}
+      onValuesChange={setValues}
+      variant={variant}
+    />
+  ) : (
+    <Accordion type="single" items={items} value={value} onValueChange={setValue} variant={variant} />
+  );
+
+  return container ? <Container className={containerClassName}>{accordion}</Container> : accordion;
+}
+
+type AccordionDemoStory = StoryObj<typeof AccordionDemo>;
+
+export const Default: AccordionDemoStory = {
+  args: {
+    multi: false,
+    showIcons: true,
+    disabledItem: false,
+    defaultOpen: "none",
+    showSubhead: false,
+    showEndSlot: false,
+    richHeader: false,
+    richContent: false,
+    container: false,
+    separateContainers: false,
+    padding: true,
+    headerColor: false,
+    headerColorValue: "purple",
+    headerPadding: "comfortable",
+    variant: "default",
+  },
+  argTypes: {
+    multi: {
+      control: "boolean",
+      description: "When true, multiple items can stay open at once (type=\"multiple\"). When false, opening one closes the rest (type=\"single\").",
+    },
+    showIcons: { control: "boolean" },
+    disabledItem: {
+      control: "boolean",
+      description: 'Disables the second item ("Section 2")',
+    },
+    defaultOpen: {
+      control: "select",
+      options: ["none", "1", "2", "3"],
+      description: "Which item starts open",
+    },
+    showSubhead: {
+      control: "boolean",
+      description: "Supporting text under each title (`subhead`)",
+    },
+    showEndSlot: {
+      control: "boolean",
+      description: "Display-only content between the title and chevron (`endSlot`) — here two `Metric`s",
+    },
+    richHeader: {
+      control: "boolean",
+      description:
+        'Every item\'s title/subhead become ReactNode content (name + status Tag, multi-line summary) instead of plain text — overrides "showSubhead" while on.',
+    },
+    richContent: {
+      control: "boolean",
+      description: "Every item's content becomes a Table instead of placeholder text",
+    },
+    container: {
+      control: "boolean",
+      description:
+        'Wraps the Accordion in a `Container` ("default" variant — white surface, subtle border)',
+    },
+    separateContainers: {
+      control: "boolean",
+      description: "Puts each item in its own Container instead of one shared Container",
+      if: { arg: "container", truthy: true },
+    },
+    padding: {
+      control: "boolean",
+      description: "Padding inside the Container(s) (`p-4`) — off removes it entirely",
+      if: { arg: "container", truthy: true },
+    },
+    headerColor: {
+      control: "boolean",
+      description: "Tints every item's trigger row background (`headerClassName`)",
+    },
+    headerColorValue: {
+      control: "select",
+      options: ACCENT_COLORS,
+      description: "Accent color used for the header tint (`bg-lyra-accent-{color}-soft`)",
+      if: { arg: "headerColor", truthy: true },
+    },
+    variant: {
+      control: "select",
+      options: ["default", "contained"],
+      description:
+        "default — rows sit on the page with dividers between them. contained — the whole group sits in one bordered, rounded card (`variant`). Not used by “separate containers”, which already draws a card per item.",
+      if: { arg: "separateContainers", truthy: false },
+    },
+    headerPadding: {
+      control: "select",
+      options: ["comfortable", "compact"],
+      description:
+        "Trigger row vertical padding — comfortable is 14px top/bottom (default), compact is 10px top/bottom",
+    },
+  },
+  render: (args) => (
+    // `key` remounts the demo when a control changes — `useState`'s initial
+    // value only applies on first mount.
+    <AccordionDemo
+      key={`${args.multi}-${args.showIcons}-${args.disabledItem}-${args.defaultOpen}-${args.showSubhead}-${args.showEndSlot}-${args.richHeader}-${args.richContent}-${args.container}-${args.separateContainers}-${args.padding}-${args.headerColor}-${args.headerColorValue}-${args.headerPadding}-${args.variant}`}
+      {...args}
+    />
+  ),
 };

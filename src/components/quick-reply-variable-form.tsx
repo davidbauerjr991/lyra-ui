@@ -162,6 +162,8 @@ const QuickReplyVariableForm = React.forwardRef<HTMLDivElement, QuickReplyVariab
                     value={raw instanceof Date ? raw : undefined}
                     onChange={(d) => onValueChange(field.key, d)}
                     size="sm"
+                    // Keep the clock beside the field, exactly as before (v3 look).
+                    iconPlacement="outside"
                   />
                 );
               default:

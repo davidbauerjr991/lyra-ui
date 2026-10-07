@@ -9,7 +9,7 @@ import { Select } from "../select";
 import { Popover } from "../popover";
 import { Tooltip } from "../tooltip";
 import { RadioGroup, RadioGroupItem } from "../radio";
-import { DateRangePicker } from "../date-picker";
+import { DateRangePicker } from "../date-range-picker";
 import type { DateRange } from "../calendar";
 import { Plus, Copy, Check, ChevronDown, X, Box, type LucideIcon } from "lucide-react";
 import { ErrorIcon } from "../icons/error-icon";

@@ -58,6 +58,36 @@ interface ModalProps extends VariantProps<typeof overlayVariants> {
    */
   description?: string;
 
+  /**
+   * Announce the modal as an alert dialog (`role="alertdialog"`) — for
+   * warning / destructive confirmations that interrupt the user and need a
+   * response. Default: false (`role="dialog"`, today's behavior).
+   *
+   * When true, initial focus goes to the safe action instead of the first
+   * focusable element: `initialFocusRef` if given, else the first element
+   * inside the modal marked `data-modal-cancel` (put it on the Cancel button),
+   * else Radix's usual first-focusable fallback.
+   */
+  alert?: boolean;
+
+  /**
+   * Element that receives focus when the modal opens. Optional and works with
+   * or without `alert`; when unset (and `alert` is false) Radix focuses the
+   * first focusable element as before.
+   */
+  initialFocusRef?: React.RefObject<HTMLElement | null>;
+
+  /**
+   * Unsaved-changes guard. When true, Escape and backdrop-click no longer
+   * call `onClose`; they call `onCloseAttempt` instead so the caller can ask
+   * "Discard changes?" first. Buttons inside the modal that call your own
+   * close handler are unaffected. Default: false (today's behavior).
+   */
+  preventClose?: boolean;
+
+  /** Called when Escape or a backdrop click is blocked by `preventClose`. */
+  onCloseAttempt?: () => void;
+
   children?: React.ReactNode;
 }
 
@@ -102,10 +132,15 @@ const Modal = React.forwardRef<HTMLDivElement, ModalProps>(
       headerClassName,
       ariaTitle,
       description,
+      alert = false,
+      initialFocusRef,
+      preventClose = false,
+      onCloseAttempt,
       children,
     },
     ref
   ) => {
+    const contentRef = React.useRef<HTMLDivElement>(null);
     const hasHeader = Boolean(
       headerTitle || headerIcon || headerActions || headerTitleBadge || headerTopSlot || headerSubhead
     );
@@ -121,6 +156,20 @@ const Modal = React.forwardRef<HTMLDivElement, ModalProps>(
           <DialogPrimitive.Overlay className={cn(overlayVariants({ variant }), overlayClassName)} />
 
           <DialogPrimitive.Content
+            ref={contentRef}
+            {...(alert ? { role: "alertdialog" } : {})}
+            // Move focus to the safe action when asked (alert dialogs default
+            // to the element marked `data-modal-cancel`); otherwise leave
+            // Radix's first-focusable behavior alone.
+            onOpenAutoFocus={(e) => {
+              const target =
+                initialFocusRef?.current ??
+                (alert ? contentRef.current?.querySelector<HTMLElement>("[data-modal-cancel]") : null);
+              if (target) {
+                e.preventDefault();
+                target.focus();
+              }
+            }}
             className="fixed inset-0 z-50 flex items-center justify-center focus:outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
             // Radix's own outside-interaction dismissal is disabled —
             // backdrop-click closing is handled manually below instead,
@@ -133,9 +182,15 @@ const Modal = React.forwardRef<HTMLDivElement, ModalProps>(
             // clicking outside also can't be dismissed via Escape (e.g. a
             // must-choose welcome modal), while both dismiss together
             // otherwise.
-            onEscapeKeyDown={(e) => { if (!closeOnBackdropClick) e.preventDefault(); }}
+            onEscapeKeyDown={(e) => {
+              if (!closeOnBackdropClick) { e.preventDefault(); return; }
+              if (preventClose) { e.preventDefault(); onCloseAttempt?.(); }
+            }}
             onClick={(e) => {
-              if (closeOnBackdropClick && e.target === e.currentTarget) onClose?.();
+              if (closeOnBackdropClick && e.target === e.currentTarget) {
+                if (preventClose) onCloseAttempt?.();
+                else onClose?.();
+              }
             }}
             {...(!description ? { "aria-describedby": undefined } : {})}
           >

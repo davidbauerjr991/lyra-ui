@@ -1,264 +1,178 @@
+import { useId } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { Label } from "../label";
 import { Input } from "../input";
-import { Select } from "../select";
+import { HELP_TEXT, SUPPORTING_TEXT, HORIZONTAL_VALUE } from "./Label.shared";
 
-const meta = {
+const meta: Meta<typeof Label> = {
   title: "Headless Primitives/Label",
   component: Label,
   tags: ["autodocs"],
   parameters: { layout: "centered", backgrounds: { default: "lyra-shell" } },
+  // Real Label props stay on the Docs page; Default's own
+  // `parameters.controls.include` below curates the Controls panel.
   argTypes: {
     required: { control: "boolean" },
     disabled: { control: "boolean" },
     readonly: { control: "boolean" },
-    /* Story-only toggles below — not real `Label` props. They let the
-       Default story act as an interactive playground (same pattern as
-       ContainerHeader.stories.tsx's Default). Consumed and stripped out of
-       `args` inside Default's `render`, before the rest are spread onto the
-       real component. */
-    showHelp:           { control: "boolean", name: "Help" },
-    showSupportingText: { control: "boolean", name: "Supporting text" },
-    showInput:          { control: "boolean", name: "Input box" },
-  } as Meta<typeof Label>["argTypes"],
-} satisfies Meta<typeof Label>;
+  },
+};
 
 export default meta;
-type Story = StoryObj<typeof meta>;
 
-/* ── SOL-matched stories ── */
+/* A label with a Select and every state side by side each have their own page
+   under "Label/Variants" — see Label.variants.stories.tsx. */
 
-export const BasicLabel: Story = {
-  name: "Basic Label",
-  args: {
-    label: "Field label",
-    labelFor: "basic-input",
-  },
-  render: (args) => (
-    <div className="flex flex-col gap-1 w-72">
-      <Label {...args} />
-      <Input id="basic-input" placeholder="Enter value..." />
-    </div>
-  ),
-};
+/* ── Default — consolidated Basic Label, Label With Help Text, Required
+   Label, Disabled Label, Readonly Label, Label With Supporting Text and
+   Horizontal into one controls-driven story (previously seven separate
+   stories). `helpText`, `supportingText` and `layout` are story-only args:
+   they turn the real `labelHelpText` / `supportingText` props on and off and
+   pick the stacked (label above an input) or horizontal (label left, value
+   right) layout. ── */
 
-export const LabelWithHelpText: Story = {
-  name: "Label With Help Text",
-  args: {
-    label: "API Key",
-    labelFor: "help-input",
-    labelHelpText: "Your API key can be found in your account settings under Security.",
-  },
-  render: (args) => (
-    <div className="flex flex-col gap-1 w-72">
-      <Label {...args} />
-      <Input id="help-input" placeholder="sk-••••••••" />
-    </div>
-  ),
-};
+interface LabelDemoProps {
+  label?: string;
+  required?: boolean;
+  disabled?: boolean;
+  readonly?: boolean;
+  helpText?: boolean;
+  supportingText?: boolean;
+  layout?: "stacked" | "horizontal";
+  helpTextId?: string;
+}
 
-export const RequiredLabel: Story = {
-  name: "Required Label",
-  args: {
-    label: "Email Address",
-    labelFor: "required-input",
-    required: true,
-  },
-  render: (args) => (
-    <div className="flex flex-col gap-1 w-72">
-      <Label {...args} />
-      <Input id="required-input" placeholder="you@example.com" required />
-    </div>
-  ),
-};
+function LabelDemo({
+  label = "Field label",
+  required = false,
+  disabled = false,
+  readonly = false,
+  helpText = false,
+  supportingText = false,
+  layout = "stacked",
+  helpTextId = "",
+}: LabelDemoProps) {
+  const inputId = useId();
+  const labelProps = {
+    label,
+    required,
+    disabled,
+    readonly,
+    labelHelpText: helpText ? HELP_TEXT : undefined,
+    supportingText: supportingText ? SUPPORTING_TEXT : undefined,
+    helpTextId: helpTextId || undefined,
+  };
+  // The field points at the hidden help text (and supporting text) so a screen
+  // reader reads them with it: `${labelFor}-help` unless an id is given.
+  const describedBy =
+    [
+      helpText && !disabled ? helpTextId || `${inputId}-help` : null,
+      supportingText && !disabled ? `${inputId}-supporting` : null,
+    ]
+      .filter(Boolean)
+      .join(" ") || undefined;
 
-export const DisabledLabel: Story = {
-  name: "Disabled Label",
-  args: {
-    label: "Username",
-    labelFor: "disabled-input",
-    required: true,
-    labelHelpText: "This field is currently unavailable.",
-    disabled: true,
-  },
-  render: (args) => (
-    <div className="flex flex-col gap-1 w-72">
-      <Label {...args} />
-      <Input id="disabled-input" placeholder="Enter username" disabled />
-    </div>
-  ),
-};
-
-export const ReadonlyLabel: Story = {
-  name: "Readonly Label",
-  args: {
-    label: "Account ID",
-    labelFor: "readonly-input",
-    required: true,
-    labelHelpText: "Your account ID cannot be changed.",
-    readonly: true,
-  },
-  render: (args) => (
-    <div className="flex flex-col gap-1 w-72">
-      <Label {...args} />
-      <Input id="readonly-input" value="acc-00123" readonly />
-    </div>
-  ),
-};
-
-export const LabelWithSupportingText: Story = {
-  name: "Label With Supporting Text",
-  args: {
-    label: "Input Label",
-    labelFor: "supporting-text-input",
-    required: true,
-    labelHelpText: "Helpful context about this field.",
-    supportingText: "Supporting text with additional info",
-  },
-  render: (args) => (
-    <div className="flex flex-col gap-1 w-72">
-      <Label {...args} />
-      <Input id="supporting-text-input" placeholder="Enter value..." />
-    </div>
-  ),
-};
-
-/* ── Horizontal — label left, value right ──
-   Some detail rows put the caption and its value on the same line instead
-   of stacked (the default `supportingText` layout above, label.tsx). The
-   value here reuses `supportingText`'s own typography exactly —
-   `lyra-body-md text-lyra-fg-secondary` — just arranged in a
-   `justify-between` row instead of a column, so it reads as the same value
-   styling in a different layout, not a new one. */
-export const Horizontal: Story = {
-  name: "Horizontal",
-  render: () => (
-    <div className="flex items-center justify-between w-72">
-      <Label label="Agent Name" />
-      <span className="lyra-body-md text-lyra-fg-secondary">Sarah Connor</span>
-    </div>
-  ),
-};
-
-export const Default: Story = {
-  args: {
-    label: "Default Label",
-    labelFor: "default-input",
-    required: true,
-    showHelp: true,
-    showSupportingText: false,
-    showInput: true,
-  } as Story["args"],
-  render: (args: any) => {
-    const { showHelp, showSupportingText, showInput, ...rest } = args;
+  if (layout === "horizontal") {
+    // Same value typography as `supportingText`, in a `justify-between` row.
     return (
-      <div className="flex flex-col gap-1 w-72">
-        <Label
-          {...rest}
-          labelHelpText={showHelp ? "Helpful context about this field." : undefined}
-          supportingText={showSupportingText ? "Supporting text with additional info" : undefined}
-        />
-        {showInput && <Input id="default-input" placeholder="Enter value..." />}
+      <div className="flex items-center justify-between w-72">
+        <Label {...labelProps} />
+        <span className="lyra-body-md text-lyra-fg-secondary">{HORIZONTAL_VALUE}</span>
       </div>
     );
+  }
+
+  return (
+    <div className="flex flex-col gap-1 w-72">
+      <Label {...labelProps} labelFor={inputId} />
+      <Input
+        id={inputId}
+        placeholder="Enter value..."
+        aria-describedby={describedBy}
+        required={required}
+        disabled={disabled}
+        readonly={readonly}
+      />
+    </div>
+  );
+}
+
+type LabelDemoStory = StoryObj<LabelDemoProps>;
+
+export const Default: LabelDemoStory = {
+  args: {
+    label: "Field label",
+    required: false,
+    disabled: false,
+    readonly: false,
+    helpText: false,
+    supportingText: false,
+    layout: "stacked",
+    helpTextId: "",
   },
-};
-
-/* ── Lyra-specific: Label with Select ── */
-
-export const WithSelect: Story = {
-  name: "With Select",
-  render: () => (
-    <div className="flex flex-col gap-4 w-72">
-      <Select
-        label="Desktop type"
-        labelHelpText="Choose the desktop layout for this role."
-        required
-        placeholder="Select a type..."
-        options={[
-          { value: "back-office", label: "Back office" },
-          { value: "knowledge-worker", label: "Knowledge Worker" },
-          { value: "bpo", label: "BPO" },
-        ]}
-      />
-      <Select
-        label="Status"
-        disabled
-        placeholder="Select status..."
-        options={[
-          { value: "active", label: "Active" },
-          { value: "inactive", label: "Inactive" },
-        ]}
-      />
-      <Select
-        label="Region"
-        readonly
-        placeholder="Select region..."
-        options={[
-          { value: "na1", label: "North America 1" },
-          { value: "eu1", label: "Europe 1" },
-        ]}
-      />
-    </div>
-  ),
-};
-
-/* ── All states overview ── */
-
-export const AllStates: Story = {
-  name: "All States",
-  render: () => (
-    <div className="flex flex-col gap-5 w-80">
-      {/* Default */}
-      <div className="flex flex-col gap-1">
-        <Label label="Default" labelFor="s-default" />
-        <Input id="s-default" placeholder="Default state" />
-      </div>
-
-      {/* With help text */}
-      <div className="flex flex-col gap-1">
-        <Label
-          label="With help text"
-          labelFor="s-help"
-          labelHelpText="Additional context about this field."
-        />
-        <Input id="s-help" placeholder="With help text" />
-      </div>
-
-      {/* Required */}
-      <div className="flex flex-col gap-1">
-        <Label label="Required" labelFor="s-required" required />
-        <Input id="s-required" placeholder="Required field" required />
-      </div>
-
-      {/* Required + help */}
-      <div className="flex flex-col gap-1">
-        <Label
-          label="Required with help"
-          labelFor="s-req-help"
-          required
-          labelHelpText="This field is required and has additional context."
-        />
-        <Input id="s-req-help" placeholder="Required with help" required />
-      </div>
-
-      {/* Disabled */}
-      <div className="flex flex-col gap-1">
-        <Label label="Disabled" labelFor="s-disabled" required disabled />
-        <Input id="s-disabled" placeholder="Disabled" disabled />
-      </div>
-
-      {/* Readonly */}
-      <div className="flex flex-col gap-1">
-        <Label
-          label="Readonly"
-          labelFor="s-readonly"
-          required
-          labelHelpText="This value cannot be edited."
-          readonly
-        />
-        <Input id="s-readonly" value="Read-only value" readonly />
-      </div>
-    </div>
-  ),
+  parameters: {
+    controls: {
+      // Storybook matches `include` against each control's display `name`
+      // (falling back to its key), so list the names; keys are kept too.
+      include: [
+        "Disabled", "Read-only", "Required", "Label", "Help text", "Supporting text", "Layout", "Help text id",
+        "disabled", "readonly", "required", "label", "helpText", "supportingText", "layout", "helpTextId",
+      ],
+      sort: "none",
+    },
+  },
+  argTypes: {
+    helpTextId: {
+      name: "Help text id",
+      control: "text",
+      description: "`id` of the hidden copy of the help text that the field points `aria-describedby` at (`helpTextId`). Blank uses `<labelFor>-help`. Turn on Help text first.",
+      if: { arg: "helpText", truthy: true },
+      table: { category: "Accessibility", defaultValue: { summary: "<labelFor>-help" } },
+    },
+    disabled: {
+      name: "Disabled",
+      control: "boolean",
+      description: "Dims the label. Hides the required asterisk, help text and supporting text.",
+      table: { category: "Behavior", defaultValue: { summary: "false" } },
+    },
+    readonly: {
+      name: "Read-only",
+      control: "boolean",
+      description: "Mutes the label. Hides the required asterisk; help text stays.",
+      table: { category: "Behavior", defaultValue: { summary: "false" } },
+    },
+    required: {
+      name: "Required",
+      control: "boolean",
+      description: "Adds a red asterisk after the label.",
+      table: { category: "Behavior", defaultValue: { summary: "false" } },
+    },
+    label: {
+      name: "Label",
+      control: "text",
+      description: "The label text.",
+      table: { category: "Content", defaultValue: { summary: "Field label" } },
+    },
+    helpText: {
+      name: "Help text",
+      control: "boolean",
+      description: "Info icon with a tooltip next to the label (`labelHelpText`).",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    supportingText: {
+      name: "Supporting text",
+      control: "boolean",
+      description: "Always-visible description under the label (`supportingText`).",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    layout: {
+      name: "Layout",
+      control: "radio",
+      options: ["stacked", "horizontal"],
+      labels: { stacked: "Stacked", horizontal: "Horizontal" },
+      description: "Stacked puts the label above an input. Horizontal puts the label left and a value right.",
+      table: { category: "Appearance", defaultValue: { summary: "stacked" } },
+    },
+  },
+  render: (args) => <LabelDemo {...args} />,
 };

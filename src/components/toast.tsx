@@ -3,6 +3,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import * as RadixToast from "@radix-ui/react-toast";
 import { X } from "lucide-react";
 import { Tooltip } from "./tooltip";
+import { Button } from "./button";
 import { Icon, type IconColor } from "./icon";
 import { WarningIconSolid } from "./icons/warning-icon-solid";
 import { ErrorIconSolid } from "./icons/error-icon-solid";
@@ -157,9 +158,19 @@ interface ToastProps
    *  see `dismissAllToasts`'s own comment for how removal is coordinated
    *  separately, after every toast has had time to animate out together). */
   forceClosed?: boolean;
+  /** Optional action button under the message — e.g. "Undo" or "View".
+   *  Clicking it calls `onAction` and then dismisses the toast (like any
+   *  other close). Nothing is rendered unless `actionLabel` is set. */
+  actionLabel?: string;
+  /** Called when the action button is clicked */
+  onAction?: () => void;
+  /** Longer description of the action for screen readers when the toast has
+   *  auto-dismissed from view (Radix requires one for actions). Defaults to
+   *  `actionLabel`. */
+  actionAltText?: string;
 }
 
-const Toast = React.forwardRef<React.ElementRef<typeof RadixToast.Root>, ToastProps>(
+const Toast =React.forwardRef<React.ElementRef<typeof RadixToast.Root>, ToastProps>(
   (
     {
       className,
@@ -168,6 +179,9 @@ const Toast = React.forwardRef<React.ElementRef<typeof RadixToast.Root>, ToastPr
       onDismiss,
       duration = 0,
       forceClosed = false,
+      actionLabel,
+      onAction,
+      actionAltText,
       children,
       ...props
     },
@@ -224,6 +238,10 @@ const Toast = React.forwardRef<React.ElementRef<typeof RadixToast.Root>, ToastPr
           "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-right-full",
           "data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none",
           "duration-200",
+          // Keyboard focus ring in the shared focus-blue (the browser's default
+          // dark outline was showing); `:focus-visible` only, so mouse and
+          // programmatic focus look the same as before.
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
           className
         )}
         {...props}
@@ -247,11 +265,21 @@ const Toast = React.forwardRef<React.ElementRef<typeof RadixToast.Root>, ToastPr
               {children}
             </RadixToast.Description>
           )}
+          {actionLabel && (
+            <RadixToast.Action asChild altText={actionAltText ?? actionLabel}>
+              <Button variant="outline" size="sm" className="mt-2" onClick={onAction}>
+                {actionLabel}
+              </Button>
+            </RadixToast.Action>
+          )}
         </div>
         {onDismiss && (
           <Tooltip content="Dismiss notification" placement="left" asLabel>
             <RadixToast.Close
-              className="flex-shrink-0 flex h-5 w-5 items-center justify-center rounded-lyra-xs text-lyra-fg-action transition-colors hover:text-lyra-fg-default"
+              // 24x24 hit area with the same 20px footprint and icon as
+              // before: the extra 2px on each side is cancelled by the
+              // negative margin, so layout and look don't change.
+              className="-m-0.5 flex-shrink-0 flex h-6 w-6 items-center justify-center rounded-lyra-xs text-lyra-fg-action transition-colors hover:text-lyra-fg-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
               aria-label="Dismiss"
             >
               <X className="h-4 w-4" strokeWidth={1.5} />

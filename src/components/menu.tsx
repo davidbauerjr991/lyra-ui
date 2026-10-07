@@ -41,6 +41,19 @@ interface MenuItemDef {
   disabled?: boolean;
   /** Optional leading icon (React node, e.g. a Lucide icon) */
   icon?: React.ReactNode;
+  /**
+   * Opt-in DOM `id` for this row's element, so something outside the list can
+   * point at it — e.g. a combobox input's `aria-activedescendant`. Unset by
+   * default (the row has no `id`, as before).
+   */
+  domId?: string;
+  /**
+   * Opt-in: draws this row with the same look as hover, without a real hover —
+   * for a combobox whose keyboard focus stays in its input while the arrow keys
+   * move through the options. Off by default. No effect on an `active` or
+   * `destructive` row.
+   */
+  highlighted?: boolean;
   /** Optional keyboard shortcut label displayed on the right */
   shortcut?: string;
   /** Optional custom element rendered on the right (overrides shortcut) */
@@ -365,6 +378,7 @@ const MenuItemRow: React.FC<MenuItemRowProps> = ({ item, itemRole = "menuitem" }
         itemRole={itemRole}
         disabled={item.disabled}
         data-menu-item-id={item.id}
+        id={item.domId}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         aria-haspopup={hasSubmenu ? "menu" : undefined}
@@ -376,7 +390,7 @@ const MenuItemRow: React.FC<MenuItemRowProps> = ({ item, itemRole = "menuitem" }
         rightElement={item.rightElement}
         active={item.active}
         destructive={isDestructive}
-        highlighted={hasSubmenu && submenuOpen}
+        highlighted={item.highlighted || (hasSubmenu && submenuOpen)}
         trailingIcon={
           hasSubmenu && (
             <ChevronRight

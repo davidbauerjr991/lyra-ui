@@ -17,6 +17,9 @@ export interface SpinnerProps {
   color?: SpinnerColor;
   /** Accessible label announced by screen readers */
   label?: string;
+  /** Also show `label` as visible text next to the spinner (default: false —
+   *  the label is announced to screen readers only). */
+  showLabel?: boolean;
   /** Additional className on the root element */
   className?: string;
 }
@@ -84,6 +87,21 @@ function ensureKeyframes() {
       0%   { transform: scale(0); opacity: 0.8; }
       100% { transform: scale(1); opacity: 0;   }
     }
+    @keyframes lyra-spinner-fade {
+      0%, 100% { opacity: 0.35; }
+      50%      { opacity: 1;    }
+    }
+    /* Reduced motion: no scaling or pulsing size. Bars stay full height and
+       fade slowly; a circle shows one small dot fading in and out. */
+    @media (prefers-reduced-motion: reduce) {
+      [data-lyra-spinner] [data-lyra-bar],
+      [data-lyra-spinner] [data-lyra-ripple] {
+        animation: lyra-spinner-fade 1.6s ease-in-out infinite !important;
+        transform: none !important;
+      }
+      [data-lyra-spinner] [data-lyra-ripple="0"] { inset: 25%; }
+      [data-lyra-spinner] [data-lyra-ripple="1"] { display: none; }
+    }
   `;
   document.head.appendChild(style);
 }
@@ -98,6 +116,7 @@ const BarSpinner: React.FC<{ size: SpinnerSize; color: SpinnerColor }> = ({ size
       {[0.1, 0.2, 0.3].map((delay, i) => (
         <span
           key={i}
+          data-lyra-bar=""
           className={spinnerBarVariants({ size })}
           style={{
             backgroundColor: bg,
@@ -119,6 +138,7 @@ const CircleSpinner: React.FC<{ size: SpinnerSize; color: SpinnerColor }> = ({ s
       {[0, 0.5].map((delay, i) => (
         <span
           key={i}
+          data-lyra-ripple={i}
           className="absolute inset-0 rounded-full"
           style={{
             backgroundColor: bg,
@@ -126,6 +146,18 @@ const CircleSpinner: React.FC<{ size: SpinnerSize; color: SpinnerColor }> = ({ s
           }}
         />
       ))}
+      {/* Constant center dot on the primary circle. The pulsing rings fade to
+          nothing, so on a light background the circle alone was too faint
+          (under 3:1 for most of each cycle); this keeps a solid mark in the
+          full-strength brand color. The inverse (white-on-dark) circle is
+          unchanged. */}
+      {color === "primary" && (
+        <span
+          data-lyra-dot
+          className="absolute inset-[30%] rounded-full"
+          style={{ backgroundColor: bg }}
+        />
+      )}
     </div>
   );
 };
@@ -139,6 +171,7 @@ const Spinner = React.forwardRef<HTMLDivElement, SpinnerProps>(
       size = "md",
       color = "primary",
       label = "Loading",
+      showLabel = false,
       className,
     },
     ref
@@ -146,13 +179,28 @@ const Spinner = React.forwardRef<HTMLDivElement, SpinnerProps>(
     <div
       ref={ref}
       role="status"
-      aria-label={label}
-      className={cn("inline-flex items-center justify-center", className)}
+      // With a visible label the text is the name, so don't announce it twice
+      aria-label={showLabel ? undefined : label}
+      data-lyra-spinner=""
+      className={cn("inline-flex items-center justify-center", showLabel && "gap-2", className)}
     >
-      {variant === "bar"
-        ? <BarSpinner size={size} color={color} />
-        : <CircleSpinner size={size} color={color} />
-      }
+      {showLabel ? (
+        <>
+          <span aria-hidden="true" className="inline-flex">
+            {variant === "bar"
+              ? <BarSpinner size={size} color={color} />
+              : <CircleSpinner size={size} color={color} />
+            }
+          </span>
+          <span className={cn("lyra-body-sm", color === "inverse" ? "text-lyra-fg-inverse" : "text-lyra-fg-secondary")}>
+            {label}
+          </span>
+        </>
+      ) : variant === "bar" ? (
+        <BarSpinner size={size} color={color} />
+      ) : (
+        <CircleSpinner size={size} color={color} />
+      )}
     </div>
   )
 );

@@ -1,147 +1,119 @@
-import React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
-import { Button } from "../button";
-import { Toast, ToastContainer, useToast } from "../toast";
+import { Toast, ToastContainer } from "../toast";
 import type { ToastVariant } from "../toast";
+import { TOAST_COPY, TOAST_VARIANTS } from "./ToastrNotification.shared";
 
-const meta: Meta = {
+const meta: Meta<typeof Toast> = {
   title: "Headless Primitives/Toastr Notification",
+  component: Toast,
   tags: ["autodocs"],
-  parameters: {
-    layout: "padded",
+  parameters: { layout: "padded" },
+  // Real Toast props stay on the Docs page; Default's own
+  // `parameters.controls.include` below curates the Controls panel.
+  argTypes: {
+    variant: { control: "radio", options: TOAST_VARIANTS },
+    title: { control: "text" },
+    duration: { control: "select", options: [0, 3000, 5000, 10000] },
   },
 };
 
 export default meta;
-type Story = StoryObj;
 
-/* ══════════════════════════════════════════
-   Toasts
-   ══════════════════════════════════════════ */
+/* All four variants side by side, and a live demo that fires toasts from
+   buttons, have their own pages under "Toastr Notification/Variants" — see
+   ToastrNotification.variants.stories.tsx. */
 
-/* Each static example below needs a `ToastContainer` ancestor even though
-   it's just showing one toast sitting in the page flow, not floating —
-   `Toast` is now built on Radix's real Toast primitive, which portals its
-   actual rendered content into whatever `Toast.Viewport` is registered on
-   the nearest `Toast.Provider` (see `toast.tsx`'s own doc comment); with no
-   `ToastContainer` anywhere in the tree at all, `Toast` renders nothing.
-   `className="static inset-auto"` overrides `ToastContainer`'s own
-   `fixed bottom-4 right-4` positioning back to normal document flow, since
-   these stories are documentation examples, not the real floating widget. */
+/* ── Default — consolidated Toast — Warning, Error, Info and Success into one
+   controls-driven story. `body` is a story-only arg for the toast's message
+   (its children). `Toast` is built on Radix's Toast primitive, which only
+   renders inside a `ToastContainer`, so the demo wraps it in one;
+   `static inset-auto` puts that container back in the page flow instead of
+   floating bottom-right. The demo remounts (via `key`) whenever a control
+   changes, which also replays the auto-dismiss timer. ── */
 
-export const ToastAll: Story = {
-  name: "Toast — All Variants",
-  render: () => (
-    <ToastContainer className="static inset-auto w-[400px]">
-      <Toast variant="warning" title="Warning" onDismiss={() => {}}>
-        Advise users of conditions that might cause issues.
-      </Toast>
-      <Toast variant="error" title="Error" onDismiss={() => {}}>
-        A critical action has failed and needs attention.
-      </Toast>
-      <Toast variant="info" title="Info" onDismiss={() => {}}>
-        Important background information or system updates.
-      </Toast>
-      <Toast variant="success" title="Success" onDismiss={() => {}}>
-        Action completed successfully.
-      </Toast>
-    </ToastContainer>
-  ),
-};
+interface ToastDemoProps {
+  variant?: ToastVariant;
+  title?: string;
+  body?: string;
+  duration?: number;
+  withAction?: boolean;
+  actionLabel?: string;
+}
 
-export const ToastWarning: Story = {
-  name: "Toast — Warning",
-  render: () => (
-    <ToastContainer className="static inset-auto w-[400px]">
-      <Toast variant="warning" title="Warning" onDismiss={() => {}}>
-        Advise users of conditions that might cause issues.
-      </Toast>
-    </ToastContainer>
-  ),
-};
-
-export const ToastError: Story = {
-  name: "Toast — Error",
-  render: () => (
-    <ToastContainer className="static inset-auto w-[400px]">
-      <Toast variant="error" title="Error" onDismiss={() => {}}>
-        A critical action has failed and needs attention.
-      </Toast>
-    </ToastContainer>
-  ),
-};
-
-export const ToastInfo: Story = {
-  name: "Toast — Info",
-  render: () => (
-    <ToastContainer className="static inset-auto w-[400px]">
-      <Toast variant="info" title="Info" onDismiss={() => {}}>
-        Important background information or system updates.
-      </Toast>
-    </ToastContainer>
-  ),
-};
-
-export const ToastSuccess: Story = {
-  name: "Toast — Success",
-  render: () => (
-    <ToastContainer className="static inset-auto w-[400px]">
-      <Toast variant="success" title="Success" onDismiss={() => {}}>
-        Action completed successfully.
-      </Toast>
-    </ToastContainer>
-  ),
-};
-
-const ToastPlayground = () => {
-  const { toasts, addToast, dismissToast } = useToast();
-
-  const fire = (variant: ToastVariant) => {
-    const messages: Record<ToastVariant, { title: string; message: string }> = {
-      warning: { title: "Warning", message: "This action may have unintended consequences." },
-      error: { title: "Error", message: "Something went wrong. Please try again." },
-      info: { title: "Info", message: "A new version is available for download." },
-      success: { title: "Success", message: "Your changes have been saved." },
-    };
-    addToast({ variant, ...messages[variant], duration: 5000 });
-  };
-
+function ToastDemo({ variant = "info", title = "Info", body = TOAST_COPY.info.message, duration = 0, withAction = false, actionLabel = "Undo" }: ToastDemoProps) {
   return (
-    <div className="flex gap-2">
-      <Button variant="outline" size="sm" onClick={() => fire("warning")}>
-        Warning Toast
-      </Button>
-      <Button variant="outline" size="sm" onClick={() => fire("error")}>
-        Error Toast
-      </Button>
-      <Button variant="outline" size="sm" onClick={() => fire("info")}>
-        Info Toast
-      </Button>
-      <Button variant="outline" size="sm" onClick={() => fire("success")}>
-        Success Toast
-      </Button>
-
-      <ToastContainer>
-        {toasts.map((t) => (
-          <Toast
-            key={t.id}
-            variant={t.variant}
-            title={t.title}
-            duration={t.duration}
-            onDismiss={() => dismissToast(t.id)}
-          >
-            {t.message}
-          </Toast>
-        ))}
-      </ToastContainer>
-    </div>
+    <ToastContainer className="static inset-auto w-[400px]">
+      <Toast variant={variant} title={title || undefined} duration={duration} onDismiss={() => {}} actionLabel={withAction ? actionLabel || "Undo" : undefined} onAction={() => {}}>
+        {body}
+      </Toast>
+    </ToastContainer>
   );
-};
+}
 
-export const ToastInteractive: Story = {
-  name: "Toast — Interactive Demo",
-  parameters: {
-    layout: "fullscreen",
+type ToastDemoStory = StoryObj<ToastDemoProps>;
+
+export const Default: ToastDemoStory = {
+  render: (args) => <ToastDemo key={JSON.stringify(args)} {...args} />,
+  args: {
+    variant: "info",
+    title: "Info",
+    body: TOAST_COPY.info.message,
+    duration: 0,
+    withAction: false,
+    actionLabel: "Undo",
   },
-  render: () => <ToastPlayground />,
+  parameters: {
+    controls: {
+      // Storybook matches `include` against each control's display `name`
+      // (falling back to its key), so list the names; keys are kept too.
+      include: [
+        "Variant", "Auto-dismiss",
+        "Title", "Message", "With action", "Action label",
+        "variant", "duration",
+        "title", "body", "withAction", "actionLabel",
+      ],
+      sort: "none",
+    },
+  },
+  argTypes: {
+    variant: {
+      name: "Variant",
+      control: "radio",
+      options: TOAST_VARIANTS,
+      description: "Sets the color and icon: info, success, warning or error.",
+      table: { category: "Behavior", defaultValue: { summary: "info" } },
+    },
+    duration: {
+      name: "Auto-dismiss",
+      control: "select",
+      options: [0, 3000, 5000, 10000],
+      description: "Milliseconds before the toast closes by itself (`duration`). 0 keeps it open until dismissed. When it closes, change any control to show it again.",
+      table: { category: "Behavior", defaultValue: { summary: "0" } },
+    },
+    title: {
+      name: "Title",
+      control: "text",
+      description: "Bold text at the top. Clear it for a toast with only a message.",
+      table: { category: "Content", defaultValue: { summary: "Info" } },
+    },
+    withAction: {
+      name: "With action",
+      control: "boolean",
+      description: "Adds an action button under the message (`actionLabel`, `onAction`). Clicking it runs `onAction` and dismisses the toast.",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    actionLabel: {
+      name: "Action label",
+      control: "text",
+      description: "Text on the action button, such as Undo or View (`actionLabel`). Clear it to fall back to \"Undo\".",
+      if: { arg: "withAction", truthy: true },
+      table: { category: "Content", defaultValue: { summary: "Undo" } },
+    },
+    body: {
+      name: "Message",
+      control: "text",
+      description: "The toast's body text (its children).",
+      table: { category: "Content" },
+    },
+  },
 };

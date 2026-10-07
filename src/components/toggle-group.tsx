@@ -1,5 +1,8 @@
 import * as React from "react";
 import { cn } from "../lib/utils";
+import { Tooltip } from "./tooltip";
+import { KebabMenuButton } from "./kebab-menu-button";
+import type { MenuEntry } from "./menu";
 
 /* ── Types ── */
 
@@ -9,6 +12,22 @@ export interface ToggleGroupItem {
   value: string;
   label: React.ReactNode;
   disabled?: boolean;
+  /** Accessible name for the item. Needed when `label` is only an icon; sets `aria-label` on the item's button. */
+  ariaLabel?: string;
+  /**
+   * Opt-in: adds a kebab (⋮) button inside this item that opens these menu
+   * entries — same pattern as `Tab`'s `menuItems`. It is a real button next to
+   * the item's own radio button (never nested inside it), reachable with Tab
+   * right after the item, with a Tooltip showing `menuAriaLabel` on hover and
+   * focus. Clicking it opens the menu without selecting the item.
+   */
+  menuItems?: MenuEntry[];
+  /**
+   * Opt-in: a tooltip for this item, shown on hover and on keyboard focus.
+   * Meant for icon-only items (pair it with `ariaLabel`), the same way an
+   * icon-only `Tab` shows its name. Unset (default) adds no tooltip.
+   */
+  tooltip?: React.ReactNode;
 }
 
 export interface ToggleGroupProps {
@@ -43,8 +62,110 @@ export interface ToggleGroupProps {
    * standing in for a `fullWidth` `TabList`).
    */
   fullWidth?: boolean;
+  /**
+   * Opt-in: when a label is cut off with an ellipsis (only possible with
+   * `fullWidth` or `itemMaxWidth`), hovering or focusing that item shows its full label in a
+   * tooltip. Default `false` keeps today's no-tooltip behavior.
+   */
+  showTruncationTooltip?: boolean;
+  /** Accessible name and tooltip for each item's `menuItems` kebab. Default "More options". */
+  menuAriaLabel?: string;
+  /**
+   * Single mode only. When `true`, clicking (or pressing Enter/Space on) the
+   * already-selected item clears the selection and calls `onValueChange("")`.
+   * Default `false`: the selected item stays selected, like a radio group
+   * (this is what every lyra-ui and agent-next-gen-v3 caller already wanted —
+   * they all ignored the empty value).
+   */
+  allowDeselect?: boolean;
+  /**
+   * Opt-in: caps every item's width (a number is px, a string is any CSS
+   * length). A label longer than that is cut off with an ellipsis; add
+   * `showTruncationTooltip` to show the full label on hover and focus. Works
+   * with or without `fullWidth`. Unset (default) keeps today's sizing.
+   */
+  itemMaxWidth?: number | string;
+  /** Accessible name for the group (`aria-label`), e.g. "View". */
+  ariaLabel?: string;
+  /** Id of a visible element that names the group (`aria-labelledby`). */
+  ariaLabelledBy?: string;
   /** Additional className on the root */
   className?: string;
+}
+
+/* Only an item with a menu gets a wrapper (to anchor its kebab); every other
+   item renders exactly as before, with no extra element. */
+function ItemWrap({ hasMenu, fullWidth, children }: { hasMenu: boolean; fullWidth: boolean; children: React.ReactNode }) {
+  if (!hasMenu) return <>{children}</>;
+  return <div className={cn("relative", fullWidth ? "flex flex-1 min-w-0" : "inline-flex")}>{children}</div>;
+}
+
+/* An item's kebab: a real button (sibling of the radio button, so no nested
+   interactive controls) pinned inside the item's right edge. The tooltip is
+   suppressed while the menu is open. */
+function ItemMenu({ items, label, className }: { items: MenuEntry[]; label: string; className?: string }) {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <Tooltip content={label} placement="top" disabled={open}>
+      <KebabMenuButton
+        items={items}
+        ariaLabel={label}
+        open={open}
+        onOpenChange={setOpen}
+        className={cn("absolute right-1.5 top-1/2 -translate-y-1/2", className)}
+      />
+    </Tooltip>
+  );
+}
+
+/* Wraps one item's button in a tooltip that only opens while its label is
+   actually truncated. `children` receives the ref to put on the truncating
+   label element so it can be measured. */
+function TruncationTooltip({
+  content,
+  enabled,
+  alwaysContent,
+  children,
+}: {
+  content: React.ReactNode;
+  enabled: boolean;
+  /** An item's own `tooltip`: shown whenever the item is hovered or focused. */
+  alwaysContent?: React.ReactNode;
+  children: (labelRef: React.RefObject<HTMLSpanElement | null>) => React.ReactElement;
+}) {
+  const labelRef = React.useRef<HTMLSpanElement>(null);
+  const [truncated, setTruncated] = React.useState(false);
+  React.useLayoutEffect(() => {
+    const el = labelRef.current;
+    if (!enabled || !el) return;
+    // Opt-in: a label that truncates its own text (e.g. text beside a badge)
+    // marks that element `data-truncatable` so the tooltip still appears.
+    const recompute = () =>
+      setTruncated(
+        el.scrollWidth > el.clientWidth + 1 ||
+          Array.from(el.querySelectorAll<HTMLElement>("[data-truncatable]")).some(
+            (n) => n.scrollWidth > n.clientWidth + 1,
+          ),
+      );
+    recompute();
+    const ro = new ResizeObserver(recompute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [enabled, content]);
+  const button = children(labelRef);
+  if (alwaysContent != null) {
+    return (
+      <Tooltip content={alwaysContent} placement="top">
+        {button}
+      </Tooltip>
+    );
+  }
+  if (!enabled) return button;
+  return (
+    <Tooltip content={content} placement="top" disabled={!truncated}>
+      {button}
+    </Tooltip>
+  );
 }
 
 /* ── Component ── */
@@ -62,10 +183,32 @@ const ToggleGroup = React.forwardRef<HTMLDivElement, ToggleGroupProps>(
       onValuesChange,
       disabled,
       fullWidth,
+      showTruncationTooltip = false,
+      menuAriaLabel = "More options",
+      allowDeselect = false,
+      itemMaxWidth,
+      ariaLabel,
+      ariaLabelledBy,
       className,
     },
     ref
   ) => {
+    const rootRef = React.useRef<HTMLDivElement | null>(null);
+    const setRootRef = React.useCallback(
+      (node: HTMLDivElement | null) => {
+        rootRef.current = node;
+        if (typeof ref === "function") ref(node);
+        else if (ref) ref.current = node;
+      },
+      [ref]
+    );
+    const isSingle = type !== "multiple";
+    const truncates = !!fullWidth || itemMaxWidth != null;
+    const maxWidthStyle =
+      itemMaxWidth != null
+        ? { maxWidth: typeof itemMaxWidth === "number" ? `${itemMaxWidth}px` : itemMaxWidth }
+        : undefined;
+
     /* ── Uncontrolled internal state ── */
     const [internalValue, setInternalValue] = React.useState<string>(
       defaultValue ?? ""
@@ -93,17 +236,75 @@ const ToggleGroup = React.forwardRef<HTMLDivElement, ToggleGroupProps>(
         if (!isControlledMulti) setInternalValues(next);
         onValuesChange?.(next);
       } else {
-        // Single: clicking selected item deselects it
+        // Single: re-selecting the selected item does nothing (radio
+        // behavior), unless `allowDeselect` opts back in to clearing it.
+        if (currentValue === itemValue && !allowDeselect) return;
         const next = currentValue === itemValue ? "" : itemValue;
         if (!isControlledSingle) setInternalValue(next);
         onValueChange?.(next);
       }
     };
 
+    /* ── Single mode keyboard: one Tab stop + arrow keys (WAI-ARIA radio group) ──
+       The Tab stop is the selected item, or the first enabled item when
+       nothing (enabled) is selected. Arrow keys move focus to the next/previous
+       enabled item, wrapping, and select it (selection follows focus, as in a
+       native radio group); Home/End jump to the first/last. Keyboard only:
+       mouse behavior and every class are unchanged. */
+    const enabledValues = items
+      .filter((item) => !(disabled || item.disabled))
+      .map((item) => item.value);
+    const tabStopValue =
+      isSingle && currentValue && enabledValues.includes(currentValue)
+        ? currentValue
+        : enabledValues[0];
+
+    const handleItemKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, itemValue: string) => {
+      if (!isSingle || e.altKey || e.ctrlKey || e.metaKey) return;
+      const root = rootRef.current;
+      if (!root || enabledValues.length === 0) return;
+      const rtl = getComputedStyle(root).direction === "rtl";
+      const idx = enabledValues.indexOf(itemValue);
+      const n = enabledValues.length;
+      let nextIdx: number;
+      switch (e.key) {
+        case "ArrowDown":
+          nextIdx = (idx + 1) % n;
+          break;
+        case "ArrowUp":
+          nextIdx = (idx - 1 + n) % n;
+          break;
+        case "ArrowRight":
+          nextIdx = rtl ? (idx - 1 + n) % n : (idx + 1) % n;
+          break;
+        case "ArrowLeft":
+          nextIdx = rtl ? (idx + 1) % n : (idx - 1 + n) % n;
+          break;
+        case "Home":
+          nextIdx = 0;
+          break;
+        case "End":
+          nextIdx = n - 1;
+          break;
+        default:
+          return;
+      }
+      e.preventDefault();
+      const nextValue = enabledValues[nextIdx];
+      const target = Array.from(
+        root.querySelectorAll<HTMLButtonElement>("[data-lyra-toggle-item]")
+      ).find((el) => el.dataset.value === nextValue);
+      target?.focus();
+      if (nextValue !== currentValue) handleClick(nextValue);
+    };
+
     return (
       <div
-        ref={ref}
-        role="group"
+        ref={setRootRef}
+        role={isSingle ? "radiogroup" : "group"}
+        aria-label={ariaLabel}
+        aria-labelledby={ariaLabelledBy}
+        aria-disabled={disabled || undefined}
         className={cn(
           "items-center rounded-lyra-md border border-lyra-border-subtle bg-lyra-bg-surface-base p-0.5 gap-0",
           fullWidth ? "flex w-full" : "inline-flex",
@@ -130,12 +331,24 @@ const ToggleGroup = React.forwardRef<HTMLDivElement, ToggleGroupProps>(
                   )}
                 />
               )}
+              <ItemWrap hasMenu={!!item.menuItems} fullWidth={!!fullWidth}>
+              <TruncationTooltip content={item.label} enabled={showTruncationTooltip && truncates} alwaysContent={item.tooltip}>
+              {(labelRef) => (
               <button
                 type="button"
-                role="radio"
-                aria-checked={selected}
+                // Single: a radio in a radiogroup (one Tab stop, arrow keys).
+                // Multiple: a toggle button (`aria-pressed`), each its own Tab stop.
+                role={isSingle ? "radio" : undefined}
+                aria-checked={isSingle ? selected : undefined}
+                aria-pressed={isSingle ? undefined : selected}
+                aria-label={item.ariaLabel}
+                tabIndex={isSingle ? (item.value === tabStopValue ? 0 : -1) : undefined}
+                data-lyra-toggle-item=""
+                data-value={item.value}
                 disabled={isDisabled}
+                style={maxWidthStyle}
                 onClick={() => !isDisabled && handleClick(item.value)}
+                onKeyDown={(e) => handleItemKeyDown(e, item.value)}
                 className={cn(
                   "relative px-4 py-1.5 lyra-body-md rounded-lyra-sm transition-colors select-none",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-1",
@@ -149,6 +362,11 @@ const ToggleGroup = React.forwardRef<HTMLDivElement, ToggleGroupProps>(
                   // ellipsis instead of wrapping onto a second line and
                   // growing every item's height to match.
                   fullWidth && "flex-1 min-w-0 flex items-center justify-center",
+                  // `itemMaxWidth` without `fullWidth`: a flex box so the
+                  // label span below can truncate inside the capped width.
+                  !fullWidth && itemMaxWidth != null && "min-w-0 inline-flex items-center justify-center",
+                  // Room on the right for the kebab.
+                  item.menuItems && "pr-9",
                   /* Off — border always present but transparent, so hover/press don't shift layout */
                   !selected && !isDisabled && [
                     "text-lyra-fg-default border border-transparent",
@@ -178,8 +396,18 @@ const ToggleGroup = React.forwardRef<HTMLDivElement, ToggleGroupProps>(
                     wraps it in an extra span when there's actually a fixed-
                     width flex slot for it to truncate within; the default
                     inline-content sizing is untouched otherwise. */}
-                {fullWidth ? <span className="min-w-0 truncate">{item.label}</span> : item.label}
+                {truncates ? <span ref={labelRef} className="min-w-0 truncate">{item.label}</span> : item.label}
               </button>
+              )}
+              </TruncationTooltip>
+              {item.menuItems && (
+                <ItemMenu
+                  items={item.menuItems}
+                  label={menuAriaLabel}
+                  className={selected && !isDisabled ? "text-lyra-fg-active-strong" : undefined}
+                />
+              )}
+              </ItemWrap>
             </React.Fragment>
           );
         })}

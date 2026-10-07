@@ -1,12 +1,16 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
+import type { CheckedState } from "@radix-ui/react-checkbox";
 import { Checkbox } from "../checkbox";
+import { SAMPLE_LABEL, SECONDARY_TEXT, LONG_TEXT } from "./Checkbox.shared";
 
 const meta: Meta<typeof Checkbox> = {
   title: "Headless Primitives/Checkbox",
   component: Checkbox,
   tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
+  // Real Checkbox props stay on the Docs page; Default's own
+  // `parameters.controls.include` below curates the Controls panel.
   argTypes: {
     checked: {
       control: "select",
@@ -17,224 +21,129 @@ const meta: Meta<typeof Checkbox> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof Checkbox>;
 
-/* ── Individual states ── */
+/* Every state side by side, the select-all pattern and secondary text each
+   have their own page under "Checkbox/Variants" — see
+   Checkbox.variants.stories.tsx. */
 
-export const Default: Story = {
-  render: () => (
-    <label className="flex items-center gap-2 cursor-pointer">
-      <Checkbox />
-      <span className="lyra-body-md text-lyra-fg-default">Checkbox label</span>
-    </label>
-  ),
-};
+/* ── Default — consolidated Default, Checked, Indeterminate, Required,
+   Readonly, Disabled, Disabled Checked and Disabled Indeterminate into one
+   controls-driven story (previously eight separate stories). Fully
+   controlled, so clicking the checkbox really toggles it (unless it's
+   disabled or read-only). ── */
 
-export const Checked: Story = {
-  render: () => (
-    <label className="flex items-center gap-2 cursor-pointer">
-      <Checkbox defaultChecked />
-      <span className="lyra-body-md text-lyra-fg-default">Checkbox label</span>
-    </label>
-  ),
-};
+type CheckboxValue = "unchecked" | "checked" | "indeterminate";
 
-export const Indeterminate: Story = {
-  render: () => (
-    <label className="flex items-center gap-2 cursor-pointer">
-      <Checkbox checked="indeterminate" />
-      <span className="lyra-body-md text-lyra-fg-default">Checkbox label</span>
-    </label>
-  ),
-};
+interface CheckboxDemoProps {
+  value?: CheckboxValue;
+  disabled?: boolean;
+  readonly?: boolean;
+  required?: boolean;
+  label?: string;
+  secondaryText?: boolean;
+  longText?: boolean;
+}
 
-export const Required: Story = {
-  name: "Required",
-  render: () => (
-    <div className="flex flex-col gap-3">
-      <Checkbox label="Accept terms and conditions" required />
-      <Checkbox label="Subscribe to newsletter" required checked />
-    </div>
-  ),
-};
+const toCheckedState = (value: CheckboxValue): CheckedState =>
+  value === "indeterminate" ? "indeterminate" : value === "checked";
 
-export const Readonly: Story = {
-  name: "Readonly",
-  render: () => (
-    <div className="flex flex-col gap-3">
-      <Checkbox
-        label="Unchecked (read-only)"
-        readonly
-        labelHelpText="This value cannot be changed."
-      />
-      <Checkbox
-        label="Checked (read-only)"
-        readonly
-        checked
-        labelHelpText="This value cannot be changed."
-      />
-      <Checkbox
-        label="Indeterminate (read-only)"
-        readonly
-        checked="indeterminate"
-      />
-    </div>
-  ),
-};
+function CheckboxDemo({
+  value = "unchecked",
+  disabled = false,
+  readonly = false,
+  required = false,
+  label = SAMPLE_LABEL,
+  secondaryText = false,
+  longText = false,
+}: CheckboxDemoProps) {
+  const [checked, setChecked] = useState<CheckedState>(toCheckedState(value));
 
-export const Disabled: Story = {
-  render: () => (
-    <label className="flex items-center gap-2 cursor-not-allowed">
-      <Checkbox disabled />
-      <span className="lyra-body-md text-lyra-fg-disabled">Checkbox label</span>
-    </label>
-  ),
-};
+  return (
+    <Checkbox
+      checked={checked}
+      onCheckedChange={setChecked}
+      disabled={disabled}
+      readonly={readonly}
+      required={required}
+      label={longText ? LONG_TEXT : label || undefined}
+      secondaryText={secondaryText ? SECONDARY_TEXT : undefined}
+      aria-label={longText || label ? undefined : "Checkbox"}
+    />
+  );
+}
 
-export const DisabledChecked: Story = {
-  render: () => (
-    <label className="flex items-center gap-2 cursor-not-allowed">
-      <Checkbox disabled checked />
-      <span className="lyra-body-md text-lyra-fg-disabled">Checkbox label</span>
-    </label>
-  ),
-};
+type CheckboxDemoStory = StoryObj<CheckboxDemoProps>;
 
-export const DisabledIndeterminate: Story = {
-  render: () => (
-    <label className="flex items-center gap-2 cursor-not-allowed">
-      <Checkbox disabled checked="indeterminate" />
-      <span className="lyra-body-md text-lyra-fg-disabled">Checkbox label</span>
-    </label>
-  ),
-};
-
-/* ── State Matrix (matches Figma) ── */
-
-export const StateMatrix: Story = {
-  name: "State Matrix",
-  render: () => (
-    <div className="space-y-8">
-      <div>
-        <h3 className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-4">
-          All States (hover and click to see interactive states)
-        </h3>
-        <div className="grid grid-cols-4 gap-x-8 gap-y-4 items-center">
-          {/* Headers */}
-          <span className="lyra-body-sm text-lyra-fg-secondary">State</span>
-          <span className="lyra-body-sm text-lyra-fg-secondary">Unchecked</span>
-          <span className="lyra-body-sm text-lyra-fg-secondary">Checked</span>
-          <span className="lyra-body-sm text-lyra-fg-secondary">Indeterminate</span>
-
-          {/* Default */}
-          <span className="lyra-body-sm text-lyra-fg-secondary">Default</span>
-          <div className="flex items-center gap-2">
-            <Checkbox id="d-unc" />
-            <label htmlFor="d-unc" className="lyra-body-md text-lyra-fg-default">Checkbox label</label>
-          </div>
-          <div className="flex items-center gap-2">
-            <Checkbox id="d-chk" defaultChecked />
-            <label htmlFor="d-chk" className="lyra-body-md text-lyra-fg-default">Checkbox label</label>
-          </div>
-          <div className="flex items-center gap-2">
-            <Checkbox id="d-ind" checked="indeterminate" />
-            <label htmlFor="d-ind" className="lyra-body-md text-lyra-fg-default">Checkbox label</label>
-          </div>
-
-          {/* Disabled */}
-          <span className="lyra-body-sm text-lyra-fg-secondary">Disabled</span>
-          <div className="flex items-center gap-2">
-            <Checkbox id="dis-unc" disabled />
-            <label htmlFor="dis-unc" className="lyra-body-md text-lyra-fg-disabled">Checkbox label</label>
-          </div>
-          <div className="flex items-center gap-2">
-            <Checkbox id="dis-chk" disabled checked />
-            <label htmlFor="dis-chk" className="lyra-body-md text-lyra-fg-disabled">Checkbox label</label>
-          </div>
-          <div className="flex items-center gap-2">
-            <Checkbox id="dis-ind" disabled checked="indeterminate" />
-            <label htmlFor="dis-ind" className="lyra-body-md text-lyra-fg-disabled">Checkbox label</label>
-          </div>
-        </div>
-      </div>
-    </div>
-  ),
-};
-
-/* ── Interactive Demo ── */
-
-export const Interactive: Story = {
-  name: "Interactive",
-  render: () => {
-    const [items, setItems] = useState([
-      { id: "a", label: "Option A", checked: false },
-      { id: "b", label: "Option B", checked: true },
-      { id: "c", label: "Option C", checked: false },
-    ]);
-
-    const allChecked = items.every((i) => i.checked);
-    const someChecked = !allChecked && items.some((i) => i.checked);
-
-    return (
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="select-all"
-            checked={allChecked ? true : someChecked ? "indeterminate" : false}
-            onCheckedChange={(checked) =>
-              setItems((prev) => prev.map((i) => ({ ...i, checked: !!checked })))
-            }
-          />
-          <label htmlFor="select-all" className="lyra-body-md-emphasis text-lyra-fg-default">
-            Select all
-          </label>
-        </div>
-        <div className="ml-6 space-y-2">
-          {items.map((item) => (
-            <div key={item.id} className="flex items-center gap-2">
-              <Checkbox
-                id={item.id}
-                checked={item.checked}
-                onCheckedChange={(checked) =>
-                  setItems((prev) =>
-                    prev.map((i) =>
-                      i.id === item.id ? { ...i, checked: !!checked } : i
-                    )
-                  )
-                }
-              />
-              <label htmlFor={item.id} className="lyra-body-md text-lyra-fg-default">
-                {item.label}
-              </label>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
+export const Default: CheckboxDemoStory = {
+  args: {
+    value: "unchecked",
+    disabled: false,
+    readonly: false,
+    required: false,
+    label: SAMPLE_LABEL,
+    secondaryText: false,
+    longText: false,
   },
-};
-
-// Group stories moved to Custom Primitives/Checkbox Group
-
-/* ── With Secondary Text ── */
-
-export const WithSecondaryText: Story = {
-  name: "With Secondary Text",
-  render: () => (
-    <div className="space-y-4">
-      <div className="flex items-start gap-2">
-        <Checkbox id="sec-1" className="mt-0.5" />
-        <label htmlFor="sec-1">
-          <span className="lyra-body-md text-lyra-fg-default block">Checkbox label</span>
-        </label>
-      </div>
-      <div className="flex items-start gap-2">
-        <Checkbox id="sec-2" className="mt-0.5" />
-        <label htmlFor="sec-2">
-          <span className="lyra-body-md text-lyra-fg-default block">Checkbox label</span>
-          <span className="lyra-body-sm text-lyra-fg-secondary block">Secondary Text</span>
-        </label>
-      </div>
-    </div>
+  parameters: {
+    controls: {
+      // Storybook matches `include` against each control's display `name`
+      // (falling back to its key), so list the names; keys are kept too.
+      include: [
+        "Value", "Disabled", "Read-only", "Required", "Label", "Secondary text", "Long text",
+        "value", "disabled", "readonly", "required", "label", "secondaryText", "longText",
+      ],
+      sort: "none",
+    },
+  },
+  argTypes: {
+    value: {
+      name: "Value",
+      control: "radio",
+      options: ["unchecked", "checked", "indeterminate"],
+      labels: { unchecked: "Unchecked", checked: "Checked", indeterminate: "Indeterminate" },
+      description: "Starting value. Clicking the checkbox toggles it.",
+      table: { category: "Behavior", defaultValue: { summary: "unchecked" } },
+    },
+    disabled: {
+      name: "Disabled",
+      control: "boolean",
+      description: "Blocks interaction and dims the checkbox and label.",
+      table: { category: "Behavior", defaultValue: { summary: "false" } },
+    },
+    readonly: {
+      name: "Read-only",
+      control: "boolean",
+      description: "Keeps the current value but blocks changes, muted rather than dimmed.",
+      table: { category: "Behavior", defaultValue: { summary: "false" } },
+    },
+    required: {
+      name: "Required",
+      control: "boolean",
+      description: "Adds an asterisk to the label. Needs a label.",
+      table: { category: "Behavior", defaultValue: { summary: "false" } },
+    },
+    label: {
+      name: "Label",
+      control: "text",
+      description: "Text beside the checkbox. Empty shows the checkbox alone.",
+      table: { category: "Content", defaultValue: { summary: SAMPLE_LABEL } },
+    },
+    longText: {
+      name: "Long text",
+      control: "boolean",
+      description: "Replaces the label with a long sentence, to show it wrapping.",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    secondaryText: {
+      name: "Secondary text",
+      control: "boolean",
+      description: "Supporting line under the label. Needs a label.",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+  },
+  render: (args) => (
+    // `key` remounts the demo when a control changes — `useState`'s initial
+    // value only applies on first mount.
+    <CheckboxDemo key={JSON.stringify(args)} {...args} />
   ),
 };

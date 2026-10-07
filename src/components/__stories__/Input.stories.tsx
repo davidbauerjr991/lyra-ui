@@ -1,422 +1,425 @@
-import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
-import { Pencil, Settings, Copy } from "lucide-react";
+import type { Meta, StoryObj } from "@storybook/react";
+import { Search, Mail, X } from "lucide-react";
 import { Input } from "../input";
 import { Label } from "../label";
-import { ActionIconButton } from "../actions";
-import { Button } from "../button";
 import { Separator } from "../separator";
-import { Switch } from "../switch";
+import { Tooltip } from "../tooltip";
 import { ErrorIcon } from "../icons/error-icon";
 import { cn } from "../../lib/utils";
+import { HELP_TEXT, PlaceholderButtons, type PlaceholderButtonSize, type PlaceholderButtonVariant } from "./Input.shared";
 
 const meta: Meta<typeof Input> = {
   title: "Custom Primitives/Input",
   component: Input,
   tags: ["autodocs"],
-  parameters: {
-    layout: "padded",
-    backgrounds: { default: "lyra-shell" },
-  },
+  parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
+  // Real Input props stay on the Docs page; Default's own
+  // `parameters.controls.include` below curates the Controls panel.
   argTypes: {
+    label: { control: "text" },
+    placeholder: { control: "text" },
+    disabled: { control: "boolean" },
     required: { control: "boolean" },
-    /** "sm" (32px) is for dense contexts — a table toolbar's quick search/
-     *  filter row is the motivating case — vs. the "md" (36px) default
-     *  every other field in the library uses. */
-    size: { control: "select", options: ["sm", "md"], name: "Size" },
-    /* Story-only toggles below — not real `Input` props. Same pattern as
-       Label.stories.tsx/ContainerHeader.stories.tsx's own Default: lets this
-       story act as an interactive playground across every documented
-       layout (Label Only, Label With Buttons, Horizontal), not just the
-       plain input's own states. Consumed and stripped out of `args` inside
-       Default's `render`, below, before the rest are spread onto `Input`. */
-    showLabelOnly:   { control: "boolean", name: "Label only" },
-    showWithButtons: { control: "boolean", name: "With buttons" },
-    /* Only takes effect when both "Label only" and "With buttons" are
-       checked — that's the one layout where the buttons sit inline next to
-       an actual value (the "Read-only value" text) for "left"/"right" to
-       mean anything; the buttons-only layout (no label only) has no value
-       to position around. */
-    buttonsPosition: {
-      control: "select",
-      options: ["left", "right", "both"],
-      name: "Buttons position",
-    },
-    /* Color/style, independent of shape (below) — every real `Button`
-       variant (button.tsx) except its own "icon" one: that's just `ghost`
-       with an extra hover tweak, redundant here now that "Icon buttons"
-       below already controls icon-vs-text shape on its own. Works on icon
-       *or* text buttons, e.g. "default" + "Icon buttons" on gives a
-       primary-colored icon button, not just the one neutral look
-       `ActionIconButton` was previously the only way to reach. */
-    buttonVariant: {
-      control: "select",
-      options: ["default", "destructive", "warning", "success", "outline", "ghost"],
-      name: "Button type",
-    },
-    /* Shape: on renders icon-only buttons (Pencil/Settings), off renders
-       text buttons labeled "Action" (matching ContainerHeader.stories.tsx's
-       own "With buttons" toggle). Independent of `buttonVariant` above —
-       any color works with either shape. */
-    buttonIconOnly: { control: "boolean", name: "Icon buttons" },
-    /* Maps onto `Button`'s icon-size scale (icon-md/icon-lg/icon-xl/icon-2xl
-       — button.tsx) when `buttonIconOnly` is on, or its matching non-icon
-       size names otherwise. */
-    buttonSize: {
-      control: "select",
-      options: ["sm", "default", "lg", "xl"],
-      name: "Button size",
-    },
-    /* How many placeholder buttons render — 3 is the cap, matching the
-       widest real usage this documents (no layout in this library composes
-       more than a small handful of trailing actions). */
-    buttonCount: {
-      control: "select",
-      options: [1, 2, 3],
-      name: "Button count",
-    },
-    showHelp:        { control: "boolean", name: "Help" },
-    showHorizontal:  { control: "boolean", name: "Horizontal" },
-    showError:       { control: "boolean", name: "Error" },
-    /* Off (default): the plain field is full width, same as every other
-       `Input` state above (Default/Filled/Disabled/etc. — no width
-       constraint of their own). On: bounds it between a 240px min-width
-       and a 320px max-width — the same range `Select.stories.tsx` wraps
-       every one of its own demos in (and Form Grid's "Static Width"
-       fields, Breakpoints.stories.tsx, use for the same reason), reused
-       here rather than picking an arbitrary new value. */
-    maxWidth: { control: "boolean", name: "Max width" },
-  } as Meta<typeof Input>["argTypes"],
+    size: { control: "radio", options: ["sm", "md"] },
+  },
 };
 
 export default meta;
-type Story = StoryObj<typeof Input>;
 
-export const Default: Story = {
-  name: "Default",
-  args: {
-    label: "Input Label",
-    placeholder: "Text",
-    required: false,
-    size: "md",
-    showLabelOnly: false,
-    showWithButtons: false,
-    buttonsPosition: "left",
-    buttonVariant: "ghost",
-    buttonIconOnly: true,
-    buttonSize: "sm",
-    buttonCount: 2,
-    showHelp: false,
-    showHorizontal: false,
-    showError: false,
-    maxWidth: false,
-  } as Story["args"],
-  render: (args: any) => {
-    const {
-      showLabelOnly,
-      showWithButtons,
-      buttonsPosition,
-      buttonVariant,
-      buttonIconOnly,
-      buttonSize,
-      buttonCount,
-      showHelp,
-      showHorizontal,
-      showError,
-      maxWidth,
-      required,
-      label,
-      ...rest
-    } = args;
+/* Filled, Disabled, Read-only, Error, icons, sizes and the label-only / label-
+   with-buttons / horizontal layouts have their own pages under
+   "Input/Variants" — see Input.variants.stories.tsx. */
 
-    const [switchOn, setSwitchOn] = useState(false);
+/* ── Default — consolidated Filled, Disabled, Readonly, Error, Label With
+   Buttons and Label Horizontal With Separator into one controls-driven story.
+   `value`, `help`, `error`, `startIcon`, `endIcon`, `labelOnly`, `vertical`, `withButtons`,
+   `buttonsPosition`, `iconButtons` and `maxWidth` are story-only args. The
+   demo remounts (via `key`) whenever a control changes. ── */
 
-    // Matches each text-button height exactly (button.tsx's own scale:
-    // sm/icon-sm=24px, default|md/icon-md=32px, lg/icon-lg=36px,
-    // xl/icon-xl=40px) — NOT `ActionIconButton`'s legacy size names
-    // (actions.tsx), which intentionally map its "sm" a tier bigger than
-    // `Button`'s own "sm". This story's `buttonSize` control is meant to
-    // read as one shared height scale across both shapes, so an icon
-    // button and a text button at the same size sit flush.
-    const ICON_SIZE_MAP: Record<string, string> = {
-      sm: "icon-sm",
-      default: "icon-md",
-      lg: "icon-lg",
-      xl: "icon-xl",
-    };
+interface InputDemoProps {
+  disabled?: boolean;
+  readonly?: boolean;
+  required?: boolean;
+  error?: boolean;
+  label?: string;
+  placeholder?: string;
+  value?: boolean;
+  help?: boolean;
+  size?: "sm" | "md";
+  startIcon?: boolean;
+  endIcon?: boolean;
+  clearButton?: boolean;
+  labelOnly?: boolean;
+  vertical?: boolean;
+  withButtons?: boolean;
+  buttonsPosition?: "left" | "right" | "both";
+  iconButtons?: boolean;
+  buttonType?: PlaceholderButtonVariant;
+  buttonSize?: PlaceholderButtonSize;
+  buttonCount?: number;
+  maxWidth?: boolean;
+  showCount?: boolean;
+  maxLength?: number;
+}
 
-    // One icon per possible `buttonCount` slot — sliced below rather than
-    // repeating the same icon three times, so each placeholder button still
-    // reads as a distinct action.
-    const PLACEHOLDER_ICONS = [Pencil, Settings, Copy];
+function InputDemo({
+  disabled = false,
+  readonly = false,
+  required = false,
+  error = false,
+  label = "Input Label",
+  placeholder = "Text",
+  value = false,
+  help = false,
+  size = "md",
+  startIcon = false,
+  endIcon = false,
+  clearButton = false,
+  labelOnly = false,
+  vertical = true,
+  withButtons = false,
+  buttonsPosition = "right",
+  iconButtons = true,
+  buttonType = "ghost",
+  buttonSize = "sm",
+  buttonCount = 2,
+  maxWidth = false,
+  showCount = false,
+  maxLength = 40,
+}: InputDemoProps) {
+    const [text, setText] = useState(value ? "Text" : "");
+  // Sample value shown when "Value" is on: typed text in the field, or the
+  // read-only text beside a label.
+  const readOnlyValue = value ? "Read-only value" : "";
+  // `Input` has no clear button of its own, so this one is drawn in its `endIcon`
+  // slot (which ignores the mouse by default, hence `pointer-events-auto`). It
+  // shows once there is something to clear.
+  const showClear = clearButton && !disabled && !readonly && text.length > 0;
+  const horizontal = !vertical;
+  const labelHelpText = help ? HELP_TEXT : undefined;
+  const left = buttonsPosition === "left" || buttonsPosition === "both";
+  const right = buttonsPosition === "right" || buttonsPosition === "both";
+  const buttons = <PlaceholderButtons iconOnly={iconButtons} variant={buttonType} size={buttonSize} count={buttonCount} />;
 
-    const renderButtons = () =>
-      buttonIconOnly ? (
-        <>
-          {PLACEHOLDER_ICONS.slice(0, buttonCount).map((Icon, i) => (
-            <Button key={i} variant={buttonVariant} size={ICON_SIZE_MAP[buttonSize]} title="Placeholder action">
-              <Icon className="h-4 w-4" strokeWidth={1.5} />
-            </Button>
-          ))}
-        </>
-      ) : (
-        <>
-          {Array.from({ length: buttonCount }).map((_, i) => (
-            <Button key={i} variant={buttonVariant} size={buttonSize}>Action</Button>
-          ))}
-        </>
-      );
+  // These layouts have no input box to carry the error, so show the same
+  // markup `Input` renders below its field.
+  const errorMessage = error && (
+    <div className="flex items-center gap-1 mt-1.5">
+      <ErrorIcon className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+      <span className="lyra-body-sm text-lyra-status-critical-strong">Required</span>
+    </div>
+  );
 
-    const labelHelpText = showHelp ? "Helpful context about this field." : undefined;
+  const field = (
+    <Input
+      label={withButtons || horizontal ? undefined : label}
+      labelHelpText={withButtons || horizontal ? undefined : labelHelpText}
+      required={required}
+      readonly={readonly}
+      disabled={disabled}
+      size={size}
+      placeholder={placeholder}
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      showCount={showCount}
+      maxLength={showCount ? maxLength : undefined}
+      error={error ? "Required" : undefined}
+      startIcon={startIcon ? <Search className="h-4 w-4 text-lyra-fg-secondary" strokeWidth={1.5} /> : undefined}
+      endIcon={
+        showClear ? (
+          <Tooltip content="Clear" placement="top">
+            <button
+              type="button"
+              aria-label="Clear"
+              onClick={() => setText("")}
+              className="pointer-events-auto flex h-6 w-6 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
+            >
+              <X className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+            </button>
+          </Tooltip>
+        ) : endIcon ? (
+          <Mail className="h-4 w-4 text-lyra-fg-secondary" strokeWidth={1.5} />
+        ) : undefined
+      }
+      className={horizontal ? (maxWidth ? "min-w-[240px] max-w-[320px]" : "w-full") : withButtons ? "flex-1 min-w-0" : maxWidth ? "min-w-[240px] max-w-[320px]" : undefined}
+    />
+  );
 
-    // Same error markup Input itself renders (input.tsx) below its field —
-    // these layouts have no input box to attach it to, but "Required"/error
-    // should still surface the same way when the toggle is on.
-    const errorMessage = showError && (
-      <div className="flex items-center gap-1 mt-1.5">
-        <ErrorIcon className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
-        <span className="lyra-body-sm text-lyra-status-critical-strong">Required</span>
-      </div>
-    );
-
-    // Layout toggles are mutually exclusive alternate renderings, not
-    // modifiers of the plain `Input` below — `horizontal` is checked first
-    // since it's a distinct row layout that still needs to know whether
-    // "Label only" is on (static value text) or off (an actual, editable
-    // `Switch` — no `label` prop on it, since the caption on the left
-    // already serves that role) rather than always assuming one or the
-    // other. `required`, `showHelp`, and `showError` apply across every
-    // layout here, not just the plain `Input`.
-    if (showHorizontal) {
-      return (
-        <div className="w-full">
-          <div className="flex items-center justify-between gap-3">
-            <Label label={label} required={required} labelHelpText={labelHelpText} />
-            <div className="flex items-center gap-0.5">
-              {showWithButtons &&
-                (buttonsPosition === "left" || buttonsPosition === "both") &&
-                renderButtons()}
-              {showLabelOnly ? (
-                <span className="lyra-body-md text-lyra-fg-secondary">Sarah Connor</span>
-              ) : (
-                <Switch checked={switchOn} onCheckedChange={setSwitchOn} />
-              )}
-              {showWithButtons &&
-                (buttonsPosition === "right" || buttonsPosition === "both") &&
-                renderButtons()}
-            </div>
-          </div>
-          {/* Neither the static value text nor the label-less `Switch` has
-              its own built-in error text (unlike `Input`, which renders it
-              below itself) — always show the shared `errorMessage` here. */}
-          {errorMessage}
-          <Separator className="mt-3" />
-        </div>
-      );
-    }
-
-    if (showLabelOnly && showWithButtons) {
-      // Combined: buttons sit inline next to the supporting-text value
-      // (not below the label like the buttons-only case), since there's no
-      // separate value row here to place them under — this *is* the value
-      // row. `buttonsPosition` controls which side(s) they land on.
-      return (
-        <div className="w-72">
+  if (horizontal && labelOnly) {
+    // Label left, read-only value (with optional buttons) right, then a rule.
+    return (
+      <div className="w-full">
+        <div className="flex items-center justify-between gap-3">
           <Label label={label} required={required} labelHelpText={labelHelpText} />
           <div className="flex items-center gap-0.5">
-            {(buttonsPosition === "left" || buttonsPosition === "both") && renderButtons()}
-            <span className="lyra-body-md text-lyra-fg-secondary">Read-only value</span>
-            {(buttonsPosition === "right" || buttonsPosition === "both") && renderButtons()}
-          </div>
-          {errorMessage}
-        </div>
-      );
-    }
-
-    if (showLabelOnly) {
-      return (
-        <div className="w-72">
-          <Label
-            label={label}
-            supportingText="Read-only value"
-            required={required}
-            labelHelpText={labelHelpText}
-          />
-          {errorMessage}
-        </div>
-      );
-    }
-
-    if (showWithButtons) {
-      // Reached only once "Label only" is already ruled out by the branches
-      // above, so this always has a real, editable `Input` — buttons sit
-      // alongside it in the same row, positioned by `buttonsPosition`,
-      // instead of the field disappearing whenever buttons are shown.
-      // No `justify-center` — dropping it left-aligns the input directly
-      // under the label (a standard field's own layout) whenever the
-      // buttons trail on the right, rather than centering the whole group.
-      // `items-start`, not `items-center` — `Input` renders its own error
-      // text below itself (input.tsx) when `error` is set, which makes its
-      // wrapper taller than the buttons; centering the row would then
-      // center the buttons against that taller *block* instead of against
-      // the input box itself, drifting them out of line with it. Aligning
-      // tops keeps the buttons level with the input box regardless of
-      // whether the error text is showing.
-      // `gap-1.5` between the label and this row matches `Input`'s own
-      // label-to-field spacing (input.tsx's `mb-1.5` on its internal
-      // `Label`), not the `gap-0` the buttons-only/no-input layouts above
-      // use.
-      // No separate `errorMessage` here — `Input` already renders its own
-      // error text below the field; adding the shared one too would show
-      // "Required" twice.
-      // `maxWidth` was previously ignored entirely here — a hardcoded
-      // `w-72`/`w-48` regardless of the control, so toggling "Max width"
-      // off still left the field capped instead of going full width. Now
-      // matches the plain branch below: no cap by default (the wrapper is
-      // full width, and `Input`'s own `flex-1` grows to fill whatever
-      // room the buttons leave), `min-w-[240px] max-w-[320px]` on the
-      // wrapper when "Max width" is on — a 320px ceiling and 240px floor,
-      // same standard as the plain branch below and Form Grid's "Static
-      // Width" fields (Breakpoints.stories.tsx).
-      return (
-        <div className={cn("flex flex-col gap-1.5", maxWidth ? "min-w-[240px] max-w-[320px]" : "w-full")}>
-          <Label label={label} required={required} labelHelpText={labelHelpText} />
-          <div className="flex items-start gap-0.5">
-            {(buttonsPosition === "left" || buttonsPosition === "both") && renderButtons()}
-            <Input
-              {...rest}
-              className="flex-1 min-w-0"
-              error={showError ? "Required" : undefined}
-            />
-            {(buttonsPosition === "right" || buttonsPosition === "both") && renderButtons()}
+            {withButtons && left && buttons}
+            <span className="lyra-body-md text-lyra-fg-secondary">{readOnlyValue}</span>
+            {withButtons && right && buttons}
           </div>
         </div>
-      );
-    }
-
-    return (
-      <Input
-        {...rest}
-        label={label}
-        required={required}
-        labelHelpText={labelHelpText}
-        error={showError ? "Required" : undefined}
-        className={maxWidth ? "min-w-[240px] max-w-[320px]" : undefined}
-      />
+        {errorMessage}
+        <Separator className="mt-3" />
+      </div>
     );
-  },
-};
+  }
 
-export const Filled: Story = {
-  name: "Filled",
-  args: {
-    label: "Input Label",
-    defaultValue: "Text",
-  },
-};
+  if (horizontal) {
+    return (
+      <div className="w-full">
+        <div className="flex items-start justify-between gap-3">
+          {/* Same height as the field so the label lines up with the input box. */}
+          <div className={size === "sm" ? "flex h-8 items-center" : "flex h-9 items-center"}>
+            <Label label={label} required={required} labelHelpText={labelHelpText} disabled={disabled} readonly={readonly} />
+          </div>
+          <div className={cn("flex items-start gap-0.5", !maxWidth && "flex-1 min-w-0")}>
+            {withButtons && left && buttons}
+            {field}
+            {withButtons && right && buttons}
+          </div>
+        </div>
+        <Separator className="mt-3" />
+      </div>
+    );
+  }
 
-export const Disabled: Story = {
-  name: "Disabled",
+  if (labelOnly) {
+    return (
+      <div className="w-72">
+        <Label
+          label={label}
+          required={required}
+          labelHelpText={labelHelpText}
+          supportingText={withButtons ? undefined : readOnlyValue || undefined}
+        />
+        {withButtons && (
+          <div className="flex items-center gap-0.5">
+            {left && buttons}
+            <span className="lyra-body-md text-lyra-fg-secondary">{readOnlyValue}</span>
+            {right && buttons}
+          </div>
+        )}
+        {errorMessage}
+      </div>
+    );
+  }
+
+  if (withButtons) {
+    // Buttons sit beside the field; aligning tops keeps them level with the
+    // input box even when the error text makes the field's wrapper taller.
+    return (
+      <div className={cn("flex flex-col gap-1.5", maxWidth ? "min-w-[240px] max-w-[320px]" : "w-full")}>
+        <Label label={label} required={required} labelHelpText={labelHelpText} disabled={disabled} readonly={readonly} />
+        <div className="flex items-start gap-0.5">
+          {left && buttons}
+          {field}
+          {right && buttons}
+        </div>
+      </div>
+    );
+  }
+
+  return field;
+}
+
+type InputDemoStory = StoryObj<InputDemoProps>;
+
+export const Default: InputDemoStory = {
+  render: (args) => <InputDemo key={JSON.stringify(args)} {...args} />,
   args: {
+    disabled: false,
+    readonly: false,
+    required: false,
+    error: false,
     label: "Input Label",
     placeholder: "Text",
-    disabled: true,
+    value: false,
+    help: false,
+    size: "md",
+    startIcon: false,
+    endIcon: false,
+    clearButton: false,
+    labelOnly: false,
+    vertical: true,
+    withButtons: false,
+    buttonsPosition: "right",
+    iconButtons: true,
+    buttonType: "ghost",
+    buttonSize: "sm",
+    buttonCount: 2,
+    maxWidth: false,
+    showCount: false,
+    maxLength: 40,
   },
-};
-
-export const Readonly: Story = {
-  name: "Readonly",
-  args: {
-    label: "Input Label",
-    value: "Read-only value",
-    readonly: true,
+  parameters: {
+    controls: {
+      // Storybook matches `include` against each control's display `name`
+      // (falling back to its key), so list the names; keys are kept too.
+      include: [
+        "Disabled", "Read-only", "Required", "Error",
+        "Label", "Placeholder", "Value", "Help text",
+        "Label only", "Vertical", "Size", "Start icon", "End icon", "Clear button", "With buttons", "Buttons position", "Icon buttons", "Button type", "Button size", "Button count", "Max width", "Character counter", "Max length",
+        "disabled", "readonly", "required", "error",
+        "label", "placeholder", "value", "help",
+        "labelOnly", "vertical", "size", "startIcon", "endIcon", "clearButton", "withButtons", "buttonsPosition", "iconButtons", "buttonType", "buttonSize", "buttonCount", "maxWidth", "showCount", "maxLength",
+      ],
+      sort: "none",
+    },
   },
-};
-
-/* ── Label only — no input box at all ──
-   For plain display values (not an editable-looking control), use `Label`'s
-   own `supportingText` instead of this component's `readonly` state:
-   `readonly` still renders an actual (locked) input box, just muted, which
-   implies a control that could theoretically be unlocked. `Label` +
-   `supportingText` renders a caption with a value line underneath and
-   nothing that reads as an input at all — see `CampaignDetailsModal`'s
-   `LabelField` in the Outbound-Campaigns app for the real usage this
-   documents. */
-export const LabelOnly: Story = {
-  name: "Label Only",
-  render: () => (
-    <div className="w-72">
-      <Label label="Input Label" supportingText="Read-only value" />
-    </div>
-  ),
-};
-
-/* ── Label with buttons — action content instead of a value ──
-   Some fields show button(s) instead of a plain value or an input at all
-   (e.g. Campaign State's edit-pencil `ActionIconButton` in the
-   Outbound-Campaigns app's Campaign Details modal). That app was hand-
-   rolling the caption as `<span className="lyra-label text-lyra-fg-
-   secondary">`, which mutes it to the same gray `readonly` uses — wrong,
-   since these aren't locked/readonly controls, just a label paired with
-   arbitrary action content. Use the real `Label` component instead (no
-   `supportingText`, no `readonly`) so the caption renders at its correct
-   default `lyra-label text-lyra-fg-default`, then place any buttons
-   directly below it — placeholders here, but any button composition
-   works the same way. */
-export const LabelWithButtons: Story = {
-  name: "Label With Buttons",
-  render: () => (
-    <div className="flex flex-col gap-0 w-72">
-      <Label label="Campaign State" />
-      <div className="flex items-center gap-0.5">
-        <ActionIconButton size="sm" title="Placeholder action">
-          <Pencil className="h-4 w-4" strokeWidth={1.5} />
-        </ActionIconButton>
-        <ActionIconButton size="sm" title="Placeholder action">
-          <Settings className="h-4 w-4" strokeWidth={1.5} />
-        </ActionIconButton>
-      </div>
-    </div>
-  ),
-};
-
-/* ── Label horizontal with separator — label left, value right, then a rule ──
-   Same label-left/value-right row as Label.stories.tsx's "Horizontal" story
-   (value styled with `supportingText`'s own typography,
-   `lyra-body-md text-lyra-fg-secondary`), plus a `Separator` underneath to
-   close off the row — e.g. a stack of detail rows where each one needs its
-   own dividing line rather than relying on a single border around the
-   whole list. */
-export const LabelHorizontalWithSeparator: Story = {
-  name: "Label Horizontal With Separator",
-  render: () => (
-    <div className="flex flex-col gap-3 w-full">
-      <div className="flex items-center justify-between">
-        <Label label="Agent Name" />
-        <span className="lyra-body-md text-lyra-fg-secondary">Sarah Connor</span>
-      </div>
-      <Separator />
-    </div>
-  ),
-};
-
-export const Error: Story = {
-  name: "Error",
-  args: {
-    label: "Input Label",
-    defaultValue: "Text",
-    error: "Required",
+  argTypes: {
+    disabled: {
+      name: "Disabled",
+      control: "boolean",
+      description: "Dims the field and stops typing.",
+      table: { category: "Behavior", defaultValue: { summary: "false" } },
+    },
+    readonly: {
+      name: "Read-only",
+      control: "boolean",
+      description: "Locks the field and mutes the label. Doesn't apply when Label only is on.",
+      table: { category: "Behavior", defaultValue: { summary: "false" } },
+    },
+    required: {
+      name: "Required",
+      control: "boolean",
+      description: "Adds a red asterisk after the label.",
+      table: { category: "Behavior", defaultValue: { summary: "false" } },
+    },
+    error: {
+      name: "Error",
+      control: "boolean",
+      description: "Shows the red error style and a \"Required\" message under the field (`error`).",
+      table: { category: "Behavior", defaultValue: { summary: "false" } },
+    },
+    label: {
+      name: "Label",
+      control: "text",
+      description: "Text above the field. Clear it for a field with no label.",
+      table: { category: "Content", defaultValue: { summary: "Input Label" } },
+    },
+    placeholder: {
+      name: "Placeholder",
+      control: "text",
+      description: "Hint text shown while the field is empty.",
+      table: { category: "Content", defaultValue: { summary: "Text" } },
+    },
+    value: {
+      name: "Value",
+      control: "boolean",
+      description: "Fills in a sample value: text in the field, or the read-only value shown with the label when Label only is on.",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    help: {
+      name: "Help text",
+      control: "boolean",
+      description: "Info icon with a tooltip next to the label (`labelHelpText`). Needs a label.",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    labelOnly: {
+      name: "Label only",
+      control: "boolean",
+      description: "Shows the label with a read-only value and no input box.",
+      table: { category: "Appearance", defaultValue: { summary: "false" } },
+    },
+    vertical: {
+      name: "Vertical",
+      control: "boolean",
+      description: "On stacks the label above the field or value. Off puts the label on the left and the field or value on the right, with a divider underneath.",
+      table: { category: "Appearance", defaultValue: { summary: "true" } },
+    },
+    size: {
+      name: "Size",
+      control: "radio",
+      options: ["sm", "md"],
+      description: "Small is 32px tall, medium is 36px.",
+      if: { arg: "labelOnly", truthy: false },
+      table: { category: "Appearance", defaultValue: { summary: "md" } },
+    },
+    startIcon: {
+      name: "Start icon",
+      control: "boolean",
+      description: "Search icon at the start of the field (`startIcon`).",
+      if: { arg: "labelOnly", truthy: false },
+      table: { category: "Appearance", defaultValue: { summary: "false" } },
+    },
+    endIcon: {
+      name: "End icon",
+      control: "boolean",
+      description: "Mail icon at the end of the field (`endIcon`).",
+      if: { arg: "labelOnly", truthy: false },
+      table: { category: "Appearance", defaultValue: { summary: "false" } },
+    },
+    clearButton: {
+      name: "Clear button",
+      control: "boolean",
+      description: "An × inside the field that clears the text. Shows once there is text to clear, and replaces the end icon while it does.",
+      if: { arg: "labelOnly", truthy: false },
+      table: { category: "Appearance", defaultValue: { summary: "false" } },
+    },
+    withButtons: {
+      name: "With buttons",
+      control: "boolean",
+      description: "Adds placeholder action buttons beside the field or value.",
+      table: { category: "Appearance", defaultValue: { summary: "false" } },
+    },
+    buttonsPosition: {
+      name: "Buttons position",
+      control: "select",
+      options: ["left", "right", "both"],
+      description: "Which side of the field or value the buttons sit on.",
+      if: { arg: "withButtons", truthy: true },
+      table: { category: "Appearance", defaultValue: { summary: "right" } },
+    },
+    iconButtons: {
+      name: "Icon buttons",
+      control: "boolean",
+      description: "On shows icon-only buttons. Off shows text buttons labeled \"Action\".",
+      if: { arg: "withButtons", truthy: true },
+      table: { category: "Appearance", defaultValue: { summary: "true" } },
+    },
+    buttonType: {
+      name: "Button type",
+      control: "select",
+      options: ["default", "destructive", "warning", "success", "outline", "ghost"],
+      description: "Color and style of the buttons. Works for icon and text buttons.",
+      if: { arg: "withButtons", truthy: true },
+      table: { category: "Appearance", defaultValue: { summary: "ghost" } },
+    },
+    buttonSize: {
+      name: "Button size",
+      control: "select",
+      options: ["sm", "default", "lg", "xl"],
+      description: "Button height: 24, 32, 36 or 40px.",
+      if: { arg: "withButtons", truthy: true },
+      table: { category: "Appearance", defaultValue: { summary: "sm" } },
+    },
+    buttonCount: {
+      name: "Button count",
+      control: "select",
+      options: [1, 2, 3],
+      description: "How many placeholder buttons show.",
+      if: { arg: "withButtons", truthy: true },
+      table: { category: "Appearance", defaultValue: { summary: "2" } },
+    },
+    showCount: {
+      name: "Character counter",
+      control: "boolean",
+      description: "Shows a live \"12/40\" counter above the field (`showCount`, needs `maxLength`). Typing stops at the limit.",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    maxLength: {
+      name: "Max length",
+      control: { type: "number", min: 5, max: 200 },
+      description: "Character limit used by the counter (`maxLength`).",
+      if: { arg: "showCount", truthy: true },
+      table: { category: "Content", defaultValue: { summary: "40" } },
+    },
+    maxWidth: {
+      name: "Max width",
+      control: "boolean",
+      description: "Bounds the field between 240px and 320px instead of full width. Off stretches the input across the row (with Vertical off, from the label to the right edge).",
+      if: { arg: "labelOnly", truthy: false },
+      table: { category: "Appearance", defaultValue: { summary: "false" } },
+    },
   },
-};
-
-export const AllStates: Story = {
-  name: "All States",
-  render: () => (
-    <div className="flex flex-col gap-6 max-w-[400px]">
-      <Input label="Input Label" placeholder="Text" />
-      <Input label="Input Label" defaultValue="Text" />
-      <Input label="Input Label" disabled placeholder="Text" />
-      <Input label="Input Label" defaultValue="Text" error="Required" />
-    </div>
-  ),
 };

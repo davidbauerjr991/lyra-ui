@@ -1,196 +1,231 @@
-import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
+import type { Meta, StoryObj } from "@storybook/react";
 import { ToggleGroup } from "../toggle-group";
-import { cn } from "../../lib/utils";
+import { makeItems } from "./ToggleGroup.shared";
 
 const meta: Meta<typeof ToggleGroup> = {
   title: "Custom Primitives/Toggle Group",
   component: ToggleGroup,
   tags: ["autodocs"],
-  parameters: { layout: "centered", backgrounds: { default: "lyra-shell" } },
+  parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
+  // Real ToggleGroup props stay on the Docs page; Default's own
+  // `parameters.controls.include` below curates the Controls panel.
+  argTypes: {
+    type: { control: "radio", options: ["single", "multiple"] },
+    disabled: { control: "boolean" },
+    fullWidth: { control: "boolean" },
+    allowDeselect: { control: "boolean" },
+    itemMaxWidth: { control: "number" },
+    ariaLabel: { control: "text" },
+    ariaLabelledBy: { control: "text" },
+    showTruncationTooltip: { control: "boolean" },
+    menuAriaLabel: { control: "text" },
+    items: { table: { disable: true } },
+    onValueChange: { table: { disable: true } },
+    onValuesChange: { table: { disable: true } },
+  },
 };
 
 export default meta;
-type Story = StoryObj<typeof ToggleGroup>;
 
-const threeItems = [
-  { value: "a", label: "Toggle" },
-  { value: "b", label: "Toggle" },
-  { value: "c", label: "Toggle" },
-];
+/* Every state side by side, and the narrow-row truncation example, have their
+   own pages under "Toggle Group/Variants" — see
+   ToggleGroup.variants.stories.tsx. */
 
-/* ── Screenshot 1 — interactive group ── */
+/* ── Default — consolidated Default, Multiple Selection, With Disabled Item and
+   Fully Disabled into one controls-driven story. `itemCount` and
+   `disabledItem` are story-only args that shape `items`. The demo keeps the
+   selection in state and remounts (via `key`) whenever a control changes. ── */
 
-export const Default: Story = {
-  render: () => {
-    const [value, setValue] = useState("a");
-    return (
-      <ToggleGroup
-        items={threeItems}
-        value={value}
-        onValueChange={setValue}
-      />
-    );
-  },
-};
+interface ToggleGroupDemoProps {
+  type?: "single" | "multiple";
+  disabled?: boolean;
+  disabledItem?: boolean;
+  withMenu?: boolean;
+  itemCount?: number;
+  withIcons?: boolean;
+  withLabel?: boolean;
+  withBadge?: boolean;
+  badgeType?: "number" | "alert";
+  fullWidth?: boolean;
+  allowDeselect?: boolean;
+  itemMaxWidth?: "none" | "80" | "120";
+  ariaLabel?: string;
+}
 
-export const FullWidth: Story = {
-  name: "Full Width",
-  parameters: { layout: "padded" },
-  render: () => {
-    const [value, setValue] = useState("main");
-    return (
-      // Narrow fixed-width wrapper (not full-viewport) so the truncation
-      // this story exists to demonstrate is actually forced, matching the
-      // real-world case that prompted `fullWidth` — a combined-panel-mode
-      // region switch sharing a narrow (<768px) row with a long interaction
-      // title, e.g. "Alex Kowalski (CST-10000)" — per explicit follow-up
-      // request ("add a fullwidth story for toggle buttons... have the text
-      // truncate instead of wrap for this story").
-      <div className="w-80 rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-base p-3">
-        <ToggleGroup
-          fullWidth
-          items={[
-            { value: "main", label: "Alex Kowalski (CST-10000)" },
-            { value: "panel", label: "Search" },
-          ]}
-          value={value}
-          onValueChange={(next) => next && setValue(next)}
-        />
-      </div>
-    );
-  },
-};
+function ToggleGroupDemo({
+  type = "single",
+  disabled = false,
+  disabledItem = false,
+  withMenu = false,
+  itemCount = 3,
+  withIcons = false,
+  withLabel = true,
+  withBadge = false,
+  badgeType = "number",
+  fullWidth = false,
+  allowDeselect = false,
+  itemMaxWidth = "none",
+  ariaLabel = "View",
+}: ToggleGroupDemoProps) {
+  const maxWidth = itemMaxWidth === "none" ? undefined : Number(itemMaxWidth);
+  const longLabels = maxWidth !== undefined;
+  const [value, setValue] = useState("a");
+  const [values, setValues] = useState<string[]>(["a"]);
+  const baseItems = makeItems(itemCount, disabledItem, { icons: withIcons, label: withLabel, menu: withMenu, badge: withBadge, badgeType });
+  // With a max item width, plain-text labels get longer so the cut-off shows.
+  const items = longLabels
+    ? baseItems.map((item, i) => (item.label === "Toggle" ? { ...item, label: `Toggle option ${i + 1}` } : item))
+    : baseItems;
 
-export const MultipleSelection: Story = {
-  name: "Multiple Selection",
-  render: () => {
-    const [values, setValues] = useState<string[]>(["a"]);
-    return (
+  const group =
+    type === "multiple" ? (
       <ToggleGroup
         type="multiple"
-        items={threeItems}
+        items={items}
         values={values}
         onValuesChange={setValues}
+        disabled={disabled}
+        fullWidth={fullWidth}
+        itemMaxWidth={maxWidth}
+        ariaLabel={ariaLabel || undefined}
+        showTruncationTooltip
       />
-    );
-  },
-};
-
-/* ── Screenshot 2 — all 7 base states ── */
-
-export const AllStates: Story = {
-  name: "All States",
-  parameters: { layout: "padded" },
-  render: () => (
-    <div className="flex flex-col gap-6 w-48">
-      {/* 1. Off */}
-      <div className="flex flex-col gap-1">
-        <span className="lyra-body-sm text-lyra-fg-secondary">Off</span>
-        <ToggleGroup items={[{ value: "x", label: "Toggle" }]} />
-      </div>
-
-      {/* 2. Disabled */}
-      <div className="flex flex-col gap-1">
-        <span className="lyra-body-sm text-lyra-fg-secondary">Disabled</span>
-        <ToggleGroup items={[{ value: "x", label: "Toggle" }]} disabled />
-      </div>
-
-      {/* 3. Hover — static preview */}
-      <div className="flex flex-col gap-1">
-        <span className="lyra-body-sm text-lyra-fg-secondary">Hover</span>
-        <div className="inline-flex items-center rounded-lyra-md border border-lyra-border-subtle bg-lyra-bg-surface-base p-0.5">
-          <button
-            type="button"
-            className="px-4 py-1.5 lyra-body-md rounded-lyra-sm text-lyra-fg-default bg-lyra-bg-surface-shell border border-lyra-border-soft transition-colors"
-          >
-            Toggle
-          </button>
-        </div>
-      </div>
-
-      {/* 4. Press — static preview */}
-      <div className="flex flex-col gap-1">
-        <span className="lyra-body-sm text-lyra-fg-secondary">Press</span>
-        <div className="inline-flex items-center rounded-lyra-md border border-lyra-border-subtle bg-lyra-bg-surface-base p-0.5">
-          <button
-            type="button"
-            className="px-4 py-1.5 lyra-body-md rounded-lyra-sm text-lyra-fg-default bg-lyra-bg-disabled border border-lyra-border-soft transition-colors"
-          >
-            Toggle
-          </button>
-        </div>
-      </div>
-
-      {/* 5. On / Selected */}
-      <div className="flex flex-col gap-1">
-        <span className="lyra-body-sm text-lyra-fg-secondary">On</span>
-        <ToggleGroup
-          items={[{ value: "x", label: "Toggle" }]}
-          value="x"
-          onValueChange={() => {}}
-        />
-      </div>
-
-      {/* 6. Selected Hover — static preview */}
-      <div className="flex flex-col gap-1">
-        <span className="lyra-body-sm text-lyra-fg-secondary">Selected Hover</span>
-        <div className="inline-flex items-center rounded-lyra-md border border-lyra-border-subtle bg-lyra-bg-surface-base p-0.5">
-          <button
-            type="button"
-            className={cn(
-              "px-4 py-1.5 lyra-body-md rounded-lyra-sm font-medium transition-colors",
-              "bg-lyra-state-hover-active-subtle border border-lyra-border-active text-lyra-fg-active-strong"
-            )}
-          >
-            Toggle
-          </button>
-        </div>
-      </div>
-
-      {/* 7. Selected Press — static preview */}
-      <div className="flex flex-col gap-1">
-        <span className="lyra-body-sm text-lyra-fg-secondary">Selected Press</span>
-        <div className="inline-flex items-center rounded-lyra-md border border-lyra-border-subtle bg-lyra-bg-surface-base p-0.5">
-          <button
-            type="button"
-            className={cn(
-              "px-4 py-1.5 lyra-body-md rounded-lyra-sm font-medium transition-colors",
-              "bg-lyra-state-pressed-active-subtle border border-lyra-border-active text-lyra-fg-active-strong"
-            )}
-          >
-            Toggle
-          </button>
-        </div>
-      </div>
-    </div>
-  ),
-};
-
-export const WithDisabledItem: Story = {
-  name: "With Disabled Item",
-  render: () => {
-    const [value, setValue] = useState("a");
-    return (
+    ) : (
       <ToggleGroup
-        items={[
-          { value: "a", label: "Toggle" },
-          { value: "b", label: "Toggle", disabled: true },
-          { value: "c", label: "Toggle" },
-        ]}
+        items={items}
         value={value}
         onValueChange={setValue}
+        disabled={disabled}
+        fullWidth={fullWidth}
+        allowDeselect={allowDeselect}
+        itemMaxWidth={maxWidth}
+        ariaLabel={ariaLabel || undefined}
+        showTruncationTooltip
       />
     );
-  },
-};
 
-export const FullyDisabled: Story = {
-  name: "Fully Disabled",
-  render: () => (
-    <div className="flex flex-col gap-3">
-      <ToggleGroup items={threeItems} disabled />
-      <ToggleGroup items={threeItems} value="b" onValueChange={() => {}} disabled />
-    </div>
-  ),
+  return group;
+}
+
+type ToggleGroupDemoStory = StoryObj<ToggleGroupDemoProps>;
+
+export const Default: ToggleGroupDemoStory = {
+  render: (args) => <ToggleGroupDemo key={JSON.stringify(args)} {...args} />,
+  args: {
+    type: "single",
+    disabled: false,
+    disabledItem: false,
+    withMenu: false,
+    itemCount: 3,
+    withIcons: false,
+    withLabel: true,
+    withBadge: false,
+    badgeType: "number",
+    fullWidth: false,
+    allowDeselect: false,
+    itemMaxWidth: "none",
+    ariaLabel: "View",
+  },
+  parameters: {
+    controls: {
+      // Storybook matches `include` against each control's display `name`
+      // (falling back to its key), so list the names; keys are kept too.
+      include: [
+        "Selection", "Allow deselect", "Disabled", "Disabled item", "With menu",
+        "Items", "Icons", "Label", "Group name",
+        "With badge", "Badge type", "Full width", "Max item width",
+        "type", "allowDeselect", "disabled", "disabledItem", "withMenu",
+        "itemCount", "withIcons", "withLabel", "ariaLabel",
+        "withBadge", "badgeType", "fullWidth", "itemMaxWidth",
+      ],
+      sort: "none",
+    },
+  },
+  argTypes: {
+    type: {
+      name: "Selection",
+      control: "radio",
+      options: ["single", "multiple"],
+      description: "Single lets one item be on at a time: the group is one Tab stop, and ←/→ (or ↑/↓, Home, End) move and select. Multiple lets any number be on: each item is its own Tab stop, and Space or Enter toggles it (`type`).",
+      table: { category: "Behavior", defaultValue: { summary: "single" } },
+    },
+    allowDeselect: {
+      name: "Allow deselect",
+      control: "boolean",
+      description: "Single only. Clicking the selected item again clears the selection (`allowDeselect`). Off, the selected item stays selected, like a radio group.",
+      if: { arg: "type", eq: "single" },
+      table: { category: "Behavior", defaultValue: { summary: "false" } },
+    },
+    disabled: {
+      name: "Disabled",
+      control: "boolean",
+      description: "Dims the whole group and stops it changing.",
+      table: { category: "Behavior", defaultValue: { summary: "false" } },
+    },
+    disabledItem: {
+      name: "Disabled item",
+      control: "boolean",
+      description: "Disables one item (`disabled` on one item): the middle one, or the last when there are only two.",
+      table: { category: "Behavior", defaultValue: { summary: "false" } },
+    },
+    withMenu: {
+      name: "With menu",
+      control: "boolean",
+      description: "Adds a kebab (⋮) button inside each toggle that opens a menu (`menuItems`). It is its own button after the toggle in the Tab order, with a \"More options\" tooltip on hover and focus. Clicking it doesn't select the toggle.",
+      table: { category: "Behavior", defaultValue: { summary: "false" } },
+    },
+    itemCount: {
+      name: "Items",
+      control: { type: "range", min: 2, max: 5, step: 1 },
+      description: "How many toggles are in the group.",
+      table: { category: "Content", defaultValue: { summary: "3" } },
+    },
+    withIcons: {
+      name: "Icons",
+      control: "boolean",
+      description: "Shows an icon before each label.",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    ariaLabel: {
+      name: "Group name",
+      control: "text",
+      description: "What a screen reader calls the group, e.g. \"View\" (`ariaLabel`). Not shown on screen.",
+      table: { category: "Content", defaultValue: { summary: "none" } },
+    },
+    withLabel: {
+      name: "Label",
+      control: "boolean",
+      description: "Shows the text label. Off leaves icon-only toggles, which show their label in a tooltip on hover and keyboard focus (`tooltip` + `ariaLabel` on each item).",
+      if: { arg: "withIcons", truthy: true },
+      table: { category: "Content", defaultValue: { summary: "true" } },
+    },
+    withBadge: {
+      name: "With badge",
+      control: "boolean",
+      description: "Adds a red badge to each toggle.",
+      table: { category: "Appearance", defaultValue: { summary: "false" } },
+    },
+    badgeType: {
+      name: "Badge type",
+      control: "radio",
+      options: ["number", "alert"],
+      description: "Number shows a count in the badge. Alert shows an \"!\".",
+      if: { arg: "withBadge", truthy: true },
+      table: { category: "Appearance", defaultValue: { summary: "number" } },
+    },
+    fullWidth: {
+      name: "Full width",
+      control: "boolean",
+      description: "Stretches the group across the full width of the page, with equal-width items. A label that gets cut off shows in full in a tooltip on hover.",
+      table: { category: "Appearance", defaultValue: { summary: "false" } },
+    },
+    itemMaxWidth: {
+      name: "Max item width",
+      control: "select",
+      options: ["none", "80", "120"],
+      description: "Caps each item's width in px (`itemMaxWidth`). Longer labels are cut off with an ellipsis and show in full in a tooltip on hover and focus (`showTruncationTooltip`). The demo lengthens the labels so the cut-off shows.",
+      table: { category: "Appearance", defaultValue: { summary: "none" } },
+    },
+  },
 };

@@ -116,7 +116,7 @@ const MenuItem = React.forwardRef<HTMLButtonElement, MenuItemProps>(
         className={cn(
           "group/item relative flex w-full items-center gap-2.5 rounded-lyra-sm px-3 text-left lyra-body-md transition-colors",
           comfortable ? "py-3" : "py-1.5",
-          "focus:outline-none focus-visible:bg-lyra-state-hover",
+          "focus:outline-none focus-visible:bg-lyra-state-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lyra-border-focus",
           destructive
             ? "text-lyra-status-critical-strong hover:bg-lyra-status-critical-subtle active:bg-lyra-status-critical-medium"
             : "text-lyra-fg-default hover:bg-lyra-state-hover active:bg-lyra-state-pressed",

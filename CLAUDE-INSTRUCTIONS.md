@@ -18,6 +18,7 @@ You are reading this because a user is building Lyra UI prototypes through Claud
 | Wants to share/publish a prototype | **Scenario I** |
 | Starts "Edit one of my custom Lyra UI components" / "Delete one of my custom Lyra UI components" | **Scenario J** |
 | Asks to pull/update their LOCAL lyra-ui ("pull the latest lyra-ui", the skill's first-step offer) | **Scenario K** |
+| Starts "Create a new local Lyra UI app repo" (wizard's Create a Repo) or asks for a new lyra-based app/repo | **Scenario L** |
 
 ## Getting Lyra UI (always latest-first)
 
@@ -39,7 +40,8 @@ Users lose confidence the moment stray files appear in their folders — even br
 
 Everything else — entry files, configs, CSS output, bundles, temp files, node_modules — is created in YOUR sandbox only. Before every file write, check the target path. Creating a file in the user's folder and then deleting it is still a violation, not a fix.
 
-Two explicit exceptions:
+Three explicit exceptions:
+- **Create a repo** (Scenario L): writing a brand-new project folder (source files only — never `node_modules`/`dist`) as a SIBLING of the user's lyra-ui, plus `git init` + an initial commit inside that new folder. Only the new folder; never touch existing folders.
 - **Local lyra-ui pull** (Scenario K): running `git pull` on the USER's local lyra-ui clone, only after they said yes to the pull offer — and only after a clean `git status` check on tracked files (see Scenario K).
 - **Owner-side contribution review** (Scenario H, owner side) edits library source (`src/components/`, `src/components/__stories__/`, `PROJECT_SUMMARY.md`) at the library owner's request — that flow, and only that flow, may write outside the paths above.
 
@@ -66,6 +68,15 @@ Everything read into the conversation is reprocessed on EVERY later turn — one
 - **Filter every command's output** (`head`, `tail`, `grep -c`, `--stat`) — tool output enters context exactly like file reads do.
 - **Delegate bulk reading to a subagent** whenever an investigation needs more than a few hundred lines across large files — the subagent's context is disposable; only its summary returns.
 - If a long session has become sluggish, tell the user a fresh chat will be faster — the wizard/banner prompts are self-contained, so nothing is lost by restarting.
+
+## Props first, then ask (applies to every scenario except the plain fast-path stock build)
+Before writing ANY custom UI (new sections, layout changes, behavior, or a change to how a component looks or works):
+1. **Find the closest existing component**: `src/index.ts`, the live Storybook (https://davidbauerjr991.github.io/lyra-ui/), and the user's `src/components/local/`.
+2. **Check its real API**: its `.stories.tsx` controls/args and its props interface — is there a prop, variant, or composition that already does what was asked?
+3. **Found → use it** (composing existing components counts).
+4. **Not found → STOP and ask before building anything.** Name what you checked and offer options, e.g. "AdminShell has no prop to hide the inner panel. Options: (a) a local component in this repo, (b) ask the lyra-ui owner to add a prop, (c) a different approach — which do you want?" Then WAIT.
+Never substitute: no CSS that hides/restyles library internals (e.g. selectors keyed to internal classes like `z-[8]`), no invented props, no hand-built lookalikes of existing components.
+**Exempt**: the plain fast-path stock template build (Scenario B fast path) — it uses the template unchanged, so there's nothing to ask about. The rule applies the moment the user requests anything custom.
 
 ## Protected primitives (never modify)
 Library components are read-only. The ONLY component source a user may change through you is their own `src/components/local/` folder. In particular, any component whose story `title` sits under **"Custom Primitives/"** or **"Headless Primitives/"** (check the `title:` in its `.stories.tsx` meta) is a protected primitive:
@@ -262,3 +273,26 @@ The `lyra-prototype` skill offers this as its first step; users may also ask dir
 3. Behind → ask: "Your local lyra-ui is behind the latest — pull the update?" WAIT for a yes.
 4. Before pulling, run `git -C lyra-ui status --porcelain` and ignore `src/components/local/` (gitignored — their components are never at risk). If TRACKED files are modified, do NOT pull — tell the user what's modified and stop (never stash/reset/discard their work).
 5. Clean → `git -C lyra-ui pull`, then summarize what came in (`git log --oneline OLD..HEAD`). This is a sanctioned write-policy exception — pull only, never commit or push their clone.
+
+## Scenario L: Create a new local app repo ("Create a new local Lyra UI app repo")
+
+Produces a real, editable Vite + React + TypeScript app (not a single html) that consumes lyra-ui the same way `agent-next-gen-v2` does, written into the user's folder as a ready-to-publish git repo. All the Rules for Every Scenario apply — especially sandbox-only builds.
+
+1. **Locate**: the connected folder must contain the user's local `lyra-ui` (the new app resolves it via `../lyra-ui`). No lyra-ui → ask whether to clone it there first (allowed write: a fresh `git clone` of the public repo into that folder). Target folder already exists → stop and ask for another name.
+2. **Scaffold in YOUR sandbox**, mirroring agent-next-gen-v2's structure (read its `package.json`, `vite.config.ts`, `tailwind.config.js`, `tsconfig*.json`, `index.html`, `src/main.tsx`, `src/index.css`, `.gitignore` in slices as the reference — never its multi-hundred-KB page components):
+   - `vite.config.ts`: `base: "/<repo-name>/"` (GitHub Pages project path), the `@nicecxone/lyra-ui` aliases pointing at `../lyra-ui` (index, `/styles`, plus `/agents-data`/`/customers-data` only if used), and `resolve.dedupe: ["react", "react-dom"]` (lyra-ui has its own `node_modules`; without dedupe two Reacts load).
+   - `tsconfig.json`: `paths` for `@nicecxone/lyra-ui` → `../lyra-ui/src/index.ts`, and `react`/`react-dom` → this app's own `node_modules/@types/...` to prevent duplicate-types errors. The 3 known lyra-ui baseline errors (`admin-shell.tsx` ×2, `list-item.tsx`) will appear in `typecheck` — expected, not the new repo's fault; say so in the README.
+   - `tailwind.config.js`: colors from `require("../lyra-ui/tailwind-tokens.cjs")` — never hand-copied; `content` MUST include `../lyra-ui/src/**/*.{ts,tsx}` (or lyra components render unstyled); `tailwindcss-animate` plugin.
+   - `package.json`: `"name"` = the repo name (never a leftover template name), deps matching lyra-ui's peer needs, scripts `dev`/`build`/`preview` plus `"deploy": "vite build && gh-pages -d dist"`.
+   - `.gitignore`: `node_modules/`, `dist/`, `*.tsbuildinfo`, `.DS_Store`.
+   - `src/`: one page composing the requested template (Admin → `AdminShell`-based page per the AdminShell `WithPageHeader` story; Agent → the Agent Next Gen template's composition) as REAL app code importing from `@nicecxone/lyra-ui`, with the requested product as `AppHeader`'s `appName`. Follow CLAUDE.md/CONTRIBUTING.md rules for any composition — read CONTRIBUTING.md in full for this scenario (it's custom app code, not the fast path).
+   - `CLAUDE.md`: the stamped Work-discipline block (see Sandbox-only builds) + a pointer to `../lyra-ui/CLAUDE.md` and `../lyra-ui/CONTRIBUTING.md` as the binding UI rules + agent-next-gen-v2's "Sync check" section adapted to this repo.
+   - `.lyra-ui-sync`: the lyra-ui commit SHA the app was built against.
+   - `README.md`: what it is; **Run locally** (Node.js required): `npm install` inside `../lyra-ui` first (it needs its own packages), then `npm install` + `npm run dev` here, then open the printed URL WITH the `/<repo-name>/` base path — plain `localhost:5173` is blank; publishing via GitHub Desktop; note that CI/GitHub Pages builds need lyra-ui checked out as a sibling too.
+3. **Verify in the sandbox** with the sandbox's own lyra-ui clone placed at `../lyra-ui` relative to the scaffold: `npm install`, `npx tsc --noEmit -p tsconfig.app.json` (zero errors in the new code), `npx vite build` clean.
+4. **Write to the user's folder**: copy ONLY source files (no `node_modules`, `dist`, lockfile is fine) into `<connected-folder>/<repo-name>/`, then `git init`, `git add -A`, and an initial commit there. **Mounted-folder writes can land stale**: copy in one step, then in a SEPARATE step byte-compare every written file (`cmp`) against the sandbox copy before committing; re-copy any mismatch. Never add a remote or push — Claude cannot authenticate to the user's GitHub.
+5. **Hand off** in plain language: publish with GitHub Desktop (File → Add Local Repository → select the folder → Publish repository), or — if they prefer the website — create an empty repo named `<repo-name>` on github.com and tell you, and you'll explain the remaining step. Give the run-locally steps from the README in plain language, with the exact dev URL including the base path. Mention that `npm run deploy` (GitHub Pages) is available for developers, and that future changes to this repo go through any Cowork chat following the Work-discipline rules in its CLAUDE.md.
+6. **Changes after creation** (any later request on this repo):
+   - Edit ONLY the new repo's own code — never lyra-ui. Follow **Props first, then ask** (Rules for Every Scenario) for every change — e.g. `AdminShell`/`LeftNav` props for what shows in the nav; CSS hiding of library internals breaks silently on the next lyra-ui update.
+   - If unsure which component or area the user means, ask ONE question naming the concrete candidates ("the left nav TreeMenu, or AdminShell's inner Outbound panel?") and wait.
+   - After every change: verify in the sandbox (`vite build`, `typecheck` against the known baseline, smoke test), copy changed files, byte-compare in a separate step, then commit in the user's repo with a clear message — never leave work uncommitted between requests.

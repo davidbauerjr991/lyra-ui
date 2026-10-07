@@ -1,17 +1,17 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { Switch } from "../switch";
+import { cn } from "../../lib/utils";
+import { HELP_TEXT, REQUIRED_ERROR } from "./Switch.shared";
 
 const meta: Meta<typeof Switch> = {
   title: "Headless Primitives/Switch",
   component: Switch,
   tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
+  // Real Switch props stay on the Docs page; Default's own
+  // `parameters.controls.include` below curates the Controls panel.
   argTypes: {
-    checked: {
-      control: "select",
-      options: [true, false, "indeterminate", "checked"],
-    },
     disabled: { control: "boolean" },
     size: { control: "radio", options: ["lg", "sm"] },
     label: { control: "text" },
@@ -19,156 +19,163 @@ const meta: Meta<typeof Switch> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof Switch>;
 
-/* ── Interactive (playground) ── */
+/* Every state at both sizes, on light and dark surfaces, has its own page under
+   "Switch/Variants" — see Switch.variants.stories.tsx. */
 
-function InteractiveDemo() {
-  const [checked, setChecked] = useState(false);
+/* ── Default — consolidated Interactive, Large — All States and Small — All
+   States into one controls-driven story. `on`, `help`, `label` and
+   `withIcon` are story-only args: `on` is the Switch's starting `checked`
+   value, `help` turns `labelHelpText` on and off. Clicking the switch really
+   toggles it. The demo keeps that value in state and remounts
+   (via `key`) whenever a control changes. ── */
+
+interface SwitchDemoProps {
+  on?: boolean;
+  disabled?: boolean;
+  readonly?: boolean;
+  required?: boolean;
+  label?: string;
+  help?: boolean;
+  size?: "lg" | "sm";
+  withIcon?: boolean;
+  labelPosition?: "left" | "right";
+  fullWidth?: boolean;
+}
+
+function SwitchDemo({
+  on = false,
+  disabled = false,
+  readonly = false,
+  required = false,
+  label = "Switch Label",
+  help = false,
+  size = "lg",
+  withIcon = true,
+  labelPosition = "right",
+  fullWidth = false,
+}: SwitchDemoProps) {
+  const [checked, setChecked] = useState(on);
+  // Required and not switched on yet: show the error under the switch.
+  const showError = required && !checked && !disabled && !readonly;
   return (
-    <div className="flex flex-col gap-4">
-      <Switch checked={checked} onCheckedChange={setChecked} label="Switch Label" size="lg" />
-      <Switch checked={checked} onCheckedChange={setChecked} label="Switch Label" size="sm" />
+    // `Switch` has no prop to hide the check/minus in its thumb, so "With icon"
+    // off hides the thumb's SVG from here (the label's help icon sits outside
+    // the switch button, so it stays).
+    <div className={cn("flex flex-col", fullWidth && "w-full", !withIcon && "[&_[role=switch]_svg]:hidden")}>
+      <Switch
+        checked={checked}
+        onCheckedChange={setChecked}
+        disabled={disabled}
+        readonly={readonly}
+        required={required}
+        label={label || undefined}
+        labelHelpText={help ? HELP_TEXT : undefined}
+        size={size}
+        // `Switch` always puts its label on the right; its `className` lands on
+        // the outer row, so reversing that row moves the label to the left.
+        className={cn(
+          labelPosition === "left" && "flex-row-reverse",
+          // Full width: the row fills its container and pushes the label and
+          // switch to opposite ends. Otherwise it hugs its content.
+          fullWidth ? "w-full justify-between" : "self-start",
+        )}
+        error={showError ? REQUIRED_ERROR : undefined}
+      />
     </div>
   );
 }
 
-export const Interactive: Story = {
-  name: "Interactive",
-  render: () => <InteractiveDemo />,
-};
+type SwitchDemoStory = StoryObj<SwitchDemoProps>;
 
-/* ── All States — Large ── */
-
-function AllStatesRow({ size }: { size: "lg" | "sm" }) {
-  return (
-    <div className="grid grid-cols-2 gap-x-12 gap-y-4">
-      {/* On */}
-      <Switch checked={true} size={size} label="Switch Label" />
-      <div data-theme="dark" className="bg-lyra-bg-surface-base rounded-lyra-md p-3">
-        <Switch checked={true} size={size} label="Switch Label" />
-      </div>
-
-      {/* On — simulated hover (static preview) */}
-      <Switch checked={true} size={size} label="Switch Label" />
-      <div data-theme="dark" className="bg-lyra-bg-surface-base rounded-lyra-md p-3">
-        <Switch checked={true} size={size} label="Switch Label" />
-      </div>
-
-      {/* On — simulated pressed (static preview) */}
-      <Switch checked={true} size={size} label="Switch Label" />
-      <div data-theme="dark" className="bg-lyra-bg-surface-base rounded-lyra-md p-3">
-        <Switch checked={true} size={size} label="Switch Label" />
-      </div>
-
-      {/* Off */}
-      <Switch checked={false} size={size} label="Switch Label" />
-      <div data-theme="dark" className="bg-lyra-bg-surface-base rounded-lyra-md p-3">
-        <Switch checked={false} size={size} label="Switch Label" />
-      </div>
-
-      {/* Off — hover */}
-      <Switch checked={false} size={size} label="Switch Label" />
-      <div data-theme="dark" className="bg-lyra-bg-surface-base rounded-lyra-md p-3">
-        <Switch checked={false} size={size} label="Switch Label" />
-      </div>
-
-      {/* Off — pressed */}
-      <Switch checked={false} size={size} label="Switch Label" />
-      <div data-theme="dark" className="bg-lyra-bg-surface-base rounded-lyra-md p-3">
-        <Switch checked={false} size={size} label="Switch Label" />
-      </div>
-
-      {/* Disabled off */}
-      <Switch checked={false} disabled size={size} label="Switch Label" />
-      <div data-theme="dark" className="bg-lyra-bg-surface-base rounded-lyra-md p-3">
-        <Switch checked={false} disabled size={size} label="Switch Label" />
-      </div>
-
-      {/* Disabled on */}
-      <Switch checked={true} disabled size={size} label="Switch Label" />
-      <div data-theme="dark" className="bg-lyra-bg-surface-base rounded-lyra-md p-3">
-        <Switch checked={true} disabled size={size} label="Switch Label" />
-      </div>
-
-      {/* Indeterminate */}
-      <Switch checked="indeterminate" size={size} label="Switch Label" />
-      <div data-theme="dark" className="bg-lyra-bg-surface-base rounded-lyra-md p-3">
-        <Switch checked="indeterminate" size={size} label="Switch Label" />
-      </div>
-
-      {/* Checked (off with checkmark) */}
-      <Switch checked="checked" size={size} label="Switch Label" />
-      <div data-theme="dark" className="bg-lyra-bg-surface-base rounded-lyra-md p-3">
-        <Switch checked="checked" size={size} label="Switch Label" />
-      </div>
-    </div>
-  );
-}
-
-export const Large: Story = {
-  name: "Large — All States",
-  render: () => (
-    <div>
-      <div className="flex gap-12 mb-3">
-        <span className="lyra-body-sm text-lyra-fg-secondary font-medium w-[200px]">Light</span>
-        <span className="lyra-body-sm text-lyra-fg-secondary font-medium">Dark</span>
-      </div>
-      <AllStatesRow size="lg" />
-    </div>
-  ),
-};
-
-export const Small: Story = {
-  name: "Small — All States",
-  render: () => (
-    <div>
-      <div className="flex gap-12 mb-3">
-        <span className="lyra-body-sm text-lyra-fg-secondary font-medium w-[200px]">Light</span>
-        <span className="lyra-body-sm text-lyra-fg-secondary font-medium">Dark</span>
-      </div>
-      <AllStatesRow size="sm" />
-    </div>
-  ),
-};
-
-export const AllVariants: Story = {
-  name: "All Variants",
-  render: () => (
-    <div className="flex flex-col gap-8">
-      {(["lg", "sm"] as const).map((size) => (
-        <div key={size}>
-          <p className="lyra-body-sm-emphasis text-lyra-fg-secondary mb-3">
-            Size: {size === "lg" ? "Large" : "Small"}
-          </p>
-          <div className="grid grid-cols-4 gap-x-8 gap-y-4">
-            <div className="flex flex-col items-start gap-2">
-              <span className="lyra-body-sm text-lyra-fg-secondary">Checked</span>
-              <Switch checked={true} size={size} label="Switch Label" />
-            </div>
-            <div className="flex flex-col items-start gap-2">
-              <span className="lyra-body-sm text-lyra-fg-secondary">Unchecked</span>
-              <Switch checked={false} size={size} label="Switch Label" />
-            </div>
-            <div className="flex flex-col items-start gap-2">
-              <span className="lyra-body-sm text-lyra-fg-secondary">Indeterminate</span>
-              <Switch checked="indeterminate" size={size} label="Switch Label" />
-            </div>
-            <div className="flex flex-col items-start gap-2">
-              <span className="lyra-body-sm text-lyra-fg-secondary">Checked variant</span>
-              <Switch checked="checked" size={size} label="Switch Label" />
-            </div>
-            <div className="flex flex-col items-start gap-2">
-              <span className="lyra-body-sm text-lyra-fg-secondary">Disabled off</span>
-              <Switch checked={false} disabled size={size} label="Switch Label" />
-            </div>
-            <div className="flex flex-col items-start gap-2">
-              <span className="lyra-body-sm text-lyra-fg-secondary">Disabled on</span>
-              <Switch checked={true} disabled size={size} label="Switch Label" />
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  ),
+export const Default: SwitchDemoStory = {
+  render: (args) => <SwitchDemo key={JSON.stringify(args)} {...args} />,
+  args: {
+    on: false,
+    disabled: false,
+    readonly: false,
+    required: false,
+    label: "Switch Label",
+    help: false,
+    size: "lg",
+    withIcon: true,
+    labelPosition: "right",
+    fullWidth: false,
+  },
+  parameters: {
+    controls: {
+      // Storybook matches `include` against each control's display `name`
+      // (falling back to its key), so list the names; keys are kept too.
+      include: [
+        "On", "Disabled", "Read-only", "Required", "Label", "Help text", "Size", "With icon", "Label position", "Full width",
+        "on", "disabled", "readonly", "required", "label", "help", "size", "withIcon", "labelPosition", "fullWidth",
+      ],
+      sort: "none",
+    },
+  },
+  argTypes: {
+    on: {
+      name: "On",
+      control: "boolean",
+      description: "Whether the switch starts on (`checked`). Clicking it toggles it.",
+      table: { category: "Behavior", defaultValue: { summary: "false" } },
+    },
+    disabled: {
+      name: "Disabled",
+      control: "boolean",
+      description: "Dims the switch and stops it toggling.",
+      table: { category: "Behavior", defaultValue: { summary: "false" } },
+    },
+    readonly: {
+      name: "Read-only",
+      control: "boolean",
+      description: "Shows the current value but blocks changes: muted track, default cursor, still focusable. Different from Disabled, which dims it.",
+      table: { category: "Behavior", defaultValue: { summary: "false" } },
+    },
+    required: {
+      name: "Required",
+      control: "boolean",
+      description: "Adds a red asterisk after the label, and shows a red error (`error`) under the switch, with a red outline on the track, until it is switched on.",
+      table: { category: "Behavior", defaultValue: { summary: "false" } },
+    },
+    label: {
+      name: "Label",
+      control: "text",
+      description: "Text next to the switch. Clear it for a switch with no label.",
+      table: { category: "Content", defaultValue: { summary: "Switch Label" } },
+    },
+    help: {
+      name: "Help text",
+      control: "boolean",
+      description: "Info icon with a tooltip next to the label (`labelHelpText`). Needs a label.",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    size: {
+      name: "Size",
+      control: "radio",
+      options: ["lg", "sm"],
+      description: "Large is 40×24px, small is 32×16px.",
+      table: { category: "Appearance", defaultValue: { summary: "lg" } },
+    },
+    withIcon: {
+      name: "With icon",
+      control: "boolean",
+      description: "Shows the check or minus inside the thumb. Off hides it.",
+      table: { category: "Appearance", defaultValue: { summary: "true" } },
+    },
+    labelPosition: {
+      name: "Label position",
+      control: "radio",
+      options: ["left", "right"],
+      description: "Which side of the switch the label sits on. Needs a label.",
+      if: { arg: "label", truthy: true },
+      table: { category: "Appearance", defaultValue: { summary: "right" } },
+    },
+    fullWidth: {
+      name: "Full width",
+      control: "boolean",
+      description: "Stretches the row to the full width of its container and pushes the label and switch to opposite ends.",
+      table: { category: "Appearance", defaultValue: { summary: "false" } },
+    },
+  },
 };

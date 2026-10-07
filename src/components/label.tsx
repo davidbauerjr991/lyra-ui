@@ -47,6 +47,14 @@ export interface LabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> 
    * existing consumer that doesn't pass this prop is unaffected.
    */
   supportingText?: string;
+  /**
+   * `id` for the visually hidden copy of `labelHelpText` that a form control
+   * can point `aria-describedby` at, so its help is read with the field and
+   * not only on hover. Defaults to `${labelFor}-help` when `labelFor` is set;
+   * with neither, no hidden copy is rendered (the focusable help button and
+   * its tooltip still work). Input, Textarea and Select wire this up for you.
+   */
+  helpTextId?: string;
 }
 
 /* ── Component ── */
@@ -58,6 +66,7 @@ const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
       labelFor,
       labelHelpText,
       supportingText,
+      helpTextId,
       required = false,
       disabled = false,
       readonly = false,
@@ -74,6 +83,8 @@ const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
     const showHelp = !!labelHelpText && !disabled;
     // Supporting text is hidden when disabled, same as help text
     const showSupportingText = !!supportingText && !disabled;
+    // Id of the hidden help-text description (see `helpTextId`)
+    const helpId = helpTextId ?? (labelFor ? `${labelFor}-help` : undefined);
 
     const labelRow = (
       <LabelPrimitive.Root
@@ -106,28 +117,59 @@ const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
         )}
 
         {showHelp && (
+          // A real (focusable) button, so keyboard users can Tab to the help
+          // icon and get the tooltip on focus (Escape closes it). Same size
+          // and spacing as the span it replaces; the focus ring only shows on
+          // keyboard focus. `aria-label` names it; the help text itself is
+          // exposed to the control via `helpTextId` below, not inside the
+          // label (it used to be sr-only text in the label, which made the
+          // field's accessible name include the whole help sentence).
           <Tooltip content={labelHelpText!} placement="right">
-            <span className="inline-flex items-center text-lyra-fg-secondary hover:text-lyra-fg-action transition-colors cursor-default">
+            <button
+              type="button"
+              aria-label={`More info about ${label}`}
+              className="inline-flex items-center rounded-lyra-xs p-[5px] -m-[5px] text-lyra-fg-secondary hover:text-lyra-fg-action transition-colors cursor-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
+            >
               <CircleHelp
                 className="h-3.5 w-3.5"
                 strokeWidth={1.5}
                 aria-hidden="true"
               />
-              <span className="sr-only">{labelHelpText}</span>
-            </span>
+            </button>
           </Tooltip>
         )}
       </LabelPrimitive.Root>
     );
 
-    // No supporting text: return the bare `<label>` exactly as before —
-    // zero markup change for the vast majority of existing call sites.
-    if (!showSupportingText) return labelRow;
+    // Visually hidden copy of the help text for `aria-describedby`. `sr-only`
+    // is absolutely positioned, so it takes no space in the parent's layout.
+    const helpDescription =
+      showHelp && helpId ? (
+        <span id={helpId} className="sr-only">
+          {labelHelpText}
+        </span>
+      ) : null;
+
+    // No supporting text: the `<label>` as before (plus the hidden help
+    // description when there is help text and an id to give it).
+    if (!showSupportingText) {
+      return helpDescription ? (
+        <>
+          {labelRow}
+          {helpDescription}
+        </>
+      ) : (
+        labelRow
+      );
+    }
 
     return (
       <div className={cn("flex flex-col", className)}>
         {labelRow}
-        <p className="lyra-body-md text-lyra-fg-secondary">{supportingText}</p>
+        {helpDescription}
+        <p id={labelFor ? `${labelFor}-supporting` : undefined} className="lyra-body-md text-lyra-fg-secondary">
+          {supportingText}
+        </p>
       </div>
     );
   }

@@ -1,8 +1,10 @@
+import * as React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { ListItem } from "../list-item";
 import { MenuItem } from "../menu-item";
-import { UserPlus, MessageSquare, Bell, Home, Users, Settings, Trash2, Box, Star, ChevronRight } from "lucide-react";
+import { Box, Star, ChevronRight } from "lucide-react";
 import { Badge } from "../badge";
+import { MENU_PANEL_SURFACE } from "./ListItem.shared";
 
 const meta: Meta<typeof ListItem> = {
   title: "Custom Primitives/ListItem",
@@ -11,71 +13,23 @@ const meta: Meta<typeof ListItem> = {
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
 };
 export default meta;
-type Story = StoryObj<typeof ListItem>;
 
-export const Default: Story = {
-  args: { title: "New Case", subtitle: "Noah Patel", meta: "51m ago" },
-};
+/* A basic ListItem row, a list with leading icons, and the MenuItem states and
+   icon/description/shortcut menus each have their own page under
+   "ListItem/Variants" — see ListItem.variants.stories.tsx. */
 
-export const WithLeading: Story = {
-  name: "With leading icon",
-  render: () => (
-    <div className="w-80 border border-lyra-border-subtle rounded-lyra-lg overflow-hidden">
-      <ListItem
-        leading={<div className="h-9 w-9 rounded-full bg-lyra-bg-active-subtle flex items-center justify-center text-lyra-fg-active-strong"><UserPlus className="h-4 w-4" strokeWidth={1.5} /></div>}
-        title="New Case"
-        subtitle="Noah Patel"
-        meta="51m ago"
-      />
-      <ListItem
-        leading={<div className="h-9 w-9 rounded-full bg-lyra-status-success-subtle flex items-center justify-center text-lyra-status-success-strong"><MessageSquare className="h-4 w-4" strokeWidth={1.5} /></div>}
-        title="New Chat"
-        subtitle="Sarah Miller"
-        meta="56m ago"
-      />
-      <ListItem
-        leading={<div className="h-9 w-9 rounded-full bg-lyra-bg-surface-shell flex items-center justify-center text-lyra-fg-secondary"><Bell className="h-4 w-4" strokeWidth={1.5} /></div>}
-        title="System Update"
-        subtitle="Maintenance window at midnight"
-        meta="2h ago"
-        trailing={<Badge shape="circle" variant="info" size="sm">New</Badge>}
-      />
-    </div>
-  ),
-};
-
-/* ── MenuItem ──
-   `MenuItem` (menu-item.tsx) is a related-but-distinct primitive — a
-   "list item within a menu": a single-row, left-accent-bar, hover/active
-   -aware button, the same visual `Menu`'s own data-driven `items` render
-   internally per row, now available standalone. Demoed here in
-   ListItem's own stories file (rather than a separate stories file) on
-   request, since the two are closely related "row" primitives; reach for
-   `ListItem` for a general content row (leading/title/subtitle/meta/
-   trailing) and `MenuItem` for a single menu-styled row outside `Menu`'s
-   own array-driven API. */
-
-/** `MenuItem — Basic`'s controls compose entirely through `MenuItem`'s
- *  existing `icon`/`header`/`description`/`rightElement`/`trailingIcon`
- *  props — no new component API was needed beyond `header` itself (added
- *  directly to `MenuItem`, not just this story, since it has to render
- *  inside the button's own hover/click area — a title rendered in a
- *  separate element above the row would visually read as attached but
- *  not actually share the row's hover/click surface, per a screenshot
- *  showing exactly that gap). `withBadge` and `withRightSlot` both feed
- *  the same `rightElement` slot (rendered together, badge first, in a
- *  small flex row) since `MenuItem` only exposes one generic "right"
- *  slot; `withSubmenu`'s chevron uses `trailingIcon`, which always renders
- *  furthest right regardless of what's in `rightElement` — matching the
- *  requested "right slot icon sits left of the chevron, if both are on"
- *  ordering. `separator` renders `Menu`'s own separator treatment (see
- *  `menu.tsx`'s `"separator"` entry: `border-b border-lyra-border-subtle
- *  my-1.5`) directly below the row, in the same demo container, to
- *  preview a menu item followed by a divider without needing a real
- *  `Menu`. `comfortable` maps 1:1 to `MenuItem`'s own real `comfortable`
- *  prop (12px vs. 6px top/bottom padding) — a genuine density option on
- *  the component itself, not a story-only affordance. */
+/* ── Default — the MenuItem playground (previously "MenuItem — Basic").
+   Every control composes through `MenuItem`'s existing `icon` / `header` /
+   `description` / `rightElement` / `trailingIcon` / `comfortable` props — no
+   new component API. `badge` and `rightSlot` both feed the one
+   `rightElement` slot (badge first); `submenu`'s chevron uses `trailingIcon`,
+   which always renders furthest right. `density` maps to `MenuItem`'s real
+   `comfortable` prop (12px vs. 6px top/bottom padding). `separator` draws
+   `Menu`'s own divider under the row, and `container` wraps the row in the
+   menu panel surface (border, shadow, padding) it normally sits in. ── */
 function MenuItemBasicDemo({
+  count = 1,
+  density = "comfortable",
   icon = false,
   header = false,
   description = false,
@@ -83,8 +37,13 @@ function MenuItemBasicDemo({
   submenu = false,
   rightSlot = false,
   separator = false,
-  comfortable = true,
+  container = true,
+  padding = true,
+  leftBorder = true,
+  maxWidth = true,
 }: {
+  count?: number;
+  density?: "comfortable" | "compact";
   icon?: boolean;
   header?: boolean;
   description?: boolean;
@@ -92,12 +51,15 @@ function MenuItemBasicDemo({
   submenu?: boolean;
   rightSlot?: boolean;
   separator?: boolean;
-  comfortable?: boolean;
+  container?: boolean;
+  padding?: boolean;
+  leftBorder?: boolean;
+  maxWidth?: boolean;
 }) {
   const hasRightContent = badge || rightSlot;
 
-  return (
-    <div className="w-72 rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay p-1 shadow-lg">
+  const rows = Array.from({ length: count }, (_, i) => (
+    <React.Fragment key={i}>
       <MenuItem
         header={header ? "New Case" : undefined}
         label="Menu Item"
@@ -106,9 +68,7 @@ function MenuItemBasicDemo({
         rightElement={
           hasRightContent ? (
             <div className="flex items-center gap-2">
-              {badge && (
-                <Badge shape="circle" variant="info" size="sm">New</Badge>
-              )}
+              {badge && <Badge shape="circle" variant="info" size="sm">New</Badge>}
               {rightSlot && (
                 <Star className="h-4 w-4 text-lyra-fg-secondary flex-shrink-0" strokeWidth={1.5} />
               )}
@@ -120,19 +80,46 @@ function MenuItemBasicDemo({
             <ChevronRight className="h-4 w-4 text-lyra-fg-secondary flex-shrink-0" strokeWidth={1.5} aria-hidden="true" />
           ) : undefined
         }
-        comfortable={comfortable}
+        comfortable={density === "comfortable"}
+        // The left border is `MenuItem`'s accent bar — its first child span,
+        // shown on hover/press and persistently when active. `MenuItem` has no
+        // prop to turn it off, so hide it from here.
+        className={leftBorder ? undefined : "[&>span:first-child]:!hidden"}
         onClick={() => {}}
       />
       {separator && (
-        <div role="separator" className="border-b border-lyra-border-subtle my-1.5" />
+        // No container padding means flush rows, so the divider drops its
+        // usual 6px top/bottom margin too (it's the only space between rows).
+        <div
+          role="separator"
+          className={`border-b border-lyra-border-subtle ${container && !padding ? "my-0" : "my-1.5"}`}
+        />
       )}
+    </React.Fragment>
+  ));
+
+  // Max width caps the list at its usual 288px; off, it fills the full width.
+  const width = maxWidth ? "w-full max-w-72" : "w-full";
+
+  return container ? (
+    <div
+      className={`${width} ${MENU_PANEL_SURFACE} ${
+        padding ? "p-1" : "overflow-hidden"
+      }`}
+    >
+      {rows}
     </div>
+  ) : (
+    <div className={width}>{rows}</div>
   );
 }
 
-export const MenuItemBasic: Story = {
-  name: "MenuItem — Basic",
+type MenuItemBasicStory = StoryObj<React.ComponentProps<typeof MenuItemBasicDemo>>;
+
+export const Default: MenuItemBasicStory = {
   args: {
+    count: 1,
+    density: "comfortable",
     icon: false,
     header: false,
     description: false,
@@ -140,41 +127,106 @@ export const MenuItemBasic: Story = {
     submenu: false,
     rightSlot: false,
     separator: false,
-    comfortable: true,
+    container: true,
+    padding: true,
+    leftBorder: true,
+    maxWidth: true,
+  },
+  parameters: {
+    controls: {
+      // Storybook matches `include` against each control's display `name`
+      // (falling back to its key), so list the names; keys are kept too.
+      include: [
+        "Number of items", "Density", "Icon left", "Header", "With description", "With badge",
+        "With submenu", "With right slot", "Separator", "Container", "Container padding", "Left border", "Max width",
+        "count", "density", "icon", "header", "description", "badge",
+        "submenu", "rightSlot", "separator", "container", "padding", "leftBorder", "maxWidth",
+      ],
+      sort: "none",
+    },
   },
   argTypes: {
-    icon: { name: "Icon left", control: "boolean" },
-    header: { name: "Header", control: "boolean" },
-    description: { name: "With description", control: "boolean" },
-    badge: { name: "With badge", control: "boolean" },
-    submenu: { name: "With submenu", control: "boolean" },
-    rightSlot: { name: "With right slot", control: "boolean" },
-    separator: { name: "Separator", control: "boolean" },
-    comfortable: { name: "Comfortable", control: "boolean" },
+    count: {
+      name: "Number of items",
+      control: { type: "range", min: 1, max: 5, step: 1 },
+      description: "How many identical rows to show, 1 to 5.",
+      table: { category: "Content", defaultValue: { summary: "1" } },
+    },
+    density: {
+      name: "Density",
+      control: "radio",
+      options: ["comfortable", "compact"],
+      labels: { comfortable: "Comfortable", compact: "Compact" },
+      description: "Row padding: comfortable is 12px top and bottom, compact is 6px (`comfortable`).",
+      table: { category: "Appearance", defaultValue: { summary: "comfortable" } },
+    },
+    icon: {
+      name: "Icon left",
+      control: "boolean",
+      description: "Icon on the left (`icon`).",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    header: {
+      name: "Header",
+      control: "boolean",
+      description: "Bold title line above the label (`header`).",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    description: {
+      name: "With description",
+      control: "boolean",
+      description: "Supporting text under the label (`description`).",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    badge: {
+      name: "With badge",
+      control: "boolean",
+      description: "A \"New\" badge on the right (`rightElement`).",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    submenu: {
+      name: "With submenu",
+      control: "boolean",
+      description: "Chevron at the far right (`trailingIcon`).",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    rightSlot: {
+      name: "With right slot",
+      control: "boolean",
+      description: "A star on the right (`rightElement`), after the badge if both are on.",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    separator: {
+      name: "Separator",
+      control: "boolean",
+      description: "A divider under the row, as `Menu` draws between groups.",
+      table: { category: "Appearance", defaultValue: { summary: "false" } },
+    },
+    container: {
+      name: "Container",
+      control: "boolean",
+      description: "Wraps the row in the menu panel (border, shadow, padding) it normally sits in.",
+      table: { category: "Appearance", defaultValue: { summary: "true" } },
+    },
+    padding: {
+      name: "Container padding",
+      control: "boolean",
+      description: "Space around the rows inside the container (`p-1`). Off, the rows sit flush against its edges.",
+      if: { arg: "container", truthy: true },
+      table: { category: "Appearance", defaultValue: { summary: "true" } },
+    },
+    leftBorder: {
+      name: "Left border",
+      control: "boolean",
+      description: "The accent bar on the row's left edge that shows on hover and press. Off hides it.",
+      table: { category: "Appearance", defaultValue: { summary: "true" } },
+    },
+    maxWidth: {
+      name: "Max width",
+      control: "boolean",
+      description: "On caps the width at 288px. Off stretches the list to the full width of the canvas.",
+      table: { category: "Appearance", defaultValue: { summary: "true" } },
+    },
   },
-  render: (args) => <MenuItemBasicDemo {...(args as any)} />,
-};
-
-export const MenuItemStates: Story = {
-  name: "MenuItem — States",
-  render: () => (
-    <div className="w-64 rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay p-1 shadow-lg">
-      <MenuItem label="Default" onClick={() => {}} />
-      <MenuItem label="Active (current)" active onClick={() => {}} />
-      <MenuItem label="Destructive" destructive onClick={() => {}} />
-      <MenuItem label="Disabled" disabled onClick={() => {}} />
-    </div>
-  ),
-};
-
-export const MenuItemWithIconsAndMeta: Story = {
-  name: "MenuItem — Icon, description, shortcut",
-  render: () => (
-    <div className="w-72 rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay p-1 shadow-lg">
-      <MenuItem icon={<Home className="h-4 w-4" strokeWidth={1.5} />} label="Home" active onClick={() => {}} />
-      <MenuItem icon={<Users className="h-4 w-4" strokeWidth={1.5} />} label="Team" description="Manage members and roles" onClick={() => {}} />
-      <MenuItem icon={<Settings className="h-4 w-4" strokeWidth={1.5} />} label="Settings" shortcut="⌘," onClick={() => {}} />
-      <MenuItem icon={<Trash2 className="h-4 w-4" strokeWidth={1.5} />} label="Delete" destructive onClick={() => {}} />
-    </div>
-  ),
+  render: (args) => <MenuItemBasicDemo {...args} />,
 };

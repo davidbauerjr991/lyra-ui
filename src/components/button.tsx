@@ -4,6 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/utils";
 import { Tooltip } from "./tooltip";
 import { Badge } from "./badge";
+import { Spinner } from "./spinner";
 
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lyra-sm lyra-label transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40",
@@ -95,14 +96,57 @@ export interface ButtonProps
    * `ActionIconButton`).
    */
   badge?: number;
+  /**
+   * Tooltip for an icon-only button (`variant="icon"` or an `icon-*` size).
+   * `true` uses the button's `aria-label` (or `title`) as the text; a string
+   * uses that text instead. Default: off — never automatic, because many
+   * icon buttons are already wrapped in their own `Tooltip` and an automatic
+   * one would show two. (`title`, which also sets the accessible name, keeps
+   * its existing built-in tooltip.) Ignored on buttons that aren't icon-only.
+   */
+  tooltip?: boolean | string;
+  /**
+   * Loading state: shows a spinner over the label (the button keeps its
+   * width), sets `aria-busy`, and ignores clicks. It stays focusable
+   * (`aria-disabled`, not `disabled`) so keyboard focus isn't lost when a
+   * submit starts. Default: false. With `asChild` only `aria-busy` and the
+   * click guard apply (no spinner can be injected into the child).
+   */
+  loading?: boolean;
+  /**
+   * Contrast of a disabled `ghost` / icon button. `"default"` is today's look
+   * (the whole button at 40% opacity, which leaves the label hard to see);
+   * `"high"` keeps full opacity and uses the disabled-text token instead
+   * (about 4.7:1 on white). Default: `"default"` so existing screens don't
+   * change; no effect on other variants.
+   */
+  disabledContrast?: "default" | "high";
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, wrap, asChild = false, title, badge, children, ...props }, ref) => {
+  (
+    {
+      className,
+      variant,
+      size,
+      wrap,
+      asChild = false,
+      title,
+      badge,
+      children,
+      tooltip,
+      loading = false,
+      disabledContrast = "default",
+      onClick,
+      ...props
+    },
+    ref
+  ) => {
     const Comp = asChild ? Slot : "button";
     const isIconVariant = variant === "icon" || ICON_SIZES.includes(size as (typeof ICON_SIZES)[number]);
+    const isGhostLike = variant === "ghost" || variant === "icon";
 
-    const content = isIconVariant && badge != null && badge > 0 ? (
+    const baseContent = isIconVariant && badge != null && badge > 0 ? (
       <span className="relative inline-flex">
         <span aria-hidden="true">{children}</span>
         <Badge
@@ -115,21 +159,56 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       </span>
     ) : children;
 
+    // Loading: the label stays in the layout (transparent) so the button keeps
+    // its width, with a spinner centered over it. The spinner sits in an
+    // aria-hidden wrapper; `aria-busy` carries the state for screen readers.
+    const showSpinner = loading && !asChild;
+    const spinnerColor = variant === "outline" || variant === "ghost" || variant === "icon" ? "primary" : "inverse";
+    const content = showSpinner ? (
+      <>
+        {/* opacity-0, not `invisible`: the label stays in the accessibility tree, so the button keeps its name while loading */}
+        <span className="opacity-0 inline-flex items-center justify-center gap-2">{baseContent}</span>
+        <span aria-hidden="true" className="absolute inset-0 flex items-center justify-center">
+          <Spinner variant="circle" size="sm" color={spinnerColor} />
+        </span>
+      </>
+    ) : baseContent;
+
+    const tooltipText =
+      typeof tooltip === "string"
+        ? tooltip
+        : tooltip === true
+        ? (props["aria-label"] as string | undefined) ?? title
+        : title;
+
     const button = (
       <Comp
-        className={cn(buttonVariants({ variant, size, wrap, className }))}
+        className={cn(
+          buttonVariants({ variant, size, wrap, className }),
+          showSpinner && "relative",
+          loading && "cursor-progress",
+          // Higher-contrast disabled ghost/icon buttons (opt-in)
+          disabledContrast === "high" && isGhostLike && "disabled:opacity-100 disabled:text-lyra-fg-disabled"
+        )}
         ref={ref}
         title={isIconVariant ? undefined : title}
         aria-label={isIconVariant ? title : undefined}
         {...props}
+        {...(loading
+          ? {
+              "aria-busy": true,
+              "aria-disabled": true,
+              onClick: (e: React.MouseEvent<HTMLButtonElement>) => e.preventDefault(),
+            }
+          : { onClick })}
       >
         {content}
       </Comp>
     );
 
-    if (isIconVariant && title) {
+    if (isIconVariant && tooltipText) {
       return (
-        <Tooltip content={title} placement="bottom" asLabel>
+        <Tooltip content={tooltipText} placement="bottom" asLabel={!!title || tooltip === true}>
           {button}
         </Tooltip>
       );

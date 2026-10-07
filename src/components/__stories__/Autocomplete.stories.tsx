@@ -1,131 +1,154 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
 import { Autocomplete } from "../autocomplete";
-
-// Convert ISO 3166-1 alpha-2 code to flag emoji (no library needed)
-function flag(code: string): string {
-  return code.toUpperCase().replace(/./g, (c) =>
-    String.fromCodePoint(c.charCodeAt(0) + 127397)
-  );
-}
-
-const COUNTRIES = [
-  { value: "us", label: "United States",  icon: flag("us") },
-  { value: "ca", label: "Canada",          icon: flag("ca") },
-  { value: "gb", label: "United Kingdom",  icon: flag("gb") },
-  { value: "au", label: "Australia",       icon: flag("au") },
-  { value: "de", label: "Germany",         icon: flag("de") },
-  { value: "fr", label: "France",          icon: flag("fr") },
-  { value: "jp", label: "Japan",           icon: flag("jp") },
-  { value: "br", label: "Brazil",          icon: flag("br") },
-  { value: "in", label: "India",           icon: flag("in") },
-  { value: "mx", label: "Mexico",          icon: flag("mx") },
-  { value: "es", label: "Spain",           icon: flag("es") },
-  { value: "it", label: "Italy",           icon: flag("it") },
-];
-
-const AGENTS = [
-  { value: "a1", label: "Alice Johnson" },
-  { value: "a2", label: "Bob Martinez" },
-  { value: "a3", label: "Carol White" },
-  { value: "a4", label: "David Lee" },
-  { value: "a5", label: "Eve Thompson" },
-  { value: "a6", label: "Frank Garcia" },
-  { value: "a7", label: "Grace Kim — (Unavailable)", disabled: true },
-];
+import { COUNTRIES } from "./Autocomplete.shared";
 
 const meta: Meta<typeof Autocomplete> = {
   title: "Custom Primitives/Autocomplete",
   component: Autocomplete,
   tags: ["autodocs"],
-  parameters: {
-    layout: "padded",
-    backgrounds: { default: "lyra-shell" },
-  },
-  argTypes: {
-    /** "sm" (32px) is for dense contexts vs. the "md" (36px) default every
-     *  other field in the library uses. Only the closed field shrinks —
-     *  the open dropdown's rows stay full-size. */
-    size: { control: "select", options: ["sm", "md"], name: "Size" },
-  },
+  parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
 };
 
 export default meta;
-type Story = StoryObj<typeof Autocomplete>;
 
-export const Default: Story = {
-  name: "Default",
+/* Variants (states, with value, disabled & read only) have their own pages
+   under "Autocomplete/Variants" — see Autocomplete.variants.stories.tsx. */
+
+/* ── Default — consolidated playground, previously three separate stories:
+   Default, With disabled option, Search only (no show-all). Fully
+   controlled so every control reflects real Autocomplete state, not just
+   the initial render — e.g. picking a country updates the "Selected" line
+   below the field, same as a consumer's own onChange wiring would. ── */
+
+type FieldState = "normal" | "disabled" | "readOnly";
+
+interface AutocompleteDemoProps {
+  size?: "sm" | "md";
+  showAll?: boolean;
+  disabledOption?: boolean;
+  required?: boolean;
+  fieldState?: FieldState;
+  loading?: boolean;
+  filterOptions?: boolean;
+}
+
+function AutocompleteDemo({
+  size = "md",
+  showAll = true,
+  disabledOption = false,
+  required = false,
+  fieldState = "normal",
+  loading = false,
+  filterOptions = true,
+}: AutocompleteDemoProps) {
+  const options = COUNTRIES.map((option) =>
+    option.value === "jp" && disabledOption
+      ? { ...option, label: "Japan — (Unavailable)", disabled: true }
+      : option
+  );
+  const [value, setValue] = useState<string | undefined>();
+
+  return (
+    <div className="w-72">
+      <Autocomplete
+        label="Country"
+        options={options}
+        value={value}
+        onChange={setValue}
+        placeholder={showAll ? "Search countries…" : "Type to search…"}
+        showAllOnEmpty={showAll}
+        required={required}
+        disabled={fieldState === "disabled"}
+        readonly={fieldState === "readOnly"}
+        size={size}
+        loading={loading}
+        filterOptions={filterOptions}
+      />
+      {value && (
+        <p className="lyra-body-sm text-lyra-fg-secondary mt-2">
+          Selected: {COUNTRIES.find((c) => c.value === value)?.label}
+        </p>
+      )}
+    </div>
+  );
+}
+
+type AutocompleteDemoStory = StoryObj<typeof AutocompleteDemo>;
+
+export const Default: AutocompleteDemoStory = {
+  // Curated via `controls.include` (not by disabling props on `meta`) so
+  // the Docs page's autodocs table still lists every real Autocomplete
+  // prop — only this story's own Controls panel is scoped down to the
+  // handful of args its render function actually reads.
+  parameters: {
+    controls: {
+      include: ["showAll", "required", "fieldState", "disabledOption", "size", "loading", "filterOptions"],
+      sort: "none",
+    },
+  },
   args: {
     size: "md",
+    showAll: true,
+    disabledOption: false,
+    required: false,
+    fieldState: "normal",
+    loading: false,
+    filterOptions: true,
   },
-  render: (args) => {
-    const [value, setValue] = useState<string | undefined>();
-    return (
-      <div className="w-72">
-        <Autocomplete
-          label="Country"
-          options={COUNTRIES}
-          value={value}
-          onChange={setValue}
-          placeholder="Search countries…"
-          size={args.size}
-        />
-        {value && (
-          <p className="lyra-body-sm text-lyra-fg-secondary mt-2">
-            Selected: {COUNTRIES.find((c) => c.value === value)?.label}
-          </p>
-        )}
-      </div>
-    );
+  argTypes: {
+    showAll: {
+      name: "Show All On Empty",
+      control: "boolean",
+      description:
+        "On (default): opens with the full option list before typing. Off: the dropdown stays empty until the user types a query.",
+      table: { category: "Behavior" },
+    },
+    required: {
+      name: "Required",
+      control: "boolean",
+      description: "Shows the required-field indicator on the label.",
+      table: { category: "Behavior" },
+    },
+    fieldState: {
+      name: "Field State",
+      control: "radio",
+      options: ["normal", "disabled", "readOnly"],
+      description:
+        "Normal (editable), Disabled (non-interactive, muted), or Read Only (locked — shows the selected value without allowing changes).",
+      table: { category: "Behavior" },
+    },
+    disabledOption: {
+      name: "Disabled Option",
+      control: "boolean",
+      description: "Marks one option (Japan) as unselectable, to show the disabled-row treatment.",
+      table: { category: "Content" },
+    },
+    loading: {
+      name: "Loading",
+      control: "boolean",
+      description:
+        "While the dropdown is open, shows a spinner and “Loading…” instead of the options, and screen readers hear “Loading…” (`loading`, `loadingMessage`). Open the field to see it.",
+      table: { category: "Behavior" },
+    },
+    filterOptions: {
+      name: "Filter Options",
+      control: "boolean",
+      description:
+        "On (default): the field filters the options by what is typed. Off: every option stays listed, for results already filtered by a server (`filterOptions`). See Variants → Async Search.",
+      table: { category: "Behavior" },
+    },
+    size: {
+      name: "Size",
+      control: "radio",
+      options: ["sm", "md"],
+      description: "Field height — sm (32px) for dense contexts, md (36px, default).",
+      table: { category: "Appearance" },
+    },
   },
-};
-
-export const WithDisabledOption: Story = {
-  name: "With disabled option",
-  render: () => {
-    const [value, setValue] = useState<string | undefined>();
-    return (
-      <div className="w-72">
-        <Autocomplete
-          label="Assign agent"
-          options={AGENTS}
-          value={value}
-          onChange={setValue}
-          placeholder="Search agents…"
-        />
-      </div>
-    );
-  },
-};
-
-export const SearchOnly: Story = {
-  name: "Search only (no show-all)",
-  render: () => {
-    const [value, setValue] = useState<string | undefined>();
-    return (
-      <div className="w-72">
-        <Autocomplete
-          label="Country"
-          options={COUNTRIES}
-          value={value}
-          onChange={setValue}
-          placeholder="Type to search…"
-          showAllOnEmpty={false}
-        />
-      </div>
-    );
-  },
-};
-
-export const States: Story = {
-  name: "States",
-  render: () => (
-    <div className="flex flex-col gap-4 w-72">
-      <Autocomplete label="Default" options={COUNTRIES} placeholder="Search…" />
-      <Autocomplete label="With value" options={COUNTRIES} value="gb" placeholder="Search…" />
-      <Autocomplete label="Required" options={COUNTRIES} required placeholder="Search…" />
-      <Autocomplete label="Disabled" options={COUNTRIES} disabled placeholder="Search…" />
-      <Autocomplete label="Read Only" options={COUNTRIES} readonly value="au" placeholder="Search…" />
-    </div>
+  render: (args) => (
+    // `key` remounts the demo whenever a control changes — `useState`'s
+    // initial value only applies on first mount.
+    <AutocompleteDemo key={JSON.stringify(args)} {...args} />
   ),
 };

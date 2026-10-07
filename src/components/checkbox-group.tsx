@@ -11,6 +11,8 @@ export interface CheckboxGroupOption {
   value: string;
   /** Display label */
   label: string;
+  /** Supporting line shown under this option's label */
+  secondaryText?: string;
   /** Disable this individual option */
   disabled?: boolean;
 }
@@ -119,6 +121,7 @@ const CheckboxGroup = React.forwardRef<HTMLFieldSetElement, CheckboxGroupProps>(
                 key={option.value}
                 id={`${groupId}-${option.value}`}
                 label={option.label}
+                secondaryText={option.secondaryText}
                 checked={isChecked}
                 disabled={isOptionDisabled}
                 readonly={readonly}

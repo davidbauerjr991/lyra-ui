@@ -35,6 +35,30 @@ const indicatorVariants = cva(
   }
 );
 
+/* Keyframes for the indeterminate bar — injected once, like Spinner's. */
+const STYLE_ID = "lyra-progress-keyframes";
+function ensureKeyframes() {
+  if (typeof document === "undefined" || document.getElementById(STYLE_ID)) return;
+  const style = document.createElement("style");
+  style.id = STYLE_ID;
+  style.textContent = `
+    @keyframes lyra-progress-indeterminate {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(250%); }
+    }
+    /* Reduced motion: no sliding. A half-width bar fades in and out instead. */
+    @keyframes lyra-progress-fade { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) {
+      [data-lyra-progress-indeterminate] {
+        animation: lyra-progress-fade 1.6s ease-in-out infinite !important;
+        transform: none !important;
+        margin-left: 25%;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 export interface ProgressBarProps
   extends React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root>,
     VariantProps<typeof trackVariants>,
@@ -56,36 +80,62 @@ export interface ProgressBarProps
    * real usage (matching Radix's own Progress primitive docs easing curve).
    */
   indicatorClassName?: string;
+  /**
+   * Unknown progress: a segment slides along the track, and the bar reports
+   * no value to assistive tech (no `aria-valuenow`). `value` is ignored and
+   * the percentage label is hidden; `label` still shows as text. Default:
+   * false. Honors reduced motion (the segment fades in place instead).
+   */
+  indeterminate?: boolean;
 }
 
 const ProgressBar = React.forwardRef<
   React.ElementRef<typeof ProgressPrimitive.Root>,
   ProgressBarProps
->(({ className, value = 0, size, variant, showLabel, label, indicatorClassName, ...props }, ref) => (
+>(({ className, value = 0, size, variant, showLabel, label, indicatorClassName, indeterminate = false, ...props }, ref) => {
+  const labelId = React.useId();
+  React.useEffect(() => {
+    if (indeterminate) ensureKeyframes();
+  }, [indeterminate]);
+  // A visible custom label names the bar by reference (`aria-labelledby`), so
+  // the name is the text people actually see. A bare percentage ("45%") isn't
+  // a good name, so that case keeps the default "Progress".
+  const hasVisibleLabel = !!showLabel && !!label;
+  return (
   <div className="flex flex-col gap-1 w-full">
     <ProgressPrimitive.Root
       ref={ref}
-      value={value}
+      value={indeterminate ? null : value}
       max={100}
       className={cn(trackVariants({ size }), "w-full", className)}
       // Default accessible name (axe aria-progressbar-name) — a consumer's own
       // aria-label/aria-labelledby in {...props} still wins.
-      aria-label={label ?? "Progress"}
+      {...(hasVisibleLabel ? { "aria-labelledby": labelId } : { "aria-label": label ?? "Progress" })}
       {...props}
     >
       <ProgressPrimitive.Indicator
-        className={cn(indicatorVariants({ variant }), indicatorClassName)}
-        style={{ transform: `translateX(-${100 - Math.min(100, Math.max(0, value))}%)` }}
+        {...(indeterminate ? { "data-lyra-progress-indeterminate": "" } : {})}
+        className={cn(
+          indicatorVariants({ variant }),
+          indeterminate && "w-2/5 flex-none transition-none",
+          indicatorClassName
+        )}
+        style={
+          indeterminate
+            ? { animation: "lyra-progress-indeterminate 1.4s ease-in-out infinite" }
+            : { transform: `translateX(-${100 - Math.min(100, Math.max(0, value))}%)` }
+        }
       />
     </ProgressPrimitive.Root>
 
-    {showLabel && (
-      <span className="lyra-body-sm text-lyra-fg-secondary tabular-nums">
+    {(showLabel && !(indeterminate && !label)) && (
+      <span id={labelId} className="lyra-body-sm text-lyra-fg-secondary tabular-nums">
         {label ?? `${Math.round(value)}%`}
       </span>
     )}
   </div>
-));
+  );
+});
 ProgressBar.displayName = "ProgressBar";
 
 export { ProgressBar };

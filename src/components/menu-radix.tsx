@@ -56,6 +56,14 @@ export interface MenuRadixProps {
   sideOffset?: number;
   /** Additional class on the menu surface */
   className?: string;
+  /**
+   * Radix's modal mode (default: `true`, today's behavior): while open, the
+   * rest of the page is hidden from assistive tech (`aria-hidden`) and
+   * outside clicks are blocked. Set `false` to leave the page exposed and
+   * interactive; useful where an accessibility checker flags the hidden
+   * trigger (`aria-hidden-focus`), as in the "Submenu Open" story.
+   */
+  modal?: boolean;
 }
 
 /* ── Shared surface classes (top-level Content and every SubContent) ──
@@ -152,6 +160,10 @@ function MenuRadixItem({ item }: { item: MenuItemDef }) {
     item.active && !isDestructive &&
       "bg-lyra-bg-active-subtle text-lyra-fg-active-strong data-[highlighted]:bg-lyra-state-hover-active-subtle",
     "data-[disabled]:opacity-40 data-[disabled]:cursor-not-allowed data-[disabled]:data-[highlighted]:bg-transparent",
+    // Keyboard focus outline: `:focus-visible` only, so the existing hover
+    // look is unchanged for mouse users. Inset so the menu surface's
+    // `overflow-hidden` can't clip it.
+    "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lyra-border-focus",
     // Drag-to-reorder affordance/feedback — `dragOver` is the same "another
     // row is being dragged over this one" highlight `SortableTableHead` uses
     // (`bg-lyra-bg-active-moderate`), driven entirely by whatever hook the
@@ -303,6 +315,7 @@ const MenuRadix = React.forwardRef<HTMLButtonElement, MenuRadixProps>(
       align = "start",
       sideOffset = 4,
       className,
+      modal = true,
     },
     ref
   ) => {
@@ -328,7 +341,7 @@ const MenuRadix = React.forwardRef<HTMLButtonElement, MenuRadixProps>(
     };
 
     return (
-      <DropdownMenuPrimitive.Root open={open ?? isOpen} onOpenChange={handleOpenChange}>
+      <DropdownMenuPrimitive.Root open={open ?? isOpen} onOpenChange={handleOpenChange} modal={modal}>
         <DropdownMenuPrimitive.Trigger ref={ref} asChild>
           {trigger}
         </DropdownMenuPrimitive.Trigger>

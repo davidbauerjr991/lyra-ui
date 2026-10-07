@@ -54,7 +54,23 @@ const RadioGroup = React.forwardRef<HTMLDivElement, RadioGroupProps>(
           onValueChange={onValueChange}
           name={name}
           disabled={disabled}
-          orientation={orientation === "horizontal" ? "horizontal" : "vertical"}
+          // `orientation` is deliberately NOT passed to Radix: any value
+          // restricts the roving-focus keys to one axis (vertical = ↑/↓ only),
+          // so ←/→ did nothing. Left unset, all four arrows move + select,
+          // like a native radio group. Layout comes from the class below.
+          // Home/End also select (Radix only moves focus for them).
+          onKeyDownCapture={(e) => {
+            if (e.key !== "Home" && e.key !== "End") return;
+            const radios = Array.from(
+              e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]:not(:disabled)')
+            );
+            const target = e.key === "Home" ? radios[0] : radios[radios.length - 1];
+            if (!target) return;
+            e.preventDefault();
+            e.stopPropagation();
+            target.focus();
+            if (target.getAttribute("aria-checked") !== "true") target.click();
+          }}
           aria-labelledby={label ? labelId : ariaLabelledBy}
           aria-describedby={ariaDescribedBy}
           aria-invalid={ariaInvalid}
@@ -86,12 +102,22 @@ const RadioGroupItem = React.forwardRef<HTMLButtonElement, RadioGroupItemProps>(
   ({ className, value, label, disabled: itemDisabled, id, ...props }, ref) => {
     const autoId = React.useId();
     const inputId = id || autoId;
+    // A consumer that hides the circle (`[&_[role=radio]]:sr-only`) or brings
+    // its own focus ring in `className` (`has-[[role=radio]:focus-visible]:ring-2`,
+    // ...) already anchors the keyboard ring somewhere visible, so the default
+    // ring around radio + label steps aside rather than doubling up.
+    const ownFocus = typeof className === "string" && (/focus-visible\]?:ring/.test(className) || className.includes("sr-only"));
+    const showLabelRing = !!label && !ownFocus;
 
     return (
       <label
         htmlFor={inputId}
         className={cn(
           "group/radio flex items-center gap-1.5",
+          // Keyboard focus ring wraps radio + label together (`:focus-visible`
+          // only, so mouse clicks show nothing). The circle's own ring is
+          // dropped when there's a label — see the Item classes below.
+          showLabelRing && "rounded-lyra-sm has-[[role=radio]:focus-visible]:ring-2 has-[[role=radio]:focus-visible]:ring-lyra-border-focus has-[[role=radio]:focus-visible]:ring-offset-2",
           itemDisabled ? "cursor-not-allowed" : "cursor-pointer",
           className
         )}
@@ -123,7 +149,9 @@ const RadioGroupItem = React.forwardRef<HTMLButtonElement, RadioGroupItemProps>(
             "disabled:data-[state=checked]:border-lyra-border-disabled disabled:data-[state=checked]:bg-lyra-bg-disabled",
             "disabled:data-[state=checked]:hover:border-lyra-border-disabled disabled:data-[state=checked]:hover:bg-lyra-bg-disabled",
             /* Focus */
-            "focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+            "focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
+            // With a label the wrapper rings box + label instead
+            showLabelRing && "focus-visible:ring-0 focus-visible:ring-offset-0"
           )}
         >
           <RadioGroupPrimitive.Indicator className="flex items-center justify-center">

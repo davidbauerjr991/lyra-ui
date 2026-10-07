@@ -4,6 +4,7 @@ import { Check, Minus } from "lucide-react";
 import { cva } from "class-variance-authority";
 import { cn } from "../lib/utils";
 import { Label } from "./label";
+import { ErrorIconSolid } from "./icons/error-icon-solid";
 
 /* ── Types ── */
 
@@ -24,8 +25,13 @@ interface SwitchProps
   labelHelpText?: string;
   /** Marks the field as required — shows asterisk on label */
   required?: boolean;
-  /** Marks the field as read-only — affects label styling */
+  /** Marks the field as read-only — shows the current value but can't be
+   *  toggled (stays focusable, `aria-readonly`), with a muted track and a
+   *  default cursor, distinct from `disabled`. Also styles the label. */
   readonly?: boolean;
+  /** Error message shown under the switch; marks it `aria-invalid` and outlines
+   *  the track in the error color. Pair with `required` for "must be on". */
+  error?: string;
 }
 
 /* ── CVA definitions ── */
@@ -112,19 +118,20 @@ const switchLabelVariants = cva("", {
 const Switch = React.forwardRef<
   React.ComponentRef<typeof SwitchPrimitive.Root>,
   SwitchProps
->(({ className, checked = false, onCheckedChange, size = "lg", label, labelHelpText, required, readonly, disabled, id, ...props }, ref) => {
+>(({ className, checked = false, onCheckedChange, size = "lg", label, labelHelpText, required, readonly, error, disabled, id, ...props }, ref) => {
   const autoId = React.useId();
-  const switchId = id || (label ? autoId : undefined);
+  const switchId = id || (label || error ? autoId : undefined);
+  const errorId = `${autoId}-error`;
   const isOn = checked === true;
   const isIndeterminate = checked === "indeterminate";
   const isCheckedOff = checked === "checked";
   const isOff = checked === false;
 
-  return (
+  const control = (
     <div
       className={cn(
         "inline-flex items-center gap-2",
-        disabled ? "cursor-not-allowed" : "cursor-pointer",
+        disabled ? "cursor-not-allowed" : readonly ? "cursor-default" : "cursor-pointer",
         className
       )}
     >
@@ -132,8 +139,13 @@ const Switch = React.forwardRef<
         ref={ref}
         id={switchId}
         checked={isOn}
-        onCheckedChange={onCheckedChange}
+        // Read-only: stays focusable and keeps its value, but never reports a change
+        onCheckedChange={readonly ? undefined : onCheckedChange}
         disabled={disabled}
+        aria-readonly={readonly || undefined}
+        aria-required={required || undefined}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
         className={cn(
           "peer relative inline-flex shrink-0 items-center rounded-full transition-colors",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
@@ -162,6 +174,16 @@ const Switch = React.forwardRef<
 
           /* Checked off */
           isCheckedOff && "bg-lyra-bg-secondary border-lyra-border-soft",
+
+          /* Read-only — muted track, no hover/press change, not dimmed like disabled */
+          readonly && !disabled && [
+            "cursor-default bg-lyra-bg-secondary border-lyra-border-soft",
+            "hover:bg-lyra-bg-secondary hover:border-lyra-border-soft active:bg-lyra-bg-secondary active:border-lyra-border-soft",
+            isOn && "bg-lyra-fg-secondary border-lyra-fg-secondary hover:bg-lyra-fg-secondary hover:border-lyra-fg-secondary active:bg-lyra-fg-secondary active:border-lyra-fg-secondary",
+          ],
+
+          /* Error — outlines the track (any value) */
+          error && !disabled && "border-lyra-status-critical-strong hover:border-lyra-status-critical-strong active:border-lyra-status-critical-strong",
 
           /* Disabled */
           disabled && "opacity-40 cursor-not-allowed"
@@ -209,6 +231,20 @@ const Switch = React.forwardRef<
         />
       )}
     </div>
+  );
+
+  if (!error) return control;
+
+  // Sibling of the control (not a wrapper), so `className` and the parent's
+  // layout keep applying to the switch row exactly as without an error.
+  return (
+    <>
+      {control}
+      <div id={errorId} role="alert" className="flex items-center gap-1 mt-2">
+        <ErrorIconSolid className="h-3.5 w-3.5 flex-shrink-0 text-lyra-status-critical-strong" aria-hidden="true" />
+        <span className="lyra-body-sm text-lyra-status-critical-strong">{error}</span>
+      </div>
+    </>
   );
 });
 Switch.displayName = "Switch";

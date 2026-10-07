@@ -30,6 +30,27 @@ interface TooltipProps {
    *  losing in-progress interaction state. Keep the wrapper, toggle
    *  `disabled` instead. */
   disabled?: boolean;
+  /** Keep the tooltip open regardless of hover/focus (default: `undefined`,
+   *  normal behavior). For a trigger that shows "focus" without taking real
+   *  DOM focus — e.g. a control inside a tab that arrow keys visit with a
+   *  focus ring while the tab itself keeps DOM focus. `disabled` still wins. */
+  forceOpen?: boolean;
+  /** Only show the tooltip when the trigger's text is actually cut off
+   *  (ellipsis / clamped / clipped) — for truncated labels that would
+   *  otherwise show a redundant tooltip. Checked each time the tooltip is
+   *  about to open, against the trigger and its descendants, so resizing the
+   *  container is picked up. Default: false (always shows, as before).
+   *  `forceOpen` still wins. Delay and width: it opens after `delayMs`
+   *  (default 200) and is capped at 320px wide, wrapping longer text. */
+  onlyWhenTruncated?: boolean;
+}
+
+/** True when `el` or any descendant has content wider/taller than its box. */
+function isTruncated(el: HTMLElement | null): boolean {
+  if (!el) return true; // can't measure — fall back to showing it
+  const cut = (n: Element) => n.scrollWidth > n.clientWidth + 1 || n.scrollHeight > n.clientHeight + 1;
+  if (cut(el)) return true;
+  return Array.from(el.querySelectorAll("*")).some(cut);
 }
 
 /* ── Arrow ──
@@ -114,7 +135,10 @@ const Tooltip: React.FC<TooltipProps> = ({
   asLabel = false,
   avoidCollisions = true,
   disabled = false,
+  forceOpen = false,
+  onlyWhenTruncated = false,
 }) => {
+  const triggerRef = React.useRef<HTMLButtonElement | null>(null);
   const contentString = typeof content === "string" ? content : undefined;
   const triggerAriaProps: Record<string, unknown> = {};
   if (asLabel && contentString) {
@@ -159,13 +183,14 @@ const Tooltip: React.FC<TooltipProps> = ({
   return (
     <TooltipPrimitive.Provider delayDuration={delayMs} skipDelayDuration={0}>
       <TooltipPrimitive.Root
-        open={disabled || !allowOpen ? false : open}
+        open={disabled || !allowOpen ? false : forceOpen || open}
         onOpenChange={(next) => {
           if (disabled || !allowOpen) return;
+          if (next && onlyWhenTruncated && !isTruncated(triggerRef.current)) return;
           setOpen(next);
         }}
       >
-        <TooltipPrimitive.Trigger asChild {...triggerAriaProps}>
+        <TooltipPrimitive.Trigger asChild ref={triggerRef} {...triggerAriaProps}>
           {children}
         </TooltipPrimitive.Trigger>
         <TooltipPrimitive.Portal>
@@ -178,6 +203,9 @@ const Tooltip: React.FC<TooltipProps> = ({
               "relative z-[10000]",
               "rounded-lyra-md border border-lyra-border-subtle bg-lyra-bg-surface-overlay px-3 py-2 shadow-md",
               "lyra-body-md text-lyra-fg-default",
+              // Same 320px cap as Sol's tooltip (its `maxWidth` default); longer text
+              // wraps onto more lines instead of running off one very wide line.
+              "max-w-[320px] [overflow-wrap:anywhere]",
               "animate-in fade-in-0 duration-100",
               "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-75",
               className

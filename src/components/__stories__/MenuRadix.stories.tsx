@@ -61,14 +61,51 @@ const defaultItems: MenuEntry[] = [
   { id: "6", label: "Delete", destructive: true },
 ];
 
-export const Default: Story = {
+export const Default: StoryObj<{ modal?: boolean }> = {
   name: "Default",
-  render: () => (
+  args: { modal: true },
+  parameters: {
+    controls: {
+      // Storybook matches `include` against each control's display `name`
+      // (falling back to its key), so list the names; keys are kept too.
+      include: ["Modal", "modal"],
+      sort: "none",
+    },
+  },
+  argTypes: {
+    modal: {
+      name: "Modal",
+      control: "boolean",
+      description: "While open, hide the rest of the page from assistive tech and block outside clicks (`modal`, Radix's default). Off leaves the page exposed; use it where an accessibility checker flags the hidden trigger.",
+      table: { category: "Behavior", defaultValue: { summary: "true" } },
+    },
+  },
+  render: ({ modal = true }) => (
     <MenuRadix
+      key={String(modal)}
       trigger={<Button variant="outline">Open Menu</Button>}
       items={defaultItems}
       className="w-64"
+      modal={modal}
     />
+  ),
+};
+
+/* ── Keyboard Focus ──
+   Tab to "Open Menu", press Enter or ↓ to open it, then use ↓/↑ (or Home/End)
+   to move. The focused row gets a full outline (inset, keyboard focus only) on
+   top of the gray row and accent bar; hovering with the mouse does not add the
+   outline. */
+
+export const KeyboardFocus: Story = {
+  name: "Keyboard Focus",
+  render: () => (
+    <div className="flex flex-col gap-4">
+      <p className="lyra-body-sm text-lyra-fg-secondary">Tab to the button, press Enter, then ↓ / ↑.</p>
+      <div>
+        <MenuRadix trigger={<Button variant="outline">Open Menu</Button>} items={defaultItems} className="w-64" />
+      </div>
+    </div>
   ),
 };
 
@@ -178,6 +215,10 @@ export const SubmenuOpen: Story = {
   render: () => (
     <div style={{ minHeight: 320 }}>
       <MenuRadix
+        // Not modal: Radix's modal mode marks the rest of the page (including
+        // this focusable trigger) aria-hidden while open, which accessibility
+        // checkers report as `aria-hidden-focus`.
+        modal={false}
         trigger={<Button variant="outline">Open Menu</Button>}
         className="w-64"
         items={[
@@ -466,6 +507,7 @@ export const WidthScale: Story = {
             Menu renders `bare` so it stretches to fill Popover's own surface
             instead of drawing a second nested border/shadow/background. */}
         <Popover
+          aria-label="Menu with search"
           open
           placement="bottom"
           align="start"
@@ -504,6 +546,7 @@ export const WidthScale: Story = {
           <p className="lyra-body-xs text-lyra-fg-secondary">A title header + close button, or icon items (e.g. create-new.tsx)</p>
         </div>
         <Popover
+          aria-label="Menu with title and close button"
           open
           placement="bottom"
           align="start"

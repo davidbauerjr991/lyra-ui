@@ -3,7 +3,7 @@ import { ChevronDown } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Popover } from "./popover";
 import { RadioGroup, RadioGroupItem } from "./radio";
-import { DateRangePicker, type DateRangePickerProps } from "./date-picker";
+import { DateRangePicker, type DateRangePickerProps } from "./date-range-picker";
 import { filterChipVariants } from "./filter-chip";
 
 /* ── DateRangeFilterChip ──

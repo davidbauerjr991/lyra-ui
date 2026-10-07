@@ -1,110 +1,21 @@
 import * as React from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Label } from "./label";
-import { Calendar, type DateRange } from "./calendar";
-
-/* ── Date formatting helpers ── */
-
-const FORMAT = "MM/DD/YYYY";
-
-function formatDate(d: Date): string {
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${mm}/${dd}/${d.getFullYear()}`;
-}
-
-function parseDate(s: string): Date | undefined {
-  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (!m) return undefined;
-  const [, mo, da, yr] = m.map(Number);
-  if (mo < 1 || mo > 12 || da < 1 || da > 31) return undefined;
-  const d = new Date(yr, mo - 1, da);
-  return isNaN(d.getTime()) ? undefined : d;
-}
-
-function formatRange(r: DateRange | undefined): string {
-  if (!r) return "";
-  if (r.from && r.to) return `${formatDate(r.from)} – ${formatDate(r.to)}`;
-  if (r.from) return formatDate(r.from);
-  return "";
-}
-
-function parseRange(s: string): DateRange | undefined {
-  const parts = s.split(/\s*[–-]\s*/);
-  if (parts.length === 2) {
-    const from = parseDate(parts[0].trim());
-    const to   = parseDate(parts[1].trim());
-    if (from && to) return { from, to };
-    if (from) return { from };
-  }
-  const single = parseDate(s.trim());
-  return single ? { from: single } : undefined;
-}
-
-/* ── Shared input trigger styles ── */
-
-// Shared by `DatePicker` and `DateRangePicker` — a plain module-level
-// const, not a per-render function, same as the disabled/readonly states
-// above it use `data-[disabled=true]`/`data-[readonly=true]` selectors
-// instead of JS-computed classes. `size` follows the same pattern
-// (`data-size` on the wrapping div, read via `data-[size=sm]:h-8`) so this
-// can stay a static string rather than needing to become a function that
-// both components would otherwise have to call with their own `size` prop.
-const inputClass = cn(
-  "relative flex h-9 w-full items-center rounded-lyra-sm border lyra-body-md transition-colors",
-  "data-[size=sm]:h-8",
-  "bg-lyra-bg-field text-lyra-fg-default cursor-text",
-  "border-lyra-border-strong hover:border-lyra-state-border-hover-neutral",
-  // ADA-compliance focus indicator: same focus-visible ring buttons/tabs
-  // use (see input.tsx for the fuller comment), applied focus-within
-  // since this wraps the trigger's inner content, not a real <input>. Per
-  // explicit follow-up request, split via our own tracked input-modality
-  // attribute (input-modality.ts), NOT `:has(:focus-visible)` — see
-  // input-modality.ts's own fuller comment on why that pseudo-class can't
-  // distinguish mouse from keyboard on a text field.
-  "focus-within:border-lyra-border-active",
-  "[html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-2 [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-lyra-border-focus [html[data-lyra-input-modality=keyboard]_&:focus-within]:ring-offset-2",
-  "[html:not([data-lyra-input-modality=keyboard])_&:focus-within]:ring-2 [html:not([data-lyra-input-modality=keyboard])_&:focus-within]:ring-lyra-border-active/20",
-  "data-[disabled=true]:bg-lyra-bg-disabled data-[disabled=true]:border-transparent",
-  "data-[disabled=true]:text-lyra-fg-disabled data-[disabled=true]:cursor-not-allowed",
-  // `pointer-events-none` blocks `:hover` from matching at all — without
-  // it, the hover border above would still show on a disabled trigger.
-  "data-[disabled=true]:pointer-events-none",
-  "data-[readonly=true]:bg-lyra-bg-surface-canvas data-[readonly=true]:cursor-default data-[readonly=true]:pointer-events-none"
-);
-
-const textInputClass = cn(
-  "flex-1 bg-transparent outline-none pl-3 pr-1 truncate h-full",
-  "placeholder:text-lyra-fg-disabled"
-);
-
-/* ── Calendar popover panel ── */
-
-function CalendarPanel({ children }: { children: React.ReactNode }) {
-  return (
-    <PopoverPrimitive.Content
-      side="bottom"
-      sideOffset={6}
-      align="start"
-      avoidCollisions
-      collisionPadding={4}
-
-      className={cn(
-        "z-50 w-[288px] rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg p-3",
-        "animate-in fade-in-0 slide-in-from-top-2 duration-150",
-        "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-100"
-      )}
-    >
-      {children}
-    </PopoverPrimitive.Content>
-  );
-}
+import { Calendar } from "./calendar";
+import { Button } from "./button";
+import {
+  FORMAT, formatDate, parseDate, inputClass, textInputClass, CalendarPanel,
+  CalendarIconButton, DateFieldError, formatDateLong, startOfDay,
+} from "./date-picker-shared";
 
 /* ══════════════════════════════
    DatePicker
 ═══════════════════════════════ */
+
+/** How the field shows a date: "numeric" = 01/04/2026 (default), "medium" = Jan 4, 2026. */
+export type DatePickerDisplayFormat = "numeric" | "medium";
 
 export interface DatePickerProps {
   value?: Date;
@@ -120,41 +31,226 @@ export interface DatePickerProps {
   id?: string;
   /** Field height. "md" (36px, default) or "sm" (32px) for dense contexts. */
   size?: "sm" | "md";
+  /**
+   * Error message from the consumer (e.g. "Due date is required"). Shows the
+   * field's error styling and the message below it, and sets `aria-invalid`.
+   * Takes priority over the picker's own typed-date messages. Unset by default.
+   */
+  error?: string;
+  /**
+   * Message shown when someone leaves the field (or presses Enter) with text
+   * that isn't a real date, e.g. "13/45/2026" or "02/31/2026". Only appears
+   * after typing; `onChange` is never called with an invalid date.
+   * Default: "Enter a valid date (MM/DD/YYYY)." (or "(MMM D, YYYY)" in the
+   * "medium" format).
+   */
+  invalidDateMessage?: string;
+  /** Opt-in: earliest selectable date. Earlier days are disabled in the
+   *  calendar, and a typed earlier date shows an error instead of being picked. */
+  minDate?: Date;
+  /** Opt-in: latest selectable date. Same treatment as `minDate`. */
+  maxDate?: Date;
+  /** Opt-in: previous / next day buttons beside the field. Default `false`. */
+  showDaySteppers?: boolean;
+  /** Opt-in: "medium" shows dates as "Jan 4, 2026" and also accepts that
+   *  format when typed. Default "numeric" (MM/DD/YYYY), today's behavior. */
+  displayFormat?: DatePickerDisplayFormat;
 }
 
+/* ── Helpers ── */
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MEDIUM_FORMAT = "MMM D, YYYY";
+const formatMedium = formatDateLong;
+
+/* "Jan 4, 2026", "jan 04 2026", "January 4, 2026" — month name first. */
+function parseMedium(s: string): Date | undefined {
+  const m = s.trim().match(/^([A-Za-z]{3,9})\.?\s+(\d{1,2}),?\s+(\d{4})$/);
+  if (!m) return undefined;
+  const mo = MONTHS.findIndex((name) => m[1].slice(0, 3).toLowerCase() === name.toLowerCase());
+  if (mo < 0) return undefined;
+  return parseDate(`${mo + 1}/${m[2]}/${m[3]}`);
+}
+
+const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+
 const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
-  ({ value, onChange, placeholder = FORMAT, disabled, label, labelHelpText, required, readonly, defaultMonth, className, id, size = "md" }, ref) => {
+  (
+    {
+      value, onChange, placeholder, disabled, label, labelHelpText, required, readonly,
+      defaultMonth, className, id, size = "md",
+      error, invalidDateMessage, minDate, maxDate, showDaySteppers = false, displayFormat = "numeric",
+    },
+    ref
+  ) => {
     const autoId = React.useId();
     const inputId = id ?? autoId;
+    const errorId = `${inputId}-error`;
+    const hintId = `${inputId}-format`;
     const inputRef = React.useRef<HTMLInputElement>(null);
+    const fieldRef = React.useRef<HTMLDivElement>(null);
+    const contentRef = React.useRef<HTMLDivElement>(null);
+
+    const medium = displayFormat === "medium";
+    const format = medium ? formatMedium : formatDate;
+    const parse = React.useCallback(
+      (s: string) => (medium ? parseMedium(s) ?? parseDate(s.trim()) : parseDate(s)),
+      [medium]
+    );
+    const formatLabel = medium ? MEDIUM_FORMAT : FORMAT;
 
     const [open, setOpen] = React.useState(false);
-    const [text, setText] = React.useState(value ? formatDate(value) : "");
+    const [text, setText] = React.useState(value ? format(value) : "");
+    // Typed-date problem shown under the field; only set after a blur/Enter.
+    const [typedError, setTypedError] = React.useState<string | undefined>();
+    // True while the calendar was opened from the keyboard (Alt+↓, ↓, Enter):
+    // focus moves into the calendar and comes back to the field on close.
+    const [keyboardOpen, setKeyboardOpen] = React.useState(false);
+    // Same flag as a ref, read when the calendar closes (after state resets).
+    const keyboardOpenRef = React.useRef(false);
 
     // Fix #2: only sync value→text when the input is NOT focused (user isn't typing)
     React.useEffect(() => {
       if (document.activeElement !== inputRef.current) {
-        setText(value ? formatDate(value) : "");
+        setText(value ? format(value) : "");
       }
+      setTypedError(undefined);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [value]);
+
+    const min = minDate ? startOfDay(minDate) : undefined;
+    const max = maxDate ? startOfDay(maxDate) : undefined;
+    const inRange = (d: Date) => (!min || d >= min) && (!max || d <= max);
+
+    const rangeMessage = (): string =>
+      min && max
+        ? `Enter a date from ${format(min)} to ${format(max)}.`
+        : min
+        ? `Enter a date on or after ${format(min)}.`
+        : `Enter a date on or before ${format(max!)}.`;
+
+    /* What's wrong with `t`, if anything (empty text is fine). */
+    const problemWith = (t: string): string | undefined => {
+      if (t.trim() === "") return undefined;
+      const parsed = parse(t);
+      if (!parsed) return invalidDateMessage ?? `Enter a valid date (${formatLabel}).`;
+      if (!inRange(parsed)) return rangeMessage();
+      return undefined;
+    };
+
+    const validate = () => {
+      if (disabled || readonly) return;
+      const problem = problemWith(text);
+      setTypedError(problem);
+      // In the "medium" format, tidy a valid typed date into that format.
+      if (!problem && medium && text.trim() !== "") {
+        const parsed = parse(text);
+        if (parsed) setText(format(parsed));
+      }
+    };
 
     const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const v = e.target.value;
       setText(v);
-      const parsed = parseDate(v);
+      const parsed = parse(v);
       // Only propagate valid dates or explicit clear — never propagate partial input
-      if (parsed) onChange?.(parsed);
+      if (parsed && inRange(parsed)) onChange?.(parsed);
       else if (v === "") onChange?.(undefined);
+      // Once an error is showing, clear it as soon as the text is fixed.
+      if (typedError && !problemWith(v)) setTypedError(undefined);
+    };
+
+    const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+      // Moving into our own calendar or icon button isn't "leaving" the field.
+      const next = e.relatedTarget as Node | null;
+      if (next && (fieldRef.current?.contains(next) || contentRef.current?.contains(next))) return;
+      validate();
+    };
+
+    const openFromKeyboard = () => {
+      if (disabled || readonly) return;
+      keyboardOpenRef.current = true;
+      setKeyboardOpen(true);
+      setOpen(true);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (open || disabled || readonly) return;
+      if (e.key === "ArrowDown" || (e.key === "Enter" && !e.altKey)) {
+        e.preventDefault();
+        // Enter with text that isn't a date shows the error instead of opening.
+        if (e.key === "Enter") {
+          const problem = problemWith(text);
+          if (problem) { setTypedError(problem); return; }
+        }
+        openFromKeyboard();
+      }
+    };
+
+    const handleOpenChange = (next: boolean) => {
+      setOpen(next);
+      if (!next) {
+        setKeyboardOpen(false);
+        // Closing a mouse-opened calendar by clicking elsewhere counts as
+        // leaving the field. (A keyboard-opened one returns focus to the field.)
+        if (!keyboardOpenRef.current && document.activeElement !== inputRef.current) validate();
+      }
     };
 
     const handleCalendarSelect = (date: Date | undefined) => {
-      setText(date ? formatDate(date) : "");
+      setText(date ? format(date) : "");
+      setTypedError(undefined);
       onChange?.(date);
       setOpen(false);
+      setKeyboardOpen(false);
+      if (keyboardOpenRef.current) return; // focus goes back to the field (see onCloseAutoFocus)
       inputRef.current?.blur();
     };
 
-    const selectedDate = parseDate(text) ?? value;
+    const step = (days: number) => {
+      const base = parse(text) ?? value ?? startOfDay(new Date());
+      let next = addDays(base, days);
+      if (min && next < min) next = min;
+      if (max && next > max) next = max;
+      setText(format(next));
+      setTypedError(undefined);
+      onChange?.(next);
+    };
+
+    const selectedDate = parse(text) ?? value;
+    const calendarDisabled =
+      min || max
+        ? [...(min ? [{ before: min }] : []), ...(max ? [{ after: max }] : [])]
+        : undefined;
+    const shownError = error ?? typedError;
+    const current = parse(text) ?? value;
+    const interactive = !disabled && !readonly;
+
+    const field = (
+      <div ref={fieldRef} data-disabled={disabled || undefined} data-readonly={readonly || undefined}
+        data-invalid={shownError ? true : undefined} data-size={size}
+        className={cn(inputClass, showDaySteppers && "flex-1 min-w-0")}
+        onClick={() => interactive && setOpen(true)}>
+        <input ref={inputRef} id={inputId} type="text" value={text}
+          onChange={handleTextChange} onKeyDown={handleKeyDown} onBlur={handleBlur}
+          placeholder={placeholder ?? formatLabel}
+          disabled={disabled} readOnly={readonly}
+          className={cn(textInputClass, (disabled || readonly) && "cursor-not-allowed")}
+          role="combobox" aria-expanded={open} aria-haspopup="dialog"
+          aria-label={label ?? "Date"} autoComplete="off"
+          aria-invalid={shownError ? true : undefined}
+          aria-describedby={cn(shownError && errorId, hintId) || undefined} />
+        <span id={hintId} className="sr-only">
+          {`Format ${formatLabel}. Press Alt+Down Arrow to open the calendar.`}
+        </span>
+        <CalendarIconButton open={open} disabled={!interactive}
+          label={current ? `Choose date, selected date is ${formatMedium(current)}` : "Choose date"} />
+      </div>
+    );
+
+    const minReached = !!(min && current && startOfDay(current) <= min);
+    const maxReached = !!(max && current && startOfDay(current) >= max);
+    const stepperSize = size === "sm" ? "icon" : "icon-lg";
 
     return (
       <div ref={ref} className={className}>
@@ -162,118 +258,50 @@ const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
           <Label label={label} labelFor={inputId} labelHelpText={labelHelpText}
             required={required} disabled={disabled} readonly={readonly} className="mb-1.5" />
         )}
-        <PopoverPrimitive.Root open={!disabled && !readonly && open} onOpenChange={setOpen}>
-          <PopoverPrimitive.Anchor asChild>
-            <div data-disabled={disabled || undefined} data-readonly={readonly || undefined} data-size={size}
-              className={inputClass} onClick={() => !disabled && !readonly && setOpen(true)}>
-              <input ref={inputRef} id={inputId} type="text" value={text}
-                onChange={handleTextChange} placeholder={placeholder}
-                disabled={disabled} readOnly={readonly}
-                className={cn(textInputClass, (disabled || readonly) && "cursor-not-allowed")}
-                role="combobox" aria-expanded={open} aria-haspopup="dialog"
-                aria-label={label ?? "Date"} autoComplete="off" />
-              <span className="pr-3 flex items-center text-lyra-fg-secondary flex-shrink-0">
-                <CalendarIcon className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
-              </span>
+        <PopoverPrimitive.Root open={interactive && open} onOpenChange={handleOpenChange}>
+          {showDaySteppers ? (
+            <div className="flex items-center gap-2">
+              <PopoverPrimitive.Anchor asChild>{field}</PopoverPrimitive.Anchor>
+              <Button type="button" variant="outline" size={stepperSize} aria-label="Previous day"
+                disabled={!interactive || minReached} onClick={() => step(-1)}>
+                <ChevronLeft className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+              </Button>
+              <Button type="button" variant="outline" size={stepperSize} aria-label="Next day"
+                disabled={!interactive || maxReached} onClick={() => step(1)}>
+                <ChevronRight className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+              </Button>
             </div>
-          </PopoverPrimitive.Anchor>
+          ) : (
+            <PopoverPrimitive.Anchor asChild>{field}</PopoverPrimitive.Anchor>
+          )}
           <PopoverPrimitive.Portal>
-            <CalendarPanel>
-              <Calendar mode="single" selected={selectedDate}
-                onSelect={handleCalendarSelect} defaultMonth={defaultMonth ?? selectedDate} />
+            <CalendarPanel
+              // Opened from the keyboard: let the calendar put focus on the
+              // selected day (Calendar `autoFocus`) instead of Radix's default
+              // first-button focus, and bring focus back to the field on close.
+              // Mouse-opened calendars keep Radix's default behavior.
+              onOpenAutoFocus={keyboardOpen ? (e) => e.preventDefault() : undefined}
+              onCloseAutoFocus={(e) => {
+                if (!keyboardOpenRef.current) return; // mouse: Radix default, as before
+                keyboardOpenRef.current = false;
+                e.preventDefault();
+                inputRef.current?.focus();
+              }}
+            >
+              <div ref={contentRef}>
+                <Calendar mode="single" selected={selectedDate}
+                  onSelect={handleCalendarSelect} defaultMonth={defaultMonth ?? selectedDate}
+                  disabled={calendarDisabled} autoFocus={keyboardOpen || undefined} />
+              </div>
             </CalendarPanel>
           </PopoverPrimitive.Portal>
         </PopoverPrimitive.Root>
+        {shownError && <DateFieldError id={errorId}>{shownError}</DateFieldError>}
       </div>
     );
   }
 );
 DatePicker.displayName = "DatePicker";
 
-/* ══════════════════════════════
-   DateRangePicker
-═══════════════════════════════ */
 
-export interface DateRangePickerProps {
-  value?: DateRange;
-  onChange?: (range: DateRange | undefined) => void;
-  placeholder?: string;
-  disabled?: boolean;
-  label?: string;
-  labelHelpText?: string;
-  required?: boolean;
-  readonly?: boolean;
-  defaultMonth?: Date;
-  className?: string;
-  id?: string;
-  /** Field height. "md" (36px, default) or "sm" (32px) for dense contexts. */
-  size?: "sm" | "md";
-}
-
-const DateRangePicker = React.forwardRef<HTMLDivElement, DateRangePickerProps>(
-  ({ value, onChange, placeholder = `${FORMAT} – ${FORMAT}`, disabled, label, labelHelpText, required, readonly, defaultMonth, className, id, size = "md" }, ref) => {
-    const autoId = React.useId();
-    const inputId = id ?? autoId;
-    const inputRef = React.useRef<HTMLInputElement>(null);
-
-    const [open, setOpen] = React.useState(false);
-    const [text, setText] = React.useState(formatRange(value));
-
-    // Fix #2: only sync value→text when input is not focused
-    React.useEffect(() => {
-      if (document.activeElement !== inputRef.current) {
-        setText(formatRange(value));
-      }
-    }, [value]);
-
-    const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const v = e.target.value;
-      setText(v);
-      if (v === "") { onChange?.(undefined); return; }
-      const parsed = parseRange(v);
-      if (parsed?.from && parsed?.to) onChange?.(parsed);
-    };
-
-    const handleCalendarSelect = (range: DateRange | undefined) => {
-      setText(formatRange(range));
-      onChange?.(range);
-      // Fix #3: never auto-close — user closes by clicking outside or the trigger
-    };
-
-    const selectedRange = parseRange(text) ?? value;
-
-    return (
-      <div ref={ref} className={className}>
-        {label && (
-          <Label label={label} labelFor={inputId} labelHelpText={labelHelpText}
-            required={required} disabled={disabled} readonly={readonly} className="mb-1.5" />
-        )}
-        <PopoverPrimitive.Root open={!disabled && !readonly && open} onOpenChange={setOpen}>
-          <PopoverPrimitive.Anchor asChild>
-            <div data-disabled={disabled || undefined} data-readonly={readonly || undefined} data-size={size}
-              className={inputClass} onClick={() => !disabled && !readonly && setOpen(v => !v)}>
-              <input ref={inputRef} id={inputId} type="text" value={text}
-                onChange={handleTextChange} placeholder={placeholder}
-                disabled={disabled} readOnly={readonly}
-                className={cn(textInputClass, (disabled || readonly) && "cursor-not-allowed")}
-                role="combobox" aria-expanded={open} aria-haspopup="dialog"
-                aria-label={label ?? "Date range"} autoComplete="off" />
-              <span className="pr-3 flex items-center text-lyra-fg-secondary flex-shrink-0">
-                <CalendarIcon className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
-              </span>
-            </div>
-          </PopoverPrimitive.Anchor>
-          <PopoverPrimitive.Portal>
-            <CalendarPanel>
-              <Calendar mode="range" selected={selectedRange}
-                onSelect={handleCalendarSelect} defaultMonth={defaultMonth ?? selectedRange?.from} />
-            </CalendarPanel>
-          </PopoverPrimitive.Portal>
-        </PopoverPrimitive.Root>
-      </div>
-    );
-  }
-);
-DateRangePicker.displayName = "DateRangePicker";
-
-export { DatePicker, DateRangePicker };
+export { DatePicker };

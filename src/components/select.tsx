@@ -5,6 +5,8 @@ import { ErrorIconSolid } from "./icons/error-icon-solid";
 import { Label } from "./label";
 import { Popover } from "./popover";
 import { Checkbox } from "./checkbox";
+import { Button } from "./button";
+import { Spinner } from "./spinner";
 import { cn } from "../lib/utils";
 import { useScrollChevrons, ScrollChevronButton } from "./scroll-chevron";
 
@@ -63,6 +65,11 @@ interface SelectOption {
    *  single-select mode only accepts a placeholder node, not the live
    *  selection's icon) — only inside the open dropdown's rows. */
   icon?: React.ReactNode;
+  /** Group heading this option sits under. Consecutive options with the same
+   *  `group` are rendered together under one heading (single- and
+   *  multi-select); options without one render ungrouped, as before. Keep
+   *  options of a group next to each other in `options`. */
+  group?: string;
 }
 
 /* ── Select ── */
@@ -191,6 +198,45 @@ interface SelectProps {
    * `label` is set (that wires `aria-labelledby` instead).
    */
   "aria-label"?: string;
+
+  /* ── Loading / empty / no-results / load-error states (all opt-in) ── */
+
+  /** Show a spinner row in the dropdown while options load, and mark the list
+   *  `aria-busy`. Default: false. */
+  loading?: boolean;
+  /** Text for the loading row (default: "Loading..."). */
+  loadingMessage?: string;
+  /** Text shown when `options` is empty (default: "No results found"). */
+  emptyMessage?: string;
+  /** Text shown when a search matches nothing (default: "No results found"). */
+  noResultsMessage?: string;
+  /** Message shown in the dropdown when loading the options failed. Replaces
+   *  the option list while set. Pair with `onRetry`. */
+  loadError?: string;
+  /** Adds a "Retry" button next to `loadError`. */
+  onRetry?: () => void;
+
+  /* ── Multi-select only ── */
+
+  /** How a multi-select trigger summarises 2+ selections: `"count"` shows
+   *  "3 selected" (default, as before); `"values"` shows the labels, e.g.
+   *  "Yellow, Blue +1". */
+  triggerDisplay?: "count" | "values";
+  /** Hold changes in a draft until the user presses Apply in a footer;
+   *  Cancel, Escape or clicking outside discards them. `onValuesChange` fires
+   *  only on Apply. Default: false (changes apply immediately, as before). */
+  applyFooter?: boolean;
+  /** Show a "Clear" button that unselects everything (on the Select All row,
+   *  or on its own row without `showSelectAll`). Hidden while nothing is
+   *  selected. Not needed with `maxSelection`, which already has one.
+   *  Default: false. */
+  showClear?: boolean;
+  /** Show an "N items | M selected" line at the bottom of the dropdown (beside
+   *  the Apply / Cancel buttons when `applyFooter` is on). Default: false. */
+  showCount?: boolean;
+  /** Footer button labels when `applyFooter` is set. */
+  applyLabel?: string;
+  cancelLabel?: string;
 }
 
 const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
@@ -222,6 +268,18 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
       id,
       size = "md",
       "aria-label": ariaLabelProp,
+      loading = false,
+      loadingMessage = "Loading...",
+      emptyMessage,
+      noResultsMessage = "No results found",
+      loadError,
+      onRetry,
+      triggerDisplay = "count",
+      applyFooter = false,
+      showClear = false,
+      showCount = false,
+      applyLabel = "Apply",
+      cancelLabel = "Cancel",
     },
     ref
   ) => {
@@ -244,7 +302,11 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
     // instead, so this is only read/written on the `multiple` branch.
     const [internalValues, setInternalValues] = React.useState<string[]>([]);
     const isControlledMulti = values !== undefined;
-    const currentValues = isControlledMulti ? values! : internalValues;
+    const committedValues = isControlledMulti ? values! : internalValues;
+    // With `applyFooter`, edits go to a draft while the dropdown is open and
+    // only reach `onValuesChange` on Apply.
+    const [draftValues, setDraftValues] = React.useState<string[] | null>(null);
+    const currentValues = applyFooter && draftValues ? draftValues : committedValues;
 
     const filtered = React.useMemo(() => {
       if (!search) return options;
@@ -297,6 +359,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
     const handleOpenChange = (next: boolean) => {
       setOpen(next);
       if (next) setSearch("");
+      if (applyFooter) setDraftValues(next ? committedValues : null);
       onOpenChange?.(next);
     };
 
@@ -306,12 +369,30 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
       }
     }, [open, searchable]);
 
+    // Single place every multi-select edit goes through: straight to the
+    // consumer normally, into the draft when `applyFooter` is on.
+    const emitMulti = (next: string[]) => {
+      if (applyFooter) {
+        setDraftValues(next);
+        return;
+      }
+      if (!isControlledMulti) setInternalValues(next);
+      onValuesChange?.(next);
+    };
+
+    const applyDraft = () => {
+      if (draftValues) {
+        if (!isControlledMulti) setInternalValues(draftValues);
+        onValuesChange?.(draftValues);
+      }
+      handleOpenChange(false);
+    };
+
     const toggleMultiValue = (val: string) => {
       const next = currentValues.includes(val)
         ? currentValues.filter((v) => v !== val)
         : [...currentValues, val];
-      if (!isControlledMulti) setInternalValues(next);
-      onValuesChange?.(next);
+      emitMulti(next);
     };
 
     const toggleAll = () => {
@@ -320,23 +401,84 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
       const next = allSelected
         ? currentValues.filter((v) => !allVals.includes(v))
         : [...new Set([...currentValues, ...allVals])];
-      if (!isControlledMulti) setInternalValues(next);
-      onValuesChange?.(next);
+      emitMulti(next);
     };
 
     const handleClearAll = () => {
+      if (applyFooter) {
+        setDraftValues([]);
+        return;
+      }
       if (isControlledMulti) onValuesChange?.([]);
       else setInternalValues([]);
     };
 
     /* ── Multi-select display text ── */
     const multiDisplayText = React.useMemo(() => {
-      if (currentValues.length === 0) return null;
-      if (currentValues.length === 1) {
-        return options.find((o) => o.value === currentValues[0])?.label;
+      if (committedValues.length === 0) return null;
+      const labelOf = (v: string) => options.find((o) => o.value === v)?.label ?? v;
+      if (committedValues.length === 1) {
+        return options.find((o) => o.value === committedValues[0])?.label;
       }
-      return `${currentValues.length} selected`;
-    }, [currentValues, options]);
+      if (triggerDisplay === "values") {
+        const shown = committedValues.slice(0, 2).map(labelOf).join(", ");
+        const extra = committedValues.length - 2;
+        return extra > 0 ? `${shown} +${extra}` : shown;
+      }
+      return `${committedValues.length} selected`;
+    }, [committedValues, options, triggerDisplay]);
+
+    /* ── Groups + non-option rows (loading / error / empty / no results) ── */
+    // Consecutive options sharing a `group` render under one heading; with no
+    // `group` anywhere this is a single ungrouped run, rendered as before.
+    const groupedRuns = React.useMemo(() => {
+      const runs: { group?: string; items: SelectOption[] }[] = [];
+      for (const o of filtered) {
+        const last = runs[runs.length - 1];
+        if (last && last.group === o.group) last.items.push(o);
+        else runs.push({ group: o.group, items: [o] });
+      }
+      return runs;
+    }, [filtered]);
+    const showStateRow = loading || !!loadError;
+    const emptyText = options.length === 0 ? (emptyMessage ?? noResultsMessage) : noResultsMessage;
+    const stateRow = loadError ? (
+      <div role="alert" className="flex items-center justify-between gap-2 px-3 py-2">
+        <span className="lyra-body-sm text-lyra-status-critical-strong">{loadError}</span>
+        {onRetry && (
+          <Button type="button" variant="ghost" size="sm" onClick={onRetry}>
+            Retry
+          </Button>
+        )}
+      </div>
+    ) : loading ? (
+      <div role="status" className="flex items-center gap-2 px-3 py-2 lyra-body-sm text-lyra-fg-secondary">
+        <Spinner variant="bar" size="sm" label={loadingMessage} />
+        <span>{loadingMessage}</span>
+      </div>
+    ) : null;
+    // Multi-select rows are plain buttons: make only ONE of them a Tab stop
+    // (the first selected row, else the first enabled one) and move between the
+    // rest with ↑/↓/Home/End, so Tab goes search → list → footer instead of
+    // through every row.
+    const tabStopValue = (
+      filtered.find((o) => !o.disabled && currentValues.includes(o.value)) ??
+      filtered.find((o) => !o.disabled)
+    )?.value;
+    // "Clear" on the Select All row — only while something is selected, and not
+    // with `maxSelection` (its own header row already has a Clear link).
+    const clearRow = showClear && maxSelection === undefined && currentValues.length > 0;
+    const countText = `${options.length} ${options.length === 1 ? "item" : "items"} | ${currentValues.length} selected`;
+    const showEmptyRow = !showStateRow && filtered.length === 0;
+
+    const focusOption = (list: HTMLElement, target: "first" | "last" | "next" | "prev") => {
+      const opts = Array.from(list.querySelectorAll<HTMLButtonElement>('[role="option"]:not(:disabled)'));
+      if (opts.length === 0) return;
+      const i = opts.indexOf(document.activeElement as HTMLButtonElement);
+      const idx =
+        target === "first" ? 0 : target === "last" ? opts.length - 1 : target === "next" ? Math.min(i + 1, opts.length - 1) : Math.max(i - 1, 0);
+      opts[idx].focus();
+    };
 
     /* ── Multi-select derived state ── */
     const allFilteredVals = filtered.filter((o) => !o.disabled).map((o) => o.value);
@@ -380,6 +522,11 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
     // reads its className/children onto Radix's real Trigger — see
     // comment further down), anything else gets wrapped in the default
     // icon-button shell.
+    // Error message and (when set) the label's help text, so both are read with the trigger
+    const describedBy =
+      [error ? `${inputId}-error` : null, label && labelHelpText && !disabled ? `${inputId}-help` : null]
+        .filter(Boolean)
+        .join(" ") || undefined;
     const isTriggerButton = React.isValidElement(trigger) && trigger.type === "button";
     const triggerIconShellClassName =
       "inline-flex items-center justify-center rounded-lyra-sm text-lyra-fg-action hover:bg-lyra-state-hover active:bg-lyra-state-pressed transition-colors h-8 w-8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2";
@@ -392,6 +539,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               id={`${inputId}-label`}
               label={label}
               labelHelpText={labelHelpText}
+              helpTextId={`${inputId}-help`}
               required={required}
               disabled={disabled}
               readonly={readonly}
@@ -423,7 +571,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               dropdownClassName
             )}
             header={
-              (searchable || (maxSelection !== undefined) || showSelectAll) ? (
+              (searchable || (maxSelection !== undefined) || showSelectAll || showClear) ? (
                 <div className="flex flex-col">
                   {searchable && (
                     <div className="shrink-0 px-2 pt-2 pb-1">
@@ -439,6 +587,13 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                           aria-label="Search options"
                           value={search}
                           onChange={(e) => setSearch(e.target.value)}
+                          // ↓ from the search field jumps into the option list
+                          onKeyDown={(e) => {
+                            if (e.key === "ArrowDown" && listRef.current) {
+                              e.preventDefault();
+                              focusOption(listRef.current, "first");
+                            }
+                          }}
                           placeholder="Search"
                           className={cn(
                             "h-9 w-full rounded-lyra-sm border border-lyra-border-strong bg-lyra-bg-field pl-9 pr-9 lyra-body-md text-lyra-fg-default transition-colors",
@@ -487,20 +642,52 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                     </div>
                   )}
 
-                  {showSelectAll && (
+                  {(showSelectAll || clearRow) && (
                     <div className="shrink-0 px-1 pt-1">
-                      <button
-                        type="button"
-                        className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-lyra-state-hover active:bg-lyra-state-pressed transition-colors rounded-lyra-sm"
-                        onClick={toggleAll}
-                      >
-                        <Checkbox
-                          decorative
-                          checked={allSelected ? true : someSelected ? "indeterminate" : false}
-                        />
-                        <span className="lyra-body-md text-lyra-fg-default">Select All</span>
-                      </button>
+                      <div className="flex items-center">
+                        {showSelectAll ? (
+                          <button
+                            type="button"
+                            className="flex flex-1 items-center gap-2 px-3 py-2 text-left hover:bg-lyra-state-hover active:bg-lyra-state-pressed transition-colors rounded-lyra-sm"
+                            onClick={toggleAll}
+                          >
+                            <Checkbox
+                              decorative
+                              checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                            />
+                            <span className="lyra-body-md text-lyra-fg-default">Select All</span>
+                          </button>
+                        ) : (
+                          <span className="flex-1" />
+                        )}
+                        {clearRow && (
+                          <Button type="button" variant="ghost" size="sm" onClick={handleClearAll} className="mr-1">
+                            Clear
+                          </Button>
+                        )}
+                      </div>
                       <div className="border-b border-lyra-border-subtle mt-1" />
+                    </div>
+                  )}
+                </div>
+              ) : undefined
+            }
+            footer={
+              applyFooter || showCount ? (
+                <div className={cn("flex items-center gap-2 border-t border-lyra-border-subtle px-3 py-2", applyFooter ? "justify-between" : "justify-start")}>
+                  {showCount && (
+                    <span className="lyra-body-sm text-lyra-fg-secondary tabular-nums" aria-live="polite">
+                      {countText}
+                    </span>
+                  )}
+                  {applyFooter && (
+                    <div className="flex gap-2 ml-auto">
+                      <Button type="button" variant="outline" size="default" onClick={() => handleOpenChange(false)}>
+                        {cancelLabel}
+                      </Button>
+                      <Button type="button" size="default" onClick={applyDraft}>
+                        {applyLabel}
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -521,14 +708,25 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                   aria-labelledby={label ? `${inputId}-label` : undefined}
                   aria-label={fallbackAriaLabel}
                   aria-multiselectable
+                  aria-busy={loading || undefined}
+                  // ↑/↓/Home/End move between options (they're plain buttons,
+                  // so there's no built-in arrow navigation)
+                  onKeyDown={(e) => {
+                    const t = e.key === "ArrowDown" ? "next" : e.key === "ArrowUp" ? "prev" : e.key === "Home" ? "first" : e.key === "End" ? "last" : null;
+                    if (!t) return;
+                    e.preventDefault();
+                    focusOption(e.currentTarget, t);
+                  }}
                   className="flex-1 min-h-0 overflow-y-auto lyra-scrollbar-hide p-1"
                 >
-                  {filtered.length === 0 && (
+                  {stateRow}
+                  {showEmptyRow && (
                     <div className="px-3 py-2 lyra-body-sm text-lyra-fg-secondary">
-                      No results found
+                      {emptyText}
                     </div>
                   )}
-                  {filtered.map((option) => {
+                  {!loadError && groupedRuns.map((run, runIdx) => {
+                    const rows = run.items.map((option) => {
                     const isSelected = currentValues.includes(option.value);
                     const isDisabledByLimit = !isSelected && !!limitReached;
                     const isDisabled = option.disabled || isDisabledByLimit;
@@ -539,6 +737,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                         role="option"
                         aria-selected={isSelected}
                         disabled={isDisabled}
+                        tabIndex={option.value === tabStopValue ? 0 : -1}
                         onClick={() => !isDisabled && toggleMultiValue(option.value)}
                         className={cn(
                           "group/item relative flex w-full items-center gap-2.5 px-3 py-2.5 lyra-body-md text-left transition-colors rounded-lyra-sm",
@@ -580,6 +779,17 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                         <span className="flex-1 min-w-0 truncate text-lyra-fg-default">{option.label}</span>
                       </button>
                     );
+                    });
+                    return run.group ? (
+                      <div key={`g-${runIdx}`} role="group" aria-labelledby={`${inputId}-g-${runIdx}`}>
+                        <div id={`${inputId}-g-${runIdx}`} className="px-3 pt-2 pb-1 lyra-body-sm text-lyra-fg-secondary">
+                          {run.group}
+                        </div>
+                        {rows}
+                      </div>
+                    ) : (
+                      <React.Fragment key={`g-${runIdx}`}>{rows}</React.Fragment>
+                    );
                   })}
                 </div>
                 {canScrollDown && <ScrollChevronButton direction="down" onStep={() => scrollListBy(6)} />}
@@ -608,10 +818,19 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                 disabled={disabled}
                 aria-haspopup="listbox"
                 aria-expanded={open}
-                aria-labelledby={label ? `${inputId}-label` : undefined}
+                // The button's own id comes second so its visible text ("Select...",
+                // "3 selected") is part of the name, not only the label's.
+                aria-labelledby={label ? `${inputId}-label ${inputId}` : undefined}
                 aria-label={fallbackAriaLabel}
                 aria-invalid={error ? true : undefined}
-                aria-describedby={error ? `${inputId}-error` : undefined}
+                aria-describedby={describedBy}
+                // ↓ opens the list, like the single-select trigger
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowDown" && !open && !readonly) {
+                    e.preventDefault();
+                    handleOpenChange(true);
+                  }
+                }}
                 className={triggerClassName}
               >
                 <span className={cn("truncate", !multiDisplayText && "text-lyra-fg-disabled")}>
@@ -650,6 +869,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
             id={`${inputId}-label`}
             label={label}
             labelHelpText={labelHelpText}
+            helpTextId={`${inputId}-help`}
             required={required}
             disabled={disabled}
             readonly={readonly}
@@ -699,7 +919,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               aria-labelledby={label ? `${inputId}-label` : undefined}
               aria-label={fallbackAriaLabel}
               aria-invalid={error ? true : undefined}
-              aria-describedby={error ? `${inputId}-error` : undefined}
+              aria-describedby={describedBy}
               className={cn(
                 triggerClassName,
                 "data-[state=open]:border-lyra-border-active data-[state=open]:ring-2 data-[state=open]:ring-lyra-border-active/20",
@@ -728,6 +948,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               position="popper"
               align={radixAlign}
               sideOffset={4}
+              aria-busy={loading || undefined}
               className={cn(
                 "z-[9999] max-h-[300px]",
                 trigger ? "w-[240px]" : "w-[var(--radix-select-trigger-width)]",
@@ -785,12 +1006,14 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               </SelectPrimitive.ScrollUpButton>
 
               <SelectPrimitive.Viewport className="p-1 overflow-y-auto">
-                {filtered.length === 0 && (
+                {stateRow}
+                {showEmptyRow && (
                   <div className="px-3 py-2 lyra-body-sm text-lyra-fg-secondary">
-                    No results found
+                    {emptyText}
                   </div>
                 )}
-                {filtered.map((option) => (
+                {!loadError && groupedRuns.map((run, runIdx) => {
+                  const rows = run.items.map((option) => (
                   // Item states mirror `Menu`'s own item treatment exactly
                   // (see menu.tsx's MenuItemRow) — a persistent blue left
                   // accent bar + blue bg/text for the current item, no
@@ -842,7 +1065,18 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                       </SelectPrimitive.ItemText>
                     </span>
                   </SelectPrimitive.Item>
-                ))}
+                  ));
+                  return run.group ? (
+                    <SelectPrimitive.Group key={`g-${runIdx}`}>
+                      <SelectPrimitive.Label className="px-3 pt-2 pb-1 lyra-body-sm text-lyra-fg-secondary">
+                        {run.group}
+                      </SelectPrimitive.Label>
+                      {rows}
+                    </SelectPrimitive.Group>
+                  ) : (
+                    <React.Fragment key={`g-${runIdx}`}>{rows}</React.Fragment>
+                  );
+                })}
               </SelectPrimitive.Viewport>
 
               <SelectPrimitive.ScrollDownButton className="flex items-center justify-center py-1 text-lyra-fg-secondary">

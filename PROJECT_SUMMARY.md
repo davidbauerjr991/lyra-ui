@@ -740,6 +740,62 @@ silently.
 - Contrast: teal-strong light #11737c→#11727b (4.46→4.52:1 on teal-soft). Badge solid pills + info/success/warning/critical/neutral circles use fg-inverse (dark text in dark mode). EmptyState default tone → "secondary"; fg-disabled→fg-secondary for real text in AgentNotifications, AiPanel, ConversationMessage timestamp, AIProcess step description, ConnectedApps.
 - Verified: tsc baseline (3), esbuild bundles, 17 browser behavior checks (click reach, Enter-selects channel, Shift+F10/Escape, Delete, column reorder + focus, 4 panel resizes, float move, LeftNav 24px), full axe re-scan light+dark: violation nodes 767→444, no new rule/story combinations.
 
+### ToggleGroup: radiogroup keyboard pattern, no deselect by default, aria-pressed in multiple mode, icon tooltips, itemMaxWidth (2026-10-06)
+From the lyra-vs-Sol UX review (Toggle Group, P1–P3). `toggle-group.tsx`:
+- **Single mode** root is now `role="radiogroup"` with one Tab stop (roving `tabIndex`: the selected item, else the first enabled one). ←/→ (and ↑/↓) move focus to the next/previous enabled item, wrapping, and select it; Home/End jump to first/last; RTL flips ←/→. Keyboard/ARIA only, every class is unchanged.
+- **No deselect by default** in single mode: re-clicking (or Enter/Space on) the selected item no longer calls `onValueChange("")`. New `allowDeselect` (default `false`) opts back in. Every existing caller (schedule-panel Day/Week, both v3 Main/Panel switches) already ignored `""`. `FormTemplate`'s Outcome toggle can no longer be cleared by clicking it again.
+- **Multiple mode** root is `role="group"`, items are toggle buttons with `aria-pressed` (no `role="radio"`), each its own Tab stop.
+- New opt-in props: `ariaLabel` / `ariaLabelledBy` (group name), `itemMaxWidth` (caps items without `fullWidth`; labels truncate, and `showTruncationTooltip` now works there too), and `ToggleGroupItem.tooltip` (tooltip on hover and keyboard focus, for icon-only items with `ariaLabel`). All unset by default.
+- Rendered markup for every v3/lyra-ui call shape is identical apart from the ARIA/tabindex/data attributes (checked by rendering old vs new side by side). No CSS changes, so nothing to mirror in lyra-tokens.css / storybook.css.
+Stories: Default gains Allow deselect, Group name and Max item width controls; Variants gains Icon Only, Max Item Width and Allow Deselect pages. The shared icon-only items now use the item `tooltip` instead of wrapping the icon in a Tooltip.
+
+### DatePicker: keyboard opening, icon button, typed-date errors, impossible dates, min/max, day steppers, medium format (2026-10-06)
+From the lyra-vs-Sol UX review (Date Picker). `date-picker.tsx`, `date-picker-shared.tsx`, `calendar.tsx`:
+- **Keyboard:** in the field, Alt+↓, ↓ or Enter opens the calendar with focus on the selected day (new opt-in `Calendar` `autoFocus` prop). Esc or picking a day closes it and returns focus to the field. Mouse-opened calendars keep Radix's default focus. `CalendarPanel` takes optional `onOpenAutoFocus` / `onCloseAutoFocus`.
+- **Icon:** the calendar icon is a labelled `<button tabIndex={-1}>` ("Choose date, selected date is …") with the same classes as the old span plus `cursor-[inherit]`, so it looks the same and adds no Tab stop. It's a field-internal affordance like `NumberField`'s steppers, not a `Button`.
+- **Validation:** leaving the field (or pressing Enter) with text that isn't a real date shows `aria-invalid`, red field (`data-invalid` on the shared `inputClass`, same tokens as `Input`'s `error`) and a message. `onChange` is unchanged and still ignores bad text. New `error` and `invalidDateMessage` props.
+- **Shared `parseDate`** rejects impossible dates ("02/31/2026" used to become March 3). This also applies to `DateRangePicker` typing.
+- New opt-in props: `minDate`/`maxDate` (calendar days disabled, typed out-of-range date shows an error and isn't sent to `onChange`), `showDaySteppers` (outline `Button`s, Previous/Next day), `displayFormat="medium"` ("Jan 4, 2026"). All default to today's behavior.
+- v3 / `QuickReplyVariableForm` / `DateRangePicker` markup is identical apart from ARIA and the error-only classes (checked by rendering old vs new).
+Stories: Default gains Error, Allowed dates, Day steppers and Display format controls; Variants gains Error, Constraints, Day Steppers, Medium Format and With Time (shows `DateTimePicker`). DateRangePicker's own fixes (keyboard, icon, validation, presets) are still to do.
+
+### DateRangePicker: keyboard opening, icon button, typed-range errors, presets, min/max (2026-10-06)
+Follows the DatePicker entry above (supersedes its "DateRangePicker's own fixes are still to do" line). `date-range-picker.tsx`, `date-picker-shared.tsx`, `date-picker.tsx`, `index.ts`:
+- **Keyboard:** Alt+↓, ↓ or Enter in the field opens the calendar with focus on the start day. Esc returns focus to the field. The calendar stays open after picking a range, as with the mouse.
+- **Icon / errors:** same labelled `tabIndex={-1}` icon button and error message as DatePicker. Both now come from shared `CalendarIconButton` / `DateFieldError` in date-picker-shared.tsx; DatePicker's markup was re-checked as unchanged. Leaving the field (or Enter) with one date only, an impossible date or an end before the start shows `aria-invalid` + a message. `onChange` is unchanged (a reversed range is still passed on, as before). New `error`, `invalidDateMessage` props.
+- **Opt-in:** `minDate`/`maxDate` (calendar days and out-of-range presets disabled; a typed out-of-range range shows an error and isn't sent to `onChange`). `presets` (`true` = new exported `DEFAULT_DATE_RANGE_PRESETS`, or a `DateRangePreset[]`) renders a bare `Menu` ("Quick ranges", the current preset marked `active`) beside the calendar. `CalendarPanel` takes an optional `className` (`w-auto` with presets).
+- v3's dashboard picker and both `DateRangeFilterChip` custom pickers render identical markup apart from ARIA and error-only classes (checked old vs new).
+Stories: Default gains Error, Allowed dates and Presets controls; Variants gains Error, Constraints, Presets and With Time (shows `DateRangeTimePicker`).
+
+### Breadcrumb: real href links, link appearance, auto-collapse (maxItems / collapseOnOverflow) (2026-10-06)
+From the lyra-vs-Sol UX review (Breadcrumb). `breadcrumb.tsx`, `page-header.tsx`:
+- **`BreadcrumbLink`** gains opt-in `href` (+ `target`, `rel`; `_blank` gets `noopener noreferrer`), which renders a real `<a href>` instead of the default `<button>`. `asChild` still works for router links.
+- **`appearance`** is "default" (today's gray, darker on hover) or "link" (`text-lyra-fg-link`, underline on hover and keyboard focus). It defaults to "link" only when `href` is set, so every existing onClick-only crumb (all of agent-next-gen-v3's) looks exactly as before. This deliberately goes further than the plan's "underline-on-hover for every crumb" workaround, which would still have changed v3's hover.
+- **`BreadcrumbList`** gains opt-in `maxItems` (first crumb + "…" menu + last ones, e.g. 4 gives "Home / … / Parent / Page") and `collapseOnOverflow` (one line; folds middle crumbs, then the first, into the menu until the trail fits; re-measured on resize), plus `ellipsisLabel`. Works on a plain trail of `BreadcrumbItem`/`BreadcrumbSeparator` children (fragments are flattened). A trail with a hand-placed `BreadcrumbEllipsis` is left alone. Menu entries use each hidden crumb's text and run its `BreadcrumbLink` `onClick` (called with no event) or go to its `href`.
+- **`PageHeaderBreadcrumb`** gains optional `href`, passed to the crumb and its collapsed-menu entry.
+- v3's search-panel trail and All Contacts PageHeader render identical markup (checked old vs new). No new CSS.
+Stories: Default gains Links, Appearance, Max items, Collapse on overflow and a "Five (plain)" level; Variants gains Real Links, Max Items and Collapse On Overflow.
+
+### InlineNotification: status/alert roles, heading, inline action, 24px dismiss, focus after dismiss (2026-10-06)
+From the lyra-vs-Sol UX review (Inline Notification). `inline-notification.tsx`:
+- **Role by tone:** info/success → `role="status"` (polite), warning/error → `role="alert"` (was `alert` for all). A `role` passed by the caller still wins. Screen reader only; no visual change.
+- **New opt-in `heading`:** a bold first line (`lyra-body-md-emphasis`) above the message. It's Sol's "title", but named `heading` because `title` is already the native HTML tooltip attribute this component accepts (via `HTMLAttributes`), and repurposing it could change existing callers.
+- **New opt-in `actionPlacement="inline"`:** puts `action` at the end of the message row (for a text link). The default "below" is unchanged.
+- **Dismiss button:** 24×24 target (`h-6 w-6 -m-0.5`, so layout and the 16px icon don't move), `type="button"`, keyboard focus ring, label "Dismiss {information|success|warning|error} notification" (override with `dismissLabel`). Dismissing while the button has focus moves focus to the next focusable element after the notification (or the previous one) if focus would otherwise drop to the body.
+- All 7 of v3's notices (info, warning/error SLA, copilot warning with action) render identical markup apart from the info ones' role (checked old vs new). No new CSS.
+Stories: Default gains Title and Action placement controls; Variants gains With Title, Inline Action and Dismissible (wired, with the focus move).
+
+### TimePicker: keyboard opening, clock icon button, typed-time errors, minTime/maxTime/step (2026-10-06)
+From the lyra-vs-Sol UX review (Time Picker). `time-picker.tsx`, `time-picker-shared.tsx`, `date-picker-shared.tsx`:
+- **Keyboard (spinner panel):** Alt+↓, ↓ or Enter in the field opens the panel with focus inside it. Esc, or Enter inside the panel, closes it and returns focus to the field. **Menu mode:** ↓/↑ open and move as before, and Enter now also opens a closed list. `TimePanel` takes optional `onCloseAutoFocus`/`onKeyDown`.
+- **Clock icon:** the review was right: the text input kept its browser-default ~20-character minimum width, so in any field narrower than ~260px it overflowed the box and pushed the clock past the right edge (it only *looked* fine in the code, where the icon is inside the bordered wrapper). New `iconPlacement` (default "inside") adds `min-w-0` to the input; "outside" renders exactly the old markup, and `QuickReplyVariableForm` (v3's only route) passes it, so v3 is unchanged. The icon is now a labelled `tabIndex={-1}` button ("Choose time, selected time is …") through the shared `CalendarIconButton`, which gained an optional `icon`.
+- **`NumberField`** gained an optional `aria-label` (used when there's no visible `label`). `TimeSelector`/`DateTimePicker` already passed `aria-label="Hour"`/`"Minute"`, but NumberField dropped it (hyphenated JSX attributes aren't type-checked), so the spinners had no accessible name, which mattered once Alt+↓ started moving focus straight onto them.
+- **Validation:** leaving the field (or Enter) with text that isn't a time shows `aria-invalid`, red field (new optional 4th `invalid` arg on `inputShell`) and "Enter a valid time (HH:MM AM)." via the shared `DateFieldError`. `onChange` is unchanged (bad text is ignored; valid typed times are still tidied to "HH:MM AM"). New `error`, `invalidTimeMessage` props.
+- **New opt-in props:** `minTime`/`maxTime` (menu lists only in-range times; a typed or spun time outside shows an error and isn't sent on) and `step` (menu list spacing, default 30; shared `buildTimeOptions`, `TimeMenu` `options`). `MENU_OPTIONS`/`menuIndexOf` are unchanged by default.
+- The whole quick-reply form (time + date fields, v3's only use) and `TimeRangePicker` render the same markup apart from ARIA and the icons becoming buttons (checked old vs new). TimeRangePicker still has the overflowing-input layout; it wasn't in this pass.
+- Re-tested in the side-by-side review harness (Playwright + axe, both sides): all four review gaps measure closed; see ux-review/lyra-vs-sol-ux-review-rerun.html.
+Stories: Default's Error control now uses the real `error` prop (instead of the story-drawn wrapper) and gains Allowed times and Step controls; Variants gains Error and Constraints. TimeRangePicker stories still use the story-drawn error.
+
 ## Stories
 
 ### AppHeader (`src/components/__stories__/AppHeader.stories.tsx`)
@@ -2174,6 +2230,82 @@ Verified: `npm run lint` (`tsc --noEmit`) — matched the standing 3-error basel
 - Threaded into the `sections` filter alongside the existing `showNextBestAction` check, and into the staggered-entrance `SECTION_COUNT` calculation (now `(showCustomerProfile ? 1 : 0) + 1 + (showNextBestAction ? 1 : 0)` instead of a hardcoded 2/3).
 - `agent-next-gen-v3`'s own two call sites (`renderContactOverviewBlock`, agent-next-gen-transcript.tsx; `DetailsPanelAccordions`, agent-next-gen-customer-info-panel.tsx) both now pass `showCustomerProfile={!!customerContextOverview.customerCard}` — `customerCard` is only ever unset for the exact "no information" case this request targets, so no separate flag needed to be threaded through from the page files. The "add geography to the Customer Snapshot" half of the same request is entirely `agent-next-gen-v3`-side (`buildCustomerContextOverviewInfo`'s own new area-code/location logic, agent-next-gen-shared-utils.ts) — no lyra-ui change needed there, since `snapshot` was already a plain `string[]` this component just renders.
 - Verified: `npm run lint` (`tsc --noEmit`) — matched the standing 3-error baseline (`admin-shell.tsx` ×2, `list-item.tsx` ×1), no new errors, none in `contact-overview.tsx`. `npx vite build` from `agent-next-gen-v3` — clean, 5251 modules, only pre-existing Tailwind ambiguous-class/chunk-size warnings.
+
+### Tabs: inset focus ring, `badge`/`error`/`iconOnly`/`size` (tabs.tsx)
+
+2026-10-06. From the lyra-vs-sol UX review. `Tab` and the "N More" trigger now use an inset focus ring (`ring-inset`, no offset) so the tab row's overflow can't clip it; keyboard focus only. New opt-in props, all defaulting to today's rendering: `Tab` `size` (`"md"` | `"sm"`, 36px compact), `iconOnly` (label kept for screen readers + tooltip on hover/focus; needs `icon`), `badge` (count) / `badgeLabel`, `error` / `errorLabel` (red "!" Badge; error wins over a count); `TabList` `size` hands `"sm"` to tabs that don't set their own. An `error` tab also adds its error text as the subhead of its "N More" menu entry, and an icon-only tab with no children uses `aria-label` as its menu label. The Default story now drives these through real props (the old story-side badge/tooltip wrappers are gone); Variants gained Small, Icon Only, With Badge and With Error. No v3 call site passes any new prop. Supersedes nothing.
+
+### Accordion: `variant="contained"` (accordion.tsx)
+
+2026-10-06. New opt-in `variant?: "default" | "contained"` (default unchanged): contained puts the group in one bordered, rounded card (Container's default surface/border/radius/shadow) with no divider after the last row. ↑/↓, Home/End between headers already worked (Radix `Trigger`; checked with a DOM test, wraps and skips disabled) and is now documented in the component comment — no code change. Story items are titled Section 1/2/3 so region names are unique. Variants gained Contained. No v3 call site passes `variant`.
+
+### Autocomplete: listbox popup, live result count, loading + async search (autocomplete.tsx, menu.tsx)
+
+2026-10-06. From the lyra-vs-sol UX review. The popup wrapper is now `role="presentation"` (Radix's default `role="dialog"` was announced for a combobox); the listbox `Menu` carries the `id` that `aria-controls` points at. `aria-activedescendant` used to name option ids that didn't exist and the arrow keys highlighted nothing: options now get real DOM ids and the arrowed-to option is drawn highlighted (keyboard only), and arrows skip disabled options. A screen-reader-only `role="status"` region announces "N results available", "No Items Found" or the loading text. New opt-in props, all defaulting to today's behavior: `loading`, `loadingMessage`, `onInputChange`, `filterOptions` (set `false` for server-filtered results). `Menu`'s `MenuItemDef` gained optional `domId` and `highlighted` (unset = unchanged for every other `Menu`). Stories: Default controls Loading and Filter Options; Variants Loading and Async Search. Not used by agent-next-gen-v3 or any lyra-ui component.
+
+### Calendar: `size="lg"`, `modifiers` date markers, month-change announcement (calendar.tsx)
+
+2026-10-06. From the lyra-vs-sol UX review. New opt-in props, defaults unchanged: `size` (`"md"` = today's 36px cells; `"lg"` = 40px cells plus a 40px month/year button and caption/picker rows; needs >= 280px of width), and `modifiers` (array of `{ dates, color?, label? }`; draws a small `::after` dot under matching days, white on a selected day, and appends `label` to the day button's spoken name via `labels.labelDayButton`). Always on, screen-reader only: a polite `role="status"` region (`sr-only`, no layout) announces the new month ("November 2026") on prev/next, the month/year picker and PageUp/PageDown; not on first render. Today already had an outline, bold text and "Today," in its spoken name, so no new today indicator. Multi-month view (a P3 in the review, not in the plan) is not done. Stories: Default controls Size and Show date markers; Variants Large Cells and With Markers. No caller (DatePicker, DateRangePicker, DateTimePicker, SchedulePanel) passes either prop.
+
+### Checkbox + Checkbox Group: keyboard focus ring around box and label, distinct read-only look (checkbox.tsx)
+
+2026-10-06. From the lyra-vs-sol UX review. No new props, no renames. (1) A `Checkbox` with a `label` now draws its focus ring around the whole row (box, label, secondary text) via `has-[[role=checkbox]:focus-visible]` on the wrapper; the box's own ring is dropped in that case. Keyboard focus only (`:focus-visible`), so a mouse click shows no ring. A checkbox with no label (`aria-label` only, or `decorative`) still rings just the box. `CheckboxGroup` gets this through `Checkbox`. The selector targets `[role=checkbox]`, not `button`, so the label's help-icon button doesn't trigger it. (2) `readonly` no longer looks like `disabled`: it keeps full-strength text, a soft border and canvas fill, `cursor-default`, and no hover/active border change; a checked read-only box uses the secondary foreground fill instead of the brand fill. Disabled is unchanged (dimmed, not-allowed cursor). Stories: `KeyboardFocus` on Checkbox/Variants and Checkbox Group/Variants.
+- Verified: `npx tsc --noEmit` in lyra-ui matched the 3-error baseline; agent-next-gen-v3 `tsc -p tsconfig.app.json` unchanged at 218; Storybook build lists both new stories and the generated CSS contains the `:has([role=checkbox]:focus-visible)` rule.
+
+### Modal: `alert`, `initialFocusRef`, `preventClose` + `onCloseAttempt` (modal.tsx)
+
+2026-10-06. From the lyra-vs-sol UX review. New opt-in props, all defaulting to today's behavior. `alert` renders `role="alertdialog"` and starts focus on the safe action: `initialFocusRef` if given, else the first element marked `data-modal-cancel`, else Radix's usual first-focusable. `preventClose` makes Escape and backdrop click call `onCloseAttempt` instead of `onClose` (unsaved-changes guard). v3's two `Modal`s pass none of these. Stories: `alert` and `preventClose` controls on Default; Variants "Alert Dialog (Destructive)" and "Prevent Close (Unsaved Changes)" (trigger-based, with a nested Discard confirm). Modal.shared: tone Cancel buttons carry `data-modal-cancel`, `ToneContent` takes `onClose`/`note`.
+- Verified: jsdom test: alert gives `role=alertdialog` with focus on Cancel; preventClose + Escape gives `onClose` 0 / `onCloseAttempt` 1.
+
+### Popover: `screenReaderHint` (popover.tsx)
+
+2026-10-06. Opt-in (default false) visually hidden "Press Tab to navigate, Escape to close" (or your own string) linked to the panel with `aria-describedby`. Nothing visible changes; the 19 v3 popovers don't pass it. The component body went from an arrow expression to a block so it can call `useId`. Stories: "Screen reader hint" control on Default; Variants "Screen Reader Hint".
+
+### Radio / RadioButtonGroup: all arrow keys, Home/End select, ring around radio + label (radio.tsx)
+
+2026-10-06. `orientation` is no longer passed to Radix (any value limits roving focus to one axis, so vertical ignored ←/→); layout still comes from the class. `Home`/`End` select the first/last enabled radio (Radix only moved focus). A labelled `RadioGroupItem` now rings radio + label together on `:focus-visible` (`has-[[role=radio]:focus-visible]`); the circle's own ring is dropped then. The default ring steps aside when `className` hides the circle (`sr-only`) or brings its own `focus-visible` ring, because v3's next-best-action cards already anchor their own ring and it would have doubled. No new props. Stories: Variants "Keyboard" on Radio and Radio Button Group.
+
+### Select: list states, option groups, Apply/Cancel footer, `triggerDisplay`, ↓ opens multi (select.tsx)
+
+2026-10-06. All opt-in, defaults unchanged. States: `loading` (+`loadingMessage`, spinner row, `aria-busy`), `emptyMessage`, `noResultsMessage`, `loadError` (+`onRetry`, replaces the list). `SelectOption.group` puts consecutive options under a heading (Radix `Group`/`Label` in single, `role="group"` in multi). Multi only: `applyFooter` (+`applyLabel`/`cancelLabel`) holds edits in a draft until Apply; Cancel/Escape/outside click discard; `triggerDisplay="values"` shows "Red, Blue +1" instead of "3 selected". Keyboard: ↓ on the multi trigger opens it; ↑/↓/Home/End move between options, ↓ in search jumps to the first. Stories: eight new controls on Default; Variants Loading, Empty, No Results, Load Error, Option Groups, Apply / Cancel Footer, Values In Trigger.
+- Verified: jsdom test of groups, draft/Apply/Cancel, loading/error/empty rows, ↓ open.
+
+### Switch: working `readonly`, `error` (switch.tsx)
+
+2026-10-06. `readonly` used to only mute the label; it now blocks `onCheckedChange`, sets `aria-readonly`, and shows a muted track with a default cursor (still focusable, not dimmed like `disabled`). New `error` prop shows the message under the switch (a sibling, so `className`/layout are untouched), `aria-invalid` + `aria-describedby`, and a red track outline; `required` sets `aria-required`. v3 doesn't use Switch. Stories: Default's Required control now uses `error`; Variants "Read-only" and "Required + Error".
+
+### Input: `showCount` character counter (input.tsx)
+
+2026-10-06. Opt-in (default false): with `maxLength`, a live "12/40" counter right-aligned in the label row, same markup/sr text as `Textarea`. `maxLength`/`onChange` are now destructured and passed explicitly; behavior without `showCount` is identical. JSDoc points password and search needs to `PasswordInput`/`SearchInput`. Stories: "Character counter" and "Max length" controls on Default; Variants "Character Counter".
+
+### Toast: focus ring, 24px close target, `actionLabel`/`onAction` (toast.tsx)
+
+2026-10-06. Keyboard focus ring (`:focus-visible`, `lyra-border-focus`) on the toast and its close button, which showed the browser's dark outline. Close button hit area is 24px (`h-6 w-6 -m-0.5`) with the same footprint and icon. New opt-in `actionLabel`/`onAction`/`actionAltText`: an outline `Button` under the message wrapped in Radix `Toast.Action` (clicking runs `onAction` and dismisses). Stories: "Action button" control on Default; Variants "With Action" and "Keyboard Focus".
+
+### Tooltip: `onlyWhenTruncated` (tooltip.tsx)
+
+2026-10-06. Opt-in (default false): the tooltip only opens when the trigger (or a descendant) is cut off (`scrollWidth > clientWidth` or height), checked each time it's about to open; `forceOpen` still wins. Trigger ref goes through Radix `Trigger asChild` and merges with the child's own. v3's 51 tooltips don't pass it. Stories: "Only when truncated" control on Default; Variants "Only When Truncated".
+- Verified: jsdom test with mocked sizes: cut-off label shows, fitting label doesn't, plain tooltip unchanged.
+
+### Component fixes: Button, Label, Menu, Progress Bar, Spinner, Textarea
+2026-10-07. Opt-in or keyboard/screen-reader-only; defaults render as before, so agent-next-gen-v3 is unchanged.
+- Button: new `loading` (spinner, `aria-busy`, clicks ignored, focus kept), `tooltip` (icon-only; `title` still works) and `disabledContrast="high"` (ghost/icon).
+- Label: help icon is a focusable button (keyboard tooltip); help text is read through `aria-describedby` (new `helpTextId`; Input, Textarea, Select wire it).
+- Menu: keyboard focus ring on rows (`MenuRadix`, `MenuItem`); new `modal` prop (default true).
+- Progress Bar: `indeterminate`; a visible custom label names the bar (`aria-labelledby`); reduced-motion fade.
+- Spinner: `showLabel`; reduced-motion fade; steady center dot on the primary circle.
+- Textarea: `autoGrow` + `maxRows` (default off, `resize-y` kept); help text via `aria-describedby`.
+- Stories: new controls on each Default, plus Variants pages for each new state.
+
+### Select: bar spinner, quieter group headings, one Tab stop
+2026-10-07.
+- Loading row uses the bar spinner (was the circle).
+- Option group headings are `lyra-body-sm` in the secondary color (single and multi-select).
+- Multi-select rows: only one row is a Tab stop (first selected, else first enabled); ↑/↓/Home/End move within the list, so Tab goes search → list → Apply/Cancel.
+- Default story: new "No results" and "Open list" controls beside Loading, Empty list, Load error, Option groups and Apply / Cancel footer.
+
+### Select: Clear and item count (multi-select)
+2026-10-07. New opt-in `showClear` (Clear button on the Select All row, shown once something is selected) and `showCount` ("N items | M selected" footer line, shares the row with Apply / Cancel). Default false. Default story controls "Show clear" / "Show count"; Variants page "Clear and Count".
 
 ## Planned Future Work
 - Empty template

@@ -118,7 +118,7 @@
   <div class="card" id="step1">
     <h2>Install Lyra UI?</h2>
     <p class="sub">Lyra UI is the design system your prototype will be built from. Nothing installs on your computer — your choice here is written into the prompt this wizard generates at the end, and Claude does the actual download when you paste it. Choose "Already Installed" only if Claude set up Lyra UI earlier in the same chat you'll paste into.</p>
-    <p class="sub">Clicking either button may also ask for read access to your work folder (pick the folder that contains your Prototypes and lyra-ui folders) so this wizard can list your prototypes and components. It only asks once — press Esc to skip.</p>
+    <p class="sub">"Yes, Install Lyra UI" may also ask for read access to your work folder (pick the folder that contains your Prototypes and lyra-ui folders) so this wizard can list your prototypes and components. It only asks once — press Esc to skip. "Already Installed" never asks; you can connect the folder later from My Components.</p>
     <p class="sub">Already have a lyra-ui folder on your computer and just want the newest components and stories? <strong>Update Lyra UI Storybook</strong> pulls the latest main branch from GitHub straight into that real folder and rebuilds its local Storybook — the two buttons below don't touch your computer at all.</p>
     <div class="btn-row">
       <button class="btn" onclick="updateStorybook()">Update Lyra UI Storybook</button>
@@ -140,6 +140,10 @@
       <button class="choice" onclick="pickTarget('cowork')">
         <p class="t">Create a Prototype</p>
         <p class="d">A working, clickable screen delivered as a single file that opens in your browser.</p>
+      </button>
+      <button class="choice" onclick="pickTarget('repo')">
+        <p class="t">Create a Repo</p>
+        <p class="d">A real, editable app project in your folder — wired to Lyra UI and ready to push to GitHub.</p>
       </button>
       <button class="choice" onclick="window.open('https://davidbauerjr991.github.io/lyra-ui/','_blank')">
         <p class="t">View Storybook ↗</p>
@@ -274,8 +278,8 @@
 
   <!-- Step 4: Name + product -->
   <div class="card hidden" id="step4">
-    <h2>Name your prototype</h2>
-    <p class="sub">The name becomes the file name. The product appears in the top-left app header.</p>
+    <h2 id="step4title">Name your prototype</h2>
+    <p class="sub" id="step4sub">The name becomes the file name. The product appears in the top-left app header.</p>
     <label for="protoName">Prototype name</label>
     <input type="text" id="protoName" placeholder="e.g. Campaign Manager Redesign" oninput="validate4()" />
     <label for="product">Product</label>
@@ -304,6 +308,16 @@
       <span class="spacer"></span>
       <button class="btn" onclick="restart()">Start over</button>
     </div>
+    <div class="note hidden" id="repoSteps">
+      <strong>Next steps:</strong>
+      <ol class="next-steps">
+        <li>Paste the prompt into a <strong>new</strong> Claude Cowork chat. Claude asks you to connect the folder where your lyra-ui folder lives (if it isn't connected yet).</li>
+        <li>Claude builds and verifies the project in its own sandbox, then writes it into your folder next to lyra-ui as a ready-to-commit git repo — no terminal for you.</li>
+        <li>To put it on GitHub: open <strong>GitHub Desktop</strong> → File → Add Local Repository → pick the new folder → <strong>Publish repository</strong>. (Or create an empty repo on github.com and ask Claude for the one-line push instructions.)</li>
+        <li><strong>To run it locally</strong> (one-time setup: install Node.js from nodejs.org): Claude gives you the exact steps — install lyra-ui's packages, install this repo's packages, then start it and open the dev address it gives you <em>including the repo name at the end</em> (e.g. <code>localhost:5173/your-repo/</code>) — the plain address shows a blank page. Prefer zero terminal? Ask Claude to run the lyra-setup skill.</li>
+        <li>Keep working on it in any Cowork chat — just name the repo folder in your request. Claude edits only this repo (never lyra-ui), asks when it's unsure which part of the screen you mean, and checks with you before building anything new if no existing component option fits.</li>
+      </ol>
+    </div>
     <div class="note hidden" id="designSteps">
       <strong>Next steps:</strong>
       <ol class="next-steps">
@@ -311,7 +325,7 @@
         <li>Click <strong>Import</strong> → <strong>GitHub</strong> and connect <strong>davidbauerjr991/lyra-ui</strong> so Claude designs with the real components. (Importing a local folder works too — just don't include node_modules or .git.)</li>
         <li id="designImportSource" class="hidden">Also click <strong>Import</strong> again and add the <strong>source</strong> named in your prompt (your Prototypes folder, or the repo you're duplicating) — Claude Design needs it as the reference to recreate.</li>
         <li>Paste the prompt and send it.</li>
-        <li>Iterate right on the canvas — inline comments, chat, or direct edits — and share the prototype with anyone via link.</li>
+        <li>Iterate right on the canvas — inline comments, chat, or direct edits — and share the prototype with anyone via link. If Claude can't find an existing component option for a change, it will check with you before designing anything new.</li>
         <li>Ready for engineering? Use <strong>Export → Hand off to Claude Code</strong>.</li>
       </ol>
     </div>
@@ -321,7 +335,7 @@
         <li>Go to any Claude Cowork chat — new or existing. No attachments needed; Claude downloads the latest Lyra UI itself.</li>
         <li>Paste the prompt and send it.</li>
         <li>Claude builds the prototype and gives you one <strong>.html</strong> file — double-click it to open.</li>
-        <li>Want changes? Just describe them, or paste a screenshot/mockup into the same chat.</li>
+        <li>Want changes? Just describe them, or paste a screenshot/mockup into the same chat. If Claude can't find an existing component option for what you asked, it will check with you before building anything new.</li>
         <li>Want to share it? Say <strong>"publish this prototype"</strong> — Claude prepares a package you drag onto <strong>netlify.com</strong> (free account) to get a public link.</li>
         <li>Want another prototype later? Double-click this file again and repeat.</li>
       </ol>
@@ -332,7 +346,15 @@
 <script>
   var state = { step: 1, type: null, alreadyInstalled: false, target: "cowork" };
 
-  function pickTarget(t) { state.target = t; go(3); }
+  function pickTarget(t) {
+    state.target = t;
+    var isRepo = t === "repo";
+    document.getElementById("step4title").textContent = isRepo ? "Name your repo" : "Name your prototype";
+    document.getElementById("step4sub").textContent = isRepo
+      ? "The name becomes the repo/folder name (and the GitHub repo name). The product appears in the top-left app header."
+      : "The name becomes the file name. The product appears in the top-left app header.";
+    go(3);
+  }
 
   /* Every Claude-Design prompt starts with this guard: if it lands in the
      wrong app (Cowork/Code), Claude must stop instead of burning tokens
@@ -340,12 +362,20 @@
   var DESIGN_GUARD =
 "THIS PROMPT IS FOR CLAUDE DESIGN — the visual canvas at claude.ai/design — NOT for Claude Cowork or Claude Code. If you are reading this anywhere other than Claude Design: STOP NOW. Do not build anything, connect folders, scaffold projects, or analyze files. Reply only: \"This prompt is for Claude Design — open claude.ai/design, use Import to add the sources listed below, and paste this prompt there.\"\n\n";
   function showDesignSteps(withSource) {
+    document.getElementById("repoSteps").classList.add("hidden");
     document.getElementById("coworkSteps").classList.add("hidden");
     document.getElementById("designSteps").classList.remove("hidden");
     document.getElementById("designImportSource").classList.toggle("hidden", !withSource);
     document.getElementById("step5sub").textContent = "Copy it, open Claude Design at claude.ai/design, and paste it THERE — not into a Cowork chat.";
   }
+  function showRepoSteps() {
+    document.getElementById("coworkSteps").classList.add("hidden");
+    document.getElementById("designSteps").classList.add("hidden");
+    document.getElementById("repoSteps").classList.remove("hidden");
+    document.getElementById("step5sub").textContent = "Copy it and paste it into a new Claude Cowork chat.";
+  }
   function showCoworkSteps() {
+    document.getElementById("repoSteps").classList.add("hidden");
     document.getElementById("coworkSteps").classList.remove("hidden");
     document.getElementById("designSteps").classList.add("hidden");
     document.getElementById("step5sub").textContent = "Copy it and paste it into your Claude Cowork chat.";
@@ -372,7 +402,7 @@
     } catch (e) { /* user cancelled — no problem */ }
   }
   function doInstall() { state.alreadyInstalled = false; grantFolderAccess(); go(2); }
-  function skipInstall() { state.alreadyInstalled = true; grantFolderAccess(); go(2); }
+  function skipInstall() { state.alreadyInstalled = true; go(2); }
 
   /* Update Lyra UI Storybook — the one flow that updates the REAL lyra-ui
      folder on the user's computer (git pull + rebuild), not a sandbox clone.
@@ -555,6 +585,7 @@
 "- Use ONLY real Lyra UI components from src/components/. Before using any component, check its matching .stories.tsx in src/components/__stories__/ for real prop combinations — never invent props or hand-roll lookalike markup.\n" +
 "- Never hard-code colors, spacing, or typography — use Lyra tokens and components only.\n" +
 "- Library components are read-only — especially anything under \"Custom Primitives\" or \"Headless Primitives\" story titles. Vary them only through their real props.\n" +
+"- PROPS FIRST, THEN ASK: before designing anything custom, check the closest existing component's .stories.tsx controls and props for an option that already does it. If none fits, STOP and ask me — name what you checked and offer options — before designing from scratch. Never invent props or hand-build lookalikes.\n" +
 "\n" +
 "PROTOTYPE SPEC\n" +
 "- Prototype name: " + name + "\n" +
@@ -564,6 +595,34 @@
 "Start by building the template with my product name in the header — I'll iterate from there with comments and chat.";
       document.getElementById("promptOut").value = dPrompt;
       showDesignSteps(false);
+      go(5);
+      return;
+    }
+    if (state.target === "repo") {
+      var rPrompt =
+"Create a new local Lyra UI app repo for me. Follow every instruction below exactly.\n" +
+"\n" +
+"SETUP\n" + setupBlock() +
+"- Read CLAUDE-INSTRUCTIONS.md Scenario L (Create a repo) and follow it — it is the authoritative spec for this request.\n" +
+"\n" +
+"REPO SPEC\n" +
+"- Repo/folder name: " + fileName + " (display name: " + name + ")\n" +
+"- Location: a new folder \"" + fileName + "\" in my connected folder, as a SIBLING of my local lyra-ui folder (never inside it). If no folder is connected, use your directory-access tool to ask me to pick the folder that contains lyra-ui BEFORE doing anything. If that folder has no lyra-ui, tell me and ask whether to clone lyra-ui there first. If \"" + fileName + "\" already exists, stop and ask me for a different name.\n" +
+"- Starting page: " + tpl.label + " template — " + tpl.story + " — composed as the app's real page (not a story).\n" +
+"- Product: " + product + " — set this exact text as the appName prop on the AppHeader component.\n" +
+"\n" +
+"DELIVERABLE\n" +
+"- Build and verify the whole project in YOUR sandbox (npm install, vite build, tsc) — never run npm install or builds in my folder, and never write node_modules or dist there.\n" +
+"- Then write ONLY the source files into my folder, run git init + an initial commit there, and tell me exactly how to publish it to GitHub with GitHub Desktop (no terminal).\n" +
+"- Tell me how to run it locally, step by step in plain language: lyra-ui needs its own npm install, then this repo's npm install + npm run dev, and the exact dev URL INCLUDING the /" + fileName + "/ base path (plain localhost:5173 shows a blank page).\n" +
+"\n" +
+"CHANGES AFTER CREATION\n" +
+"- When I ask for changes, edit THIS repo's own code only (its src/ files) — never modify lyra-ui. Change a lyra-ui component's look or behavior through its real props or by composing it; if the props can't do what I asked, tell me and propose options (a local component in this repo, or a request to the lyra-ui owner) instead of patching lyra-ui or hiding things with CSS overrides.\n" +
+"- If you're not sure which component or area I mean, ask me one direct question naming the candidates (e.g. \"the left nav TreeMenu, or the AdminShell's inner Outbound panel?\") and WAIT — never guess.\n" +
+"- After every change: verify in your sandbox, copy the changed files to my folder, confirm they landed (byte-compare), then commit in my repo with a clear message.\n" +
+"- Whenever an instruction is ambiguous, ask me one direct question and WAIT — never guess.";
+      document.getElementById("promptOut").value = rPrompt;
+      showRepoSteps();
       go(5);
       return;
     }
@@ -586,6 +645,7 @@ fallbackLine +
 "- FAST PATH (important for speed and cost): for this initial build, do NOT read CLAUDE.md, CONTRIBUTING.md, PROJECT_SUMMARY.md, or any story files. Read ONLY prototype-kit/README-FIRST.md and CLAUDE-INSTRUCTIONS.md, then run prototype-kit/build-prototype.mjs exactly as the README shows — it builds and verifies the template in seconds. Read the full rulebooks only later, if I ask for custom UI beyond the stock template; then also check each component's .stories.tsx for real props before using it.\n" +
 "- NEVER attempt to install Chromium/Playwright/system packages for verification — the sandbox has no root and it always fails. Render-verify with prototype-kit/smoke-test.mjs per the README.\n" +
 "- Whenever an instruction is ambiguous or a decision materially changes the result, ask me one direct question and WAIT — never guess.\n" +
+"- PROPS FIRST, THEN ASK (CLAUDE-INSTRUCTIONS.md): before building ANY custom UI, find the closest existing lyra-ui component (src/index.ts, the live Storybook, my local/ components) and check its .stories.tsx controls and props for one that already does what I asked — use it if found. If no prop/variant/composition fits, STOP and ask me before building anything: name what you checked and offer options (a local component, a request to the lyra-ui owner, or another approach). Never hide/restyle library internals with CSS, invent props, or hand-build lookalikes. (Exempt: the plain stock template build with no custom requests.)\n" +
 "- If my connected folder has lyra-ui/src/components/local/ with components in it, copy them into your build workspace and treat them as part of the library. If I ask for a brand-new component, save it there (on my machine) so it persists.\n" +
 "- Do ALL work in your own sandbox. The ONLY files you may ever create or modify in my connected folder are: the final prototype .html in Prototypes/, a -netlify.zip in Prototypes/ when I ask to share, and components in lyra-ui/src/components/local/ when I ask for one. NOTHING else — no entry files, configs, bundles, node_modules, or temp files, not even briefly. Creating a file on my computer and then deleting it counts as a violation.\n" +
 "\n" +
@@ -621,7 +681,8 @@ fallbackLine +
 "- If my connected folder has lyra-ui/src/components/local/ with components in it, copy them into your sandbox clone and treat them as part of the library.\n" +
 "- Do ALL work in your own sandbox. The ONLY paths you may create or modify in my connected folder are the deliverable in Prototypes/ (a file, or an agreed subfolder of files) and (on request) components in lyra-ui/src/components/local/.\n" +
 "- NEVER attempt to install Chromium/Playwright/system packages for verification — the sandbox has no root and it always fails. Render-verify with: node prototype-kit/smoke-test.mjs --file <built.html> --expect \"<visible text>\".\n" +
-"- Whenever an instruction is ambiguous or a decision materially changes the result, ask me one direct question and WAIT — never guess.\n";
+"- Whenever an instruction is ambiguous or a decision materially changes the result, ask me one direct question and WAIT — never guess.\n" +
+"- PROPS FIRST, THEN ASK (CLAUDE-INSTRUCTIONS.md): before building ANY custom UI, find the closest existing lyra-ui component (src/index.ts, the live Storybook, my local/ components) and check its .stories.tsx controls and props for one that already does what I asked — use it if found. If no prop/variant/composition fits, STOP and ask me before building anything: name what you checked and offer options (a local component, a request to the lyra-ui owner, or another approach). Never hide/restyle library internals with CSS, invent props, or hand-build lookalikes. (Exempt: the plain stock template build with no custom requests.)\n";
   }
   function deliverableBlock(fileName) {
     return "- One self-contained HTML file named \"" + fileName + ".html\" in the Prototypes folder in my connected folder (sibling of lyra-ui, never inside it) — or, if we agreed on multiple standalone screens, a subfolder Prototypes/" + fileName + "/ with one html per screen. Every file gets the lyra-ui-commit stamp, the update-notice script, PROGRAMMATICALLY VERIFIED dark mode, and a PASSING smoke test (prototype-kit/smoke-test.mjs), per CLAUDE-INSTRUCTIONS.md. Present once; on later changes overwrite in place and just tell me to refresh.\n";
@@ -644,6 +705,7 @@ fallbackLine +
 "- Read CLAUDE.md and CONTRIBUTING.md in the imported lyra-ui repo IN FULL before designing — they are the binding design-system rules.\n" +
 "- Rebuild the UI with real, CURRENT lyra-ui components from src/components/ (check each component's .stories.tsx for real props) — do not transplant the compiled code.\n" +
 "- Library components are read-only — especially \"Custom Primitives\" and \"Headless Primitives\" story-title components. Vary them only through their real props.\n" +
+"- PROPS FIRST, THEN ASK: before designing anything custom, check the closest existing component's .stories.tsx controls and props for an option that already does it. If none fits, STOP and ask me — name what you checked and offer options — before designing from scratch. Never invent props or hand-build lookalikes.\n" +
 "\n" +
 "GOAL\n" +
 "- Name: " + newName + "\n" +
@@ -725,6 +787,7 @@ fallbackLine +
 "- Read CLAUDE.md and CONTRIBUTING.md in the imported lyra-ui repo IN FULL before designing — they are the binding design-system rules.\n" +
 "- Rebuild the source's UI with real, CURRENT lyra-ui components from src/components/ (check each component's .stories.tsx for real props) — do not transplant the source's code.\n" +
 "- Library components are read-only — especially \"Custom Primitives\" and \"Headless Primitives\" story-title components. Vary them only through their real props.\n" +
+"- PROPS FIRST, THEN ASK: before designing anything custom, check the closest existing component's .stories.tsx controls and props for an option that already does it. If none fits, STOP and ask me — name what you checked and offer options — before designing from scratch. Never invent props or hand-build lookalikes.\n" +
 "\n" +
 "GOAL\n" +
 "- Name: " + name + "\n" +
@@ -783,7 +846,8 @@ setup +
 "\n" +
 "AFTER DELIVERY\n" +
 "- When I ask for component changes (text or screenshots), edit the component SOURCE in my lyra-ui/src/components/local/ folder so the change persists, then rebuild and overwrite the same gallery file. Don't re-present it — just tell me to refresh my browser.\n" +
-"- ONLY my own components in src/components/local/ may be modified. Library components — especially anything under \"Custom Primitives\" or \"Headless Primitives\" in its story title — are read-only: never edit or fork them; use their real props, or tell me the change needs the design-system maintainer (see CLAUDE-INSTRUCTIONS.md's Protected primitives rule).";
+"- ONLY my own components in src/components/local/ may be modified. Library components — especially anything under \"Custom Primitives\" or \"Headless Primitives\" in its story title — are read-only: never edit or fork them; use their real props, or tell me the change needs the design-system maintainer (see CLAUDE-INSTRUCTIONS.md's Protected primitives rule).\n" +
+"- PROPS FIRST, THEN ASK (CLAUDE-INSTRUCTIONS.md): before building ANY custom UI, find the closest existing lyra-ui component (src/index.ts, the live Storybook, my local/ components) and check its .stories.tsx controls and props for one that already does what I asked — use it if found. If no prop/variant/composition fits, STOP and ask me before building anything: name what you checked and offer options (a local component, a request to the lyra-ui owner, or another approach). Never hide/restyle library internals with CSS, invent props, or hand-build lookalikes.\n";
 
     document.getElementById("galleryPromptOut").value = prompt;
     go(6);
@@ -1070,6 +1134,8 @@ setup +
   function restart() {
     state.type = null;
     state.target = "cowork";
+    document.getElementById("step4title").textContent = "Name your prototype";
+    document.getElementById("step4sub").textContent = "The name becomes the file name. The product appears in the top-left app header.";
     document.getElementById("type-admin").classList.remove("selected");
     document.getElementById("type-agent").classList.remove("selected");
     document.getElementById("next3").disabled = true;

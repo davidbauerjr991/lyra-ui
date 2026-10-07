@@ -11,6 +11,8 @@ interface PageHeaderBreadcrumb {
   label: string;
   /** Click handler for the parent link */
   onClick?: () => void;
+  /** Opt-in: renders the crumb as a real `<a href>` link (see `BreadcrumbLink`'s `href`). */
+  href?: string;
 }
 
 interface PageHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -390,7 +392,7 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
                 {(Array.isArray(breadcrumb) ? breadcrumb : [breadcrumb]).map((crumb, i) => (
                   <React.Fragment key={i}>
                     <BreadcrumbItem className="shrink-0">
-                      <BreadcrumbLink onClick={crumb.onClick}>{crumb.label}</BreadcrumbLink>
+                      <BreadcrumbLink onClick={crumb.onClick} href={crumb.href}>{crumb.label}</BreadcrumbLink>
                     </BreadcrumbItem>
                     <BreadcrumbSeparator className="shrink-0" />
                   </React.Fragment>
@@ -409,7 +411,7 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
                     items={(Array.isArray(breadcrumb) ? breadcrumb : [breadcrumb]).map((crumb, i) => ({
                       id: `crumb-${i}`,
                       label: crumb.label,
-                      onClick: crumb.onClick,
+                      onClick: crumb.onClick ?? (crumb.href ? () => window.location.assign(crumb.href!) : undefined),
                     }))}
                   />
                 </BreadcrumbItem>

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { useState } from "react";
-import { Calendar, type DateRange } from "../calendar";
+import { Calendar } from "../calendar";
+import { CalendarDemo } from "./Calendar.shared";
 
 const meta: Meta<typeof Calendar> = {
   title: "Headless Primitives/Calendar",
@@ -10,138 +10,92 @@ const meta: Meta<typeof Calendar> = {
     layout: "centered",
     backgrounds: { default: "lyra-shell" },
   },
+  // Real Calendar props stay on the Docs page; Default's own
+  // `parameters.controls.include` below curates the Controls panel.
 };
 
 export default meta;
-type Story = StoryObj<typeof Calendar>;
 
-/* ── Single date ── */
+/* Disabled dates and the three modes side by side each have their own page
+   under "Calendar/Variants" — see Calendar.variants.stories.tsx. */
 
-export const SingleDate: Story = {
-  name: "Single Date",
-  render: () => {
-    const [date, setDate] = useState<Date | undefined>(new Date());
-    return (
-      <div className="rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-base shadow-md p-4 w-[280px]">
-        <Calendar mode="single" selected={date} onSelect={setDate} />
-        <p className="lyra-body-sm text-lyra-fg-secondary mt-3 text-center">
-          {date ? date.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" }) : "No date selected"}
-        </p>
-      </div>
-    );
+/* ── Default — consolidated Single Date, Range Selection and Week Selection
+   into one controls-driven story (previously three separate stories). Each
+   mode starts with the same selection its old story did (today / today+6
+   days / this week), and the selection summary updates as you click. ── */
+
+interface CalendarPlaygroundProps {
+  mode?: "single" | "range" | "week";
+  /** Date control value (a timestamp) or Date. */
+  defaultMonth?: number | Date;
+  disablePast?: boolean;
+  size?: "md" | "lg";
+  showMarkers?: boolean;
+}
+
+type CalendarPlaygroundStory = StoryObj<CalendarPlaygroundProps>;
+
+export const Default: CalendarPlaygroundStory = {
+  args: {
+    mode: "single",
+    defaultMonth: undefined,
+    disablePast: false,
+    size: "md",
+    showMarkers: false,
   },
-};
-
-/* ── Range selection ── */
-
-export const RangeSelection: Story = {
-  name: "Range Selection",
-  render: () => {
-    const [range, setRange] = useState<DateRange | undefined>({
-      from: new Date(),
-      to: (() => { const d = new Date(); d.setDate(d.getDate() + 6); return d; })(),
-    });
-    return (
-      <div className="rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-base shadow-md p-4 w-[280px]">
-        <Calendar mode="range" selected={range} onSelect={setRange} />
-        <p className="lyra-body-sm text-lyra-fg-secondary mt-3 text-center">
-          {range?.from && range?.to
-            ? `${range.from.toLocaleDateString()} – ${range.to.toLocaleDateString()}`
-            : range?.from
-            ? `From ${range.from.toLocaleDateString()}`
-            : "Select a range"}
-        </p>
-      </div>
-    );
+  parameters: {
+    controls: {
+      // Storybook matches `include` against each control's display `name`
+      // (falling back to its key), so list the names; keys are kept too.
+      include: ["Mode", "Disable past dates", "Starting month", "Size", "Show date markers", "mode", "disablePast", "defaultMonth", "size", "showMarkers"],
+      sort: "none",
+    },
   },
-};
-
-/* ── Week selection ── */
-
-export const WeekSelection: Story = {
-  name: "Week Selection",
-  render: () => {
-    const [weekStart, setWeekStart] = useState<Date | undefined>(() => {
-      const today = new Date();
-      today.setDate(today.getDate() - today.getDay());
-      return today;
-    });
-
-    const getWeekEnd = (start: Date) => {
-      const end = new Date(start);
-      end.setDate(start.getDate() + 6);
-      return end;
-    };
-
-    return (
-      <div className="rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-base shadow-md p-4 w-[280px]">
-        <Calendar mode="week" selected={weekStart} onSelect={setWeekStart} />
-        <p className="lyra-body-sm text-lyra-fg-secondary mt-3 text-center">
-          {weekStart
-            ? `Week of ${weekStart.toLocaleDateString()} – ${getWeekEnd(weekStart).toLocaleDateString()}`
-            : "Select a week"}
-        </p>
-      </div>
-    );
+  argTypes: {
+    mode: {
+      name: "Mode",
+      control: "radio",
+      options: ["single", "range", "week"],
+      labels: { single: "Single date", range: "Date range", week: "Week" },
+      description: "What a click selects: one date, a start–end range, or a whole week.",
+      table: { category: "Behavior", defaultValue: { summary: "single" } },
+    },
+    disablePast: {
+      name: "Disable past dates",
+      control: "boolean",
+      description: "Blocks every date before today (`disabled={{ before: today }}`).",
+      table: { category: "Behavior", defaultValue: { summary: "false" } },
+    },
+    size: {
+      name: "Size",
+      control: "radio",
+      options: ["md", "lg"],
+      description: "Day-cell size: medium (36px, default) or large (40px, with a taller month/year button) (`size`).",
+      table: { category: "Appearance", defaultValue: { summary: "md" } },
+    },
+    showMarkers: {
+      name: "Show date markers",
+      control: "boolean",
+      description: "Puts a colored dot under sample dates this month (`modifiers`). Each has a label that screen readers read after the date.",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    defaultMonth: {
+      name: "Starting month",
+      control: "date",
+      description: "Month shown first. Leave empty to start on the current month.",
+      table: { category: "Content" },
+    },
   },
-};
-
-/* ── All variants ── */
-
-export const AllVariants: Story = {
-  name: "All Variants",
-  render: () => {
-    const [single, setSingle] = useState<Date | undefined>(new Date());
-    const [range, setRange] = useState<DateRange | undefined>();
-    const [week, setWeek] = useState<Date | undefined>(() => {
-      const d = new Date(); d.setDate(d.getDate() - d.getDay()); return d;
-    });
-
-    return (
-      <div className="flex flex-wrap gap-6">
-        <div className="flex flex-col gap-2">
-          <span className="lyra-label text-lyra-fg-default">Single</span>
-          <div className="rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-base shadow-md p-4 w-[280px]">
-            <Calendar mode="single" selected={single} onSelect={setSingle} />
-          </div>
-        </div>
-        <div className="flex flex-col gap-2">
-          <span className="lyra-label text-lyra-fg-default">Range</span>
-          <div className="rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-base shadow-md p-4 w-[280px]">
-            <Calendar mode="range" selected={range} onSelect={setRange} />
-          </div>
-        </div>
-        <div className="flex flex-col gap-2">
-          <span className="lyra-label text-lyra-fg-default">Week</span>
-          <div className="rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-base shadow-md p-4 w-[280px]">
-            <Calendar mode="week" selected={week} onSelect={setWeek} />
-          </div>
-        </div>
-      </div>
-    );
-  },
-};
-
-export const WithDisabledDates: Story = {
-  name: "With Disabled Dates",
-  render: () => {
-    const [date, setDate] = useState<Date | undefined>();
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-
-    return (
-      <div className="rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-base shadow-md p-4 w-[280px]">
-        <Calendar
-          mode="single"
-          selected={date}
-          onSelect={setDate}
-          disabled={{ before: today }}
-        />
-        <p className="lyra-body-sm text-lyra-fg-secondary mt-2 text-center">
-          Past dates are disabled
-        </p>
-      </div>
-    );
-  },
+  render: (args) => (
+    // `key` remounts the demo when a control changes — each mode has its own
+    // initial selection, which only applies on first mount.
+    <CalendarDemo
+      key={JSON.stringify(args)}
+      mode={args.mode ?? "single"}
+      defaultMonth={args.defaultMonth != null ? new Date(args.defaultMonth) : undefined}
+      disablePast={args.disablePast}
+      size={args.size}
+      showMarkers={args.showMarkers}
+    />
+  ),
 };

@@ -1,102 +1,81 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { useState } from "react";
 import { Spinner } from "../spinner";
-import { Button } from "../button";
 
 const meta: Meta<typeof Spinner> = {
   title: "Custom Primitives/Spinner",
   component: Spinner,
   tags: ["autodocs"],
   parameters: { layout: "centered", backgrounds: { default: "lyra-shell" } },
+  // Real Spinner props stay on the Docs page; Default's own
+  // `parameters.controls.include` below curates the Controls panel.
   argTypes: {
-    variant: { control: "select", options: ["bar", "circle"] },
-    size:    { control: "select", options: ["sm", "md", "lg"] },
-    color:   { control: "select", options: ["primary", "inverse"] },
+    variant: { control: "radio", options: ["bar", "circle"] },
+    size:    { control: "radio", options: ["sm", "md", "lg"] },
+    color:   { control: "radio", options: ["primary", "inverse"] },
   },
 };
 
 export default meta;
 type Story = StoryObj<typeof Spinner>;
 
-/* ── SOL-matched stories ── */
+/* Multiple Spinner and every variant, size and color side by side each have
+   their own page under "Spinner/Variants" — see Spinner.variants.stories.tsx. */
 
-export const SpinnerBar: Story = {
-  name: "Spinner Bar",
-  render: () => (
-    <div className="flex items-center gap-8">
-      <Spinner variant="bar" size="sm" />
-      <Spinner variant="bar" size="md" />
-      <Spinner variant="bar" size="lg" />
-    </div>
-  ),
-};
-
-export const SpinnerCircle: Story = {
-  name: "Spinner Circle",
-  render: () => (
-    <div className="flex items-center gap-8">
-      <Spinner variant="circle" size="sm" />
-      <Spinner variant="circle" size="md" />
-      <Spinner variant="circle" size="lg" />
-    </div>
-  ),
-};
-
-export const MultipleSpinner: Story = {
-  name: "Multiple Spinner",
-  render: () => {
-    const [active, setActive] = useState<Record<number, boolean>>({ 1: true, 2: true });
-    const toggle = (id: number) => setActive(prev => ({ ...prev, [id]: !prev[id] }));
-    return (
-      <div className="flex flex-col gap-6">
-        <div className="flex gap-3">
-          {[1, 2, 3, 4].map(id => (
-            <Button
-              key={id}
-              variant={active[id] ? "primary" : "outline"}
-              size="sm"
-              onClick={() => toggle(id)}
-            >
-              Toggle {id}
-            </Button>
-          ))}
-        </div>
-        <div className="flex items-center gap-8 h-10">
-          {[1, 2, 3, 4].map(id =>
-            active[id] ? (
-              <Spinner key={id} variant="bar" size="md" label={`Loading ${id}`} />
-            ) : null
-          )}
-        </div>
+/* ── Default — consolidated Spinner Bar, Spinner Circle and On Dark Background
+   into one controls-driven story. The inverse (white) color is made for dark
+   surfaces, so it renders on a dark panel; the other color sits on the page
+   background. ── */
+export const Default: Story = {
+  render: (args) =>
+    args.color === "inverse" ? (
+      <div className="flex items-center justify-center p-6 rounded-lyra-md bg-lyra-bg-surface-inverse">
+        <Spinner {...args} />
       </div>
-    );
+    ) : (
+      <Spinner {...args} />
+    ),
+  args: { variant: "bar", size: "md", color: "primary", label: "Loading", showLabel: false },
+  parameters: {
+    controls: {
+      // Storybook matches `include` against each control's display `name`
+      // (falling back to its key), so list the names; keys are kept too.
+      include: ["Label", "Show label", "Variant", "Size", "Color", "label", "showLabel", "variant", "size", "color"],
+      sort: "none",
+    },
   },
-};
-
-/* ── Additional lyra stories ── */
-
-export const OnDarkBackground: Story = {
-  name: "On Dark Background",
-  parameters: { backgrounds: { default: "lyra-shell" } },
-  render: () => (
-    <div className="flex items-center gap-8 p-6 rounded-lyra-md bg-lyra-bg-surface-inverse">
-      <Spinner variant="bar"    color="inverse" size="md" />
-      <Spinner variant="circle" color="inverse" size="md" />
-    </div>
-  ),
-};
-
-export const AllVariants: Story = {
-  name: "All Variants",
-  render: () => (
-    <div className="flex flex-col gap-6">
-      {(["sm", "md", "lg"] as const).map(size => (
-        <div key={size} className="flex items-center gap-8">
-          <span className="lyra-body-sm text-lyra-fg-secondary w-6">{size}</span>
-          <Spinner variant="bar"    size={size} />
-          <Spinner variant="circle" size={size} />
-        </div>
-      ))}
-    </div>
-  ),
+  argTypes: {
+    label: {
+      name: "Label",
+      control: "text",
+      description: "Text announced by screen readers. Not shown on screen.",
+      table: { category: "Content", defaultValue: { summary: "Loading" } },
+    },
+    showLabel: {
+      name: "Show label",
+      control: "boolean",
+      description: "Also shows the label as text next to the spinner (`showLabel`). Off keeps it for screen readers only.",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    variant: {
+      name: "Variant",
+      control: "radio",
+      options: ["bar", "circle"],
+      description: "Three pulsing bars or a pulsing circle.",
+      table: { category: "Appearance", defaultValue: { summary: "bar" } },
+    },
+    size: {
+      name: "Size",
+      control: "radio",
+      options: ["sm", "md", "lg"],
+      description: "Spinner size.",
+      table: { category: "Appearance", defaultValue: { summary: "md" } },
+    },
+    color: {
+      name: "Color",
+      control: "radio",
+      options: ["primary", "inverse"],
+      description: "Primary (blue) for light surfaces, inverse (white) for dark surfaces. Inverse shows on a dark panel.",
+      table: { category: "Appearance", defaultValue: { summary: "primary" } },
+    },
+  },
 };

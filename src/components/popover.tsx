@@ -150,6 +150,13 @@ export interface PopoverProps {
    * popovers (e.g. a listbox or picker panel).
    */
   "aria-label"?: string;
+  /**
+   * Adds a visually hidden hint that screen readers announce when the popover
+   * opens (linked with `aria-describedby`): "Press Tab to navigate, Escape to
+   * close". Pass a string to use your own wording. Default: false — many
+   * popovers are menus or lists where the hint would just be noise.
+   */
+  screenReaderHint?: boolean | string;
 }
 
 /* ── Arrow ──
@@ -241,7 +248,7 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
   alignOffset = 0,
   open,
   onOpenChange,
-  showArrow = true,
+  showArrow: showArrowProp,
   maxHeight,
   maxWidth,
   bodyPadding = true,
@@ -254,7 +261,12 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
   modal = false,
   virtualAnchorRef,
   "aria-label": ariaLabel,
-}, ref) => (
+  screenReaderHint = false,
+}, ref) => {
+  const hintId = React.useId();
+  const hintText =
+    typeof screenReaderHint === "string" ? screenReaderHint : "Press Tab to navigate, Escape to close";
+  return (
   <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange} modal={modal}>
     {asAnchor ? (
       <PopoverPrimitive.Anchor asChild>{children}</PopoverPrimitive.Anchor>
@@ -277,6 +289,7 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
         onEscapeKeyDown={onEscapeKeyDown}
         onInteractOutside={onInteractOutside}
         aria-label={ariaLabel ?? title}
+        {...(screenReaderHint ? { "aria-describedby": hintId } : {})}
         onPointerMove={stopSyntheticBubble}
         onPointerLeave={stopSyntheticBubble}
         onFocus={stopSyntheticBubble}
@@ -305,7 +318,12 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
                 maxHeight: maxHeight ?? "var(--radix-popover-content-available-height)",
                 display: "flex",
                 flexDirection: "column",
-                overflow: "hidden",
+                // `overflow: hidden` also clips the arrow, which sits just
+                // outside Content's own box. To keep existing consumers
+                // pixel-identical, the clip is only lifted when `showArrow`
+                // is passed explicitly as `true`; omitting it keeps the
+                // previous behavior.
+                overflow: showArrowProp === true ? undefined : "hidden",
               }
             : {}),
         }}
@@ -334,6 +352,9 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
             whatever sits directly below it) is dropped. `cn`'s twMerge
             resolves `px-4 py-2.5` + `px-5 pb-0` down to effectively
             `px-5 pt-2.5 pb-0`. */}
+        {screenReaderHint && (
+          <span id={hintId} className="sr-only">{hintText}</span>
+        )}
         {title && <PanelHeader title={title} bordered={false} className="px-5 pb-0" />}
         {header && <div style={{ flexShrink: 0 }}>{header}</div>}
         {/* Content scrolls; header/footer are flex-shrink-0 so they stay
@@ -391,11 +412,12 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
           {content}
         </div>
         {footer && <div style={{ flexShrink: 0 }}>{footer}</div>}
-        {showArrow && <PopoverArrow />}
+        {(showArrowProp ?? true) && <PopoverArrow />}
       </PopoverPrimitive.Content>
     </PopoverPrimitive.Portal>
   </PopoverPrimitive.Root>
-));
+  );
+});
 
 Popover.displayName = "Popover";
 

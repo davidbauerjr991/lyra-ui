@@ -6,6 +6,7 @@ import { cn } from "../lib/utils";
 import { KebabMenuButton } from "./kebab-menu-button";
 import { Menu, type MenuEntry } from "./menu";
 import { Tooltip } from "./tooltip";
+import { Badge } from "./badge";
 import { useScrollChevrons, ScrollChevronButton } from "./scroll-chevron";
 
 /* ── Tab List (container with bottom border) ── */
@@ -125,6 +126,19 @@ interface TabListProps extends React.HTMLAttributes<HTMLDivElement> {
    *  for `reorderable` to have any visible effect — see its doc comment. */
   onReorder?: (order: string[]) => void;
   /**
+   * Opt-in keyboard alternative to dragging (WCAG 2.1.1 keyboard, 2.5.7
+   * dragging movements). Only meaningful with `reorderable` + `onReorder`.
+   * With a tab focused, Ctrl+Shift+Left / Right moves it one slot (through the
+   * same `onReorder` a drag uses), keeps focus on it, and announces the result
+   * to screen readers ("Details, moved to position 2 of 5"). Plain arrow keys
+   * still move focus and select as usual. Default `false` — existing
+   * `reorderable` lists behave exactly as before. A pointer-friendly,
+   * non-drag option (for example "Move left" / "Move right" items in a tab's
+   * `menuItems`) is up to the consumer, since the tab bar doesn't own the
+   * order.
+   */
+  keyboardReorder?: boolean;
+  /**
    * Only meaningful alongside `overflowMenu` (default: `false`). Makes this
    * `TabList`'s own outer wrapper (the actual top-level node it renders
    * once `overflowMenu` is on — see that wrapper's own doc comment) a
@@ -169,6 +183,13 @@ interface TabListProps extends React.HTMLAttributes<HTMLDivElement> {
    * tabs, and every other unrelated consumer of this shared component).
    */
   tabPaddingX?: "3" | "5";
+  /**
+   * Opt-in compact size for every `Tab` in this list (and the "N More"
+   * trigger): `"sm"` is a 36px-tall row with 12px text instead of 48px with
+   * 14px. A `Tab`'s own `size` prop wins over this one. Default `"md"` — every
+   * existing `TabList` renders exactly as before.
+   */
+  size?: "md" | "sm";
 }
 
 // Below this width, `overflowBreakpoint="compact"`'s own content-measured
@@ -182,6 +203,30 @@ interface TabListProps extends React.HTMLAttributes<HTMLDivElement> {
 // comment above for the full three-state progression this drives.
 const TAB_LIST_COMPACT_COLLAPSE_WIDTH = 400;
 
+/* Polite screen-reader announcement through one shared, visually hidden live
+   region appended to <body> (no layout impact on any tab bar). The text is
+   cleared and re-set a beat later so repeating the same message still reads. */
+function announceToScreenReader(message: string) {
+  if (typeof document === "undefined") return;
+  const id = "lyra-tabs-live-region";
+  let el = document.getElementById(id);
+  if (!el) {
+    el = document.createElement("div");
+    el.id = id;
+    el.setAttribute("role", "status");
+    el.setAttribute("aria-live", "polite");
+    el.setAttribute("aria-atomic", "true");
+    Object.assign(el.style, {
+      position: "absolute", width: "1px", height: "1px", overflow: "hidden",
+      clip: "rect(0 0 0 0)", whiteSpace: "nowrap",
+    });
+    document.body.appendChild(el);
+  }
+  el.textContent = "";
+  const target = el;
+  window.setTimeout(() => { target.textContent = message; }, 50);
+}
+
 const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
   (
     {
@@ -192,14 +237,28 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
       overflowMoreLabel = (count) => `${count} More`,
       reorderable,
       onReorder,
+      keyboardReorder = false,
       onKeyDown,
-      children,
+      children: childrenProp,
       growToFillRow = false,
       tabPaddingX = "5",
+      size = "md",
       ...props
     },
     ref
   ) => {
+    // `size="sm"` is handed to each `Tab` that doesn't set its own. Every
+    // later use of `children` (full row, measuring clone, collapsed row,
+    // overflow entries) reads this one list, so they always agree. At the
+    // default `"md"` this is the untouched `children`.
+    const children =
+      size === "md"
+        ? childrenProp
+        : React.Children.map(childrenProp, (child) =>
+            React.isValidElement<TabProps>(child) && child.props.size === undefined
+              ? React.cloneElement(child, { size })
+              : child
+          );
     const listRef = useRef<HTMLDivElement>(null);
     const [overflowOpen, setOverflowOpen] = useState(false);
     const [overflowPosition, setOverflowPosition] = useState<{ top: number; left: number; width: number; maxHeight?: number } | null>(null);
@@ -407,38 +466,114 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent<HTMLDivElement>) => {
         onKeyDown?.(e);
+        // A control inside a tab (e.g. the kebab's own ArrowDown-to-open) already
+        // handled this key.
+        if (e.defaultPrevented) return;
         const list = listRef.current;
         if (!list) return;
 
-        const tabs = Array.from(
-          list.querySelectorAll<HTMLElement>('[role="tab"]:not([disabled])')
-        );
+        // Keyboard reorder (`keyboardReorder`): Ctrl+Shift+Left / Right moves
+        // the focused tab one slot through the same `onReorder` a drag uses.
+        if (keyboardReorder && reorderable && e.ctrlKey && e.shiftKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+          const focused = document.activeElement as HTMLElement | null;
+          const key = focused?.getAttribute("role") === "tab" ? focused.getAttribute("data-reorder-key") : null;
+          if (focused && key != null) {
+            e.preventDefault();
+            const keys = Array.from(
+              new Set(
+                Array.from(list.querySelectorAll<HTMLElement>('[role="tab"][data-reorder-key]')).map(
+                  (el) => el.getAttribute("data-reorder-key") as string
+                )
+              )
+            );
+            const from = keys.indexOf(key);
+            const to = from + (e.key === "ArrowRight" ? 1 : -1);
+            const name = focused.getAttribute("aria-label") || focused.textContent?.trim() || "Tab";
+            if (to < 0 || to >= keys.length) {
+              announceToScreenReader(`${name}, already ${to < 0 ? "first" : "last"}`);
+              return;
+            }
+            const next = [...keys];
+            next.splice(from, 1);
+            next.splice(to, 0, key);
+            pendingReorderFocusKeyRef.current = key;
+            announceToScreenReader(`${name}, moved to position ${to + 1} of ${keys.length}`);
+            onReorder?.(next);
+            return;
+          }
+        }
+
+        // Arrow-key order: each tab, then its opt-in "×" / kebab (`removeFocusable` /
+        // `menuFocusable`), then the next tab. DOM focus stays on the tab; those
+        // controls are "focused" by telling the tab (see `Tab`'s `actionFocus`).
+        // Without any such controls this is exactly the list of tabs, as before.
+        const tabs = Array.from(list.querySelectorAll<HTMLElement>('[role="tab"]:not([disabled])'));
         const current = document.activeElement as HTMLElement;
         const index = tabs.indexOf(current);
         if (index === -1) return;
 
+        const setAction = (el: HTMLElement, action: string | null) =>
+          el.dispatchEvent(new CustomEvent("lyra-tab-set-action", { detail: action }));
+        const actionsOf = (el: HTMLElement) => (el.dataset.tabActions ?? "").split(" ").filter(Boolean);
+        const currentAction = current.dataset.tabActionFocus ?? null;
+        const actions = actionsOf(current);
+        const actionIndex = currentAction ? actions.indexOf(currentAction) : -1;
+
         let next: HTMLElement | undefined;
+        let nextAction: string | null = null;
         if (e.key === "ArrowRight" || e.key === "ArrowDown") {
           e.preventDefault();
+          if (actionIndex + 1 < actions.length) {
+            setAction(current, actions[actionIndex + 1]);
+            return;
+          }
+          if (currentAction) setAction(current, null);
           next = tabs[(index + 1) % tabs.length];
         } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
           e.preventDefault();
+          if (currentAction) {
+            setAction(current, actionIndex > 0 ? actions[actionIndex - 1] : null);
+            return;
+          }
           next = tabs[(index - 1 + tabs.length) % tabs.length];
+          // Going backwards lands on the previous tab's last control first.
+          const prevActions = actionsOf(next);
+          nextAction = prevActions.length ? prevActions[prevActions.length - 1] : null;
         } else if (e.key === "Home") {
           e.preventDefault();
+          if (currentAction) setAction(current, null);
           next = tabs[0];
         } else if (e.key === "End") {
           e.preventDefault();
+          if (currentAction) setAction(current, null);
           next = tabs[tabs.length - 1];
         }
 
         if (next) {
           next.focus();
+          // Tabs select as they get focus.
           next.click();
+          if (nextAction) setAction(next, nextAction);
         }
       },
-      [onKeyDown]
+      [onKeyDown, keyboardReorder, reorderable, onReorder]
     );
+
+    // After a keyboard reorder the consumer re-renders the tabs in their new
+    // order, and moving a DOM node can drop its focus — put focus back on the
+    // tab that was moved.
+    const pendingReorderFocusKeyRef = useRef<string | null>(null);
+    useLayoutEffect(() => {
+      const key = pendingReorderFocusKeyRef.current;
+      if (key == null) return;
+      pendingReorderFocusKeyRef.current = null;
+      const list = listRef.current;
+      if (!list) return;
+      const match = Array.from(list.querySelectorAll<HTMLElement>('[role="tab"][data-reorder-key]')).find(
+        (el) => el.getAttribute("data-reorder-key") === key
+      );
+      match?.focus();
+    });
 
     // ── `reorderable` drag-and-drop state ──
     // Purely local UI feedback (which key is currently being dragged over,
@@ -535,6 +670,7 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
             overrides.onDrop = (e: React.DragEvent) => handleReorderDrop(e, key, orderedKeys);
             overrides.onDragEnd = handleReorderDragEnd;
             overrides.onDragLeave = handleReorderDragLeave;
+            if (keyboardReorder) overrides["data-reorder-key"] = key;
             overrides.className = cn(
               "cursor-grab active:cursor-grabbing",
               reorderDragOverKey === key && "bg-lyra-bg-active-moderate",
@@ -865,7 +1001,9 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
           const label =
             typeof child.props.children === "string"
               ? child.props.children
-              : tabEl?.querySelector("[data-tab-label]")?.textContent?.trim() || `Tab ${originalIndex + 1}`;
+              : tabEl?.querySelector("[data-tab-label]")?.textContent?.trim() ||
+                child.props["aria-label"] ||
+                `Tab ${originalIndex + 1}`;
           // Same reasoning as `label` above, for the icon: `child.props
           // .icon` covers a plain `Tab`; a composite wrapper's own
           // rendered icon `<span>` (the one immediately preceding the
@@ -894,7 +1032,11 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
           // still gets it regardless, same "read what's actually there"
           // approach as `label`/`icon` above rather than a plain `Tab`-only
           // prop this composite wrapper doesn't have.
-          const description = tabEl?.querySelector("[data-tab-subhead]")?.textContent?.trim() || undefined;
+          // A tab with `error` hides its "!" once collapsed into this menu, so
+          // its error text stands in as the entry's subhead instead.
+          const description =
+            tabEl?.querySelector("[data-tab-subhead]")?.textContent?.trim() ||
+            (child.props.error ? child.props.errorLabel ?? "Has errors" : undefined);
           return {
             id: child.key != null ? String(child.key) : `tab-overflow-${originalIndex}`,
             label,
@@ -1000,7 +1142,12 @@ const TabList = React.forwardRef<HTMLDivElement, TabListProps>(
             aria-haspopup="menu"
             aria-expanded={overflowOpen}
             aria-label={`${otherChildren.length} more tabs`}
-            className="group relative inline-flex min-h-[48px] items-center justify-center gap-2 px-3 py-2.5 lyra-body-md-emphasis text-lyra-fg-secondary transition-colors hover:text-lyra-fg-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+            className={cn(
+              "group relative inline-flex items-center justify-center gap-2 px-3 text-lyra-fg-secondary transition-colors hover:text-lyra-fg-default",
+              // Inset ring (no offset) so the container can't clip it.
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lyra-border-focus",
+              size === "sm" ? "min-h-[36px] py-1.5 lyra-body-sm-emphasis" : "min-h-[48px] py-2.5 lyra-body-md-emphasis"
+            )}
           >
             {overflowMoreLabel(otherChildren.length)}
             <ChevronDown
@@ -1272,6 +1419,27 @@ interface TabProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
    */
   removeIcon?: React.ReactNode;
   /**
+   * Opt-in: make the `onRemove` "×" reachable with the arrow keys. The "×" stays
+   * a mouse-only, hidden-from-assistive-tech control inside the tab (a real
+   * button inside a tab or tab list fails accessibility checks), so DOM focus
+   * never leaves the tab: arrow right from the tab (or its kebab) shows a focus
+   * ring and the Tooltip component (`removeLabel`) on the "×", Enter, Space or
+   * Delete then removes the tab, and a screen-reader announcement says what is
+   * focused. Default `false` — the "×" stays as it always was, with Delete on
+   * the tab as the keyboard path. Ignored while `onRemove` is unset. With
+   * `menuItems` set too, the "×" sits at the far right, after the kebab;
+   * without this prop the "×" is still hidden whenever `menuItems` is set.
+   */
+  removeFocusable?: boolean;
+  /**
+   * Opt-in, same idea as `removeFocusable` but for the `menuItems` kebab (⋮):
+   * the arrow keys visit it right after its own tab (ring + Tooltip showing
+   * `menuAriaLabel`), and Enter or Space opens the menu. Default `false` — the
+   * kebab stays mouse-only, opened from the keyboard with Shift+F10 on the tab.
+   * Ignored while `menuItems` is unset.
+   */
+  menuFocusable?: boolean;
+  /**
    * Renders a trailing kebab (⋮) menu on this tab — e.g. a channel tab's
    * "Unassign & Dismiss"/"Consult / Transfer"/etc. actions (see
    * `ChannelTab` in `channel-row.tsx`, the first consumer of this). Uses
@@ -1338,9 +1506,42 @@ interface TabProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
    * neutral blue/gray no matter how overdue the channel actually is.
    */
   severity?: "success" | "warning" | "critical";
+  /**
+   * Opt-in compact size: `"sm"` is a 36px-tall tab with 12px text instead of
+   * 48px with 14px. Inside a `TabList`, the list's own `size` fills this in
+   * for tabs that don't set one. Default `"md"` — unchanged.
+   */
+  size?: "md" | "sm";
+  /**
+   * Opt-in icon-only tab: shows just the `icon`, with the label (`children`, or
+   * `aria-label` when there are no children) kept for screen readers and shown
+   * in a Tooltip on hover and keyboard focus. Needs `icon` — without one the
+   * tab renders normally. Prefer `children` for the label, since an
+   * `aria-label` replaces the badge/error text in the tab's spoken name.
+   * Default `false` — unchanged.
+   */
+  iconOnly?: boolean;
+  /**
+   * Opt-in count badge after the label (on the icon's top-right corner with
+   * `iconOnly`), for things like unread counts. Counts above 99 show "99+".
+   * Screen readers hear `badgeLabel`. Shows nothing while `undefined` (the
+   * default), so omit it to hide the badge; `0` shows "0". `error` wins when both are set.
+   */
+  badge?: number;
+  /** Spoken text for `badge`. Default "{n} notifications" (the Badge's own). */
+  badgeLabel?: string;
+  /**
+   * Opt-in error indicator: a red "!" badge, placed like `badge`, for a tab
+   * whose panel has a problem (for example a form tab with invalid fields).
+   * Screen readers hear `errorLabel`, and a collapsed "N More" menu lists it
+   * under the tab's name. Default `false` — unchanged.
+   */
+  error?: boolean;
+  /** Spoken text for `error`. Default "Has errors". */
+  errorLabel?: string;
 }
 
-const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
+const Tab =React.forwardRef<HTMLButtonElement, TabProps>(
   (
     {
       className,
@@ -1351,15 +1552,25 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
       removeLabel = "Remove tab",
       removeVariant = "close",
       removeIcon,
+      removeFocusable = false,
+      menuFocusable = false,
       menuItems,
       menuAriaLabel = "More options",
       onMenuOpenChange,
       panelId,
       showTruncationTooltip = true,
       severity,
+      size = "md",
+      iconOnly = false,
+      badge,
+      badgeLabel,
+      error = false,
+      errorLabel = "Has errors",
       children,
       id,
       onKeyDown,
+      onKeyUp,
+      onBlur,
       ...props
     },
     ref
@@ -1444,6 +1655,23 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
     // dropdown takes over, and stays visible over it (see
     // `KebabMenuButton.onOpenChange`'s doc comment for the full mechanism).
     const [menuOpen, setMenuOpen] = useState(false);
+    // Opt-in `removeFocusable` / `menuFocusable`: the "×" and kebab stay inside the
+    // tab as mouse-only, hidden-from-AT controls (a real button inside role="tab"
+    // or role="tablist" is an accessibility violation), but the arrow keys still
+    // visit them. DOM focus never leaves the tab button; `TabList` tells this tab
+    // (via a custom event) which control to highlight with a focus ring and
+    // tooltip, Enter/Space/Delete on the tab then act on it, and a screen-reader
+    // announcement says what is "focused".
+    const [actionFocus, setActionFocus] = useState<"menu" | "remove" | null>(null);
+    const [actionHovered, setActionHovered] = useState(false);
+    const hoverHandlers = {
+      onPointerEnter: () => setActionHovered(true),
+      onPointerLeave: () => setActionHovered(false),
+    };
+    const availableActions = [
+      menuItems && menuFocusable ? "menu" : null,
+      onRemove && removeFocusable ? "remove" : null,
+    ].filter(Boolean) as string[];
     // The trailing kebab/remove controls are NOT focusable (a focusable
     // control inside role="tab" is a nested-interactive violation — tab's
     // children are presentational). Keyboard users reach them from the tab
@@ -1469,29 +1697,83 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
         setTimeout(() => buttonRef.current?.focus(), 0);
       }
     };
+    // `TabList` sets which control is "focused" with a custom event (it can't
+    // reach into this tab's state, and DOM focus stays on the tab button).
+    useEffect(() => {
+      const el = buttonRef.current;
+      if (!el) return;
+      const handler = (e: Event) => {
+        const next = (e as CustomEvent<"menu" | "remove" | null>).detail;
+        setActionFocus(next);
+        // Focus doesn't move, so say what is "focused" now.
+        const tabName = el.getAttribute("aria-label") || el.textContent?.trim() || "Tab";
+        announceToScreenReader(
+          next === "menu" ? `${menuAriaLabel}, button` : next === "remove" ? `${removeLabel}, button` : `${tabName}, tab`
+        );
+      };
+      el.addEventListener("lyra-tab-set-action", handler);
+      return () => el.removeEventListener("lyra-tab-set-action", handler);
+    }, [menuAriaLabel, removeLabel]);
+
     const handleTabKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
       onKeyDown?.(e);
       if (e.defaultPrevented || e.target !== e.currentTarget) return;
+      // A control is "focused" (see `actionFocus`): Enter/Space activate it,
+      // Escape goes back to the tab itself.
+      if (actionFocus && (e.key === "Enter" || e.key === " ")) {
+        e.preventDefault();
+        if (actionFocus === "menu") {
+          keyboardMenuRef.current = true;
+          handleMenuOpenChange(true);
+        } else if (onRemove) {
+          onRemove(e as unknown as React.MouseEvent);
+        }
+        return;
+      }
+      if (actionFocus && e.key === "Escape") {
+        e.preventDefault();
+        setActionFocus(null);
+        return;
+      }
       if (menuItems && ((e.key === "F10" && e.shiftKey) || e.key === "ContextMenu")) {
         e.preventDefault();
         keyboardMenuRef.current = true;
         handleMenuOpenChange(true);
-      } else if (onRemove && !menuItems && (e.key === "Delete" || e.key === "Backspace")) {
+      } else if (onRemove && (!menuItems || removeFocusable) && (e.key === "Delete" || e.key === "Backspace")) {
         e.preventDefault();
         onRemove(e as unknown as React.MouseEvent);
       }
     };
-    const keyShortcuts = menuItems ? "Shift+F10" : onRemove ? "Delete" : undefined;
+    const keyShortcuts =
+      menuItems && onRemove && removeFocusable ? "Shift+F10 Delete" : menuItems ? "Shift+F10" : onRemove ? "Delete" : undefined;
 
     useLayoutEffect(() => {
       const el = labelRef.current;
       if (!el) return;
-      const recompute = () => setIsTruncated(el.scrollWidth > el.clientWidth + 1);
+      // Opt-in: a child that truncates its own text (e.g. text + a non-shrinking
+      // badge) marks that element `data-truncatable` so the tooltip still appears.
+      const recompute = () =>
+        setIsTruncated(
+          el.scrollWidth > el.clientWidth + 1 ||
+            Array.from(el.querySelectorAll<HTMLElement>("[data-truncatable]")).some(
+              (n) => n.scrollWidth > n.clientWidth + 1,
+            ),
+        );
       recompute();
       const ro = new ResizeObserver(recompute);
       ro.observe(el);
       return () => ro.disconnect();
     }, [children]);
+
+    // Icon-only needs an icon to show; without one the tab renders normally.
+    const showIconOnly = iconOnly && !!icon;
+    // Error wins over a count. `Badge` supplies its own spoken label for a
+    // count; the "!" needs one passed in.
+    const indicator = error ? (
+      <Badge shape="circle" variant="critical" size="sm" aria-label={errorLabel}>!</Badge>
+    ) : badge !== undefined ? (
+      <Badge shape="circle" variant="default" size="sm" count={badge} aria-label={badgeLabel} />
+    ) : null;
 
     const button = (
       <button
@@ -1501,6 +1783,14 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
         aria-selected={active}
         aria-controls={panelId}
         aria-keyshortcuts={keyShortcuts}
+        data-tab-actions={availableActions.length ? availableActions.join(" ") : undefined}
+        data-tab-action-focus={actionFocus ?? undefined}
+        onBlur={(e) => { onBlur?.(e); setActionFocus(null); }}
+        onKeyUp={(e) => {
+          onKeyUp?.(e);
+          // Space would otherwise "click" (select) the tab on key-up.
+          if (actionFocus && e.key === " ") e.preventDefault();
+        }}
         tabIndex={active ? 0 : -1}
         className={cn(
           // `max-w-[22ch]` — a hard cap on any single tab's label width in
@@ -1522,19 +1812,31 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
           // `cloneElement` below) both override this back off, since a
           // fixed character cap would just fight the stretch in either of
           // those two layouts.
-          "group relative inline-flex min-h-[48px] min-w-0 max-w-[22ch] items-center justify-center gap-2 px-3 py-2.5 lyra-body-md-emphasis transition-colors",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
+          "group relative inline-flex min-w-0 max-w-[22ch] items-center justify-center gap-2 px-3 transition-colors",
+          size === "sm" ? "min-h-[36px] py-1.5 lyra-body-sm-emphasis" : "min-h-[48px] py-2.5 lyra-body-md-emphasis",
+          // Inset ring (no offset): it sits inside the tab's own box, so the
+          // tab row's overflow can't clip it.
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lyra-border-focus",
           textColorClass,
           className
         )}
         {...props}
         onKeyDown={handleTabKeyDown}
       >
-        {icon && (
+        {icon && (showIconOnly && indicator ? (
+          // Icon-only: the badge sits on the icon's top-right corner. It stays
+          // outside the aria-hidden icon so screen readers still hear it.
+          <span className="relative inline-flex flex-shrink-0">
+            <span aria-hidden="true" className={cn("flex-shrink-0 transition-colors", iconColorClass)}>
+              {icon}
+            </span>
+            <span className="absolute -top-2 -right-2 inline-flex">{indicator}</span>
+          </span>
+        ) : (
           <span aria-hidden="true" className={cn("flex-shrink-0 transition-colors", iconColorClass)}>
             {icon}
           </span>
-        )}
+        ))}
         {/* No `data-tab-label` marker here (deliberately) — a first pass at
             this put it on THIS span, since it wraps `children` and seemed
             like the obvious "the label lives here" spot. But `children` for
@@ -1550,10 +1852,57 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
             instead — see `ChannelTab`'s own `data-tab-label` span — so this
             generic span here stays a plain, unmarked truncation-measurement
             box with no assumptions about what's actually inside it. */}
-        <span ref={labelRef} className="min-w-0 truncate">
+        {/* Icon-only keeps the label for screen readers but hides it visually. */}
+        <span ref={labelRef} className={showIconOnly ? "sr-only" : "min-w-0 truncate"}>
           {children}
         </span>
-        {menuItems && (
+        {/* Badge / error indicator after the label (icon-only puts it on the icon above).
+            Outside the label span so a long label ellipsizes first and this stays visible. */}
+        {!showIconOnly && indicator}
+        {/* Opt-in focusable controls (`menuFocusable` / `removeFocusable`): still mouse
+            targets inside the tab and hidden from assistive tech, but the arrow keys
+            visit them (ring + tooltip, see `actionFocus`). Kebab first, "×" last (far right). */}
+        {menuItems && menuFocusable && (
+          <Tooltip content={menuAriaLabel} placement="top" disabled={menuOpen} forceOpen={actionFocus === "menu"}>
+            <KebabMenuButton
+              as="span"
+              items={menuItems}
+              ariaLabel={menuAriaLabel}
+              open={menuOpen}
+              onOpenChange={handleMenuOpenChange}
+              tabIndex={undefined}
+              role={undefined}
+              aria-hidden="true"
+              data-tab-action="menu"
+              {...hoverHandlers}
+              className={cn(
+                "h-6 w-6 flex-shrink-0",
+                active ? activeTextClass : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary",
+                actionFocus === "menu" && "ring-2 ring-lyra-border-focus"
+              )}
+            />
+          </Tooltip>
+        )}
+        {onRemove && removeFocusable && (
+          <Tooltip content={removeLabel} placement="top" forceOpen={actionFocus === "remove"}>
+            <span
+              aria-hidden="true"
+              data-tab-action="remove"
+              {...hoverHandlers}
+              onClick={(e) => { e.stopPropagation(); onRemove(e); }}
+              className={cn(
+                // 24px target (WCAG 2.5.8), same color as the tab's own text.
+                "flex h-6 w-6 items-center justify-center rounded-lyra-xs flex-shrink-0 transition-colors cursor-pointer",
+                "hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
+                active ? activeTextClass : "text-lyra-fg-disabled group-hover:text-lyra-fg-secondary",
+                actionFocus === "remove" && "ring-2 ring-lyra-border-focus"
+              )}
+            >
+              {removeIcon ?? <Trash2 className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />}
+            </span>
+          </Tooltip>
+        )}
+        {menuItems && !menuFocusable && (
           <KebabMenuButton
             as="span"
             items={menuItems}
@@ -1572,7 +1921,7 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
             )}
           />
         )}
-        {onRemove && !menuItems && (
+        {onRemove && !menuItems && !removeFocusable && (
           <span
             // Mouse-only affordance: not focusable and hidden from AT —
             // keyboard users press Delete on the tab (handleTabKeyDown).
@@ -1647,7 +1996,12 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
     );
 
     return (
-      <Tooltip content={children} placement="top" disabled={!showTruncationTooltip || !isTruncated || menuOpen}>
+      <Tooltip
+        content={showIconOnly ? children ?? props["aria-label"] : children}
+        placement="top"
+        // Icon-only always has a tooltip (its label isn't visible); other tabs only when truncated.
+        disabled={!showTruncationTooltip || !(showIconOnly || isTruncated) || menuOpen || actionFocus != null || actionHovered}
+      >
         {button}
       </Tooltip>
     );
@@ -1680,5 +2034,5 @@ const TabPanel = React.forwardRef<HTMLDivElement, TabPanelProps>(
 );
 TabPanel.displayName = "TabPanel";
 
-export { TabList, Tab, TabPanel };
+export { TabList, Tab, TabPanel, announceToScreenReader };
 export type { TabListProps, TabProps, TabPanelProps };

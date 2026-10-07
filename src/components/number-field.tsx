@@ -42,6 +42,9 @@ export interface NumberFieldProps {
   id?: string;
   /** Field height. "md" (36px, default) or "sm" (32px) for dense contexts. */
   size?: "sm" | "md";
+  /** Accessible name when there's no visible `label` (e.g. TimePicker's
+   *  "Hour" / "Minute" fields). Also names the step buttons ("Increase Hour"). */
+  "aria-label"?: string;
 }
 
 /* ── Component ── */
@@ -67,6 +70,7 @@ const NumberField = React.forwardRef<HTMLDivElement, NumberFieldProps>(
       className,
       id,
       size = "md",
+      "aria-label": ariaLabel,
     },
     ref
   ) => {
@@ -224,7 +228,7 @@ const NumberField = React.forwardRef<HTMLDivElement, NumberFieldProps>(
             // Arrow keys step the value (handleKeyDown), so this is a real
             // spinbutton — aria-value* are only permitted with that role.
             role="spinbutton"
-            aria-label={label}
+            aria-label={label ?? ariaLabel}
             aria-valuemin={min}
             aria-valuemax={max}
             aria-valuenow={current}
@@ -241,7 +245,7 @@ const NumberField = React.forwardRef<HTMLDivElement, NumberFieldProps>(
                 tabIndex={-1}
                 onClick={increment}
                 disabled={disabled || (max !== undefined && !wrap && current >= max)}
-                aria-label={`Increase${label ? ` ${label}` : ""}`}
+                aria-label={`Increase${(label ?? ariaLabel) ? ` ${label ?? ariaLabel}` : ""}`}
                 className={cn(btnClass, "border-b border-lyra-border-subtle flex-1")}
               >
                 <ChevronUp className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
@@ -251,7 +255,7 @@ const NumberField = React.forwardRef<HTMLDivElement, NumberFieldProps>(
                 tabIndex={-1}
                 onClick={decrement}
                 disabled={disabled || (min !== undefined && !wrap && current <= min)}
-                aria-label={`Decrease${label ? ` ${label}` : ""}`}
+                aria-label={`Decrease${(label ?? ariaLabel) ? ` ${label ?? ariaLabel}` : ""}`}
                 className={cn(btnClass, "flex-1")}
               >
                 <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />

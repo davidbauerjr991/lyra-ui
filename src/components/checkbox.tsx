@@ -12,6 +12,8 @@ interface CheckboxProps
   label?: string;
   /** Help text shown in a tooltip on the label's info icon */
   labelHelpText?: string;
+  /** Supporting line shown under the label. Only rendered when `label` is set. */
+  secondaryText?: string;
   /** Marks the field as required — shows asterisk on label */
   required?: boolean;
   /**
@@ -36,7 +38,7 @@ interface CheckboxProps
 const Checkbox = React.forwardRef<
   React.ComponentRef<typeof CheckboxPrimitive.Root>,
   CheckboxProps
->(({ className, error, label, labelHelpText, required, readonly, wrapperClassName, disabled, id, onCheckedChange, decorative, ...props }, ref) => {
+>(({ className, error, label, labelHelpText, secondaryText, required, readonly, wrapperClassName, disabled, id, onCheckedChange, decorative, ...props }, ref) => {
   const autoId = React.useId();
   const checkboxId = id || (label ? autoId : undefined);
 
@@ -59,16 +61,23 @@ const Checkbox = React.forwardRef<
       onCheckedChange={readonly ? undefined : onCheckedChange}
       aria-readonly={readonly || undefined}
       aria-invalid={error || undefined}
+      aria-describedby={label && secondaryText ? `${checkboxId}-secondary` : undefined}
       className={cn(
         "peer h-4 w-4 shrink-0 rounded-lyra-xs border transition-colors",
 
-        /* Readonly — muted, no hover/active effects, cursor default */
+        /* Readonly — locked but still legible: a flat canvas-colored box with a
+           solid soft border, and a full-strength secondary-gray mark when
+           checked. Deliberately NOT the faded, gray-filled look disabled uses
+           (`disabled:opacity-40` + `bg-lyra-bg-disabled`), so the two read as
+           different things: read-only = "you can't change this", disabled =
+           "this doesn't apply". No hover/active effects, cursor default. Its
+           keyboard focus ring is the same one every checkbox gets (below). */
         readonly && [
-          "border-lyra-border-soft bg-lyra-bg-disabled cursor-default",
-          "data-[state=checked]:bg-lyra-border-soft data-[state=checked]:border-lyra-border-soft data-[state=checked]:text-lyra-fg-inverse",
-          "data-[state=indeterminate]:bg-lyra-border-soft data-[state=indeterminate]:border-lyra-border-soft data-[state=indeterminate]:text-lyra-fg-inverse",
-          "hover:border-lyra-border-soft active:border-lyra-border-soft active:bg-transparent",
-          "focus-visible:ring-0",
+          "border-lyra-border-soft bg-lyra-bg-surface-canvas cursor-default",
+          "data-[state=checked]:bg-lyra-fg-secondary data-[state=checked]:border-lyra-fg-secondary data-[state=checked]:text-lyra-fg-inverse",
+          "data-[state=indeterminate]:bg-lyra-fg-secondary data-[state=indeterminate]:border-lyra-fg-secondary data-[state=indeterminate]:text-lyra-fg-inverse",
+          "hover:border-lyra-border-soft active:border-lyra-border-soft active:bg-lyra-bg-surface-canvas",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
         ],
 
         /* Normal states (when not readonly) */
@@ -111,6 +120,10 @@ const Checkbox = React.forwardRef<
 
         /* Disabled (applies on top of everything) */
         "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-lyra-border-soft",
+        /* With a `label`, the keyboard focus ring moves from the 16px box to
+           the whole box + label row (the wrapper below draws it), so the
+           focus target is as big as the click target. */
+        label && !decorative && "focus-visible:ring-0 focus-visible:ring-offset-0",
         /* Decorative mode renders a <span>, which never matches :disabled —
            mirror the same treatment off Radix's own data-disabled attr. */
         decorative && "inline-flex items-center justify-center data-[disabled]:opacity-40",
@@ -134,23 +147,56 @@ const Checkbox = React.forwardRef<
 
   if (!label) return checkbox;
 
+  const labelElement = (
+    <Label
+      label={label}
+      labelFor={checkboxId}
+      labelHelpText={labelHelpText}
+      required={required}
+      disabled={disabled}
+      readonly={readonly}
+      // `readonly` still suppresses the required asterisk (Label's own
+      // behavior) — only overriding the color here, since Label's
+      // default readonly treatment mutes it to `text-lyra-fg-secondary`
+      // and a readonly checkbox's label should read the same as a
+      // normal one.
+      className={cn("lyra-body-md leading-5", readonly && "text-lyra-fg-default")}
+    />
+  );
+
   return (
-    <div className={cn("inline-flex items-start gap-2", wrapperClassName)}>
+    // `align-top`: an inline-flex box's baseline comes from its first item,
+    // and the checkbox button's own baseline shifts once the check/minus
+    // icon renders inside it, which nudged the surrounding line box
+    // (24.5px unchecked vs 24px checked). Top alignment takes the baseline
+    // out of the equation; it has no effect when the wrapper is a flex/grid
+    // item, which is where it normally sits.
+    <div
+      className={cn(
+        "inline-flex items-start gap-2 align-top rounded-lyra-sm",
+        // Keyboard focus only (:focus-visible): a mouse click shows no ring.
+        // Rings the box, the label and any secondary text together.
+        "has-[[role=checkbox]:focus-visible]:ring-2 has-[[role=checkbox]:focus-visible]:ring-lyra-border-focus has-[[role=checkbox]:focus-visible]:ring-offset-2",
+        wrapperClassName
+      )}
+    >
       <div className="flex items-center h-5">{checkbox}</div>
-      <Label
-        label={label}
-        labelFor={checkboxId}
-        labelHelpText={labelHelpText}
-        required={required}
-        disabled={disabled}
-        readonly={readonly}
-        // `readonly` still suppresses the required asterisk (Label's own
-        // behavior) — only overriding the color here, since Label's
-        // default readonly treatment mutes it to `text-lyra-fg-secondary`
-        // and a readonly checkbox's label should read the same as a
-        // normal one.
-        className={cn("lyra-body-md leading-5", readonly && "text-lyra-fg-default")}
-      />
+      {secondaryText ? (
+        <div>
+          {labelElement}
+          <span
+            id={`${checkboxId}-secondary`}
+            className={cn(
+              "lyra-body-sm block",
+              disabled ? "text-lyra-fg-disabled" : "text-lyra-fg-secondary"
+            )}
+          >
+            {secondaryText}
+          </span>
+        </div>
+      ) : (
+        labelElement
+      )}
     </div>
   );
 });

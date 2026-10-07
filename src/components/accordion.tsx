@@ -19,6 +19,12 @@ import { cn } from "../lib/utils";
  * queue.tsx`, and this component's own Storybook stories) needed zero
  * changes.
  *
+ * Keyboard: Tab moves between headers (each is a button); with focus on a
+ * header, ↑/↓ move to the previous/next header (wrapping from last to first
+ * and back), Home/End jump to the first/last, and disabled items are skipped
+ * — all Radix's own `Trigger` behavior, which this component gets because it
+ * renders `AccordionPrimitive.Trigger` for every row. Enter/Space toggle.
+ *
  * `collapsible` is set on the single-mode `Root` so clicking the currently
  * open item closes it again — Radix's own default (without that flag) is
  * that one item is always open and re-clicking it does nothing, which
@@ -88,13 +94,31 @@ export interface AccordionProps {
   onValueChange?: (value: string) => void;
   /** Called when open items change (multiple mode) */
   onValuesChange?: (values: string[]) => void;
+  /**
+   * "default" — rows sit directly on whatever surface the accordion is in,
+   * separated by dividers (unchanged).
+   * "contained" — the whole group sits in one bordered, rounded card (same
+   * surface, border and radius as `Container`'s default variant), with
+   * dividers only between rows, none after the last.
+   * Default "default".
+   */
+  variant?: "default" | "contained";
   /** Additional className on the root element */
   className?: string;
 }
 
 /* ── Per-item row (trigger + content + divider) ── */
 
-function AccordionRow({ item, isOnlyItem }: { item: AccordionItem; isOnlyItem: boolean }) {
+function AccordionRow({
+  item,
+  isOnlyItem,
+  hideDivider = false,
+}: {
+  item: AccordionItem;
+  isOnlyItem: boolean;
+  /** `variant="contained"`: no divider after the last row — the card's own border closes it. */
+  hideDivider?: boolean;
+}) {
   return (
     <AccordionPrimitive.Item value={item.id} disabled={item.disabled}>
       <AccordionPrimitive.Header>
@@ -212,7 +236,7 @@ function AccordionRow({ item, isOnlyItem }: { item: AccordionItem; isOnlyItem: b
           edge closer than every other row sticks to its own divider above —
           this is specifically about the single-item case having nothing to
           divide in the first place. */}
-      {!isOnlyItem && <div className="border-b border-lyra-border-subtle" />}
+      {!isOnlyItem && !hideDivider && <div className="border-b border-lyra-border-subtle" />}
     </AccordionPrimitive.Item>
   );
 }
@@ -230,10 +254,26 @@ const Accordion = React.forwardRef<HTMLDivElement, AccordionProps>(
       defaultValues,
       onValueChange,
       onValuesChange,
+      variant = "default",
       className,
     },
     ref
   ) => {
+    const rootClassName = cn(
+      "w-full",
+      variant === "contained" &&
+        "overflow-hidden rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-base shadow-sm",
+      className
+    );
+    const renderRows = () =>
+      items.map((item, index) => (
+        <AccordionRow
+          key={item.id}
+          item={item}
+          isOnlyItem={items.length === 1}
+          hideDivider={variant === "contained" && index === items.length - 1}
+        />
+      ));
     const isControlledSingle = value !== undefined;
     const isControlledMulti = values !== undefined;
 
@@ -242,14 +282,12 @@ const Accordion = React.forwardRef<HTMLDivElement, AccordionProps>(
         <AccordionPrimitive.Root
           ref={ref}
           type="multiple"
-          className={cn("w-full", className)}
+          className={rootClassName}
           value={isControlledMulti ? values : undefined}
           defaultValue={!isControlledMulti ? defaultValues : undefined}
           onValueChange={onValuesChange}
         >
-          {items.map((item) => (
-            <AccordionRow key={item.id} item={item} isOnlyItem={items.length === 1} />
-          ))}
+          {renderRows()}
         </AccordionPrimitive.Root>
       );
     }
@@ -259,14 +297,12 @@ const Accordion = React.forwardRef<HTMLDivElement, AccordionProps>(
         ref={ref}
         type="single"
         collapsible
-        className={cn("w-full", className)}
+        className={rootClassName}
         value={isControlledSingle ? value : undefined}
         defaultValue={!isControlledSingle ? defaultValue : undefined}
         onValueChange={onValueChange}
       >
-        {items.map((item) => (
-          <AccordionRow key={item.id} item={item} isOnlyItem={items.length === 1} />
-        ))}
+        {renderRows()}
       </AccordionPrimitive.Root>
     );
   }
