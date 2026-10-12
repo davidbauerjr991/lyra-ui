@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { Bell, Check, Minus } from "lucide-react";
+import { Bell, Check, Info, Minus, X, AlertTriangle } from "lucide-react";
 import { Badge } from "../badge";
 import { Button } from "../button";
-import { COLORS, PILL_VARIANTS, CIRCLE_VARIANTS, BADGE_SIZES } from "./Badge.shared";
+import { COLORS, STATUS_COLORS, PILL_VARIANTS, CIRCLE_VARIANTS, BADGE_SIZES } from "./Badge.shared";
 
 /* One page per Badge variant, shown under "Badge/Variants" in the sidebar.
    Static references for design review; the interactive playground is
@@ -36,6 +36,41 @@ export const PillAllVariants: Story = {
               {color.charAt(0).toUpperCase() + color.slice(1)}
             </Badge>
           ))}
+        </div>
+      ))}
+    </div>
+  ),
+};
+
+export const PillStatusColors: Story = {
+  name: "Pill - Status Colors",
+  render: () => (
+    <div className="flex gap-12">
+      {PILL_VARIANTS.map((variant) => (
+        <div key={variant} className="flex flex-col gap-2 items-start">
+          <p className="lyra-body-sm text-lyra-fg-secondary mb-1 capitalize">{variant}</p>
+          {STATUS_COLORS.map((color) => (
+            <Badge key={color} shape="pill" color={color} variant={variant}>
+              {color === "critical" ? "Critical (error)" : color.charAt(0).toUpperCase() + color.slice(1)}
+            </Badge>
+          ))}
+        </div>
+      ))}
+    </div>
+  ),
+};
+
+export const PillWithIcon: Story = {
+  name: "Pill - With Icon",
+  render: () => (
+    <div className="flex flex-col gap-4 items-start">
+      {(["left", "right", "both"] as const).map((pos) => (
+        <div key={pos} className="flex items-center gap-3">
+          <span className="lyra-body-sm text-lyra-fg-secondary w-12">{pos}</span>
+          <Badge shape="pill" color="success" icon={<Check strokeWidth={2} />} iconPosition={pos}>Success</Badge>
+          <Badge shape="pill" color="info" icon={<Info strokeWidth={2} />} iconPosition={pos}>Info</Badge>
+          <Badge shape="pill" color="warning" icon={<AlertTriangle strokeWidth={2} />} iconPosition={pos}>Warning</Badge>
+          <Badge shape="pill" color="critical" variant="solid" icon={<X strokeWidth={2} />} iconPosition={pos}>Error</Badge>
         </div>
       ))}
     </div>

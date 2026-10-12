@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Copy, Image as ImageIcon, Maximize2, User } from "lucide-react";
+import { Bot, Copy, Image as ImageIcon, Maximize2, User } from "lucide-react";
 import { cn } from "../lib/utils";
 import { ActionIconButton } from "./actions";
 import { Button } from "./button";
@@ -120,6 +120,10 @@ export interface ChatMessageProps {
    *  avatar), `agent` right-aligns (primary-blue avatar, primary-tinted
    *  bubble via `--lyra-color-bg-conversation-user`). */
   variant: "agent" | "customer";
+  /** Message was written by an AI agent (not a human agent) — floats left like
+   *  a customer message, with the purple Bot avatar and a soft purple bubble. Only meaningful with
+   *  `variant="agent"`. */
+  ai?: boolean;
   /** Sender's display name, shown in the header row after the timestamp. */
   name: string;
   /** 1-2 character avatar initials (e.g. "JS"). Ignored while `narrow`, and
@@ -192,6 +196,7 @@ const FULL_WIDTH_BUBBLE_THRESHOLD_PX = 768;
 
 export function ChatMessage({
   variant,
+  ai = false,
   name,
   initials,
   identified = true,
@@ -209,6 +214,8 @@ export function ChatMessage({
   className,
 }: ChatMessageProps) {
   const isCustomer = variant === "customer";
+  // AI-agent messages float LEFT like the customer's; only human-agent messages float right.
+  const alignLeft = isCustomer || ai;
   const showTagPicker = !!tagOptions && !!onAddTag && !!onRemoveTag;
   const showToolbar = !!onCopy || showTagPicker;
 
@@ -237,12 +244,12 @@ export function ChatMessage({
   const bubbleFullWidth = measuredWidth !== null && measuredWidth < FULL_WIDTH_BUBBLE_THRESHOLD_PX;
 
   return (
-    <div ref={rootRef} className={cn("flex flex-col", isCustomer ? "items-start" : "items-end", className)}>
+    <div ref={rootRef} className={cn("flex flex-col", alignLeft ? "items-start" : "items-end", className)}>
       <div
         className={cn(
           "flex items-start gap-2",
           bubbleFullWidth ? "max-w-full" : "max-w-[80%]",
-          isCustomer ? "flex-row" : "flex-row-reverse"
+          alignLeft ? "flex-row" : "flex-row-reverse"
         )}
       >
         {!effectiveNarrow && (
@@ -251,24 +258,27 @@ export function ChatMessage({
               "flex h-7 w-7 shrink-0 items-center justify-center rounded-full lyra-body-sm-emphasis",
               isCustomer
                 ? "bg-lyra-accent-green-soft text-lyra-accent-green-strong"
-                : "bg-lyra-bg-primary text-lyra-fg-on-primary"
+                : ai
+                  ? "bg-[#6149C1] text-white"
+                  : "bg-lyra-bg-primary text-lyra-fg-on-primary"
             )}
             aria-hidden="true"
           >
-            {isCustomer && !identified ? <User className="h-4 w-4" strokeWidth={1.5} /> : initials}
+            {ai ? <Bot className="h-4 w-4" strokeWidth={1.5} /> : isCustomer && !identified ? <User className="h-4 w-4" strokeWidth={1.5} /> : initials}
           </span>
         )}
         <div className="flex min-w-0 flex-col gap-1">
-          <span className={cn("lyra-body-sm text-lyra-fg-secondary px-1", !isCustomer && "text-right")}>
+          <span className={cn("lyra-body-sm text-lyra-fg-secondary px-1", !alignLeft && "text-right")}>
             {timestamp} <span aria-hidden="true">·</span> {name}
           </span>
-          <div className={cn("group flex items-end gap-1.5", isCustomer ? "flex-row" : "flex-row-reverse")}>
+          <div className={cn("group flex items-end gap-1.5", alignLeft ? "flex-row" : "flex-row-reverse")}>
             <div
               className={cn(
                 "rounded-lyra-lg px-4 py-3 border border-transparent",
-                isCustomer ? "rounded-tl-none bg-lyra-state-hover" : "rounded-tr-none"
+                alignLeft ? "rounded-tl-none bg-lyra-state-hover" : "rounded-tr-none",
+                ai && "bg-lyra-accent-purple-soft"
               )}
-              style={!isCustomer ? { backgroundColor: "var(--lyra-color-bg-conversation-user)" } : undefined}
+              style={!alignLeft ? { backgroundColor: "var(--lyra-color-bg-conversation-user)" } : undefined}
             >
               <p className="lyra-body-md text-lyra-fg-default">{text}</p>
             </div>
@@ -307,7 +317,7 @@ export function ChatMessage({
             <div
               className={cn(
                 "group/tags mt-1 flex flex-wrap items-center gap-2",
-                isCustomer ? "flex-row" : "flex-row-reverse"
+                alignLeft ? "flex-row" : "flex-row-reverse"
               )}
             >
               {tags.map((tag) => (

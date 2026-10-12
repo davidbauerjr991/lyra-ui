@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ChevronDown, TriangleAlert, CircleAlert, User } from "lucide-react";
+import { ChevronDown, Clock, Pause, TriangleAlert, CircleAlert, User } from "lucide-react";
 import { cn } from "../lib/utils";
 import {
   CHANNEL_ROW_COMPONENTS,
@@ -9,6 +9,8 @@ import {
   type ChannelType,
 } from "./channel-row";
 import { Popover } from "./popover";
+import { Tooltip } from "./tooltip";
+import { getHoldBadgeColor } from "./hold-sla";
 import { Badge, getPillInlineStyles, type BadgeColor } from "./badge";
 import { Button } from "./button";
 import { formatPhoneForDisplay } from "./phone-input";
@@ -535,9 +537,12 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       // inactive severity branch below uses) to match `expandedCardClassName`'s
       // own onHold border treatment — a held call is a stronger signal than
       // an ordinary severity tint.
-      onHold && !active
-        ? { bg: "bg-lyra-status-warning-subtle", text: "text-lyra-status-warning-strong", border: "border-lyra-status-warning-strong" }
-        : severity === "critical"
+      // Per explicit request ("don't change the tile color when on hold"):
+      // `onHold` no longer overrides the tile's own avatar colors — it falls
+      // through to the same `severity`/default tone as any other call. The
+      // hold state is still conveyed by the "On hold · mm:ss" line and the
+      // phone/pause channel icon.
+      severity === "critical"
         ? { bg: "bg-lyra-status-critical-subtle", text: "text-lyra-status-critical-strong", border: active ? "border-lyra-status-critical-strong" : "border-lyra-status-critical-medium/30" }
         : severity === "warning"
         ? { bg: "bg-lyra-status-warning-subtle", text: "text-lyra-status-warning-strong", border: active ? "border-lyra-status-warning-strong" : "border-lyra-status-warning-strong/30" }
@@ -673,7 +678,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     const channelRows = channels.map((ch, i) => {
               // Only ever highlighted on the active card — an inactive card's
               // "current" channel still renders plain, same as every other row.
-              const highlighted = active && channelKey(ch) === effectiveCurrentKey;
+              const highlighted = active && (channelKey(ch) === effectiveCurrentKey || !!ch.alwaysHighlighted);
               const RowComponent = CHANNEL_ROW_COMPONENTS[ch.type];
               return (
                 <RowComponent
@@ -834,6 +839,12 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
             name row IS the whole visible card, and the old 8px-top/4px-
             bottom split read as visibly off-center rather than just a
             slightly-tight top inset above other content. */}
+        {/* Hover tooltips on the header's icons, name and timer — only while the
+            card is collapsed (`collapsible` with its channel rows hidden), where
+            these are all that's left to read: the dot, count/channel badges and
+            clock carry no visible text, and the name can be cut off. Expanded,
+            the rows below already say all of it, so `disabled` keeps the same
+            wrapper structure but never opens. */}
         <div className="flex items-center gap-2 px-3 pt-1 pb-1">
           {/* "New assignment" indicator — per explicit request, the FAR
               left of this row, ahead of even the open-channel-count/
@@ -844,7 +855,12 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
               meaning, so a plain color signal reads clearly without
               needing its own icon here too. */}
           {isNewAssignment && (
-            <Badge shape="circle" dot variant="critical" size="sm" className="shrink-0" aria-label="New assignment" />
+            <Tooltip content="New assignment" placement="top">
+              <span className="relative inline-flex shrink-0">
+                <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full bg-lyra-status-critical-strong opacity-60 motion-reduce:hidden" />
+                <Badge shape="circle" dot variant="critical" size="sm" className="relative shrink-0" aria-label="New assignment" />
+              </span>
+            </Tooltip>
           )}
           {/* Open-channel count — per explicit request, shown once there's
               more than one open channel to actually count (a single-
@@ -863,13 +879,15 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
               real prop so it lands in Badge's own `{...rest}` spread,
               which runs AFTER its internal default and so wins. */}
           {channelCount > 1 && (
-            <Badge
-              shape="circle"
-              size="sm"
-              count={channelCount}
-              className="shrink-0"
-              aria-label={`${channelCount} open channels`}
-            />
+            <Tooltip content={`${channelCount} open channels`} placement="top" disabled={!(collapsible && !channelsExpanded)}>
+              <Badge
+                shape="circle"
+                size="sm"
+                count={channelCount}
+                className="shrink-0"
+                aria-label={`${channelCount} open channels`}
+              />
+            </Tooltip>
           )}
           {/* Single-channel type indicator — per explicit follow-up
               request/reference screenshot: a COLLAPSED single-channel card
@@ -892,6 +910,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
               the map is already guaranteed to contain, not asserting
               something unverified. */}
           {collapsible && !channelsExpanded && channelCount === 1 && channels[0] && (
+            <Tooltip content={`${CHANNEL_TYPE_META[channels[0].type].label} channel`} placement="top">
             <Badge
               shape="circle"
               size="sm"
@@ -912,8 +931,73 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                 { className: "h-2.5 w-2.5" }
               )}
             </Badge>
+            </Tooltip>
           )}
-          <span className="min-w-0 flex-1 truncate lyra-heading-sm text-lyra-fg-default">{displayName}</span>
+          {/* Per explicit request: while a `collapsible` card is collapsed
+              (channel rows hidden — and with them each row's own elapsed
+              timer), the card-level `elapsed` timer is shown on the right,
+              next to the chevron,, so the wait/call time stays visible. Only
+              the NAME truncates: it keeps `flex-1` + `truncate`, so it
+              yields space to the `shrink-0` timer, which floats to the
+              right beside the chevron and is never clipped. Same severity colors as the
+              compact tile's timer (onHold/critical/warning/success). */}
+          <Tooltip content={displayName} placement="top" disabled={!(collapsible && !channelsExpanded)}>
+            <span
+              className={cn(
+                "min-w-0 flex-1 truncate lyra-heading-sm text-lyra-fg-default"
+              )}
+            >
+              {displayName}
+            </span>
+          </Tooltip>
+          {collapsible && !channelsExpanded && elapsed && onHold && (
+            // Per explicit request: while the call is on hold the timer
+            // (the hold time) is a 12px pill badge with a pause icon.
+            <Tooltip content={`On hold: ${elapsed}`} placement="top">
+            <Badge
+              shape="pill"
+              color={getHoldBadgeColor(elapsed)}
+              variant="subtle"
+              fontSize={12}
+              icon={<Pause strokeWidth={2} />}
+              className="shrink-0"
+              aria-label={`On hold ${elapsed}`}
+            >
+              {/* Fixed-width time (tabular digits in a `5ch` box = "mm:ss"):
+                  a hold never lasts an hour, so the badge keeps one constant
+                  width as the digits tick instead of jittering the header. */}
+              <span className="inline-block w-[5ch] text-center tabular-nums">{elapsed}</span>
+            </Badge>
+            </Tooltip>
+          )}
+          {collapsible && !channelsExpanded && elapsed && !onHold && (
+            <Tooltip content={`Duration: ${elapsed}`} placement="top">
+            <span
+              className={cn(
+                "inline-flex shrink-0 items-center gap-1 lyra-body-xs",
+                onHold
+                  ? "text-lyra-status-critical-strong"
+                  : severity === "critical"
+                  ? "text-lyra-status-critical-strong"
+                  : severity === "warning"
+                  ? "text-lyra-status-warning-strong"
+                  : severity === "success"
+                  ? "text-lyra-status-success-strong"
+                  : "text-lyra-fg-secondary"
+              )}
+              aria-label={`Elapsed ${elapsed}`}
+            >
+              <Clock className="h-3 w-3" strokeWidth={1.5} aria-hidden="true" />
+              {/* Fixed-width time: tabular digits in a box sized to the
+                  string's own length in `ch` ("mm:ss" = 5ch). It only widens
+                  once, when a call passes an hour ("h:mm:ss"), and stays
+                  constant while the digits tick. */}
+              <span className="inline-block text-right tabular-nums" style={{ width: `${elapsed.length}ch` }}>
+                {elapsed}
+              </span>
+            </span>
+            </Tooltip>
+          )}
           {/* Per explicit follow-up request: `headerAction` (typically an
               "Add Channel" `+` trigger) and the collapse/expand chevron
               (`collapsible`, above) are no longer mutually exclusive in
@@ -972,7 +1056,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       // background unconditionally while true — a `bg-lyra-bg-surface-base`
       // ternary'd branch here rather than baked into the base string above,
       // same reasoning as the border override just below.
-      onHold ? "bg-lyra-status-warning-subtle" : "bg-lyra-bg-surface-base",
+      "bg-lyra-bg-surface-base",
       active ? "border-l-4" : "border-l",
       // Active cards get a permanent `shadow-md` (the "elevated" token per
       // Shadows.stories.tsx); inactive cards stay flat, hover or not — the
@@ -1011,9 +1095,9 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       // doc comment above: a held card's border is always the warning
       // treatment, whether or not it's also the active card or separately
       // awaiting a response.
-      onHold
-        ? "border-lyra-status-warning-strong hover:border-[color-mix(in_srgb,var(--lyra-color-status-warning-strong)_80%,black_20%)]"
-        : active
+      // `onHold` no longer tints the card border/background — per explicit
+      // request, a held call keeps its normal severity / active styling.
+      active
         ? severity === "critical"
           ? "border-lyra-status-critical-strong hover:border-[color-mix(in_srgb,var(--lyra-color-status-critical-strong)_80%,black_20%)]"
           : severity === "warning"
@@ -1312,14 +1396,19 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                    (`getAwaitingSeverity`, AgentNextGenPage.tsx); red now
                    means "new assignment" specifically (see
                    `cornerDotVariant`'s own doc comment above). */
-                <Badge
-                  shape="circle"
-                  dot
-                  variant={cornerDotVariant}
-                  size="sm"
-                  className="absolute bottom-[-2px] right-[-2px] ring-2 ring-lyra-bg-surface-shell"
-                  aria-hidden="true"
-                />
+                <>
+                  {isNewAssignment && (
+                    <span aria-hidden="true" className="absolute bottom-[-2px] right-[-2px] h-2 w-2 animate-ping rounded-full bg-lyra-status-critical-strong opacity-60 motion-reduce:hidden" />
+                  )}
+                  <Badge
+                    shape="circle"
+                    dot
+                    variant={cornerDotVariant}
+                    size="sm"
+                    className="absolute bottom-[-2px] right-[-2px] ring-2 ring-lyra-bg-surface-shell"
+                    aria-hidden="true"
+                  />
+                </>
               )}
             </span>
             {/* Same "success"/"warning"/"critical" color escalation
@@ -1343,7 +1432,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
             {elapsed && (
               <span
                 className={cn(
-                  "lyra-body-xs",
+                  "lyra-body-xs tabular-nums",
                   // `onHold` wins outright, ahead of `severity` — same
                   // "held call is a stronger signal" precedent the outer
                   // card's own border/background treatment already
@@ -1354,17 +1443,21 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                   // of the app already uses for "on hold"/critical states,
                   // rather than staying plain gray while the tile's avatar
                   // badge and border have already escalated.
-                  onHold
+                  // Per explicit request: on hold, the collapsed rail shows
+                  // just the counter (plain text, no badge/icon — the pause
+                  // indicator is the avatar's top badge, and a pill doesn't
+                  // fit the narrow rail), colored by hold SLA (15s warning,
+                  // 30s critical).
+                  (onHold ? getHoldBadgeColor(elapsed) : severity) === "critical"
                     ? "text-lyra-status-critical-strong"
-                    : severity === "critical"
-                    ? "text-lyra-status-critical-strong"
-                    : severity === "warning"
+                    : (onHold ? getHoldBadgeColor(elapsed) : severity) === "warning"
                     ? "text-lyra-status-warning-strong"
-                    : severity === "success"
+                    : (onHold ? getHoldBadgeColor(elapsed) : severity) === "success"
                     ? "text-lyra-status-success-strong"
                     : "text-lyra-fg-secondary"
                 )}
-                aria-hidden="true"
+                aria-label={onHold ? `On hold ${elapsed}` : undefined}
+                aria-hidden={onHold ? undefined : true}
               >
                 {elapsed}
               </span>

@@ -8,6 +8,11 @@ export const COLORS: BadgeColor[] = [
   "green", "teal", "blue", "purple", "pink",
 ];
 
+/** Semantic status colors for the pill (`critical` is the error color). */
+export const STATUS_COLORS: BadgeColor[] = ["success", "info", "warning", "critical"];
+
+export const PILL_COLORS: BadgeColor[] = [...COLORS, ...STATUS_COLORS];
+
 export const PILL_VARIANTS: BadgePillVariant[] = ["subtle", "solid"];
 
 export const CIRCLE_VARIANTS: BadgeCircleVariant[] = [

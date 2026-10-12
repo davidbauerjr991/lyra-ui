@@ -44,13 +44,23 @@ export type BadgeColor =
   | "teal"
   | "blue"
   | "purple"
-  | "pink";
+  | "pink"
+  // Semantic status colors — resolve to the `status-*` tokens (the same
+  // ones the circle shape's success/info/warning/critical roles use), not
+  // the accent families. `critical` is the error color.
+  | "success"
+  | "info"
+  | "warning"
+  | "critical";
+
+const STATUS_COLORS: ReadonlySet<BadgeColor> = new Set<BadgeColor>(["success", "info", "warning", "critical"]);
 
 /**
  * subtle — rounded-rect, soft tinted background, strong-color text
  * solid  — rounded-rect, strong filled background, white text
  */
 export type BadgePillVariant = "subtle" | "solid";
+export type BadgeIconPosition = "left" | "right" | "both";
 
 /**
  * Exported (was module-private) so other components needing this exact
@@ -70,8 +80,9 @@ export function getPillInlineStyles(
   variant: BadgePillVariant,
   color: BadgeColor
 ): React.CSSProperties {
-  const soft = `var(--lyra-color-accent-${color}-soft)`;
-  const strong = `var(--lyra-color-accent-${color}-strong)`;
+  const family = STATUS_COLORS.has(color) ? "status" : "accent";
+  const soft = `var(--lyra-color-${family}-${color}-${family === "status" ? "subtle" : "soft"})`;
+  const strong = `var(--lyra-color-${family}-${color}-strong)`;
 
   switch (variant) {
     case "subtle":
@@ -89,6 +100,9 @@ export function getPillInlineStyles(
 export type BadgeCircleVariant = "default" | "info" | "success" | "warning" | "critical" | "neutral";
 export type BadgeCircleFill = "solid" | "subtle";
 export type BadgeSize = "sm" | "md" | "lg";
+/** Font size for the pill shape: 12px, 14px or 16px. Omit to keep the default
+ *  (`lyra-body-md-emphasis`). Pill only — circle badges use `size`. */
+export type BadgePillFontSize = 12 | 14 | 16;
 
 const circleBadgeVariants = cva(
   // Base: inline-flex, centered content, font
@@ -133,7 +147,7 @@ const circleBadgeVariants = cva(
       // 1.4.3). Light mode is unchanged. `default` keeps fg-on-primary —
       // its bg-primary stays dark blue in both themes.
       { fill: "solid", variant: "default",  className: "bg-lyra-bg-primary text-lyra-fg-on-primary" },
-      { fill: "solid", variant: "info",     className: "bg-lyra-bg-active-strong text-lyra-fg-inverse" },
+      { fill: "solid", variant: "info",     className: "bg-lyra-status-info-strong text-lyra-fg-inverse" },
       { fill: "solid", variant: "success",  className: "bg-lyra-status-success-strong text-lyra-fg-inverse" },
       { fill: "solid", variant: "warning",  className: "bg-lyra-status-warning-strong text-lyra-fg-inverse" },
       { fill: "solid", variant: "critical", className: "bg-lyra-status-critical-strong text-lyra-fg-inverse" },
@@ -150,7 +164,7 @@ const circleBadgeVariants = cva(
       // color as its border.
       { bordered: true, fill: "solid", className: "border-white" },
       { bordered: true, fill: "subtle", variant: "default", className: "border-lyra-bg-primary" },
-      { bordered: true, fill: "subtle", variant: "info", className: "border-lyra-bg-active-strong" },
+      { bordered: true, fill: "subtle", variant: "info", className: "border-lyra-status-info-strong" },
       { bordered: true, fill: "subtle", variant: "success", className: "border-lyra-status-success-strong" },
       { bordered: true, fill: "subtle", variant: "warning", className: "border-lyra-status-warning-strong" },
       { bordered: true, fill: "subtle", variant: "critical", className: "border-lyra-status-critical-strong" },
@@ -178,6 +192,12 @@ interface BadgePillProps extends React.HTMLAttributes<HTMLSpanElement> {
   color?: BadgeColor;
   /** Visual variant. Default "subtle". */
   variant?: BadgePillVariant;
+  /** Optional icon (e.g. a 14px lucide icon). Decorative: hidden from screen readers. */
+  icon?: React.ReactNode;
+  /** Where `icon` goes: before the label, after it, or on both sides. Default "left". */
+  iconPosition?: BadgeIconPosition;
+  /** Pill font size in px (12, 14 or 16). Default: the standard pill text style. */
+  fontSize?: BadgePillFontSize;
 }
 
 interface BadgeCircleProps extends React.HTMLAttributes<HTMLSpanElement> {
@@ -271,22 +291,46 @@ const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>((props, ref) => {
     shape: _shape,
     color = "slate",
     variant = "subtle",
+    icon,
+    iconPosition = "left",
+    fontSize,
     className,
     children,
+    style,
     ...rest
   } = props;
+  const iconEl = icon ? (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "inline-flex shrink-0",
+        // Icon matches the pill's font size (12px font = 12px icon); default stays 14px.
+        fontSize === 12
+          ? "[&>svg]:h-3 [&>svg]:w-3"
+          : fontSize === 16
+          ? "[&>svg]:h-4 [&>svg]:w-4"
+          : "[&>svg]:h-3.5 [&>svg]:w-3.5"
+      )}
+    >
+      {icon}
+    </span>
+  ) : null;
 
   return (
     <span
       ref={ref}
       className={cn(
-        "inline-flex items-center h-6 px-2 lyra-body-md-emphasis whitespace-nowrap rounded-lyra-md",
+        "inline-flex items-center px-2 lyra-body-md-emphasis whitespace-nowrap rounded-lyra-md",
+        fontSize === 16 ? "h-7" : "h-6",
+        iconEl && "gap-1",
         className
       )}
-      style={getPillInlineStyles(variant, color)}
+      style={{ ...getPillInlineStyles(variant, color), ...(fontSize ? { fontSize: `${fontSize}px` } : null), ...style }}
       {...rest}
     >
+      {iconEl && iconPosition !== "right" && iconEl}
       {children}
+      {iconEl && iconPosition !== "left" && iconEl}
     </span>
   );
 });

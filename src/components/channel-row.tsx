@@ -20,8 +20,11 @@ import {
   Trash2,
   MessageSquareShare,
   PhoneOff,
+  Pause,
 } from "lucide-react";
 import { cn } from "../lib/utils";
+import { Badge } from "./badge";
+import { getHoldBadgeColor } from "./hold-sla";
 import { Tag, tagVariants, type TagVariant } from "./tag";
 import { type MenuEntry } from "./menu";
 import { KebabMenuButton } from "./kebab-menu-button";
@@ -153,6 +156,8 @@ export const CHANNEL_TYPE_TAG_VARIANT: Record<ChannelType, TagVariant> = {
 };
 
 export interface InteractionChannel {
+  /** Keeps this row blue-highlighted (like the current channel) even when it isn't the card's current channel, e.g. a live call alongside an open chat. Only applies on the active card. */
+  alwaysHighlighted?: boolean;
   /** Unique identifier for this specific channel instance. Required to
    *  distinguish between two simultaneously open channels of the same
    *  `type` on one interaction — e.g. two SMS threads with the same
@@ -963,6 +968,7 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
     <div className="flex items-center gap-1">
       {preview && <p className="min-w-0 flex-1 truncate lyra-body-sm text-lyra-fg-secondary">{preview}</p>}
       {elapsedOverride ?? (elapsed && (
+        <Tooltip content={`Duration: ${elapsed}`} placement="top">
         <span
           className={cn(
             "flex shrink-0 items-center gap-1 lyra-body-xs",
@@ -978,13 +984,27 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
           <Clock className="h-3 w-3" strokeWidth={1.5} aria-hidden="true" />
           {elapsed}
         </span>
+        </Tooltip>
       ))}
     </div>
     {/* On-hold timer — see `ChannelRowProps.onHoldElapsed`'s own doc
         comment for why this is a new line, not a swap of the row above. */}
     {onHoldElapsed && (
-      <span className="lyra-body-xs text-lyra-status-critical-strong">
-        On hold · {onHoldElapsed}
+      // Per explicit request: the hold timer is a 12px amber pill badge
+      // with a pause icon (replaces the plain red "On hold · mm:ss" text).
+      <span className="self-start">
+        <Tooltip content={`On hold: ${onHoldElapsed}`} placement="top">
+        <Badge
+          shape="pill"
+          color={getHoldBadgeColor(onHoldElapsed)}
+          variant="subtle"
+          fontSize={12}
+          icon={<Pause strokeWidth={2} />}
+          aria-label={`On hold ${onHoldElapsed}`}
+        >
+          On hold · {onHoldElapsed}
+        </Badge>
+        </Tooltip>
       </span>
     )}
     </div>

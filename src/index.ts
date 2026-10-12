@@ -205,8 +205,10 @@ export type { CXoneSmileyProps } from "./components/cxone-smiley";
 export { ProfileMenu, defaultProfileMenuGroups } from "./components/profile-menu";
 export type { ProfileMenuItem, ProfileMenuGroup, ProfileMenuProps } from "./components/profile-menu";
 
+export { HOLD_WARNING_SECONDS, HOLD_CRITICAL_SECONDS, getHoldSeverity } from "./components/hold-sla";
+export type { HoldSeverity } from "./components/hold-sla";
 export { Badge } from "./components/badge";
-export type { BadgeProps, BadgeShape, BadgeColor, BadgePillVariant, BadgeCircleVariant, BadgeSize } from "./components/badge";
+export type { BadgeProps, BadgeShape, BadgeColor, BadgePillVariant, BadgeCircleVariant, BadgeSize, BadgeIconPosition } from "./components/badge";
 
 export { FilterChip, filterChipVariants, filterChipRemoveButtonVariants } from "./components/filter-chip";
 export type { FilterChipProps, FilterChipOption, FilterChipVariant } from "./components/filter-chip";

@@ -119,6 +119,8 @@
 // once known" split that avatar convention already uses.
 import React, { useState, useRef, useEffect } from "react";
 import { cn } from "../lib/utils";
+import { Badge } from "./badge";
+import { getHoldSeverity } from "./hold-sla";
 import { Button } from "./button";
 import { Popover } from "./popover";
 import { Slider } from "./slider";
@@ -1067,12 +1069,16 @@ export function VoiceCallControls({
               call timer keeps counting total call time regardless of hold
               state, same as it always has. */}
           {onHold && onHoldElapsedSeconds !== undefined && (
-            <span
-              className="lyra-body-sm text-lyra-status-critical-strong"
+            <Badge
+              shape="pill"
+              color={getHoldSeverity(onHoldElapsedSeconds)}
+              variant="subtle"
+              fontSize={12}
+              icon={<Pause strokeWidth={2} />}
               aria-label={`On hold ${formatElapsedTime(onHoldElapsedSeconds)}`}
             >
               On hold {formatElapsedTime(onHoldElapsedSeconds)}
-            </span>
+            </Badge>
           )}
           </div>
         </div>

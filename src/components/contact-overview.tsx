@@ -347,6 +347,33 @@ ContactOverview.displayName = "ContactOverview";
 
 export { ContactOverview };
 
+
+/** Renders a snapshot line, turning `[label](key)` tokens into link buttons that call `onLink(key)`. Plain strings render unchanged. */
+function renderSnapshotLine(line: string, onLink?: (key: string) => void): React.ReactNode {
+  if (!onLink || !line.includes("](")) return line;
+  const parts: React.ReactNode[] = [];
+  const re = /\[([^\]]+)\]\(([^)]+)\)/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(line)) !== null) {
+    if (m.index > last) parts.push(line.slice(last, m.index));
+    const [, label, key] = m;
+    parts.push(
+      <button
+        key={`${key}-${m.index}`}
+        type="button"
+        onClick={() => onLink(key)}
+        className="inline text-lyra-fg-link hover:underline focus-visible:outline-none focus-visible:underline"
+      >
+        {label}
+      </button>
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < line.length) parts.push(line.slice(last));
+  return <>{parts}</>;
+}
+
 /**
  * Info `CustomerContextOverview` below needs to render — the caller
  * resolves all of it (a directory lookup or, for this app's mock data, a
@@ -391,6 +418,8 @@ export interface CustomerContextOverviewInfo {
     /** Short status/context labels rendered as pill `Tag`s below the
      *  identity row. Omit/empty to show the identity row with no tags. */
     tags?: string[];
+    /** Optional sentiment chip shown with the tags ("Sentiment · Frustrated"), in the warning color. */
+    sentiment?: { label?: string; value: string };
   };
   /** Short "Contact Snapshot" bullet list — for a returning/callback
    *  contact, a recap of the previous conversation; omit for a genuinely
@@ -456,6 +485,10 @@ export interface CustomerContextOverviewInfo {
 }
 
 export interface CustomerContextOverviewProps extends CustomerContextOverviewInfo {
+  /** Snapshot lines may contain `[label](key)` tokens; they render as links calling this with `key`. */
+  onSnapshotLink?: (key: string) => void;
+  /** Renders the "Autosummary" header in the subtle-blue (info) treatment instead of purple. */
+  autosummaryBlue?: boolean;
   /** The customer this overview is about. */
   customerName: string;
   /** Additional className on the root element. */
@@ -522,6 +555,8 @@ export interface CustomerContextOverviewProps extends CustomerContextOverviewInf
    *  here already follows (`customerCard.subtitle`, etc.). Only meaningful
    *  alongside `showRealTimeSummary`; omit for no caption line at all. */
   realTimeSummaryUpdatedLabel?: string;
+  /** When set, a "View Experience Memory" link renders under the Real-Time Summary text; the caller decides what it opens. */
+  onViewExperienceMemory?: () => void;
 }
 
 /* ── CustomerContextOverview ──
@@ -556,6 +591,8 @@ const CustomerContextOverview = React.forwardRef<HTMLDivElement, CustomerContext
       customerName,
       customerCard,
       snapshot,
+      onSnapshotLink,
+      autosummaryBlue = false,
       nextBestAction,
       nextBestActionContent,
       nextBestActionBare,
@@ -569,6 +606,7 @@ const CustomerContextOverview = React.forwardRef<HTMLDivElement, CustomerContext
       showContactSnapshot = true,
       showRealTimeSummary = false,
       realTimeSummaryUpdatedLabel,
+      onViewExperienceMemory,
     },
     ref
   ) => {
@@ -733,9 +771,16 @@ const CustomerContextOverview = React.forwardRef<HTMLDivElement, CustomerContext
                 <span className="lyra-body-md text-lyra-fg-secondary truncate">{customerCard.subtitle}</span>
               </div>
             </div>
-            {customerCard.tags && customerCard.tags.length > 0 && (
+            {((customerCard.tags && customerCard.tags.length > 0) || customerCard.sentiment) && (
               <div className="flex flex-wrap gap-1.5">
-                {customerCard.tags.map((tag) => (
+                {customerCard.sentiment && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-[color-mix(in_srgb,var(--lyra-color-status-warning-strong)_45%,transparent)] bg-lyra-status-warning-subtle px-2.5 py-0.5 lyra-body-sm text-lyra-status-warning-strong">
+                    <span className="font-semibold">{customerCard.sentiment.label ?? "Sentiment"}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>{customerCard.sentiment.value}</span>
+                  </span>
+                )}
+                {customerCard.tags?.map((tag) => (
                   <Tag key={tag} label={tag} shape="pill" />
                 ))}
               </div>
@@ -786,7 +831,7 @@ const CustomerContextOverview = React.forwardRef<HTMLDivElement, CustomerContext
           <ul className="flex flex-col gap-1 pl-4 list-disc">
             {snapshot.map((line, i) => (
               <li key={i} className="lyra-body-md text-lyra-fg-default">
-                {line}
+                {renderSnapshotLine(line, onSnapshotLink)}
               </li>
             ))}
           </ul>
@@ -820,6 +865,15 @@ const CustomerContextOverview = React.forwardRef<HTMLDivElement, CustomerContext
         <p className="lyra-body-md text-lyra-fg-default">
           {realTimeSummary ?? "No real-time summary is available for this contact yet."}
         </p>
+        {onViewExperienceMemory && (
+          <button
+            type="button"
+            onClick={onViewExperienceMemory}
+            className="w-fit text-left lyra-body-md text-lyra-fg-link hover:underline focus-visible:outline-none focus-visible:underline"
+          >
+            View Experience Memory
+          </button>
+        )}
         {realTimeSummaryUpdatedLabel && (
           <>
             <div className="border-t border-lyra-border-subtle" />
@@ -949,13 +1003,20 @@ const CustomerContextOverview = React.forwardRef<HTMLDivElement, CustomerContext
             <AccordionPrimitive.Trigger
               className={cn(
                 "group w-full flex items-center gap-2 px-4 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-inset hover:brightness-95 cursor-pointer",
-                showRealTimeSummary ? "bg-lyra-status-info-subtle" : "lyra-purple-soft-header-fix"
+                showRealTimeSummary || autosummaryBlue ? "bg-lyra-status-info-subtle" : "lyra-purple-soft-header-fix"
               )}
             >
               {showRealTimeSummary ? (
                 <Activity className="h-4 w-4 shrink-0 text-lyra-status-info-strong" strokeWidth={1.5} aria-hidden="true" />
               ) : (
-                <FileText className="h-4 w-4 shrink-0 text-lyra-accent-purple-strong" strokeWidth={1.5} aria-hidden="true" />
+                <FileText
+                  className={cn(
+                    "h-4 w-4 shrink-0",
+                    autosummaryBlue ? "text-lyra-status-info-strong" : "text-lyra-accent-purple-strong"
+                  )}
+                  strokeWidth={1.5}
+                  aria-hidden="true"
+                />
               )}
               <span className="flex-1 text-left lyra-body-md-emphasis text-lyra-fg-default truncate">
                 {showRealTimeSummary ? "Real-Time Summary" : "Autosummary"}

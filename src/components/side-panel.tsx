@@ -194,7 +194,11 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
         className="absolute top-0 bottom-0 z-10 flex items-center justify-center group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lyra-border-focus"
         style={{ [side === "right" ? "left" : "right"]: -4, width: 8, cursor: "col-resize" }}
       >
-        <div className="w-0.5 h-8 rounded-full bg-lyra-border-soft opacity-0 group-hover:bg-lyra-bg-primary group-hover:opacity-100 group-focus-visible:w-1 group-focus-visible:bg-lyra-border-focus group-focus-visible:opacity-100 transition-opacity" />
+        {/* Full-height edge line, same affordance as Draggable's docked left-edge handle: blue (active border) on hover, thicker focus color on keyboard focus. Sits on the panel's own edge so it overlays the existing border. */}
+        <div
+          className={`absolute inset-y-0 ${side === "right" ? "left-1/2" : "right-1/2"} w-0.5 bg-transparent group-hover:bg-lyra-border-active group-focus-visible:w-1 group-focus-visible:bg-lyra-border-focus transition-colors`}
+          aria-hidden="true"
+        />
       </div>
     ) : null;
 
