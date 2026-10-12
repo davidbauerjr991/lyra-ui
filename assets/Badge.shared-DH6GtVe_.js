@@ -1,1 +1,0 @@
-const e=["slate","red","orange","yellow","lime","green","teal","blue","purple","pink"],s=["subtle","solid"],l=["default","info","success","warning","critical","neutral"],a=["sm","md","lg"];export{a as B,l as C,s as P,e as a};
