@@ -2328,6 +2328,11 @@ Verified: `npm run lint` (`tsc --noEmit`) — matched the standing 3-error basel
 - **Badge: status colors and pill icon.** Pill `color` gained `success`, `info`, `warning`, `critical` (the error color), which resolve to the `status-*` tokens (subtle bg / strong text; solid = strong bg) instead of the accent families, so they match the circle shape's roles. Circle `info` solid (and its bordered-subtle border) now uses `status-info-strong` instead of `bg-active-strong`, which made Info look identical to Default; `agent-notifications.tsx`'s unread badge (`variant="info"`) shifts from #166cca to #2D5BB9 in light mode. New pill props `icon` (decorative, `aria-hidden`) and `iconPosition` (`left` default / `right` / `both`); the default look is unchanged. Stories: Default controls Show icon, Icon position, Icon glyph; Variants pages "Pill - Status Colors" and "Pill - With Icon".
 - **InteractionNavItem collapsed header tooltips.** While a `collapsible` card is collapsed, hovering the new-assignment dot ("New assignment"), the open-channels count ("N open channels"), the single-channel icon badge ("Voice channel"), the customer name (full name) and the timer ("Duration: mm:ss" / "On hold: mm:ss") shows a `Tooltip`. Expanded cards are unchanged (the dot, count and name tooltips are `disabled` there). No new props.
 
+### ContainerFooter + Container `footer*` props
+2026-10-13. New `ContainerFooter` (container-footer.tsx, exported from index.ts, Storybook "UI/ContainerFooter"), the bottom-edge mirror of `ContainerHeader`. Props: `actions` (normally `Button`s), `align` (`"left"` | `"right"` default | `"full"`, where full stretches every button equally), `bordered` (top border, default false).
+- `Container` gained optional `footerActions`, `footerAlign`, `footerBordered` and `footerClassName`, forwarded to `ContainerFooter` after `children`; the footer only renders when `footerActions` is set, so every existing Container is unchanged.
+- Stories: Container's Default has a "Footer" radio (none/left/right/full) and a "Footer divider" toggle; "Container/Variants" has a "Footer" page.
+
 ## Planned Future Work
 - Empty template
 - Edit template (settings/configure)

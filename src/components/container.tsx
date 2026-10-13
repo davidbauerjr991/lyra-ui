@@ -1,6 +1,7 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { ContainerHeader } from "./container-header";
+import { ContainerFooter, type ContainerFooterAlign } from "./container-footer";
 import { cn } from "../lib/utils";
 
 /*
@@ -93,6 +94,14 @@ interface ContainerProps
   headerActionsWrap?: boolean;
   /** Forwarded to `ContainerHeader`'s `tabs` — a `TabList` (or similar, e.g. a second `SearchInput` copy — see that prop's own doc comment) rendered on its own full-width row below the title, outside `children`. */
   headerTabs?: React.ReactNode;
+  /** Footer content (normally `Button`s) — renders a `ContainerFooter` after `children` when set. */
+  footerActions?: React.ReactNode;
+  /** Where the footer's buttons sit: `"left"`, `"right"` (default) or `"full"` (every button stretches equally). See `ContainerFooter`'s `align`. */
+  footerAlign?: ContainerFooterAlign;
+  /** Show a border along the top edge of the footer (default: false) */
+  footerBordered?: boolean;
+  /** Additional className merged onto the footer's own wrapper div. */
+  footerClassName?: string;
 }
 
 const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
@@ -101,6 +110,7 @@ const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
     headerTitle, headerIcon, headerActions,
     headerTitleBadge, headerTopSlot, headerSubhead, headerBordered = false,
     headerTitleClassName, headerClassName, headerActionsWrap, headerTabs,
+    footerActions, footerAlign, footerBordered = false, footerClassName,
     children, ...props
   }, ref) => {
     // Render the header whenever *any* header-related prop is present, not
@@ -134,6 +144,14 @@ const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
           />
         )}
         {children}
+        {footerActions && (
+          <ContainerFooter
+            actions={footerActions}
+            align={footerAlign}
+            bordered={footerBordered}
+            className={footerClassName}
+          />
+        )}
       </div>
     );
   }

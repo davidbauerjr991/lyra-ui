@@ -343,6 +343,7 @@ export type { PhoneInputProps } from "./components/phone-input";
 export { EmailInput } from "./components/email-input";
 export { Slider, SliderRange } from "./components/slider";
 export { ContainerHeader } from "./components/container-header";
+export { ContainerFooter } from "./components/container-footer";
 export type { IconBackground, IconShape } from "./components/icon";
 export { AIInput } from "./components/ai-input";
 export { AIProcess } from "./components/ai-process";
@@ -382,6 +383,7 @@ export type { ConversationVariant, ConversationMessageProps, ConversationAlertPr
 export { PasswordInput, ChangePassword, DEFAULT_REQUIREMENTS } from "./components/password-input";
 export type { PasswordInputProps, ChangePasswordProps, PasswordRequirement } from "./components/password-input";
 export type { ContainerHeaderProps } from "./components/container-header";
+export type { ContainerFooterProps, ContainerFooterAlign } from "./components/container-footer";
 export type { PhoneValue, PhoneCountry } from "./components/phone-input";
 
 /* ── Utilities ── */
