@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState, useEffect } from "react";
 import { AgentProfile, type AgentStatus } from "../agent-profile";
+import { Button } from "../button";
 import type { ConnectedApp } from "../connected-apps";
 
 const APPS: ConnectedApp[] = [
@@ -60,6 +61,76 @@ export const Interactive: Story = {
           onReconnect={(id) => alert(`Reconnecting ${id}…`)}
           onDarkModeToggle={() => alert("Dark mode toggled")}
           onHelpClick={() => alert("Help")}
+          onLogOut={() => alert("Log out")}
+        />
+      </div>
+    );
+  },
+};
+
+type AgentLegStatus = "disconnected" | "connecting" | "connected";
+
+// Controlled agent leg: the leg lives outside the component (here, story
+// state standing in for a telephony provider). The component only displays
+// `agentLegStatus` and reports clicks through `onAgentLegToggle`; the
+// buttons below change the leg from outside the menu.
+export const ControlledAgentLeg: Story = {
+  name: "Controlled agent leg",
+  render: () => {
+    const [status, setStatus] = useState<AgentStatus>("available");
+    const [leg, setLeg] = useState<AgentLegStatus>("connected");
+    const [lastSettled, setLastSettled] = useState<string>("—");
+    useEffect(() => {
+      if (leg !== "connecting") return;
+      const id = setTimeout(() => setLeg("connected"), 1500);
+      return () => clearTimeout(id);
+    }, [leg]);
+    const apply = (action: "connect" | "disconnect") =>
+      setLeg(action === "connect" ? "connecting" : "disconnected");
+    return (
+      <div className="flex flex-col items-start gap-4 p-8">
+        <AgentProfile
+          name="Sarah Johnson"
+          initials="SJ"
+          status={status}
+          onStatusChange={setStatus}
+          timer="00:04:22"
+          agentLegStatus={leg}
+          onAgentLegToggle={apply}
+          onAgentLegStatusChange={setLastSettled}
+          onLogOut={() => alert("Log out")}
+        />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" disabled={leg !== "connected"} onClick={() => apply("disconnect")}>
+            Disconnect externally
+          </Button>
+          <Button variant="outline" size="sm" disabled={leg !== "disconnected"} onClick={() => apply("connect")}>
+            Connect externally
+          </Button>
+        </div>
+        <span className="lyra-body-sm text-lyra-fg-secondary">
+          Leg: {leg} · last settled change: {lastSettled}
+        </span>
+      </div>
+    );
+  },
+};
+
+// No agent leg to show: the "Agent Leg" row and the avatar's leg indicator
+// are hidden.
+export const HiddenAgentLeg: Story = {
+  name: "Hidden agent leg",
+  render: () => {
+    const [status, setStatus] = useState<AgentStatus>("available");
+    return (
+      <div className="p-8">
+        <AgentProfile
+          name="Sarah Johnson"
+          initials="SJ"
+          status={status}
+          onStatusChange={setStatus}
+          timer="00:04:22"
+          hideAgentLeg
           onLogOut={() => alert("Log out")}
         />
       </div>

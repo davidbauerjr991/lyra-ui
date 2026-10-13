@@ -136,6 +136,22 @@ export interface AgentProfileProps {
    *  disconnect event, so it must never fire `onAgentLegStatusChange` (and
    *  therefore never fire a consumer's own toast) on its own. */
   initialAgentLegStatus?: "disconnected" | "connected";
+  /** Controlled agent-leg status, for a consumer whose leg state lives
+   *  outside this component (e.g. a telephony provider). When this or
+   *  `onAgentLegToggle` is passed, the component only displays this value
+   *  and never changes it itself: no internal state, no connect timer, and
+   *  `initialAgentLegStatus` is ignored. Omit both for the self-managed
+   *  behavior above. */
+  agentLegStatus?: "disconnected" | "connecting" | "connected";
+  /** Controlled mode: fired when the agent clicks the "Agent Leg" row or the
+   *  attention avatar (or `connectAgentLegSignal` changes while
+   *  disconnected), with the action that click asks for. Not fired while
+   *  `"connecting"`. The consumer updates `agentLegStatus` once the action
+   *  actually lands. */
+  onAgentLegToggle?: (action: "connect" | "disconnect") => void;
+  /** Hides the "Agent Leg" row and the avatar's leg indicator/tooltip — for
+   *  a consumer with no agent leg to show (or not loaded yet). */
+  hideAgentLeg?: boolean;
   /** Hides the "Connected Apps" row (and its flyout panel) entirely — for
    *  a consumer with no real integrations to surface here at all, rather
    *  than showing a permanently-empty "0" row. Unlike `onHelpClick`
@@ -288,6 +304,9 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
     onAgentLegStatusChange,
     connectAgentLegSignal,
     initialAgentLegStatus,
+    agentLegStatus: agentLegStatusProp,
+    onAgentLegToggle,
+    hideAgentLeg = false,
     hideConnectedApps = false,
     className,
   }, ref) => {
@@ -319,9 +338,14 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
     const [logoutConfirmOpen, setLogoutConfirmOpen] = React.useState(false);
     const [statusSearch, setStatusSearch] = React.useState("");
     const [favoriteStatuses, setFavoriteStatuses] = React.useState<Set<AgentStatus>>(new Set());
-    const [agentLegStatus, setAgentLegStatus] = React.useState<"disconnected" | "connecting" | "connected">(
+    const [internalAgentLegStatus, setInternalAgentLegStatus] = React.useState<"disconnected" | "connecting" | "connected">(
       initialAgentLegStatus ?? "disconnected"
     );
+    // Same controlled/uncontrolled split as dark mode above.
+    const agentLegControlled = agentLegStatusProp !== undefined || onAgentLegToggle !== undefined;
+    const agentLegStatus = agentLegControlled ? (agentLegStatusProp ?? "disconnected") : internalAgentLegStatus;
+    const agentLegConnectTimerRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+    React.useEffect(() => () => clearTimeout(agentLegConnectTimerRef.current), []);
     const [reconnectedIds, setReconnectedIds] = React.useState<Set<string>>(new Set());
     const contentRef = React.useRef<HTMLDivElement>(null);
     const issueCount = connectedApps.filter((a) => a.status !== "healthy" && !reconnectedIds.has(a.id)).length;
@@ -343,11 +367,15 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
 
     const handleAgentLegToggle = () => {
       if (agentLegStatus === "connecting") return;
+      if (agentLegControlled) {
+        onAgentLegToggle?.(agentLegStatus === "disconnected" ? "connect" : "disconnect");
+        return;
+      }
       if (agentLegStatus === "disconnected") {
-        setAgentLegStatus("connecting");
-        setTimeout(() => setAgentLegStatus("connected"), 2000);
+        setInternalAgentLegStatus("connecting");
+        agentLegConnectTimerRef.current = setTimeout(() => setInternalAgentLegStatus("connected"), 2000);
       } else {
-        setAgentLegStatus("disconnected");
+        setInternalAgentLegStatus("disconnected");
       }
     };
 
@@ -576,18 +604,20 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
               )
             ),
           }]),
-      {
-        id: "agent-leg",
-        label: agentLegStatus === "connected" ? "Agent Leg Connected" : agentLegStatus === "connecting" ? "Agent Leg Connecting…" : "Agent Leg Disconnected",
-        icon: (
-          <Tooltip content={agentLegIconMap[agentLegStatus].tooltip} placement="left" className="z-[10002]">
-            <span className={cn("flex items-center", agentLegIconMap[agentLegStatus].color)}>
-              {agentLegIconMap[agentLegStatus].icon}
-            </span>
-          </Tooltip>
-        ),
-        onClick: handleAgentLegToggle,
-      },
+      ...(hideAgentLeg
+        ? []
+        : [{
+            id: "agent-leg",
+            label: agentLegStatus === "connected" ? "Agent Leg Connected" : agentLegStatus === "connecting" ? "Agent Leg Connecting…" : "Agent Leg Disconnected",
+            icon: (
+              <Tooltip content={agentLegIconMap[agentLegStatus].tooltip} placement="left" className="z-[10002]">
+                <span className={cn("flex items-center", agentLegIconMap[agentLegStatus].color)}>
+                  {agentLegIconMap[agentLegStatus].icon}
+                </span>
+              </Tooltip>
+            ),
+            onClick: handleAgentLegToggle,
+          }]),
       // Only shown when `onHelpClick` is actually passed — see that prop's
       // own doc comment ("shows a 'Help' row ... when provided"). Was
       // previously added unconditionally regardless of whether a handler
@@ -633,7 +663,8 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
     // `<span role="button">` + `stopPropagation` pattern `FavoriteButton`
     // already uses to sit inside Menu's own row buttons (see
     // `favoriteRightElement` above) rather than a second real button.
-    const agentLegNeedsAttention = agentLegStatus === "disconnected" || agentLegStatus === "connecting";
+    const agentLegNeedsAttention = !hideAgentLeg && (agentLegStatus === "disconnected" || agentLegStatus === "connecting");
+    const avatarAgentLegStatus = hideAgentLeg ? undefined : agentLegStatus;
 
     return (
       <div ref={ref} className={cn("flex items-center gap-2", className)}>
@@ -759,9 +790,9 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
               <button
                 type="button"
                 aria-label={
-                  agentLegStatus === "disconnected"
+                  avatarAgentLegStatus === "disconnected"
                     ? "Agent Status and More, agent leg disconnected"
-                    : agentLegStatus === "connecting"
+                    : avatarAgentLegStatus === "connecting"
                     ? "Agent Status and More, agent leg connecting"
                     : "Agent Status and More"
                 }
@@ -795,11 +826,11 @@ const AgentProfile = React.forwardRef<HTMLDivElement, AgentProfileProps>(
                       }}
                       className="shrink-0 rounded-full"
                     >
-                      <Avatar initials={initials} src={avatarSrc} status={status} agentLegStatus={agentLegStatus} />
+                      <Avatar initials={initials} src={avatarSrc} status={status} agentLegStatus={avatarAgentLegStatus} />
                     </span>
                   </Tooltip>
                 ) : (
-                  <Avatar initials={initials} src={avatarSrc} status={status} agentLegStatus={agentLegStatus} />
+                  <Avatar initials={initials} src={avatarSrc} status={status} agentLegStatus={avatarAgentLegStatus} />
                 )}
                 <div className="flex flex-col items-start min-w-0">
                   <span className={cn("lyra-label leading-tight", statusConfig[status].textColor)}>{statusConfig[status].label}</span>
