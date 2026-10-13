@@ -2333,6 +2333,12 @@ Verified: `npm run lint` (`tsc --noEmit`) — matched the standing 3-error basel
 - `Container` gained optional `footerActions`, `footerAlign`, `footerBordered` and `footerClassName`, forwarded to `ContainerFooter` after `children`; the footer only renders when `footerActions` is set, so every existing Container is unchanged.
 - Stories: Container's Default has a "Footer" radio (none/left/right/full) and a "Footer divider" toggle; "Container/Variants" has a "Footer" page.
 
+### ContainerHeader: element titles + `titleText`
+2026-10-13. `ContainerHeader.title` widened from `string` to `ReactNode` (the props now `Omit` the HTML `title` attribute), so a panel can pass e.g. a `Breadcrumb`. New optional `titleText?: string`, the header's plain-text name, also added to `EmbeddablePanelContent` (draggable.tsx) so panel content can carry it.
+- Close button `aria-label`/tooltip: `Close ${titleText}` when set, else `Close ${title}` for a non-empty string title, else "Close". Previously an element title would have produced "Close [object Object]".
+- A string title renders in the `<h2>` as before. An element title renders in a `<div>` with the same classes (a heading can't contain a breadcrumb's `<nav>`/`<ol>`), plus `<h2 className="sr-only">{titleText}</h2>` when `titleText` is set, so the header keeps its heading for screen readers.
+- Every existing caller passes a string, so nothing changes for them. Story: ContainerHeader "With element title".
+
 ## Planned Future Work
 - Empty template
 - Edit template (settings/configure)

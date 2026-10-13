@@ -5,14 +5,27 @@ import { cn } from "../lib/utils";
 
 /* ── Types ── */
 
-export interface ContainerHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ContainerHeaderProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "title"> {
   /**
    * Header title. Optional so the header can still render for icon-only /
    * tag-only layouts (e.g. `DashboardCard`'s "show/hide header text"
    * control) — when omitted, the title line simply isn't rendered rather
    * than showing an empty heading.
+   *
+   * May be an element (e.g. a `Breadcrumb`). A string renders in the `<h2>`;
+   * an element renders in a plain `<div>` with the same classes (a heading
+   * can't contain a breadcrumb's `<nav>`/`<ol>`) — pass `titleText` with it
+   * so the close button keeps a real label and the header keeps a
+   * screen-reader heading.
    */
-  title?: string;
+  title?: React.ReactNode;
+  /**
+   * The header's plain-text name, for when `title` is not a string (e.g.
+   * "Search" for a "Search / Customers" breadcrumb). Labels the close button
+   * (`Close ${titleText}`) and, with an element `title`, renders as an
+   * sr-only `<h2>`. Ignored visually when `title` is a string.
+   */
+  titleText?: string;
   /** Optional icon to the left of the title */
   icon?: React.ReactNode;
   /**
@@ -146,6 +159,7 @@ const ContainerHeader = React.forwardRef<HTMLDivElement, ContainerHeaderProps>(
   ({
     className,
     title,
+    titleText,
     icon,
     onBack,
     backIcon = <ArrowLeft className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />,
@@ -161,7 +175,11 @@ const ContainerHeader = React.forwardRef<HTMLDivElement, ContainerHeaderProps>(
     background = "none",
     actionsWrap = false,
     ...props
-  }, ref) => (
+  }, ref) => {
+    const stringTitle = typeof title === "string" ? title : undefined;
+    // `titleText` wins; else a non-empty string title; else a generic label.
+    const closeLabel = titleText ? `Close ${titleText}` : stringTitle ? `Close ${stringTitle}` : "Close";
+    return (
     <div
       ref={ref}
       className={cn(
@@ -290,9 +308,14 @@ const ContainerHeader = React.forwardRef<HTMLDivElement, ContainerHeaderProps>(
                     which threw off `items-center`'s vertical centering;
                     rendered directly as a sibling flex item here instead. */}
                 <div className="flex items-center gap-2 min-w-0">
-                  {title && (
+                  {title && (stringTitle !== undefined ? (
                     <h2 className={cn(titleClassName, "text-lyra-fg-default truncate min-w-0")}>{title}</h2>
-                  )}
+                  ) : (
+                    <>
+                      {titleText && <h2 className="sr-only">{titleText}</h2>}
+                      <div className={cn(titleClassName, "text-lyra-fg-default truncate min-w-0")}>{title}</div>
+                    </>
+                  ))}
                   {titleBadge}
                 </div>
                 {subhead && (
@@ -308,9 +331,9 @@ const ContainerHeader = React.forwardRef<HTMLDivElement, ContainerHeaderProps>(
       <div className="flex items-center gap-1 shrink-0 ml-4">
         {actions}
         {onClose && (
-          <Tooltip content={title ? `Close ${title}` : "Close"} placement="bottom" asLabel>
+          <Tooltip content={closeLabel} placement="bottom" asLabel>
             <button
-              aria-label={title ? `Close ${title}` : "Close"}
+              aria-label={closeLabel}
               onClick={onClose}
               className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-action hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
             >
@@ -322,7 +345,8 @@ const ContainerHeader = React.forwardRef<HTMLDivElement, ContainerHeaderProps>(
       </div>
       {tabs}
     </div>
-  )
+    );
+  }
 );
 ContainerHeader.displayName = "ContainerHeader";
 

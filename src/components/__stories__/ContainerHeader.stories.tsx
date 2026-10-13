@@ -7,6 +7,7 @@ import { Settings, Maximize2, Minimize2 } from "lucide-react";
 import { InfoIcon } from "../icons/info-icon";
 import { Tooltip } from "../tooltip";
 import { TabList, Tab } from "../tabs";
+import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "../breadcrumb";
 
 const meta: Meta<typeof ContainerHeader> = {
   title: "UI/ContainerHeader",
@@ -211,6 +212,40 @@ export const WithTabs: Story = {
       />
     );
   },
+};
+
+export const WithElementTitle: Story = {
+  name: "With element title",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "`title` can be an element, e.g. a `Breadcrumb`. It renders in a plain `div` instead of the `h2` " +
+          "(a heading can't contain a `nav`), so pass `titleText` too: the close button is labelled " +
+          "\"Close Search\" and an sr-only `h2` \"Search\" keeps the header's heading for screen readers.",
+      },
+    },
+  },
+  render: () => (
+    <ContainerHeader
+      title={
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink onClick={() => {}}>Search</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem aria-current="page">
+              <BreadcrumbPage>Customers</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      }
+      titleText="Search"
+      bordered={false}
+      onClose={() => {}}
+    />
+  ),
 };
 
 export const AllVariants: Story = {

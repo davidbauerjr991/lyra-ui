@@ -191,6 +191,10 @@ export type DraggableVariant = "float" | "docked";
 export interface EmbeddablePanelContent {
   /** Header title */
   title: React.ReactNode;
+  /** Plain-text name of the panel; set it when `title` is not a string (e.g.
+   *  a breadcrumb). Forwarded to `ContainerHeader`'s `titleText`, which
+   *  labels the close button and supplies a screen-reader heading. */
+  titleText?: string;
   /** Optional badge rendered right after the title (e.g. an unread count) */
   titleBadge?: React.ReactNode;
   /** Extra className merged onto `ContainerHeader`'s own title element */
