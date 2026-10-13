@@ -346,6 +346,8 @@ export { ContainerHeader } from "./components/container-header";
 export type { IconBackground, IconShape } from "./components/icon";
 export { AIInput } from "./components/ai-input";
 export { AIProcess } from "./components/ai-process";
+export { Interstitial } from "./components/interstitial";
+export type { InterstitialProps } from "./components/interstitial";
 export { AiPanel, AiIndicatorSmall, AiIndicatorLarge, useAiPanelContent } from "./components/ai-panel";
 export type { AiPanelProps, AiPanelSuggestion, AiPanelContentProps } from "./components/ai-panel";
 export type { AIProcessStep, AIProcessStepStatus } from "./components/ai-process";

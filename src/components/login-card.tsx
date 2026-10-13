@@ -32,6 +32,11 @@ export interface LoginCardProps {
   /** Called once the launch sequence finishes and the card has fully faded out */
   onLaunch?: () => void;
   /**
+   * Message shown under the Launch button when the application fails to load. Shift-clicking Launch simulates that failure:
+   * the card still runs the loading steps, then returns to idle with this message instead of calling `onLaunch`.
+   */
+  launchErrorMessage?: string;
+  /**
    * Idle-state label for the launch button — defaults to `Launch ${appName}`
    * (unchanged from before this prop existed). Per explicit request
    * (agent-next-gen-v2's own `LoginPage.tsx`, whose card already shows its
@@ -77,6 +82,7 @@ const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
       defaultPhoneSetup = "soft-phone",
       defaultLaunching = false,
       onLaunch,
+      launchErrorMessage = "An error has occurred. Please try again or contact your administrator.",
       launchButtonLabel,
       contained = true,
       className,
@@ -107,6 +113,7 @@ const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
       sync: "pending",
       queue: "pending",
     });
+    const [launchError, setLaunchError] = React.useState(false);
     const timers = React.useRef<ReturnType<typeof setTimeout>[]>([]);
 
     const needsPhoneNumber = phoneSetup === "phone-number";
@@ -136,11 +143,24 @@ const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
       status: stepStatus[s.id],
     }));
 
-    const runLaunchSequence = React.useCallback(() => {
+    const runLaunchSequence = React.useCallback((simulateFailure = false) => {
       setStepStatus({ auth: "active", sync: "pending", queue: "pending" });
       timers.current.push(
         setTimeout(() => setStepStatus((s) => ({ ...s, auth: "done", sync: "active" })), STEP_DURATION),
-        setTimeout(() => setStepStatus((s) => ({ ...s, sync: "done", queue: "active" })), STEP_DURATION * 2),
+        setTimeout(() => setStepStatus((s) => ({ ...s, sync: "done", queue: "active" })), STEP_DURATION * 2)
+      );
+      if (simulateFailure) {
+        // Same steps as a normal launch, but the application never loads: back to idle with the error shown.
+        timers.current.push(
+          setTimeout(() => {
+            setLaunching(false);
+            setStepStatus({ auth: "pending", sync: "pending", queue: "pending" });
+            setLaunchError(true);
+          }, STEP_DURATION * 3)
+        );
+        return;
+      }
+      timers.current.push(
         setTimeout(() => setStepStatus((s) => ({ ...s, queue: "done" })), STEP_DURATION * 3),
         setTimeout(() => setFadingOut(true), STEP_DURATION * 3 + 500),
         setTimeout(() => onLaunch?.(), STEP_DURATION * 3 + 500 + CARD_FADE_DURATION)
@@ -161,10 +181,12 @@ const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
       });
     };
 
-    const handleLaunch = () => {
+    const handleLaunch = (e: React.MouseEvent) => {
       if (!isFormValid || launching) return;
+      setLaunchError(false);
       setLaunching(true);
-      runLaunchSequence();
+      // Shift-click simulates a load failure (prototype aid).
+      runLaunchSequence(e.shiftKey);
     };
 
     return (
@@ -286,6 +308,22 @@ const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
           >
             {launching ? `Launching ${appName}…` : launchButtonLabel ?? `Launch ${appName}`}
           </Button>
+
+          {/* ── Launch failure ── */}
+          {launchError && (
+            <p
+              role="alert"
+              className="mt-2 flex items-start gap-2 lyra-body-md text-lyra-status-critical-strong animate-in fade-in-0 duration-200"
+            >
+              <span
+                aria-hidden="true"
+                className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-lyra-status-critical-strong text-[11px] font-bold leading-none text-lyra-fg-on-primary"
+              >
+                !
+              </span>
+              {launchErrorMessage}
+            </p>
+          )}
 
           {/* ── Save preferences ── */}
           <label className="mt-4 flex items-center gap-2 cursor-pointer">

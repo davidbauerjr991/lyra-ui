@@ -166,6 +166,10 @@ export interface InteractionNavItemProps {
    *  z-index accounts for sometimes being nested inside that hover
    *  popover — see `AddChannelButton`'s own doc comment in create-new.tsx. */
   headerAction?: React.ReactNode;
+  /** Rendered below the channel rows (e.g. Accept / Decline on a ringing incoming call). Clicks inside it should stop propagation. */
+  footerAction?: React.ReactNode;
+  /** Keeps the collapsed tile's hover preview card open regardless of pointer (e.g. an incoming call awaiting Accept/Decline). */
+  forceHoverOpen?: boolean;
   /**
    * Controls which open channel is "current" (the blue-highlighted row on
    * an `active` card) from outside this component — e.g. a `ChannelTab` bar
@@ -275,6 +279,8 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       onDismiss,
       onDismissChannel,
       headerAction,
+      footerAction,
+      forceHoverOpen,
       currentChannelKey,
       onCurrentChannelChange,
       collapsible = false,
@@ -1044,6 +1050,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
             <div className="flex flex-col">{channelRows}</div>
           )
         )}
+        {footerAction && <div className="px-3 pb-3 pt-1">{footerAction}</div>}
       </div>
     );
 
@@ -1112,7 +1119,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     if (!expanded) {
       return (
         <Popover
-          open={hoverCardOpen}
+          open={hoverCardOpen || !!forceHoverOpen}
           onOpenChange={setHoverCardOpen}
           placement="right"
           align="start"
