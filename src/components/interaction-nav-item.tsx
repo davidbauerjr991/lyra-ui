@@ -701,6 +701,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                   // to.
                   elapsedOverride={ch.elapsedOverride}
                   onHoldElapsed={ch.onHoldElapsed}
+                  statusBadge={ch.statusBadge}
                   preview={ch.preview}
                   highlighted={highlighted}
                   isFirst={i === 0}

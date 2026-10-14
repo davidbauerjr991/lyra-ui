@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
+import { CircleCheck } from "lucide-react";
+import { Badge } from "../badge";
 import {
   ChatChannelRow,
   EmailChannelRow,
@@ -76,6 +78,27 @@ export const Voice: Story = {
 };
 
 /* ── States ── */
+
+/** `statusBadge`: a consumer-supplied chip on its own line below the
+ *  preview/timer line — here a call that ended and still needs an outcome.
+ *  The call timer stays where it is. */
+export const VoiceWithStatusBadge: Story = {
+  name: "Voice — Status badge (needs outcome)",
+  render: () => (
+    <Frame>
+      <VoiceChannelRow
+        elapsed="03:41"
+        preview="General Support"
+        isFirst
+        statusBadge={
+          <Badge shape="pill" color="info" variant="subtle" fontSize={12} icon={<CircleCheck strokeWidth={2} />}>
+            Needs outcome · 00:42
+          </Badge>
+        }
+      />
+    </Frame>
+  ),
+};
 
 export const AwaitingResponse: Story = {
   name: "Chat — Awaiting Response (red chip + red time)",

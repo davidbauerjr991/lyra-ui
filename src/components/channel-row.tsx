@@ -203,6 +203,11 @@ export interface InteractionChannel {
    *  split `elapsedOverride` above already has between this type and
    *  `ChannelRowProps`). Omit to render nothing extra. */
   onHoldElapsed?: string;
+  /** A status chip on its own line below the preview/timer line (after the
+   *  on-hold badge, if any) — e.g. a `Badge shape="pill" variant="subtle"`
+   *  reading "Needs outcome · 00:42". The consumer supplies the whole chip;
+   *  the timer above is untouched. See `ChannelRowProps.statusBadge`. */
+  statusBadge?: React.ReactNode;
   /** Message preview for this channel. */
   preview?: string;
   /**
@@ -488,6 +493,11 @@ interface ChannelRowProps {
    *  consumer (including `channelOnHold`'s own `elapsedOverride` swap)
    *  is unaffected. */
   onHoldElapsed?: string;
+  /** A consumer-supplied status chip, rendered on its own line below the
+   *  preview/timer line and after the on-hold badge. Unlike
+   *  `elapsedOverride` it adds a line rather than replacing the timer.
+   *  Omit to render nothing extra. */
+  statusBadge?: React.ReactNode;
 }
 
 // `direction` (see `InteractionChannel.direction`'s own doc comment) is
@@ -570,6 +580,7 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
   onEndCall,
   controlsDisabled = false,
   onHoldElapsed,
+  statusBadge,
 }) => {
   // `null` when not awaiting at all (the plain gray look below is
   // untouched); otherwise `awaitingSeverity`, defaulting to `"critical"` —
@@ -1007,6 +1018,8 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
         </Tooltip>
       </span>
     )}
+    {/* Status chip — see `ChannelRowProps.statusBadge`. */}
+    {statusBadge && <span className="self-start">{statusBadge}</span>}
     </div>
   </div>
   );
@@ -1025,6 +1038,9 @@ export interface ChannelRowInstanceProps {
   /** Passed straight through to `ChannelRow` — see `InteractionChannel.
    *  onHoldElapsed`'s own doc comment. */
   onHoldElapsed?: string;
+  /** Passed straight through to `ChannelRow` — see `InteractionChannel.
+   *  statusBadge`'s own doc comment. */
+  statusBadge?: React.ReactNode;
   preview?: string;
   highlighted?: boolean;
   isFirst?: boolean;
