@@ -1,7 +1,7 @@
 import * as React from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { cn } from "../lib/utils";
-import { PanelHeader } from "./panel-header";
+import { ContainerHeader } from "./container-header";
 
 /* ── Types ── */
 
@@ -43,7 +43,7 @@ export interface PopoverProps {
   maxWidth?: string;
   /**
    * Whether the `content` slot gets a built-in 20px (`px-5`) left/right
-   * inset (default: true). The built-in `title` header (via `PanelHeader`)
+   * inset (default: true). The built-in `title` header (via `ContainerHeader`)
    * is aligned to the same 20px, so the header and body line up on the
    * same left/right edge. This is the right default for plain body
    * content — text, forms, a couple of fields — which is why every simple
@@ -344,7 +344,7 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
           className
         )}
       >
-        {/* px-5 pb-0: ContainerHeader/PanelHeader's own base classes are
+        {/* px-5 pb-0: ContainerHeader's own base classes are
             `px-4 py-2.5` — overridden here so the title row lines up with
             the body's own 20px (`px-5`) left/right inset instead of
             ContainerHeader's usual 16px, and so the bottom half of that
@@ -355,7 +355,7 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
         {screenReaderHint && (
           <span id={hintId} className="sr-only">{hintText}</span>
         )}
-        {title && <PanelHeader title={title} bordered={false} className="px-5 pb-0" />}
+        {title && <ContainerHeader title={title} bordered={false} className="px-5 pb-0" />}
         {header && <div style={{ flexShrink: 0 }}>{header}</div>}
         {/* Content scrolls; header/footer are flex-shrink-0 so they stay
             visible. A header/footer popover always gets `overflow-auto` now

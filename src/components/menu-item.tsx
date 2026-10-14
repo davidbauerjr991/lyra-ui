@@ -35,7 +35,16 @@ import { cn } from "../lib/utils";
    that use case. */
 
 export interface MenuItemProps
-  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> {
+  extends Omit<React.HTMLAttributes<HTMLElement>, "onClick"> {
+  /** Element to render. `"button"` (default) is a real `<button>`; `"div"`
+   *  renders a `role="button"` div (focusable, Enter/Space activate) so the
+   *  row can contain its own interactive controls (e.g. a trailing action
+   *  button) without nesting buttons. */
+  as?: "button" | "div";
+  /** Show a bottom divider under the row. */
+  divider?: boolean;
+  /** Non-interactive row: no hover/press styling, default cursor. */
+  static?: boolean;
   /** Optional bolded title line rendered above the label, inside the same
    *  hoverable/clickable row — NOT a separate element sitting above the
    *  row's own hover area (that would make part of the "group" visually
@@ -45,7 +54,7 @@ export interface MenuItemProps
    *  — e.g. "New Case" above a "Menu Item" label. */
   header?: React.ReactNode;
   /** Primary label */
-  label: React.ReactNode;
+  label?: React.ReactNode;
   /** Optional secondary/description text below the label */
   description?: React.ReactNode;
   /** Optional leading icon (React node, e.g. a Lucide icon) */
@@ -67,6 +76,8 @@ export interface MenuItemProps
   /** ARIA role for the row. Defaults to "menuitem"; use "option" for
    *  listbox/combobox contexts. */
   itemRole?: React.AriaRole;
+  /** Native button type (only when `as="button"`). */
+  type?: "button" | "submit" | "reset";
   /** Forces the same look as hover/press (background + accent bar) without
    *  requiring an actual `:hover`/`:active` state — for a consumer that
    *  needs to reflect some other "currently highlighted" condition (e.g.
@@ -83,7 +94,7 @@ export interface MenuItemProps
   comfortable?: boolean;
 }
 
-const MenuItem = React.forwardRef<HTMLButtonElement, MenuItemProps>(
+const MenuItem = React.forwardRef<HTMLElement, MenuItemProps>(
   (
     {
       header,
@@ -96,7 +107,12 @@ const MenuItem = React.forwardRef<HTMLButtonElement, MenuItemProps>(
       destructive = false,
       disabled = false,
       onClick,
-      itemRole = "menuitem",
+      itemRole,
+      as = "button",
+      type,
+      divider = false,
+      static: isStatic = false,
+      onKeyDown,
       highlighted = false,
       trailingIcon,
       comfortable = true,
@@ -105,24 +121,38 @@ const MenuItem = React.forwardRef<HTMLButtonElement, MenuItemProps>(
     },
     ref
   ) => {
+    const isDiv = as === "div";
+    const role = itemRole ?? (isDiv ? (isStatic || !onClick ? undefined : "button") : "menuitem");
+    const interactive = !isStatic && !disabled;
+    const Tag = (isDiv ? "div" : "button") as React.ElementType;
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
+      onKeyDown?.(e);
+      if (isDiv && interactive && onClick && !e.defaultPrevented && e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+        e.preventDefault();
+        onClick();
+      }
+    };
     return (
-      <button
+      <Tag
         ref={ref}
-        type="button"
-        role={itemRole}
-        disabled={disabled}
-        aria-selected={itemRole === "option" ? active : undefined}
-        onClick={disabled ? undefined : onClick}
+        {...(isDiv ? { tabIndex: interactive && onClick ? 0 : undefined } : { type: type ?? "button", disabled })}
+        role={role}
+        aria-disabled={isDiv && disabled ? true : undefined}
+        aria-selected={role === "option" ? active : undefined}
+        onClick={interactive ? onClick : undefined}
+        onKeyDown={handleKeyDown}
         className={cn(
           "group/item relative flex w-full items-center gap-2.5 rounded-lyra-sm px-3 text-left lyra-body-md transition-colors",
           comfortable ? "py-3" : "py-1.5",
           "focus:outline-none focus-visible:bg-lyra-state-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lyra-border-focus",
+          divider && "border-b border-lyra-border-subtle last:border-0",
+          isStatic && "cursor-default",
           destructive
-            ? "text-lyra-status-critical-strong hover:bg-lyra-status-critical-subtle active:bg-lyra-status-critical-medium"
-            : "text-lyra-fg-default hover:bg-lyra-state-hover active:bg-lyra-state-pressed",
+            ? cn("text-lyra-status-critical-strong", !isStatic && "hover:bg-lyra-status-critical-subtle active:bg-lyra-status-critical-medium")
+            : cn("text-lyra-fg-default", !isStatic && "hover:bg-lyra-state-hover active:bg-lyra-state-pressed"),
           active &&
             !destructive &&
-            "bg-lyra-bg-active-subtle text-lyra-fg-active-strong hover:bg-lyra-state-hover-active-subtle active:bg-lyra-state-pressed-active-subtle",
+            cn("bg-lyra-bg-active-subtle text-lyra-fg-active-strong", !isStatic && "hover:bg-lyra-state-hover-active-subtle active:bg-lyra-state-pressed-active-subtle"),
           highlighted && !active && !destructive && "bg-lyra-state-hover",
           disabled && "cursor-not-allowed opacity-40 hover:bg-transparent active:bg-transparent",
           className
@@ -136,11 +166,12 @@ const MenuItem = React.forwardRef<HTMLButtonElement, MenuItemProps>(
           className={cn(
             "absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full opacity-0 transition-opacity",
             destructive
-              ? "bg-lyra-status-critical-strong group-hover/item:opacity-100 group-active/item:opacity-100"
+              ? cn("bg-lyra-status-critical-strong", !isStatic && "group-hover/item:opacity-100 group-active/item:opacity-100")
               : active
                 ? "bg-lyra-fg-active-strong opacity-100"
                 : cn(
-                    "bg-lyra-fg-default group-hover/item:opacity-100 group-active/item:opacity-100",
+                    "bg-lyra-fg-default",
+                    !isStatic && "group-hover/item:opacity-100 group-active/item:opacity-100",
                     highlighted && "opacity-100"
                   ),
             disabled && "group-hover/item:opacity-0 group-active/item:opacity-0"
@@ -172,7 +203,7 @@ const MenuItem = React.forwardRef<HTMLButtonElement, MenuItemProps>(
               {header}
             </span>
           )}
-          <span className="block truncate">{label}</span>
+          {label && <span className="block truncate">{label}</span>}
           {description && (
             <span className="block truncate lyra-body-sm text-lyra-fg-secondary">
               {description}
@@ -192,7 +223,7 @@ const MenuItem = React.forwardRef<HTMLButtonElement, MenuItemProps>(
         {/* Trailing icon (e.g. Menu's submenu chevron) — always furthest
             right, in addition to (not instead of) rightElement/shortcut. */}
         {trailingIcon}
-      </button>
+      </Tag>
     );
   }
 );

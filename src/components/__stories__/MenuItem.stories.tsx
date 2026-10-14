@@ -1,24 +1,23 @@
 import * as React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
-import { ListItem } from "../list-item";
 import { MenuItem } from "../menu-item";
 import { Box, Star, ChevronRight } from "lucide-react";
 import { Badge } from "../badge";
-import { MENU_PANEL_SURFACE } from "./ListItem.shared";
+import { MENU_PANEL_SURFACE } from "./MenuItem.shared";
 
-const meta: Meta<typeof ListItem> = {
-  title: "Custom Primitives/ListItem",
-  component: ListItem,
+const meta: Meta<typeof MenuItem> = {
+  title: "Custom Primitives/MenuItem",
+  component: MenuItem,
   tags: ["autodocs"],
   parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
 };
 export default meta;
 
-/* A basic ListItem row, a list with leading icons, and the MenuItem states and
-   icon/description/shortcut menus each have their own page under
-   "ListItem/Variants" — see ListItem.variants.stories.tsx. */
+/* The interactive playground. The States and Icon/description/shortcut pages are under
+   "MenuItem/Variants" — see MenuItem.variants.stories.tsx. A general content row (leading /
+   title / subtitle / meta / trailing)is now `as="div"` — see Variants → List row. */
 
-/* ── Default — the MenuItem playground (previously "MenuItem — Basic").
+/* ── Default — the MenuItem playground .
    Every control composes through `MenuItem`'s existing `icon` / `header` /
    `description` / `rightElement` / `trailingIcon` / `comfortable` props — no
    new component API. `badge` and `rightSlot` both feed the one

@@ -57,6 +57,7 @@ interface MenuDemoProps {
   side?: "bottom" | "top" | "left" | "right";
   align?: "start" | "center" | "end";
   modal?: boolean;
+  density?: "comfortable" | "compact";
 }
 
 const icon = (Icon: typeof FileText) => <Icon className="h-4 w-4" strokeWidth={1.5} />;
@@ -121,7 +122,7 @@ function buildItems({
 }
 
 function MenuDemo(props: MenuDemoProps) {
-  const { width = "md", side = "bottom", align = "start", modal = true } = props;
+  const { width = "md", side = "bottom", align = "start", modal = true, density = "comfortable" } = props;
   return (
     // Room around the trigger so the open menu (and its flyouts) stay inside
     // the canvas whichever side it opens toward.
@@ -133,6 +134,7 @@ function MenuDemo(props: MenuDemoProps) {
         side={side}
         align={align}
         modal={modal}
+        density={density}
       />
     </div>
   );
@@ -148,9 +150,9 @@ export const Default: MenuDemoStory = {
   parameters: {
     controls: {
       include: [
-        "modal", "rowContent", "submenu", "dividers", "disabledRow", "activeRow", "destructiveRow",
+        "modal", "density", "rowContent", "submenu", "dividers", "disabledRow", "activeRow", "destructiveRow",
         "listLength", "width", "side", "align",
-        "Modal", "Row content", "Submenu", "Dividers", "Disabled row", "Active row", "Destructive row",
+        "Modal", "Density", "Row content", "Submenu", "Dividers", "Disabled row", "Active row", "Destructive row",
         "List length", "Width", "Opens toward", "Alignment",
       ],
       sort: "none",
@@ -158,6 +160,7 @@ export const Default: MenuDemoStory = {
   },
   args: {
     modal: true,
+    density: "comfortable",
     rowContent: "icons",
     submenu: false,
     dividers: false,
@@ -176,6 +179,13 @@ export const Default: MenuDemoStory = {
       description:
         "While open, hide the rest of the page from assistive tech and block outside clicks (`modal`, Radix's default). Off leaves the page exposed; use it where an accessibility checker flags the hidden trigger.",
       table: { category: "Behavior", defaultValue: { summary: "true" } },
+    },
+    density: {
+      name: "Density",
+      control: "radio",
+      options: ["comfortable", "compact"],
+      description: "Row padding: comfortable (default) or compact, a tighter row (`density`).",
+      table: { category: "Appearance", defaultValue: { summary: "comfortable" } },
     },
     rowContent: {
       name: "Row content",

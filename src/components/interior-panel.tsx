@@ -1,9 +1,9 @@
 import * as React from "react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Maximize2, Minimize2 } from "lucide-react";
-import { PanelHeader } from "./panel-header";
+import { ContainerHeader } from "./container-header";
 import { PanelContent } from "./panel-content";
-import { PanelFooter } from "./panel-footer";
+import { ContainerFooterSlot, type ContainerFooterAlign } from "./container-footer";
 import { Tooltip } from "./tooltip";
 import { usePanelDragResize } from "./use-panel-drag-resize";
 import { cn } from "../lib/utils";
@@ -63,7 +63,7 @@ function readNumberCookie(name: string): number | null {
    (`variant="side" | "interior"`) caused enough confusion between the two
    that it was split back into these two.
 
-   Also distinct from `Draggable`/`DraggablePanel` (float/dockable overlay
+   Also distinct from `Draggable` (float/dockable overlay
    shells for things like the AI panel or notifications dropdown) — those
    aren't part of the app shell's side/interior panel system at all, see
    draggable.tsx. */
@@ -114,21 +114,29 @@ export interface InteriorPanelProps extends React.HTMLAttributes<HTMLDivElement>
   storageKey?: string;
 
   headerTitle?: string;
+  /** Extra className on the header row (e.g. a grab cursor for a draggable host). */
+  headerClassName?: string;
+  /**
+   * Also render the header when there is no `headerTitle` but other header content is set (icon, subhead,
+   * badge, actions, tabs, buttons), for an icon-only or actions-only header. Off by default: without a
+   * title the header is omitted, as before.
+   */
+  headerWithoutTitle?: boolean;
   /** Optional line below `headerTitle`, e.g. a record's name + id */
   headerSubhead?: string;
   headerIcon?: React.ReactNode;
-  /** Forwarded to `PanelHeader`/`ContainerHeader`'s own `onBack` — a real
+  /** Forwarded to `ContainerHeader`'s own `onBack` — a real
    *  back-arrow button to the left of `headerIcon`/the title, for content
    *  that drills into a sub-view within this SAME panel rather than
    *  opening a second, nested one (this component doesn't support
    *  nesting). Omit for a panel with no drill-down navigation. */
   onBack?: () => void;
-  /** Forwarded to `PanelHeader`/`ContainerHeader`'s own `backIcon`.
+  /** Forwarded to `ContainerHeader`'s own `backIcon`.
    *  Default: lucide `ArrowLeft`. */
   backIcon?: React.ReactNode;
   /**
    * Rendered inline immediately after `headerTitle`, same row (forwarded to
-   * `PanelHeader`/`ContainerHeader`'s own `titleBadge` slot) — e.g. an
+   * `ContainerHeader`'s own `titleBadge` slot) — e.g. an
    * action button that needs to float next to the title itself rather than
    * join the far-right `headerActions` cluster (useful once this panel is
    * wide enough — full-screen, say — to have real room beside the title).
@@ -139,7 +147,7 @@ export interface InteriorPanelProps extends React.HTMLAttributes<HTMLDivElement>
   headerActions?: React.ReactNode;
   /**
    * A `TabList` rendered inside the header itself, below the title/subhead
-   * row — forwarded straight to `PanelHeader`'s own `tabs` prop (see
+   * row — forwarded straight to `ContainerHeader`'s own `tabs` prop (see
    * container-header.tsx). This keeps the tabs genuinely fixed: they sit
    * outside `PanelContent` (the `flex-1 overflow-y-auto` scroll region
    * `children` renders into), not inside it with a hand-rolled `sticky`
@@ -248,6 +256,49 @@ export interface InteriorPanelProps extends React.HTMLAttributes<HTMLDivElement>
   overlayHeader?: boolean;
 
   footer?: React.ReactNode;
+  /**
+   * Round the corners (12px). Without `margin`: only the inner edge — the side
+   * facing the main content (left corners for `side="right"`, right corners for
+   * `side="left"`) — and only while the panel floats over the content (absolute
+   * overlay, i.e. `isNarrow` / `overlayHeader`); a docked panel beside the
+   * content stays square, and so does a full-screen one. With `margin`: all
+   * four corners, in both layouts. Default: false (square, as before).
+   */
+  rounded?: boolean;
+  /**
+   * Jump to full screen automatically once the panel is dragged past 90% of
+   * its container's width, by dragging wider or the container shrinking (default:
+   * false — opt-in, nothing changes for existing consumers). Works with or
+   * without a maximum width. Once
+   * full-screen, the header shows an exit (minimize) button even when
+   * `allowFullScreen` is off; exiting restores a width just under 90% so the
+   * panel doesn't immediately jump again.
+   */
+  autoFullScreen?: boolean;
+  /**
+   * Inset the panel 12px from every edge of its container (a floating-card
+   * look) instead of sitting flush against them. Default: false (flush, as
+   * before) and draws the border on all four sides instead of just the inner
+   * edge. Applies to both the docked and overlay layouts; none while
+   * closed or full-screen, where the panel has no width or covers its whole
+   * container.
+   */
+  margin?: boolean;
+  /**
+   * Drop shadow under the floating card. Only applies together with `margin`
+   * (default: false). With `margin` on and this off, the overlay layout's usual
+   * shadow is removed too, so the card is flat; without `margin` the panel
+   * looks exactly as before.
+   */
+  shadow?: boolean;
+  /** Where the footer's buttons sit: `"left"`, `"right"` (default) or `"full"` (every button stretches equally). Forwarded to `ContainerFooter`'s `align`. */
+  footerAlign?: ContainerFooterAlign;
+  /** Show a border along the top edge of the footer (default: false). Forwarded to `ContainerFooter`'s `bordered`. */
+  footerBordered?: boolean;
+  /** Shadow above the footer while content scrolls behind it (default: true, as before). Forwarded to `ContainerFooter`'s `scrollShadow`. */
+  footerScrollShadow?: boolean;
+  /** Fade the content out into the footer while it scrolls behind it, instead of a hard edge. Forwarded to `ContainerFooter`'s `scrollFade`; when on, `footerScrollShadow` and `footerBordered` are ignored (default: false). */
+  footerScrollFade?: boolean;
 }
 
 const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
@@ -266,6 +317,8 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       width,
       storageKey,
       headerTitle,
+      headerClassName,
+      headerWithoutTitle = false,
       headerSubhead,
       headerIcon,
       onBack,
@@ -278,6 +331,14 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       absoluteBreakpoint = 1440,
       overlayHeader = false,
       footer,
+      rounded = false,
+      autoFullScreen = false,
+      margin = false,
+      shadow = false,
+      footerAlign,
+      footerBordered = false,
+      footerScrollShadow = true,
+      footerScrollFade,
       children,
       ...props
     },
@@ -301,6 +362,14 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       return stored ?? minWidth;
     });
 
+    // Full-screen state lives up here (not next to the toggle further down) so
+    // the drag callback below can flip it for `autoFullScreen`.
+    const [isFullScreen, setIsFullScreen] = useState(false);
+    const isFullScreenRef = useRef(false);
+    isFullScreenRef.current = isFullScreen;
+    const parentWidthRef = useRef(9999);
+    const autoEnteredRef = useRef(false);
+
     const [isResizing, setIsResizing] = useState(false);
     const handleResizeStateChange = useCallback((r: boolean) => {
       setIsResizing(r);
@@ -309,8 +378,17 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
     const handleWidthChange = useCallback((w: number) => {
       if (storageKey) setCookie(storageKey, String(w));
       onWidthChange?.(w);
-    }, [storageKey, onWidthChange]);
-    const { width: currentWidth, onMouseDown, onKeyDown: onResizeKeyDown } = usePanelDragResize(
+      // `autoFullScreen`: past 90% of the container with no max width → full screen.
+      if (
+        autoFullScreen &&
+        !isFullScreenRef.current &&
+        w >= parentWidthRef.current * 0.9
+      ) {
+        autoEnteredRef.current = true;
+        setIsFullScreen(true);
+      }
+    }, [storageKey, onWidthChange, autoFullScreen, maxWidth]);
+    const { width: currentWidth, onMouseDown, onKeyDown: onResizeKeyDown, setWidth } = usePanelDragResize(
       side, initialWidth, minWidth, maxWidth, handleResizeStateChange, handleWidthChange
     );
 
@@ -338,6 +416,7 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
        this one hardcoded value. ── */
     const outerRef = useRef<HTMLDivElement>(null);
     const [parentWidth, setParentWidth] = useState(9999);
+    parentWidthRef.current = parentWidth;
     // `overlayHeader` short-circuits this to permanently true — see that
     // prop's own doc comment for why (equivalent to `absoluteBreakpoint`
     // being `Infinity`, just named for the consumer's actual intent).
@@ -366,7 +445,6 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
     // remembered across a close/reopen (just per-mount rather than via a
     // `storageKey` cookie) — confirmed as the wanted behavior over
     // "always reopens at the pre-full-screen size."
-    const [isFullScreen, setIsFullScreen] = useState(false);
 
     // `exitFullScreenSignal` escape hatch (see its own doc comment above) —
     // skips the very first render (a `ref` instead of state/`useEffect`'s
@@ -406,12 +484,23 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       ? "none"
       : "width 250ms cubic-bezier(0.4, 0, 0.2, 1)";
 
-    const fullScreenToggle = allowFullScreen ? (
+    // Shown when `allowFullScreen` is on, and also while full-screen regardless
+    // (e.g. after an `autoFullScreen` jump) so there's always a way back out.
+    const fullScreenToggle = allowFullScreen || isFullScreen ? (
       <Tooltip content={isFullScreen ? "Exit full screen" : "Full screen"} placement="bottom" asLabel>
         <button
           type="button"
           aria-label={isFullScreen ? "Exit full screen" : "Full screen"}
-          onClick={() => setIsFullScreen((v) => !v)}
+          onClick={() => {
+            // Leaving an auto full-screen jump: restore a width just under the
+            // 90% threshold, or the panel would jump straight back in.
+            if (isFullScreen && autoEnteredRef.current) {
+              autoEnteredRef.current = false;
+              setWidth(Math.min(maxWidth, Math.max(minWidth, Math.floor(parentWidth * 0.9) - 1)));
+            }
+            if (!isFullScreen) autoEnteredRef.current = false; // manual entry
+            setIsFullScreen((v) => !v);
+          }}
           className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-action hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
         >
           {isFullScreen ? (
@@ -470,6 +559,17 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
     // filling it).
     const displayWidth: number | string = isFullScreen ? parentWidth : Math.min(currentWidth, parentWidth);
 
+    // The container shrinking can push the panel past 90% of it too, not just dragging.
+    useEffect(() => {
+      if (
+        autoFullScreen && open && !isFullScreen &&
+        currentWidth >= parentWidth * 0.9
+      ) {
+        autoEnteredRef.current = true;
+        setIsFullScreen(true);
+      }
+    }, [autoFullScreen, open, isFullScreen, currentWidth, parentWidth]);
+
     const inner = (
       <div
         className="relative flex flex-col h-full"
@@ -485,8 +585,9 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
             transition: open ? "opacity 150ms ease 30ms" : "none",
           }}
         >
-          {headerTitle && (
-            <PanelHeader
+          {/* Without a title the header is omitted unless `headerWithoutTitle` opts in. */}
+          {(headerTitle || (headerWithoutTitle && (headerSubhead || headerIcon || headerTitleBadge || headerActions || headerTabs || onBack || onClose || fullScreenToggle))) && (
+            <ContainerHeader
               title={headerTitle}
               subhead={headerSubhead}
               icon={headerIcon}
@@ -498,20 +599,39 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
               onClose={onClose}
               closeIcon={closeIcon}
               bordered={false}
+              className={headerClassName}
             />
           )}
           <PanelContent>{children}</PanelContent>
-          {footer && <PanelFooter>{footer}</PanelFooter>}
+          <ContainerFooterSlot
+            content={footer}
+            align={footerAlign}
+            bordered={footerBordered}
+            scrollShadow={footerScrollShadow}
+            scrollFade={footerScrollFade}
+          />
         </div>
       </div>
     );
 
+    // 12px inset on all sides; h-[calc(100%-24px)] makes room for the vertical
+    // margin, and the absolute layout's offsets move from 0 to 12px.
+    const inset = margin && !isFullScreen && (open || isClosing);
+    const cardShadow = inset ? (shadow ? "shadow-lg" : "shadow-none") : "";
+    const dockedMargin = inset ? "m-3 h-[calc(100%-24px)]" : "";
+    const overlayMargin = inset ? (side === "right" ? "top-3 right-3 h-[calc(100%-24px)]" : "top-3 left-3 h-[calc(100%-24px)]") : "";
     // Keep border visible during close animation so it doesn't snap away
     const border = (open || isClosing)
-      ? (side === "right" ? "border-l border-lyra-border-subtle" : "border-r border-lyra-border-subtle")
+      ? (inset ? "border border-lyra-border-subtle" : side === "right" ? "border-l border-lyra-border-subtle" : "border-r border-lyra-border-subtle")
       : "";
     const interiorWidth: number | string = open ? displayWidth : 0;
     const pos = side === "right" ? "right-0" : "left-0";
+    // Literal class strings so Tailwind's content scanner finds them.
+    // With `margin` the panel is a floating card, so `rounded` rounds all four
+    // corners in either layout; without it, only the inner edge and only in the
+    // overlay layout (a flush, docked panel stays square).
+    const cardRadius = rounded && inset ? "rounded-[12px]" : "";
+    const radius = cardRadius || (rounded && !isFullScreen ? (side === "right" ? "rounded-l-[12px]" : "rounded-r-[12px]") : "");
 
     // Overlay instead of pushing the main content column: the parent
     // container is genuinely too narrow to squeeze further (`isNarrow`,
@@ -526,7 +646,7 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       return (
         <div
           ref={stableOuterRef}
-          className={cn("absolute top-0 z-[5] h-full overflow-hidden bg-lyra-bg-surface-overlay shadow-lg", pos, border, className)}
+          className={cn("absolute top-0 z-[5] h-full overflow-hidden bg-lyra-bg-surface-overlay shadow-lg", pos, border, radius, overlayMargin, cardShadow, className)}
           style={{ width: interiorWidth, transition: widthTransition }}
           {...props}
         >
@@ -538,7 +658,7 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
     return (
       <div
         ref={stableOuterRef}
-        className={cn("relative flex flex-col h-full bg-lyra-bg-surface-overlay shrink-0", border, className)}
+        className={cn("relative flex flex-col h-full bg-lyra-bg-surface-overlay shrink-0", border, cardRadius, dockedMargin, cardShadow, className)}
         style={{
           width: interiorWidth,
           minWidth: 0,

@@ -39,7 +39,7 @@ import type { EmbeddablePanelContent } from "./draggable";
    Two consumption shapes, same convention as `AgentSearch`/`ScreenPop`:
    `useScheduleContent` returns an `EmbeddablePanelContent` (toolbar in
    `headerContent`, grid in `body`) for a shared `Draggable`/
-   `DraggablePanel` shell; `SchedulePanel` renders the same content
+   `Draggable` shell; `SchedulePanel` renders the same content
    standalone with its own fixed toolbar row. */
 
 /* ── Date helpers (plain — no date-fns dependency in this library) ── */

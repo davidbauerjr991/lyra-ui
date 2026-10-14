@@ -350,4 +350,32 @@ const ContainerHeader = React.forwardRef<HTMLDivElement, ContainerHeaderProps>(
 );
 ContainerHeader.displayName = "ContainerHeader";
 
-export { ContainerHeader };
+/* ── ContainerHeaderSlot ──
+   The one place `Container` and `Modal` turn their `header*` props into a header, so the "render a
+   header whenever any header-related prop is present" rule lives here instead of in each of them.
+   An icon-only or tag-only header (no title) still renders, so the icon/subhead/topSlot aren't
+   silently dropped along with the title. Renders nothing when none of them is set. */
+
+export type ContainerHeaderSlotProps = ContainerHeaderProps;
+
+const ContainerHeaderSlot: React.FC<ContainerHeaderSlotProps> = ({
+  title, icon, actions, titleBadge, topSlot, subhead, tabs, bordered = false, ...rest
+}) => {
+  if (!(title || icon || actions || titleBadge || topSlot || subhead || tabs)) return null;
+  return (
+    <ContainerHeader
+      title={title}
+      icon={icon}
+      actions={actions}
+      titleBadge={titleBadge}
+      topSlot={topSlot}
+      subhead={subhead}
+      tabs={tabs}
+      bordered={bordered}
+      {...rest}
+    />
+  );
+};
+ContainerHeaderSlot.displayName = "ContainerHeaderSlot";
+
+export { ContainerHeader, ContainerHeaderSlot };

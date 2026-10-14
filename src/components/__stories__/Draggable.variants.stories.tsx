@@ -1244,7 +1244,7 @@ function SingleContainerRealContentDemo() {
     onDismiss: (id) => setNotifications((prev) => prev.filter((n) => n.id !== id)),
   });
   // Conversations/Schedule have no bespoke component (same as
-  // `DraggablePanel`'s own blank empty-state default) — a plain
+  // the old generic panel's blank empty-state default) — a plain
   // `EmbeddablePanelContent` literal is all either one needs.
   const blankContent = (title: string): EmbeddablePanelContent => ({
     title,

@@ -3,7 +3,8 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/utils";
 import { containerVariants } from "./container";
-import { ContainerHeader } from "./container-header";
+import { ContainerHeaderSlot } from "./container-header";
+import { ContainerFooterSlot, type ContainerFooterAlign } from "./container-footer";
 import { overlayVariants } from "./overlay";
 
 /* ── Types ── */
@@ -38,6 +39,20 @@ interface ModalProps extends VariantProps<typeof overlayVariants> {
   headerBordered?: boolean;
   headerTitleClassName?: string;
   headerClassName?: string;
+
+  /* ── Footer — same API as `Container`'s `footer*` props ── */
+  /** Footer content (normally `Button`s) — renders a `ContainerFooter` after `children` when set. */
+  footerActions?: React.ReactNode;
+  /** Where the footer's buttons sit: `"left"`, `"right"` (default) or `"full"`. See `ContainerFooter`'s `align`. */
+  footerAlign?: ContainerFooterAlign;
+  /** Show a border along the top edge of the footer (default: false) */
+  footerBordered?: boolean;
+  /** Shadow above the footer while content scrolls behind it (default: false). */
+  footerScrollShadow?: boolean;
+  /** Fade the content out into the footer while it scrolls behind it, instead of a hard edge. Forwarded to `ContainerFooter`'s `scrollFade`; when on, `footerScrollShadow` and `footerBordered` are ignored (default: false). */
+  footerScrollFade?: boolean;
+  /** Additional className merged onto the footer's wrapper div. */
+  footerClassName?: string;
 
   /**
    * Accessible name for screen readers (Radix `Dialog.Title`, sr-only)
@@ -85,6 +100,13 @@ interface ModalProps extends VariantProps<typeof overlayVariants> {
    */
   preventClose?: boolean;
 
+  /**
+   * Let the user drag the modal by its header (grab anywhere on the header except its buttons
+   * and inputs). The modal stays inside the viewport and re-centers each time it opens.
+   * Not dockable or resizable — position only. Needs a header. Default: false.
+   */
+  draggable?: boolean;
+
   /** Called when Escape or a backdrop click is blocked by `preventClose`. */
   onCloseAttempt?: () => void;
 
@@ -130,20 +152,73 @@ const Modal = React.forwardRef<HTMLDivElement, ModalProps>(
       headerBordered = false,
       headerTitleClassName,
       headerClassName,
+      footerActions,
+      footerAlign,
+      footerBordered = false,
+      footerScrollShadow = false,
+      footerScrollFade,
+      footerClassName,
       ariaTitle,
       description,
       alert = false,
       initialFocusRef,
       preventClose = false,
+      draggable = false,
       onCloseAttempt,
       children,
     },
     ref
   ) => {
     const contentRef = React.useRef<HTMLDivElement>(null);
-    const hasHeader = Boolean(
-      headerTitle || headerIcon || headerActions || headerTitleBadge || headerTopSlot || headerSubhead
-    );
+    const cardRef = React.useRef<HTMLDivElement | null>(null);
+    const setCardRef = (node: HTMLDivElement | null) => {
+      cardRef.current = node;
+      if (typeof ref === "function") ref(node);
+      else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    };
+    const [offset, setOffset] = React.useState({ x: 0, y: 0 });
+    const [dragging, setDragging] = React.useState(false);
+
+    // Re-center whenever the modal closes or dragging is turned off.
+    React.useEffect(() => {
+      if (!open || !draggable) setOffset({ x: 0, y: 0 });
+    }, [open, draggable]);
+
+    const onHeaderPointerDown = (e: React.PointerEvent<HTMLElement>) => {
+      if (!draggable || e.button !== 0) return;
+      const target = e.target as HTMLElement;
+      const interactive = "button, input, textarea, select, a[href], label, [role='button'], [role='tab'], [role='combobox'], [role='menuitem'], [contenteditable='true']";
+      if (target.closest(interactive)) return;
+      const card = cardRef.current;
+      if (!card) return;
+      e.preventDefault();
+      const rect = card.getBoundingClientRect();
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const base = { x: offset.x, y: offset.y };
+      // Keep the whole card inside the viewport.
+      const minX = base.x - rect.left;
+      const maxX = base.x + (window.innerWidth - rect.right);
+      const minY = base.y - rect.top;
+      const maxY = base.y + (window.innerHeight - rect.bottom);
+      const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), Math.max(lo, hi));
+      setDragging(true);
+      const move = (ev: PointerEvent) => {
+        setOffset({
+          x: clamp(base.x + ev.clientX - startX, minX, maxX),
+          y: clamp(base.y + ev.clientY - startY, minY, maxY),
+        });
+      };
+      const up = () => {
+        setDragging(false);
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+        window.removeEventListener("pointercancel", up);
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+      window.addEventListener("pointercancel", up);
+    };
 
     return (
       <DialogPrimitive.Root open={open} onOpenChange={(v) => { if (!v) onClose?.(); }}>
@@ -207,21 +282,43 @@ const Modal = React.forwardRef<HTMLDivElement, ModalProps>(
               </DialogPrimitive.Description>
             )}
 
-            <div ref={ref} className={cn(containerVariants({ variant: "modal" }), className)}>
-              {hasHeader && (
-                <ContainerHeader
-                  title={headerTitle}
-                  icon={headerIcon}
-                  actions={headerActions}
-                  titleBadge={headerTitleBadge}
-                  topSlot={headerTopSlot}
-                  subhead={headerSubhead}
-                  bordered={headerBordered}
-                  className={headerClassName}
-                  {...(headerTitleClassName ? { titleClassName: headerTitleClassName } : {})}
-                />
-              )}
+            <div
+              ref={setCardRef}
+              className={cn(containerVariants({ variant: "modal" }), "flex flex-col", className)}
+              style={
+                draggable
+                  ? {
+                      transform: `translate(${offset.x}px, ${offset.y}px)`,
+                      // No easing while dragging, or the card would lag behind the pointer.
+                      ...(dragging ? { transition: "none" } : null),
+                    }
+                  : undefined
+              }
+            >
+              <ContainerHeaderSlot
+                title={headerTitle}
+                icon={headerIcon}
+                actions={headerActions}
+                titleBadge={headerTitleBadge}
+                topSlot={headerTopSlot}
+                subhead={headerSubhead}
+                bordered={headerBordered}
+                className={cn(draggable && "cursor-grab select-none active:cursor-grabbing", headerClassName)}
+                {...(draggable ? { onPointerDown: onHeaderPointerDown } : {})}
+                {...(headerTitleClassName ? { titleClassName: headerTitleClassName } : {})}
+              />
               {children}
+              <ContainerFooterSlot
+                  content={footerActions}
+                  align={footerAlign}
+                  bordered={footerBordered}
+                  scrollShadow={footerScrollShadow}
+                  scrollFade={footerScrollFade}
+                  defaultScrollShadow={false}
+                  // `mt-auto`: when the card is taller than its content (full screen, fixed height), the
+                  // footer stays anchored to the bottom edge instead of following the content.
+                  className={cn("mt-auto", footerClassName)}
+                />
             </div>
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>

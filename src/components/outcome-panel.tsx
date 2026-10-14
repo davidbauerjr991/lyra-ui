@@ -20,7 +20,7 @@ import * as React from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Popover } from "./popover";
-import { PanelHeader } from "./panel-header";
+import { ContainerHeader } from "./container-header";
 import { Button } from "./button";
 import { Menu } from "./menu";
 import { Select } from "./select";
@@ -183,7 +183,7 @@ export function buildOutcomePopoverSlots(
     // primitive itself — every other `Popover` consumer is unaffected.
     header: (
       <div onClick={stopSyntheticBubble}>
-        <PanelHeader
+        <ContainerHeader
           title={outcome.title ?? "Log Outcome"}
           bordered={false}
           className="px-5 pb-0"
@@ -281,7 +281,7 @@ export function buildOutcomePopoverSlots(
             // confirm view uses.
             header={
               resolutionMenuView === "confirm" ? (
-                <PanelHeader
+                <ContainerHeader
                   title="Close Contact?"
                   icon={
                     <WarningIconSolid

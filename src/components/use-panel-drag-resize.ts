@@ -96,5 +96,7 @@ export function usePanelDragResize(
     [side, dragWidth, initialWidth, min, max, onWidthChange]
   );
 
-  return { width: dragWidth ?? initialWidth, onMouseDown, onKeyDown };
+  // `setWidth` lets a panel programmatically set its dragged width (e.g. to
+  // restore it after leaving an auto full-screen jump).
+  return { width: dragWidth ?? initialWidth, onMouseDown, onKeyDown, setWidth: setDragWidth };
 }

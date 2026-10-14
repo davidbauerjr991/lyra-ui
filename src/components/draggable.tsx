@@ -5,7 +5,7 @@ import { Tooltip } from "./tooltip";
 
 /* ── Not a panel ─────────────────────────────────────────────────────────
    `Draggable` is a generic float/dock-and-resize shell (used to build
-   things like `DraggablePanel`, the AI panel, the notifications dropdown)
+   things like the AI panel, the notifications dropdown)
    — it is NOT one of the two design-system panel types and shouldn't be
    confused with either of them:
 
@@ -201,7 +201,7 @@ export interface EmbeddablePanelContent {
   titleClassName?: string;
   /** Icon shown in the header when DOCKED only — float mode always shows
    *  the shared drag grip instead, same convention every real panel
-   *  (`DraggablePanel`, `AiPanel`, `AgentNotifications`) already follows. */
+   *  (`AiPanel`, `AgentNotifications`) already follows. */
   dockedIcon?: React.ReactNode;
   /** Extra actions rendered before the shell's own shared dock button */
   headerActions?: React.ReactNode;
@@ -288,6 +288,12 @@ export interface DraggableProps {
    * mode's corner resize is unaffected.
    */
   dockedResizable?: boolean;
+  /**
+   * Float mode only: give the panel a slightly see-through background with a
+   * soft blur of whatever sits behind it (default: true). Docked mode is
+   * always solid. Set false for a fully opaque floating panel.
+   */
+  translucent?: boolean;
   /** Called when width changes via resize */
   onWidthChange?: (width: number) => void;
   /** Called when resize drag starts/ends */
@@ -319,6 +325,7 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
     renderHeaderControls,
     showHeaderControls = true,
     lockVariant = false,
+    translucent = true,
     dockedResizable = true,
     onWidthChange,
     onResizeStateChange,
@@ -508,7 +515,13 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
     /* ── Float: drag ── */
     const onDragMouseDown = (e: React.MouseEvent) => {
       if (variant !== "float") return;
-      if ((e.target as HTMLElement).closest("button")) return;
+      // Presses on controls (buttons, fields, tabs, links…) never start a drag — except on the
+      // element this handler is attached to (the grip is itself `role="button"`). This is what
+      // lets the whole inline header act as a drag handle without breaking its own controls.
+      const interactive = (e.target as HTMLElement).closest(
+        "button, input, textarea, select, a[href], label, [role='button'], [role='tab'], [role='combobox'], [role='menuitem'], [contenteditable='true']"
+      );
+      if (interactive && interactive !== e.currentTarget) return;
       e.preventDefault();
       // Base position = current on-screen position with the *current*
       // offset subtracted back out, i.e. where the panel would sit at
@@ -811,7 +824,17 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
         ref={headerContentRef}
         className={cn("flex flex-col flex-1 min-h-0", variant === "float" && !useInlineControls && "[&>*:first-child]:pl-7")}
       >
-        {useInlineControls ? renderHeaderControls!(headerControlProps) : null}
+        {useInlineControls ? (
+          // Float mode: the whole header (title row + any header content) drags the panel, not just
+          // the grip. Always rendered (inert when docked) so a dock/undock toggle doesn't remount it.
+          <div
+            key="inline-header"
+            className={cn("shrink-0", variant === "float" && "cursor-grab active:cursor-grabbing")}
+            onMouseDown={variant === "float" ? onDragMouseDown : undefined}
+          >
+            {renderHeaderControls!(headerControlProps)}
+          </div>
+        ) : null}
         {children}
       </div>
     );
@@ -868,7 +891,13 @@ const Draggable = React.forwardRef<HTMLDivElement, DraggableProps>(
       <div
         ref={setRootRef}
         style={{ transform: `translate(${offset.x}px, ${offset.y}px)`, width, height, pointerEvents: "auto" }}
-        className={cn("relative flex flex-col overflow-hidden", className)}
+        className={cn(
+          "relative flex flex-col overflow-hidden",
+          className,
+          // After `className` on purpose so it wins over a consumer's solid `bg-*`: 80% of the
+          // base surface (color-mix, since the bare-`var()` color tokens can't take a `/alpha`).
+          translucent && "bg-[color-mix(in_srgb,var(--lyra-color-bg-surface-base)_80%,transparent)] backdrop-blur-sm"
+        )}
         onMouseDown={() => onInteract?.()}
       >
         {headerControlsNode}

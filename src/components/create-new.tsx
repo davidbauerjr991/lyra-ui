@@ -12,7 +12,7 @@ import { Button } from "./button";
 import { Spinner } from "./spinner";
 import { TableFooter } from "./table";
 import { FavoriteButton } from "./favorite-button";
-import { ListItem } from "./list-item";
+import { MenuItem } from "./menu-item";
 import { Badge, type BadgeCircleVariant } from "./badge";
 import { PhoneInput, PHONE_COUNTRIES, isPhoneNumberComplete, type PhoneValue } from "./phone-input";
 import type { ChannelType } from "./channel-row";
@@ -3119,11 +3119,11 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                             ? favoriteIds.size
                             : g.contacts?.length ?? 0;
                         return (
-                        <ListItem
+                        <MenuItem
+                          as="div"
+                          divider
                           key={g.id}
-                          role="button"
-                          tabIndex={0}
-                          title={
+                          header={
                             recordCount === undefined ? (
                               g.label
                             ) : (
@@ -3135,8 +3135,8 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                               </>
                             )
                           }
-                          leading={g.icon}
-                          trailing={
+                          icon={g.icon}
+                          rightElement={
                             <ChevronRight
                               className="h-4 w-4 flex-shrink-0 text-lyra-fg-disabled"
                               strokeWidth={1.5}
@@ -3144,12 +3144,6 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                             />
                           }
                           onClick={() => goToGroup(g.id)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              goToGroup(g.id);
-                            }
-                          }}
                         />
                         );
                       })}

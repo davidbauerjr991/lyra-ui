@@ -3,204 +3,97 @@ import { useState } from "react";
 import { ContainerHeader } from "../container-header";
 import { Button } from "../button";
 import { Badge } from "../badge";
-import { Settings, Maximize2, Minimize2 } from "lucide-react";
+import { GripVertical, Settings } from "lucide-react";
 import { InfoIcon } from "../icons/info-icon";
-import { Tooltip } from "../tooltip";
 import { TabList, Tab } from "../tabs";
-import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "../breadcrumb";
 
-const meta: Meta<typeof ContainerHeader> = {
-  title: "UI/ContainerHeader",
-  component: ContainerHeader,
-  tags: ["autodocs"],
-  parameters: {
-    layout: "padded",
-    backgrounds: { default: "lyra-shell" },
-  },
-  argTypes: {
-    title:      { control: "text" },
-    bordered:   { control: "boolean" },
-    background: { control: "select", options: ["none", "subtle"] },
-    /* Story-only toggles below — not real `ContainerHeader` props. They let
-       the Default story act as an interactive playground for the same
-       patterns previously only viewable as separate fixed-render stories
-       (still kept below for direct reference), plus the new "with buttons"
-       pattern. Consumed and stripped out of `args` inside Default's
-       `render`, below, before the rest are spread onto the real component. */
-    showClose:   { control: "boolean", name: "Close button" },
-    showIcon:    { control: "boolean", name: "With icon" },
-    showActions: { control: "boolean", name: "With actions" },
-    showBadge:   { control: "boolean", name: "With badge" },
-    showSubhead: { control: "boolean", name: "With subhead" },
-    showButtons: { control: "boolean", name: "With buttons" },
-  } as Meta<typeof ContainerHeader>["argTypes"],
-};
+/* ── Custom Primitives / ContainerHeader ──
+   The interactive playground. It is the header `Container`, `Modal`, `SidePanel`, `InteriorPanel` and `Draggable`
+   render for their `header*` props (`Container` and `Modal` through
+   `ContainerHeaderSlot`). Every pattern that used to be its own fixed story (close button, icon,
+   actions, badge, subhead, buttons, tabs) is a control here; the static side-by-side
+   reference is under "ContainerHeader/Variants". */
 
-export default meta;
-type Story = StoryObj<typeof ContainerHeader>;
+interface HeaderDemoProps {
+  title?: string;
+  bordered?: boolean;
+  background?: "none" | "subtle";
+  showClose?: boolean;
+  showDraggable?: boolean;
+  showBack?: boolean;
+  showIcon?: boolean;
+  showBadge?: boolean;
+  showSubhead?: boolean;
+  showActions?: boolean;
+  showButtons?: boolean;
+  showTabs?: boolean;
+  showTitle?: boolean;
+}
 
-export const Default: Story = {
-  args: {
-    title: "Container Title",
-    bordered: false,
-    background: "none",
-    showClose: false,
-    showIcon: false,
-    showActions: false,
-    showBadge: false,
-    showSubhead: false,
-    showButtons: false,
-  } as Story["args"],
-  render: (args: any) => {
-    const { showClose, showIcon, showActions, showBadge, showSubhead, showButtons, ...rest } = args;
-    return (
-      <ContainerHeader
-        {...rest}
-        icon={showIcon ? <InfoIcon className="h-5 w-5" /> : undefined}
-        onClose={showClose ? () => {} : undefined}
-        titleBadge={
-          showBadge ? <Badge shape="circle" count={5} variant="critical" size="sm" /> : undefined
-        }
-        subhead={showSubhead ? "Filter and search across all records" : undefined}
-        actions={
-          showActions || showButtons ? (
-            <>
-              {/* Left-to-right order: buttons, then actions (gear), then the
-                  component's own built-in close button — actions sits
-                  immediately to the left of close, buttons sits to the left
-                  of actions. */}
-              {showButtons && (
-                <>
-                  {/* No literal "secondary" button variant exists in `Button`
-                      — `outline` is the design system's non-primary/bordered
-                      button, i.e. the closest equivalent (see
-                      Button.stories.tsx, which labels this same variant
-                      "Outline" in its legend). */}
-                  <Button variant="outline" size="md">Action</Button>
-                  <Button variant="outline" size="md">Action</Button>
-                </>
-              )}
-              {showActions && (
-                <Button variant="ghost" size="icon" title="Settings">
-                  <Settings className="h-4 w-4" strokeWidth={1.5} />
-                </Button>
-              )}
-            </>
-          ) : undefined
-        }
-      />
-    );
-  },
-};
-
-export const WithClose: Story = {
-  name: "With close button",
-  render: () => <ContainerHeader title="Dialog Title" bordered={false} onClose={() => {}} />,
-};
-
-export const WithIcon: Story = {
-  name: "With icon",
-  render: () => (
+function HeaderDemo({
+  title = "Container Title",
+  bordered = false,
+  background = "none",
+  showClose = false,
+  showDraggable = false,
+  showBack = false,
+  showIcon = false,
+  showBadge = false,
+  showSubhead = false,
+  showActions = false,
+  showButtons = false,
+  showTabs = false,
+  showTitle = true,
+}: HeaderDemoProps) {
+  const [activeTab, setActiveTab] = useState(0);
+  const tabs = ["Overview", "Detail", "History"];
+  return (
     <ContainerHeader
-      title="Important notice"
-      icon={<InfoIcon className="h-5 w-5" />}
-      bordered={false}
-      onClose={() => {}}
-    />
-  ),
-};
-
-export const WithActions: Story = {
-  name: "With actions",
-  render: () => {
-    const [isFullscreen, setIsFullscreen] = useState(false);
-    return (
-      <ContainerHeader
-        title="Query Builder"
-        bordered={false}
-        actions={
-          <>
-            <Button variant="ghost" size="icon" title="Settings">
-              <Settings className="h-4 w-4" strokeWidth={1.5} />
-            </Button>
-            <Tooltip content={isFullscreen ? "Restore" : "Fullscreen"} placement="bottom" asLabel>
-              <button
-                aria-label={isFullscreen ? "Restore" : "Fullscreen"}
-                onClick={() => setIsFullscreen((v) => !v)}
-                className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
-              >
-                {isFullscreen
-                  ? <Minimize2 className="h-4 w-4" strokeWidth={1.5} />
-                  : <Maximize2 className="h-4 w-4" strokeWidth={1.5} />}
-              </button>
-            </Tooltip>
-          </>
-        }
-        onClose={() => {}}
-      />
-    );
-  },
-};
-
-export const WithBadge: Story = {
-  name: "With badge",
-  render: () => (
-    <ContainerHeader
-      title="Notifications"
-      titleBadge={<Badge shape="circle" count={5} variant="critical" size="sm" />}
-      bordered={false}
-      onClose={() => {}}
-    />
-  ),
-};
-
-export const WithSubhead: Story = {
-  name: "With subhead",
-  render: () => (
-    <ContainerHeader
-      title="Query Builder"
-      subhead="Filter and search across all records"
-      bordered={false}
-      onClose={() => {}}
-    />
-  ),
-};
-
-export const WithButtons: Story = {
-  name: "With buttons",
-  render: () => (
-    <ContainerHeader
-      title="Query Builder"
-      bordered={false}
-      actions={
-        <>
-          <Button variant="outline" size="md">Action</Button>
-          <Button variant="outline" size="md">Action</Button>
-        </>
+      title={showTitle ? title : undefined}
+      bordered={bordered}
+      background={background}
+      // Draggable: the grab cursor covers the whole header (like a floating panel, where any part of
+      // the header drags), not just the grip. Placement only; nothing moves.
+      className={showDraggable ? "cursor-grab select-none active:cursor-grabbing" : undefined}
+      // Placement only: the grip sits where the drag handle does in a floating panel (before the icon and
+      // title) and doesn't drag anything here.
+      icon={
+        showDraggable || showIcon ? (
+          <span className="flex items-center gap-1.5">
+            {showDraggable && (
+              <span aria-hidden="true" className="flex text-lyra-fg-secondary">
+                <GripVertical className="h-4 w-4" strokeWidth={1.5} />
+              </span>
+            )}
+            {showIcon && <InfoIcon className="h-5 w-5" />}
+          </span>
+        ) : undefined
       }
-      onClose={() => {}}
-    />
-  ),
-};
-
-export const WithTabs: Story = {
-  name: "With tabs",
-  render: () => {
-    const [activeTab, setActiveTab] = useState(0);
-    const tabs = ["Overview", "Detail", "History"];
-    return (
-      <ContainerHeader
-        title="Customer Information"
-        subhead="Noah Bennett · CST-10296"
-        onClose={() => {}}
-        // `tabs` renders below the title/subhead row, inside this same
-        // header — see `tabs`'s own doc comment in container-header.tsx
-        // for why (keeps a panel's tabs outside its scrolling body
-        // entirely, rather than a `sticky` row living inside it). Bottom
-        // padding and `bordered`'s border are both dropped automatically
-        // whenever `tabs` is set, so the tab row sits flush with no gap
-        // and no doubled-up border above its own `border-b`.
-        tabs={
+      onBack={showBack ? () => {} : undefined}
+      onClose={showClose ? () => {} : undefined}
+      titleBadge={showBadge ? <Badge shape="circle" count={5} variant="critical" size="sm" /> : undefined}
+      subhead={showSubhead ? "Filter and search across all records" : undefined}
+      actions={
+        showActions || showButtons ? (
+          <>
+            {/* Left to right: buttons, then actions (gear), then the built-in close button. */}
+            {showButtons && (
+              <>
+                <Button variant="outline" size="md">Action</Button>
+                <Button variant="outline" size="md">Action</Button>
+              </>
+            )}
+            {showActions && (
+              <Button variant="ghost" size="icon" title="Settings">
+                <Settings className="h-4 w-4" strokeWidth={1.5} />
+              </Button>
+            )}
+          </>
+        ) : undefined
+      }
+      // `tabs` renders below the title row inside the same header; padding and border are dropped automatically.
+      tabs={
+        showTabs ? (
           <TabList className="px-4">
             {tabs.map((label, i) => (
               <Tab key={label} active={activeTab === i} onClick={() => setActiveTab(i)}>
@@ -208,65 +101,130 @@ export const WithTabs: Story = {
               </Tab>
             ))}
           </TabList>
-        }
-      />
-    );
-  },
+        ) : undefined
+      }
+    />
+  );
+}
+
+const meta: Meta<typeof HeaderDemo> = {
+  title: "Custom Primitives/ContainerHeader",
+  component: ContainerHeader as never,
+  tags: ["autodocs"],
+  parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
 };
 
-export const WithElementTitle: Story = {
-  name: "With element title",
+export default meta;
+type Story = StoryObj<typeof HeaderDemo>;
+
+export const Default: Story = {
   parameters: {
-    docs: {
-      description: {
-        story:
-          "`title` can be an element, e.g. a `Breadcrumb`. It renders in a plain `div` instead of the `h2` " +
-          "(a heading can't contain a `nav`), so pass `titleText` too: the close button is labelled " +
-          "\"Close Search\" and an sr-only `h2` \"Search\" keeps the header's heading for screen readers.",
-      },
+    controls: {
+      // Storybook matches `include` against each control's display name, so both names and keys are listed.
+      include: [
+        "Title", "Title text", "Style", "Header divider", "Draggable", "Back button", "Close button", "Icon", "Badge", "Subhead", "Actions", "Buttons", "Tabs",
+        "showTitle", "title", "background", "bordered", "showDraggable", "showBack", "showClose", "showIcon", "showBadge", "showSubhead", "showActions", "showButtons", "showTabs",
+      ],
+      sort: "none",
     },
   },
-  render: () => (
-    <ContainerHeader
-      title={
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink onClick={() => {}}>Search</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem aria-current="page">
-              <BreadcrumbPage>Customers</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      }
-      titleText="Search"
-      bordered={false}
-      onClose={() => {}}
-    />
-  ),
-};
-
-export const AllVariants: Story = {
-  name: "All variants",
-  render: () => (
-    <div className="flex flex-col divide-y divide-lyra-border-subtle border border-lyra-border-subtle rounded-lyra-lg overflow-hidden bg-lyra-bg-surface-base">
-      <ContainerHeader title="Title only" bordered={false} />
-      <ContainerHeader title="With close" bordered={false} onClose={() => {}} />
-      <ContainerHeader title="With icon" icon={<InfoIcon className="h-5 w-5" />} bordered={false} onClose={() => {}} />
-      <ContainerHeader title="With actions" bordered={false} onClose={() => {}}
-        actions={<Button variant="outline" size="md">Action</Button>} />
-      <ContainerHeader title="With buttons" bordered={false} onClose={() => {}}
-        actions={
-          <>
-            <Button variant="outline" size="md">Action</Button>
-            <Button variant="outline" size="md">Action</Button>
-          </>
-        } />
-      <ContainerHeader title="With badge" bordered={false} onClose={() => {}}
-        titleBadge={<Badge shape="circle" count={3} variant="default" size="sm" />} />
-      <ContainerHeader title="With subhead" subhead="Secondary description text" bordered={false} onClose={() => {}} />
-    </div>
-  ),
+  args: {
+    title: "Container Title",
+    showTitle: true,
+    background: "none",
+    bordered: false,
+    showDraggable: false,
+    showBack: false,
+    showClose: false,
+    showIcon: false,
+    showBadge: false,
+    showSubhead: false,
+    showActions: false,
+    showButtons: false,
+    showTabs: false,
+  },
+  argTypes: {
+    showTitle: {
+      name: "Title",
+      control: "boolean",
+      description: "Show the header title (`title`). Turn it off for an icon-only or action-only header.",
+      table: { category: "Content", defaultValue: { summary: "true" } },
+    },
+    title: {
+      name: "Title text",
+      control: "text",
+      description: "Text of the title.",
+      if: { arg: "showTitle", truthy: true },
+      table: { category: "Content" },
+    },
+    background: {
+      name: "Style",
+      control: "radio",
+      options: ["none", "subtle"],
+      labels: { none: "None", subtle: "Subtle" },
+      description: "Header background (`background`).",
+      table: { category: "Appearance", defaultValue: { summary: "none" } },
+    },
+    bordered: {
+      name: "Header divider",
+      control: "boolean",
+      description: "Border along the bottom edge of the header (`bordered`). Dropped automatically when tabs are on.",
+      table: { category: "Appearance", defaultValue: { summary: "false" } },
+    },
+    showDraggable: {
+      name: "Draggable",
+      control: "boolean",
+      description: "Show the drag grip before the title and make the whole header a grab target (grab cursor), as in a floating panel. Placement only: it doesn't drag anything here (`Draggable` and `Modal`'s `draggable` do the dragging).",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    showBack: {
+      name: "Back button",
+      control: "boolean",
+      description: "Back arrow before the title (`onBack`), for drilling into a sub-view.",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    showClose: {
+      name: "Close button",
+      control: "boolean",
+      description: "Built-in close button at the far right (`onClose`).",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    showIcon: {
+      name: "Icon",
+      control: "boolean",
+      description: "Icon to the left of the title (`icon`).",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    showBadge: {
+      name: "Badge",
+      control: "boolean",
+      description: "Count badge inline after the title (`titleBadge`).",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    showSubhead: {
+      name: "Subhead",
+      control: "boolean",
+      description: "Supporting line under the title (`subhead`).",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    showActions: {
+      name: "Actions",
+      control: "boolean",
+      description: "Icon action on the right (`actions`).",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    showButtons: {
+      name: "Buttons",
+      control: "boolean",
+      description: "Two outline buttons on the right (`actions`).",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    showTabs: {
+      name: "Tabs",
+      control: "boolean",
+      description: "Tab row inside the header (`tabs`).",
+      table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+  },
+  render: (args) => <HeaderDemo key={JSON.stringify(args)} {...args} />,
 };

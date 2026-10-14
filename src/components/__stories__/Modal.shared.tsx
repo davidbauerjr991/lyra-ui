@@ -1,6 +1,7 @@
 /* Shared example data and building blocks for Modal.stories.tsx (Default
    playground) and Modal.variants.stories.tsx (Variants pages). Not a stories
    file — it only holds what both use, so the two can't drift apart. */
+import * as React from "react";
 import type { ReactNode } from "react";
 import { Button } from "../button";
 import { Input } from "../input";
@@ -36,7 +37,7 @@ export type ModalSize = keyof typeof widths;
 export function FormContent() {
   return (
     <>
-      <div className="flex flex-col gap-5 px-5">
+      <div className="flex flex-col gap-5 px-5 pb-2">
         <Input label="Input Label" placeholder="Text" />
         <Select
           label="Input Label"
@@ -51,10 +52,6 @@ export function FormContent() {
           <RadioGroupItem value="option2" label="Radio label" />
           <RadioGroupItem value="option3" label="Radio label" />
         </RadioGroup>
-      </div>
-      <div className="flex justify-end gap-2 px-5 pb-5 mt-6">
-        <Button variant="outline">Cancel</Button>
-        <Button>Save</Button>
       </div>
     </>
   );
@@ -130,25 +127,46 @@ export const toneConfig: Record<ModalTone, ToneConfig> = {
   },
 };
 
-/** Body and footer for a tone — the form for `standard`, a message plus buttons otherwise. */
-export function ToneContent({ tone, onClose, note }: { tone: ModalTone; onClose?: () => void; note?: ReactNode }) {
-  if (tone === "standard") return <FormContent />;
-  const { body, footer } = toneConfig[tone];
+/** Body for a tone — the form for `standard`, a message otherwise. The buttons live in the
+ *  modal's footer (`toneFooterActions`), rendered by `ContainerFooter`. */
+export function ToneContent({ tone, note }: { tone: ModalTone; note?: ReactNode }) {
+  if (tone === "standard") {
+    return (
+      <>
+        <FormContent />
+        {note && <div className="px-5 pb-2">{note}</div>}
+      </>
+    );
+  }
+  const { body } = toneConfig[tone];
+  return (
+    <div className="flex flex-col gap-2 px-5 pb-2">
+      <p className="lyra-body-md text-lyra-fg-default">{body}</p>
+      {note}
+    </div>
+  );
+}
+
+/** Footer buttons for a tone, for `Modal`/`Container`'s `footerActions`. The Cancel button
+ *  closes the demo when `onClose` is given. */
+export function toneFooterActions(tone: ModalTone, onClose?: () => void): ReactNode {
+  if (tone === "standard") {
+    return (
+      <>
+        <Button variant="outline" data-modal-cancel onClick={onClose}>Cancel</Button>
+        <Button>Save</Button>
+      </>
+    );
+  }
+  const { footer } = toneConfig[tone];
+  const nodes = React.isValidElement<{ children?: ReactNode }>(footer) && footer.type === React.Fragment ? footer.props.children : footer;
   return (
     <>
-      <div className="flex flex-col gap-2 px-5">
-        <p className="lyra-body-md text-lyra-fg-default">{body}</p>
-        {note}
-      </div>
-      {/* The Cancel button (marked `data-modal-cancel`) closes the demo modal */}
-      <div
-        className="flex justify-end gap-2 px-5 pb-5 mt-6"
-        onClick={(e) => {
-          if (onClose && (e.target as HTMLElement).closest("[data-modal-cancel]")) onClose();
-        }}
-      >
-        {footer}
-      </div>
+      {React.Children.map(nodes, (child) =>
+        React.isValidElement<{ "data-modal-cancel"?: boolean; onClick?: () => void }>(child) && child.props["data-modal-cancel"]
+          ? React.cloneElement(child, { onClick: onClose })
+          : child
+      )}
     </>
   );
 }

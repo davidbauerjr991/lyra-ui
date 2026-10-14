@@ -1,5 +1,5 @@
-/* Shared styles for ListItem.stories.tsx (Default playground) and
-   ListItem.variants.stories.tsx (Variants pages). Not a stories file — it only
+/* Shared styles for MenuItem.stories.tsx (Default playground) and
+   MenuItem.variants.stories.tsx (Variants pages). Not a stories file — it only
    holds what both use, so the two can't drift apart. */
 
 /** The menu panel surface a `MenuItem` normally sits in (add padding as needed). */

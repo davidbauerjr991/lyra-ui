@@ -9,6 +9,7 @@ import {
   CloseButton,
   QueryRows,
   ToneContent,
+  toneFooterActions,
   TONES,
   toneConfig,
   widths,
@@ -19,7 +20,7 @@ import {
    Modal → Default. "!autodocs" keeps this folder from getting a second Docs
    page. */
 const meta: Meta<typeof Modal> = {
-  title: "UI/Modal/Variants",
+  title: "Custom Primitives/Modal/Variants",
   component: Modal,
   tags: ["!autodocs"],
   parameters: {
@@ -48,6 +49,7 @@ export const AllVariants: Story = {
             headerTitle={title}
             headerIcon={icon}
             headerActions={<CloseButton />}
+            footerActions={toneFooterActions(tone)}
             className={widths.md}
           >
             <ToneContent tone={tone} />
@@ -65,6 +67,15 @@ export const Overflow: Story = {
       open
       headerTitle="Query Builder"
       headerActions={<CloseButton label="Close Query Builder" />}
+      footerBordered
+      footerActions={
+        <>
+          <Button variant="outline">Save Search</Button>
+          <div className="flex-1" />
+          <Button variant="outline">Cancel</Button>
+          <Button>Apply</Button>
+        </>
+      }
       className={cn(widths.lg, "flex flex-col max-h-[80vh]")}
     >
       {/* Scrollable body */}
@@ -72,13 +83,6 @@ export const Overflow: Story = {
         <QueryRows count={8} />
       </div>
 
-      {/* Fixed footer */}
-      <div className="flex-shrink-0 flex justify-end gap-2 px-5 py-4">
-        <Button variant="outline">Save Search</Button>
-        <div className="flex-1" />
-        <Button variant="outline">Cancel</Button>
-        <Button>Apply</Button>
-      </div>
     </Modal>
   ),
 };
@@ -103,9 +107,10 @@ export const AlertDialog: Story = {
           headerTitle={title}
           headerIcon={icon}
           headerActions={<CloseButton onClick={() => setOpen(false)} />}
+          footerActions={toneFooterActions("destructive", () => setOpen(false))}
           className={widths.sm}
         >
-          <ToneContent tone="destructive" onClose={() => setOpen(false)} />
+          <ToneContent tone="destructive" />
         </Modal>
       </>
     );

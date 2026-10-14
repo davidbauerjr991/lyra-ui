@@ -14,7 +14,7 @@ import type { EmbeddablePanelContent } from "./draggable";
 
    Two consumption shapes, same convention as `AgentSearch`/
    `AgentNotifications`: `useScreenPopContent` returns an
-   `EmbeddablePanelContent` for a shared `Draggable`/`DraggablePanel` shell
+   `EmbeddablePanelContent` for a shared `Draggable` shell
    (the `Select` in `headerContent` so it stays fixed above the divider,
    the mock/placeholder in `body`); `ScreenPop` renders the same content
    standalone with its own fixed header row. */

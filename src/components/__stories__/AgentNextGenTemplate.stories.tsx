@@ -8,8 +8,7 @@ import { CXoneLogo } from "../cxone-logo";
 import { ActionIconButton } from "../actions";
 import { NotificationsBell } from "../notifications-bell";
 import { useAgentNotificationsContent, type AgentNotification } from "../agent-notifications";
-import { AgentChat } from "../agent-chat";
-import { useAgentSearchContent } from "../agent-search";
+import { SearchInput } from "../search-input";
 import { useScreenPopContent } from "../screen-pop";
 import { useScheduleContent } from "../schedule-panel";
 import { KebabMenuButton } from "../kebab-menu-button";
@@ -1384,10 +1383,6 @@ function AgentNextGenTemplate({
     onDismiss: (id) => setNotifications((prev) => prev.filter((n) => n.id !== id)),
     onNotificationClick: (n) => setNotifications((prev) => prev.map((i) => i.id === n.id ? { ...i, read: true } : i)),
   });
-  const searchContent = useAgentSearchContent({
-    query: globalSearchQuery,
-    onQueryChange: setGlobalSearchQuery,
-  });
   const screenPopContent = useScreenPopContent({
     app: screenPopApp,
     onAppChange: setScreenPopApp,
@@ -1395,19 +1390,32 @@ function AgentNextGenTemplate({
   // Schedule keeps its view/anchorDate internal (uncontrolled) — nothing
   // else in this template needs to read them, matching the reference.
   const scheduleContent = useScheduleContent();
+  // v2's shared blank placeholder — same blank empty state the old generic panel showed.
+  const blankPanelBody = (
+    <div className="overflow-y-auto flex-1 flex items-center justify-center p-4">
+      <p className="lyra-body-md text-lyra-fg-disabled text-center">Nothing here yet.</p>
+    </div>
+  );
   const contentByPanelKey: Record<PanelKey, EmbeddablePanelContent> = {
-    search: searchContent,
-    // WEM has no real content yet — v2's shared blank placeholder.
-    wem: {
-      title: "WEM",
-      body: (
-        <div className="overflow-y-auto flex-1 flex items-center justify-center p-4">
-          <p className="lyra-body-md text-lyra-fg-disabled text-center">Nothing here yet.</p>
-        </div>
+    // Search: a `SearchInput` as the fixed header row above the blank body (this used to be
+    // `useAgentSearchContent`).
+    search: {
+      title: "Search",
+      headerContent: (
+        <SearchInput
+          value={globalSearchQuery}
+          onValueChange={setGlobalSearchQuery}
+          placeholder="Search..."
+          size="sm"
+        />
       ),
+      body: blankPanelBody,
     },
+    // WEM has no real content yet.
+    wem: { title: "WEM", body: blankPanelBody },
     screenpop: screenPopContent,
-    conversations: { title: "Agent Chat", body: <AgentChat /> },
+    // Agent Chat has no real content yet either (this used to be an `AgentChat` component).
+    conversations: { title: "Agent Chat", body: blankPanelBody },
     schedule: scheduleContent,
     notif: notifContent,
   };
@@ -1573,7 +1581,7 @@ function AgentNextGenTemplate({
           />
           {activePanelContent.headerContent && (
             // Fixed between the title row and the scrollable body — same
-            // wrapper `DraggablePanel` gives its own `headerContent`.
+            // wrapper the old generic panel gave its own `headerContent`.
             <div className="shrink-0 px-4 pb-3 border-b border-lyra-border-subtle">
               {activePanelContent.headerContent}
             </div>

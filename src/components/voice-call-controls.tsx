@@ -524,7 +524,7 @@ export interface VoiceCallControlsProps {
    *  (Hold/Mute/Mask/Record) already uses. */
   transcriptOpen?: boolean;
   /**
-   * Opens/closes the small draggable video window (a `DraggablePanel`) the
+   * Opens/closes the small draggable video window (a `Draggable`) the
    * caller renders elsewhere in the page — replaces this button's old
    * decorative-only "toggle local icon + toast" behavior with a real
    * window when wired. Omit to keep that old decorative fallback (still

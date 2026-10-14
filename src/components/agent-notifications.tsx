@@ -1,12 +1,14 @@
 import * as React from "react";
-import { UserPlus, MessageSquare, Users, AlertTriangle, PhoneMissed, Bell, Trash2, GripVertical, MoreHorizontal } from "lucide-react";
+import { UserPlus, MessageSquare, Users, AlertTriangle, PhoneMissed, Bell, Trash2, GripVertical, MoreHorizontal, Maximize2 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { MenuItem } from "./menu-item";
 import { Badge } from "./badge";
 import { Tooltip } from "./tooltip";
 import { Draggable, type DraggableVariant, type EmbeddablePanelContent } from "./draggable";
 import { ContainerHeader } from "./container-header";
-import { MenuRadix } from "./menu-radix";
+import { KebabMenuButton } from "./kebab-menu-button";
+import { ActionIconButton } from "./actions";
+import { EmptyState } from "./empty-state";
 
 /* ── Types ── */
 
@@ -33,6 +35,13 @@ export interface AgentNotificationsProps {
   onClearAll?: () => void;
   onMarkAllRead?: () => void;
   onClose?: () => void;
+  /**
+   * Show a full-screen button in the header (next to the dock button) and call this when it's
+   * clicked. The panel has no full-screen mode of its own — the consumer renders whatever
+   * "full screen" means for it (agent-next-gen-v3 swaps in an overlay filling its container;
+   * see `useAgentNotificationsContent` for the content to reuse there). Omit for no button.
+   */
+  onFullScreen?: () => void;
   onNotificationClick?: (notification: AgentNotification) => void;
   onDismiss?: (id: string) => void;
   /** Restored width on each remount so resize is preserved across float↔docked switches */
@@ -131,7 +140,7 @@ export interface AgentNotificationsContentProps {
  * stories.tsx` demo) can get it without reimplementing it a second time.
  * `dockedIcon` is intentionally omitted (left `undefined`) — Notifications
  * shows no icon at all when docked, only the shared drag grip in float
- * mode, same as `DraggablePanel`'s own generic default. */
+ * mode, same generic empty-state default. */
 function useAgentNotificationsContent({
   notifications, onClearAll, onMarkAllRead, onNotificationClick, onDismiss,
 }: AgentNotificationsContentProps): EmbeddablePanelContent {
@@ -159,92 +168,59 @@ function useAgentNotificationsContent({
     ? <Badge shape="circle" variant="info" size="sm" className="-translate-y-0.5">{unreadCount}</Badge>
     : undefined;
 
+  // `KebabMenuButton` (built on `MenuRadix`) is the shared "icon button that opens a Menu";
+  // `h-8 w-8` keeps this header's 32px action size (its own default is 24px).
   const headerActions = overflowItems.length > 0 ? (
     <Tooltip content="More options" placement="bottom" disabled={overflowMenuOpen}>
-      <span className="inline-flex">
-        <MenuRadix
-          trigger={
-            <button
-              type="button"
-              aria-label="More options"
-              className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-secondary hover:bg-lyra-state-hover hover:text-lyra-fg-default transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
-            >
-              <MoreHorizontal className="h-4 w-4" strokeWidth={1.5} />
-            </button>
-          }
-          items={overflowItems}
-          align="end"
-          onOpenChange={setOverflowMenuOpen}
-        />
-      </span>
+      <KebabMenuButton
+        ariaLabel="More options"
+        icon={<MoreHorizontal className="h-4 w-4" strokeWidth={1.5} />}
+        items={overflowItems}
+        className="h-8 w-8 hover:text-lyra-fg-default focus-visible:ring-offset-2"
+        onOpenChange={setOverflowMenuOpen}
+      />
     </Tooltip>
   ) : undefined;
 
   const body = (
     <div className="overflow-y-auto flex-1 p-2">
       {notifications.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-10 gap-2">
-          <Bell className="h-8 w-8 text-lyra-fg-disabled" strokeWidth={1} />
-          <p className="lyra-body-md text-lyra-fg-secondary">No notifications</p>
-        </div>
+        <EmptyState
+          className="py-10"
+          icon={<Bell className="h-8 w-8" strokeWidth={1} />}
+          message="No notifications"
+        />
       ) : (
         notifications.map((n, i) => (
           <React.Fragment key={n.id}>
-            <div className="group/notif relative">
-              {/* `MenuItem`'s own `active` state supplies the unread
-                  indicator (persistent accent bar + tinted blue
-                  background). `header`/`label`/`description` map onto this
-                  component's existing `title`/`subtitle`/`timestamp` fields:
-                  `header` (bold) = `title` when a `subtitle` exists
-                  (matching the two-line "New Case" / "Noah Patel" look);
-                  `label` falls back to `title` itself for a notification
-                  with no `subtitle`, since `MenuItem.label` is a required
-                  prop. `label`'s own `text-lyra-fg-default` override keeps
-                  the name text dark even when `active` — `active` on
-                  `Menu`'s original "current nav item" is meant to recolor
-                  its whole row's text blue, but a notification row's text
-                  should stay neutral regardless of read state; only the
-                  background/accent bar should tint. */}
-              {/* `itemRole="button"` — these rows sit in a plain panel, not a
-                  `role="menu"`, so the default "menuitem" role had no valid
-                  parent (axe aria-required-parent). */}
-              <MenuItem
-                itemRole="button"
-                onClick={() => onNotificationClick?.(n)}
-                icon={<NotificationIcon type={n.type} icon={n.icon} />}
-                header={n.subtitle ? n.title : undefined}
-                label={<span className="text-lyra-fg-default">{n.subtitle ?? n.title}</span>}
-                description={n.timestamp}
-                active={!n.read}
-                className="pr-10"
-              />
-              {/* Dismiss button — visible on row hover */}
-              <Tooltip content="Clear" placement="left" asLabel>
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); onDismiss?.(n.id); }}
-                  aria-label={`Clear ${n.title}`}
-                  className={cn(
-                    "absolute right-3 top-1/2 -translate-y-1/2",
-                    "flex h-6 w-6 items-center justify-center rounded-lyra-sm",
-                    "text-lyra-fg-secondary hover:text-lyra-fg-default hover:bg-lyra-state-hover transition-colors",
-                    // `focus-visible:opacity-100` alongside the existing
-                    // hover reveal — per explicit accessibility request:
-                    // this button is itself the focusable element (unlike
-                    // a hover toolbar revealing several descendants), so a
-                    // plain `focus-visible:` suffices here, same technique
-                    // `favorite-button.tsx` already uses. Without it,
-                    // Tabbing here still reaches the button (opacity alone
-                    // doesn't pull it out of tab order) but leaves it
-                    // completely invisible while focused.
-                    "opacity-0 group-hover/notif:opacity-100 focus-visible:opacity-100",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
-                  )}
-                >
-                  <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-                </button>
-              </Tooltip>
-            </div>
+            {/* `MenuItem`: icon = the type icon, title/subtitle/meta = the three text lines
+                (bold title when there's a `subtitle`, else the title becomes the single line),
+                trailing = the Clear button (revealed on row hover or keyboard focus). `active`
+                marks unread (tinted + accent bar). The row is a clickable div, so it gets button
+                semantics and Enter/Space handling here. */}
+            <MenuItem
+              as="div"
+              static={false}
+              onClick={() => onNotificationClick?.(n)}
+              icon={<NotificationIcon type={n.type} icon={n.icon} />}
+              header={n.subtitle ? n.title : undefined}
+              label={n.subtitle ?? n.title}
+              description={n.timestamp}
+              rightElement={
+                <Tooltip content="Clear" placement="left" asLabel>
+                  <ActionIconButton
+                    size="xs"
+                    onClick={(e) => { e.stopPropagation(); onDismiss?.(n.id); }}
+                    aria-label={`Clear ${n.title}`}
+                    className="opacity-0 group-hover/notif:opacity-100 focus-visible:opacity-100"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  </ActionIconButton>
+                </Tooltip>
+              }
+              active={!n.read}
+              className="group/notif"
+            />
             {i < notifications.length - 1 && (
               <div role="separator" className="border-b border-lyra-border-subtle my-1.5" />
             )}
@@ -266,7 +242,7 @@ function useAgentNotificationsContent({
 /* ── Component ── */
 
 const AgentNotifications = React.forwardRef<HTMLDivElement, AgentNotificationsProps>(
-  ({ notifications, onClearAll, onMarkAllRead, onClose, onNotificationClick, onDismiss,
+  ({ notifications, onClearAll, onMarkAllRead, onClose, onFullScreen, onNotificationClick, onDismiss,
      defaultWidth = 320, maxWidth, height,
      draggableVariant: draggableVariantProp = "float", onVariantChange, onWidthChange, onResizeStateChange,
      onInteract, className }, ref) => {
@@ -328,6 +304,19 @@ const AgentNotifications = React.forwardRef<HTMLDivElement, AgentNotificationsPr
                     on MenuRadix — see `useAgentNotificationsContent`'s own
                     comment for why). */}
                 {headerActions}
+                {/* Full screen (only when the consumer handles it) */}
+                {onFullScreen && (
+                  <Tooltip content="Full Screen" placement="bottom" asLabel>
+                    <ActionIconButton
+                      aria-label="Full Screen"
+                      size="sm"
+                      onClick={onFullScreen}
+                      className="text-lyra-fg-secondary hover:text-lyra-fg-secondary"
+                    >
+                      <Maximize2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                    </ActionIconButton>
+                  </Tooltip>
+                )}
                 {/* Dock / undock toggle */}
                 <Tooltip content={dockButtonProps["aria-label"]} placement="bottom" asLabel>
                   <button

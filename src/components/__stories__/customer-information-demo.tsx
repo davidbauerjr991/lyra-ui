@@ -62,8 +62,8 @@ import {
 } from "../date-range-filter-chip";
 import { type FilterChipOption } from "../filter-chip";
 import { Popover } from "../popover";
-import { PanelHeader } from "../panel-header";
-import { PanelFooter } from "../panel-footer";
+import { ContainerHeader } from "../container-header";
+import { ContainerFooter } from "../container-footer";
 import { cn } from "../../lib/utils";
 
 export const CUSTOMER_PANEL_TABS = [
@@ -622,14 +622,14 @@ export type CustomerRecordDraftApi = ReturnType<typeof useCustomerRecordDraft>;
  *  slot's conditional render unmounts it immediately on Save/Cancel). */
 export function CustomerRecordSaveFooter({ onSave, onCancel }: { onSave: () => void; onCancel: () => void }) {
   return (
-    <PanelFooter className="animate-in slide-in-from-bottom-2 fade-in-0 duration-200">
+    <ContainerFooter scrollShadow className="animate-in slide-in-from-bottom-2 fade-in-0 duration-200">
       <Button variant="outline" size="md" onClick={onCancel}>
         Cancel
       </Button>
       <Button size="md" onClick={onSave}>
         Save
       </Button>
-    </PanelFooter>
+    </ContainerFooter>
   );
 }
 
@@ -1258,7 +1258,7 @@ function useCustomerPanelData(person: CustomerInformationPerson) {
    as a flyout: fixed `w-[340px]` (the panel's own default docked width),
    `h-[80vh] max-h-[768px]` (a standard height regardless of which tab is
    active — v2 confirmed live that letting it shrink to the shortest tab
-   read as broken), header pinned via PanelHeader's `tabs` slot, only the
+   read as broken), header pinned via ContainerHeader's `tabs` slot, only the
    body scrolling. Owns its own `activeTab`, independent of the real
    panel's.
 
@@ -1298,7 +1298,7 @@ export function CustomerInfoHoverPreview({
       onMouseLeave={onMouseLeave}
       className="flex h-[80vh] max-h-[768px] w-[340px] flex-col overflow-hidden rounded-lyra-lg border border-lyra-border-soft bg-lyra-bg-surface-container-subtle shadow-lg"
     >
-      <PanelHeader
+      <ContainerHeader
         title="Customer Information"
         subhead={person.name}
         tabs={

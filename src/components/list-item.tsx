@@ -1,70 +1,45 @@
 import * as React from "react";
-import { cn } from "../lib/utils";
+import { MenuItem } from "./menu-item";
 
-/* ── Types ── */
+/* ── ListItem (deprecated) ──
+   `MenuItem` is now the single row component. `ListItem` is kept only as a
+   thin compatibility wrapper (prototypes import it from the live lyra-ui
+   source) and maps its props onto `MenuItem`:
+   leading → icon, title → header, subtitle → label, meta → description,
+   trailing → rightElement. Title-only rows render the title as the label. */
 
-export interface ListItemProps extends React.HTMLAttributes<HTMLDivElement> {
-  /** Leading icon or avatar */
+export interface ListItemProps
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, "title" | "onClick"> {
   leading?: React.ReactNode;
-  /** Primary/title text */
   title: React.ReactNode;
-  /** Secondary/subtitle text */
   subtitle?: React.ReactNode;
-  /** Tertiary/meta text (e.g. timestamp) */
   meta?: React.ReactNode;
-  /** Trailing element (e.g. badge, button, chevron) */
   trailing?: React.ReactNode;
-  /** Show a bottom divider */
+  /** Show a bottom divider (default true) */
   divider?: boolean;
   /** Disable hover state */
   static?: boolean;
+  /** Highlighted (e.g. unread) row */
+  active?: boolean;
+  onClick?: () => void;
 }
 
-/* ── Component ── */
-
+/** @deprecated Use `MenuItem` (`as="div"` for rows with their own controls). */
 const ListItem = React.forwardRef<HTMLDivElement, ListItemProps>(
-  ({
-    leading,
-    title,
-    subtitle,
-    meta,
-    trailing,
-    divider = true,
-    static: isStatic = false,
-    className,
-    ...props
-  }, ref) => (
-    <div
+  ({ leading, title, subtitle, meta, trailing, divider = true, static: isStatic = false, active = false, ...props }, ref) => (
+    <MenuItem
       ref={ref}
-      className={cn(
-        "flex items-start gap-3 px-4 py-3",
-        !isStatic && "cursor-pointer transition-colors hover:bg-lyra-state-hover",
-        divider && "border-b border-lyra-border-subtle last:border-0",
-        className
-      )}
+      as="div"
+      divider={divider}
+      static={isStatic}
+      active={active}
+      icon={leading}
+      header={subtitle || meta ? title : undefined}
+      label={subtitle || meta ? subtitle : title}
+      description={meta}
+      rightElement={trailing}
       {...props}
-    >
-      {/* Leading */}
-      {leading && (
-        <div className="shrink-0 mt-0.5">{leading}</div>
-      )}
-
-      {/* Text stack */}
-      <div className="flex-1 min-w-0">
-        <p className="lyra-body-md-emphasis text-lyra-fg-default truncate">{title}</p>
-        {subtitle && (
-          <p className="lyra-body-md text-lyra-fg-default truncate mt-0.5">{subtitle}</p>
-        )}
-        {meta && (
-          <p className="lyra-body-sm text-lyra-fg-secondary mt-0.5">{meta}</p>
-        )}
-      </div>
-
-      {/* Trailing */}
-      {trailing && (
-        <div className="shrink-0 ml-2 mt-0.5">{trailing}</div>
-      )}
-    </div>
+    />
   )
 );
 ListItem.displayName = "ListItem";

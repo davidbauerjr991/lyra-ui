@@ -2,7 +2,8 @@
    Container.variants.stories.tsx (Variants pages). Not a stories file — it
    only holds the fixtures both use, so the two can't drift apart. */
 import { useState } from "react";
-import { Box, Settings } from "lucide-react";
+import type { ReactNode } from "react";
+import { Box, GripVertical, Settings } from "lucide-react";
 import { Container } from "../container";
 import { Badge } from "../badge";
 import { Button } from "../button";
@@ -87,6 +88,21 @@ export const LegacyExamples = () => (
 /* Header slot fixtures — sample nodes for Container's `header*` slot props,
    used by both the Default playground (as on/off toggles) and the Variants
    pages. */
+/* Placement-only "Draggable" header treatment for the playgrounds: a drag grip before the icon and a
+   grab cursor over the whole header. Nothing drags (`Draggable` / `Modal`'s `draggable` do that). */
+export const DRAG_HEADER_CLASS = "cursor-grab select-none active:cursor-grabbing";
+export function withDragGrip(icon: ReactNode, draggable: boolean): ReactNode {
+  if (!draggable) return icon;
+  return (
+    <span className="flex items-center gap-1.5">
+      <span aria-hidden="true" className="flex text-lyra-fg-secondary">
+        <GripVertical className="h-4 w-4" strokeWidth={1.5} />
+      </span>
+      {icon}
+    </span>
+  );
+}
+
 export const headerIcon = <Box className="h-5 w-5" strokeWidth={1.5} />;
 export const headerTitleBadge = <Badge shape="circle" count={3} variant="default" size="sm" />;
 /* Status tag used for both `headerTopSlot` (above the title) and

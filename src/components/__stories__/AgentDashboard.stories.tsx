@@ -107,7 +107,10 @@ function AgentDashboardTemplate() {
 /* ── Storybook Meta ── */
 
 const meta: Meta<typeof AgentDashboardTemplate> = {
-  title: "UI/Agent Dashboard",
+  // Same title as Dashboards.stories.tsx on purpose: this shows up as a third story in
+  // Templates > Dashboards (Dashboards, Full Width, Agent Dashboard). Export names must
+  // stay different from that file's (`Default`, `FullWidth`) so story IDs don't collide.
+  title: "Templates/Dashboards",
   component: AgentDashboardTemplate,
   parameters: {
     layout: "fullscreen",
@@ -118,7 +121,7 @@ const meta: Meta<typeof AgentDashboardTemplate> = {
 export default meta;
 type Story = StoryObj<typeof AgentDashboardTemplate>;
 
-export const Default: Story = {
+export const AgentDashboardView: Story = {
   name: "Agent Dashboard",
   render: () => <AgentDashboardTemplate />,
 };

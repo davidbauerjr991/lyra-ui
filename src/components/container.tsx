@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { ContainerHeader } from "./container-header";
-import { ContainerFooter, type ContainerFooterAlign } from "./container-footer";
+import { ContainerHeaderSlot } from "./container-header";
+import { ContainerFooterSlot, type ContainerFooterAlign } from "./container-footer";
 import { cn } from "../lib/utils";
 
 /*
@@ -100,6 +100,10 @@ interface ContainerProps
   footerAlign?: ContainerFooterAlign;
   /** Show a border along the top edge of the footer (default: false) */
   footerBordered?: boolean;
+  /** Forwarded to `ContainerFooter`'s `scrollShadow` — shadow above the footer while content scrolls behind it (default: false). */
+  footerScrollShadow?: boolean;
+  /** Fade the content out into the footer while it scrolls behind it, instead of a hard edge. Forwarded to `ContainerFooter`'s `scrollFade`; when on, `footerScrollShadow` and `footerBordered` are ignored (default: false). */
+  footerScrollFade?: boolean;
   /** Additional className merged onto the footer's own wrapper div. */
   footerClassName?: string;
 }
@@ -110,48 +114,38 @@ const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
     headerTitle, headerIcon, headerActions,
     headerTitleBadge, headerTopSlot, headerSubhead, headerBordered = false,
     headerTitleClassName, headerClassName, headerActionsWrap, headerTabs,
-    footerActions, footerAlign, footerBordered = false, footerClassName,
+    footerActions, footerAlign, footerBordered = false, footerScrollShadow = false, footerScrollFade, footerClassName,
     children, ...props
   }, ref) => {
-    // Render the header whenever *any* header-related prop is present, not
-    // just when there's title text — an icon-only or tag-only header (no
-    // title, e.g. DashboardCard's "show/hide header text" control) still
-    // needs the row to render so the icon/subhead/topSlot aren't silently
-    // dropped along with the title.
-    const hasHeader = Boolean(
-      headerTitle || headerIcon || headerActions || headerTitleBadge || headerTopSlot || headerSubhead || headerTabs
-    );
-
     return (
       <div
         ref={ref}
         className={cn(containerVariants({ variant }), className)}
         {...props}
       >
-        {hasHeader && (
-          <ContainerHeader
-            title={headerTitle}
-            icon={headerIcon}
-            actions={headerActions}
-            titleBadge={headerTitleBadge}
-            topSlot={headerTopSlot}
-            subhead={headerSubhead}
-            bordered={headerBordered}
-            className={headerClassName}
-            actionsWrap={headerActionsWrap}
-            tabs={headerTabs}
-            {...(headerTitleClassName ? { titleClassName: headerTitleClassName } : {})}
-          />
-        )}
+        <ContainerHeaderSlot
+          title={headerTitle}
+          icon={headerIcon}
+          actions={headerActions}
+          titleBadge={headerTitleBadge}
+          topSlot={headerTopSlot}
+          subhead={headerSubhead}
+          bordered={headerBordered}
+          className={headerClassName}
+          actionsWrap={headerActionsWrap}
+          tabs={headerTabs}
+          {...(headerTitleClassName ? { titleClassName: headerTitleClassName } : {})}
+        />
         {children}
-        {footerActions && (
-          <ContainerFooter
-            actions={footerActions}
-            align={footerAlign}
-            bordered={footerBordered}
-            className={footerClassName}
-          />
-        )}
+        <ContainerFooterSlot
+          content={footerActions}
+          align={footerAlign}
+          bordered={footerBordered}
+          scrollShadow={footerScrollShadow}
+          scrollFade={footerScrollFade}
+          className={footerClassName}
+          defaultScrollShadow={false}
+        />
       </div>
     );
   }

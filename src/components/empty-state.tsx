@@ -3,7 +3,7 @@ import { cn } from "../lib/utils";
 
 /* ── EmptyState ──
    Generic "nothing to show here" placeholder — the same shape several
-   components already hand-roll inline (`DraggablePanel`'s default body,
+   components already hand-roll inline (the old generic panel's default body,
    `AiPanel`'s "No conversation history." history view), extracted so any
    card/widget/table body that needs a plain centered "no data" message
    composes this instead of re-deriving the same `text-lyra-fg-disabled`
@@ -34,7 +34,7 @@ export interface EmptyStateProps extends React.HTMLAttributes<HTMLDivElement> {
    * Display" (Contact History) placeholder already uses, per an explicit
    * request/screenshot comparing the two ("it should match the Nothing to
    * Display in My Contact History"). Off by default so every existing
-   * consumer (`DraggablePanel`'s default body, `AiPanel`'s history view,
+   * consumer (the old generic panel's default body, `AiPanel`'s history view,
    * the `EmptyState` stories) is completely unaffected.
    */
   tone?: "disabled" | "secondary";

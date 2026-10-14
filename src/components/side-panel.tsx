@@ -1,8 +1,11 @@
 import * as React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { PanelHeader } from "./panel-header";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ContainerFooterSlot, type ContainerFooterAlign } from "./container-footer";
+import { Maximize2, Minimize2, PanelLeftClose, PanelRightClose } from "lucide-react";
+import { ContainerHeader } from "./container-header";
 import { PanelContent } from "./panel-content";
 import { PanelPinButton } from "./panel-pin-button";
+import { Tooltip } from "./tooltip";
 import { usePanelDragResize } from "./use-panel-drag-resize";
 import { cn } from "../lib/utils";
 
@@ -33,7 +36,7 @@ import { cn } from "../lib/utils";
    unified `Panel` (`variant="side" | "interior"`) caused enough confusion
    between the two that it was split back into these two.
 
-   Also distinct from `Draggable`/`DraggablePanel` (float/dockable overlay
+   Also distinct from `Draggable` (float/dockable overlay
    shells for things like the AI panel or notifications dropdown) — those
    aren't part of the app shell's side/interior panel system at all, see
    draggable.tsx. */
@@ -49,6 +52,36 @@ export interface SidePanelProps extends React.HTMLAttributes<HTMLDivElement> {
    * pinned when a specific prototype calls for it.
    */
   pinned?: boolean;
+  /**
+   * Container width (px) below which a pinned panel stops pushing the content
+   * and floats over it as an overlay instead, like `InteriorPanel`'s
+   * `absoluteBreakpoint`. Opt-in: leave it unset (default) and `pinned` is the
+   * only thing that decides.
+   */
+  absoluteBreakpoint?: number;
+  /**
+   * Preview a closed, pinned panel: when `true` while `pinned` and not `open`,
+   * the panel slides in as an overlay (without pushing the content) and slides
+   * back out when it turns `false`. The consumer decides what drives it —
+   * typically hovering the button that opens the panel.
+   */
+  preview?: boolean;
+  /**
+   * Show a close button at the far right of the header (default: false). It
+   * calls `onClose`; the panel's `open` is controlled, so the consumer flips it.
+   */
+  showCloseButton?: boolean;
+  /** Called when the header's close button is clicked. */
+  onClose?: () => void;
+  /** Show a full-screen toggle in the header (default: false). */
+  allowFullScreen?: boolean;
+  /** Called whenever the panel enters or leaves full screen. */
+  onFullScreenChange?: (fullScreen: boolean) => void;
+  /**
+   * Start in full screen (covers the container, with an exit button in the
+   * header). Initial value only — the panel manages it afterwards.
+   */
+  defaultFullScreen?: boolean;
   /** Renders a pin/unpin button in the header when provided */
   onPinToggle?: () => void;
 
@@ -66,6 +99,14 @@ export interface SidePanelProps extends React.HTMLAttributes<HTMLDivElement> {
   width?: number;
 
   headerTitle?: string;
+  /** Extra className on the header row (e.g. a grab cursor for a draggable host). */
+  headerClassName?: string;
+  /**
+   * Also render the header when there is no `headerTitle` but other header content is set (icon, subhead,
+   * badge, actions, tabs, buttons), for an icon-only or actions-only header. Off by default: without a
+   * title the header is omitted, as before.
+   */
+  headerWithoutTitle?: boolean;
   /** Optional line below `headerTitle`, e.g. a record's name + id —
    *  `ReactNode`, same widened type as `ContainerHeader`'s own `subhead`
    *  this forwards straight into (see that prop's own doc comment). */
@@ -73,7 +114,7 @@ export interface SidePanelProps extends React.HTMLAttributes<HTMLDivElement> {
   headerIcon?: React.ReactNode;
   /**
    * Rendered inline immediately after `headerTitle`, same row (forwarded
-   * to `PanelHeader`/`ContainerHeader`'s own `titleBadge` slot) — e.g. a
+   * to `ContainerHeader`'s own `titleBadge` slot) — e.g. a
    * view-switcher trigger (a bare chevron opening a `Select` of view
    * options) sitting right next to the title text itself. Distinct from
    * `headerActions` below, which renders at the far right of the header
@@ -83,7 +124,7 @@ export interface SidePanelProps extends React.HTMLAttributes<HTMLDivElement> {
   headerActions?: React.ReactNode;
   /**
    * A `TabList` rendered inside the header itself, below the title/subhead
-   * row — forwarded to `PanelHeader`'s own `tabs` prop (see
+   * row — forwarded to `ContainerHeader`'s own `tabs` prop (see
    * container-header.tsx and `InteriorPanel`'s matching `headerTabs`,
    * which this mirrors for consistency between the two panel types). Keeps
    * tabs outside `PanelContent`'s scroll region entirely rather than
@@ -91,7 +132,20 @@ export interface SidePanelProps extends React.HTMLAttributes<HTMLDivElement> {
    */
   headerTabs?: React.ReactNode;
 
+  /**
+   * Footer content. Pass buttons plus any `footer*` prop below and the panel
+   * wraps them in `ContainerFooter`; with none of them set, the node is
+   * rendered as-is (legacy behavior — e.g. a hand-built `ContainerFooter`).
+   */
   footer?: React.ReactNode;
+  /** Where the footer's buttons sit: `"left"`, `"right"` or `"full"`. Forwarded to `ContainerFooter`'s `align`. */
+  footerAlign?: ContainerFooterAlign;
+  /** Border along the footer's top edge. Forwarded to `ContainerFooter`'s `bordered`. */
+  footerBordered?: boolean;
+  /** Shadow above the footer while content scrolls behind it. Forwarded to `ContainerFooter`'s `scrollShadow`. */
+  footerScrollShadow?: boolean;
+  /** Fade the content out into the footer while it scrolls behind it, instead of a hard edge. Forwarded to `ContainerFooter`'s `scrollFade`; when on, `footerScrollShadow` and `footerBordered` are ignored (default: false). */
+  footerScrollFade?: boolean;
 
   /**
    * Suppresses the width transition for this render only — the panel's
@@ -119,6 +173,18 @@ export interface SidePanelProps extends React.HTMLAttributes<HTMLDivElement> {
    * exactly the case that asked for it instead.
    */
   instantWidthChange?: boolean;
+  /**
+   * Jump to full screen automatically once the panel reaches 90% of
+   * its container's width — by dragging it wider or by the container
+   * shrinking (default: false — opt-in, nothing changes for existing
+   * consumers). Works with or without a `maxWidth`. Full screen covers the whole container as
+   * an absolute overlay (like the unpinned state, so the container must be
+   * positioned) and the header shows an exit (minimize) button while it's
+   * active; exiting restores a width just under 90% so the panel doesn't
+   * immediately jump again. There is no general full-screen button on
+   * `SidePanel` — the button only appears once the panel is full screen.
+   */
+  autoFullScreen?: boolean;
 }
 
 const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
@@ -127,7 +193,14 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
       className,
       side = "right",
       open = true,
-      pinned = false,
+      pinned: pinnedProp = false,
+      absoluteBreakpoint,
+      preview = false,
+      defaultFullScreen = false,
+      allowFullScreen = false,
+      showCloseButton = false,
+      onClose,
+      onFullScreenChange,
       onPinToggle,
       resizable = true,
       minWidth = 200,
@@ -136,13 +209,20 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
       onWidthChange,
       width = 256,
       headerTitle,
+      headerClassName,
+      headerWithoutTitle = false,
       headerSubhead,
       headerIcon,
       headerTitleBadge,
       headerActions,
       headerTabs,
       footer,
+      footerAlign,
+      footerBordered,
+      footerScrollShadow,
+      footerScrollFade,
       instantWidthChange = false,
+      autoFullScreen = false,
       children,
       ...props
     },
@@ -153,9 +233,69 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
       setIsResizing(r);
       onResizeStateChange?.(r);
     }, [onResizeStateChange]);
-    const { width: currentWidth, onMouseDown, onKeyDown: onResizeKeyDown } = usePanelDragResize(
-      side, width, minWidth, maxWidth, handleResizeStateChange, onWidthChange
+
+    // `autoFullScreen`: the container the panel sits in, measured the same way
+    // InteriorPanel does (its parent element), and the full-screen state the
+    // drag callback below flips.
+    const outerRef = useRef<HTMLDivElement>(null);
+    const [parentWidth, setParentWidth] = useState(9999);
+    const parentWidthRef = useRef(9999);
+    parentWidthRef.current = parentWidth;
+    const [isFullScreen, setIsFullScreen] = useState(defaultFullScreen);
+    const isFullScreenRef = useRef(false);
+    isFullScreenRef.current = isFullScreen;
+    const autoEnteredRef = useRef(false);
+
+    const stableOuterRef = useCallback((el: HTMLDivElement | null) => {
+      (outerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+      if (typeof ref === "function") ref(el);
+      else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = el;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useLayoutEffect(() => {
+      const el = outerRef.current?.parentElement;
+      if (!el) return;
+      setParentWidth(el.getBoundingClientRect().width);
+      const ro = new ResizeObserver(([entry]) => setParentWidth(entry.contentRect.width));
+      ro.observe(el);
+      return () => ro.disconnect();
+    }, []);
+
+    const handleWidthChange = useCallback((w: number) => {
+      onWidthChange?.(w);
+      if (
+        autoFullScreen &&
+        !isFullScreenRef.current &&
+        w >= parentWidthRef.current * 0.9
+      ) {
+        autoEnteredRef.current = true;
+        setIsFullScreen(true);
+      }
+    }, [onWidthChange, autoFullScreen, maxWidth]);
+    const { width: currentWidth, onMouseDown, onKeyDown: onResizeKeyDown, setWidth } = usePanelDragResize(
+      side, width, minWidth, maxWidth, handleResizeStateChange, handleWidthChange
     );
+    // While full screen the panel is as wide as its container.
+    const displayWidth = isFullScreen ? parentWidth : currentWidth;
+
+    // The container shrinking can push the panel past 90% of it too, not just dragging.
+    useEffect(() => {
+      if (
+        autoFullScreen && open && !isFullScreen &&
+        currentWidth >= parentWidth * 0.9
+      ) {
+        autoEnteredRef.current = true;
+        setIsFullScreen(true);
+      }
+    }, [autoFullScreen, open, isFullScreen, currentWidth, parentWidth]);
+
+    // Entering/exiting full screen snaps instantly instead of sliding.
+    const prevIsFullScreenRef = useRef(isFullScreen);
+    const fullScreenJustToggled = prevIsFullScreenRef.current !== isFullScreen;
+    useEffect(() => {
+      prevIsFullScreenRef.current = isFullScreen;
+    });
     // Restored to a real conditional — see `instantWidthChange`'s own doc
     // comment for why a prior version of this made this unconditionally
     // `"none"`, and why that overcorrected. `isResizing` keeps drag-resizing
@@ -165,17 +305,77 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
     // toggle, still docked) animates through the 250ms cubic-bezier
     // transition, same as this component's original default behavior.
     const widthTransition =
-      isResizing || instantWidthChange ? "none" : "width 250ms cubic-bezier(0.4, 0, 0.2, 1)";
+      isResizing || instantWidthChange || fullScreenJustToggled || isFullScreen ? "none" : "width 250ms cubic-bezier(0.4, 0, 0.2, 1)";
+
+    // Only while full screen (see `autoFullScreen`): the way back out.
+    const onFullScreenChangeRef = useRef(onFullScreenChange);
+    onFullScreenChangeRef.current = onFullScreenChange;
+    const didMountFs = useRef(false);
+    useEffect(() => {
+      if (!didMountFs.current) { didMountFs.current = true; return; }
+      onFullScreenChangeRef.current?.(isFullScreen);
+    }, [isFullScreen]);
+
+    // Manual way in (`allowFullScreen`); the exit button below is the way out.
+    const enterFullScreen = allowFullScreen && !isFullScreen ? (
+      <Tooltip content="Full screen" placement="bottom" asLabel>
+        <button
+          type="button"
+          aria-label="Full screen"
+          onClick={() => {
+            autoEnteredRef.current = false;
+            setIsFullScreen(true);
+          }}
+          className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-action hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+        >
+          <Maximize2 className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+        </button>
+      </Tooltip>
+    ) : null;
+
+    const exitFullScreen = isFullScreen ? (
+      <Tooltip content="Exit full screen" placement="bottom" asLabel>
+        <button
+          type="button"
+          aria-label="Exit full screen"
+          onClick={() => {
+            if (autoEnteredRef.current) {
+              autoEnteredRef.current = false;
+              setWidth(Math.min(maxWidth, Math.max(minWidth, Math.floor(parentWidth * 0.9) - 1)));
+            }
+            setIsFullScreen(false);
+          }}
+          className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-action hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+        >
+          <Minimize2 className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+        </button>
+      </Tooltip>
+    ) : null;
+
+    // Far right of the header, after the pin button. Icon points the way the panel slides out.
+    const CloseIcon = side === "right" ? PanelRightClose : PanelLeftClose;
+    const closeButton = showCloseButton ? (
+      <Tooltip content="Close" placement="bottom" asLabel>
+        <button
+          type="button"
+          aria-label="Close panel"
+          onClick={onClose}
+          className="flex h-8 w-8 items-center justify-center rounded-lyra-sm text-lyra-fg-action hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2"
+        >
+          <CloseIcon className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+        </button>
+      </Tooltip>
+    ) : null;
 
     const pinButton = onPinToggle ? (
-      <PanelPinButton pinned={pinned} onToggle={onPinToggle} />
+      <PanelPinButton pinned={pinnedProp} onToggle={onPinToggle} />
     ) : null;
 
     // Only rendered while the panel is open. A closed panel (width 0 /
     // `visibility: hidden` content) used to keep this focusable separator
     // mounted, so it was the first Tab stop on the page while invisible
     // (WCAG 2.4.7 / 2.4.3). Unmounting it removes it from the Tab order.
-    const dragHandle = resizable && open ? (
+    const dragHandle = resizable && open && !isFullScreen ? (
       <div
         onMouseDown={onMouseDown}
         // Keyboard-operable "window splitter" (WCAG 2.1.1): focusable,
@@ -202,34 +402,52 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
       </div>
     ) : null;
 
+    // Pinned + closed + preview: float in as an overlay instead of pushing content.
+    // Narrower than the breakpoint, a pinned panel behaves as unpinned (overlay).
+    const pinned = pinnedProp && !(absoluteBreakpoint !== undefined && parentWidth < absoluteBreakpoint);
+    const previewing = preview && pinned && !open;
+    const visible = open || previewing;
+    // Pinned + closed: the panel lives in an absolute layer on a zero-width slot,
+    // so previewing it can never move or resize the surrounding content.
+    const previewLayer = pinned && !open && !isFullScreen;
+
     const inner = (
       <div
         className="relative flex flex-col h-full"
-        style={{ width: currentWidth, minWidth: currentWidth }}
+        style={{ width: displayWidth, minWidth: displayWidth }}
       >
         {dragHandle}
         {/* Snap content invisible on close (no squish); fade in on open */}
         <div
           className="flex flex-col flex-1 min-h-0"
           style={{
-            opacity: open ? 1 : 0,
-            visibility: open ? "visible" : "hidden",
-            transition: open ? "opacity 150ms ease 30ms" : "none",
+            opacity: visible ? 1 : 0,
+            visibility: visible ? "visible" : "hidden",
+            transition: visible ? "opacity 150ms ease 30ms" : "none",
           }}
         >
-          {headerTitle && (
-            <PanelHeader
+          {/* Without a title the header is omitted unless `headerWithoutTitle` opts in. */}
+          {(headerTitle || (headerWithoutTitle && (headerSubhead || headerIcon || headerTitleBadge || headerActions || headerTabs || enterFullScreen || exitFullScreen || pinButton || closeButton))) && (
+            <ContainerHeader
               title={headerTitle}
               subhead={headerSubhead}
               icon={headerIcon}
               titleBadge={headerTitleBadge}
-              actions={<>{headerActions}{pinButton}</>}
+              actions={<>{headerActions}{enterFullScreen}{exitFullScreen}{pinButton}{closeButton}</>}
               tabs={headerTabs}
               bordered={false}
+              className={headerClassName}
             />
           )}
           <PanelContent>{children}</PanelContent>
-          {footer && <div className="shrink-0">{footer}</div>}
+          <ContainerFooterSlot
+            content={footer}
+            align={footerAlign}
+            bordered={footerBordered}
+            scrollShadow={footerScrollShadow}
+            scrollFade={footerScrollFade}
+            rawWhenUnstyled
+          />
         </div>
       </div>
     );
@@ -237,10 +455,10 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
     const border = side === "left" ? "border-r border-lyra-border-subtle" : "border-l border-lyra-border-subtle";
 
     /* ── Pinned: inline, pushes content ── */
-    if (pinned) {
+    if (pinned && !isFullScreen) {
       return (
         <div
-          ref={ref}
+          ref={stableOuterRef}
           role="region"
           aria-label={headerTitle || "Side panel"}
           // `h-full` — explicit, not left to this flex item's own default
@@ -264,11 +482,24 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
           // `AgentNextGenPage` caller's own wrapper around this component,
           // since that wrapper had the identical implicit-stretch gap one
           // level higher.
-          className={cn("shrink-0 h-full overflow-hidden bg-lyra-bg-surface-container-subtle", open && border, className)}
+          className={cn("relative shrink-0 h-full bg-lyra-bg-surface-container-subtle", !previewLayer && "overflow-hidden", open && border, className)}
           style={{ width: open ? currentWidth : 0, transition: widthTransition }}
           {...props}
         >
-          {inner}
+          {previewLayer ? (
+            <div
+              className={cn(
+                "absolute top-0 z-[5] h-full overflow-hidden bg-lyra-bg-surface-container-subtle",
+                side === "left" ? "left-0" : "right-0",
+                previewing ? `shadow-lg ${border}` : "pointer-events-none",
+              )}
+              style={{ width: previewing ? currentWidth : 0, transition: widthTransition }}
+            >
+              {inner}
+            </div>
+          ) : (
+            inner
+          )}
         </div>
       );
     }
@@ -277,11 +508,11 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
     const pos = side === "left" ? "left-0" : "right-0";
     return (
       <div
-        ref={ref}
+        ref={stableOuterRef}
         role="region"
         aria-label={headerTitle || "Side panel"}
-        className={cn("absolute top-0 z-[5] h-full overflow-hidden bg-lyra-bg-surface-container-subtle shadow-lg", pos, open ? border : "pointer-events-none", className)}
-        style={{ width: open ? currentWidth : 0, transition: widthTransition }}
+        className={cn("absolute top-0 z-[5] h-full overflow-hidden bg-lyra-bg-surface-container-subtle shadow-lg", pos, visible ? border : "pointer-events-none", className)}
+        style={{ width: visible ? displayWidth : 0, transition: widthTransition }}
         {...props}
       >
         {inner}

@@ -92,8 +92,8 @@ If a higher-level component needs a dropdown, trigger, input, panel, or any othe
 | A dropdown attached to a trigger | `Menu` or `Popover` + `PopoverContent` (or `MenuRadix` for a self-triggered flyout that owns its own trigger — see below) | A custom `<ul>` dropdown |
 | A text field | `Input` | A raw `<input>` with manual styling |
 | A select / combobox | `Select` + `Menu` (or Radix `Select`) | A new dropdown+input hybrid from scratch |
-| A panel over the page header (hover/pin, left or right) | `SidePanel` + `PanelHeader`/`PanelFooter` | A custom modal-like div with its own header |
-| An inline panel below the page header (click-triggered, left or right) | `InteriorPanel` + `PanelHeader`/`PanelFooter` | A custom modal-like div with its own header |
+| A panel over the page header (hover/pin, left or right) | `SidePanel` + `ContainerHeader`/`ContainerFooter` | A custom modal-like div with its own header |
+| An inline panel below the page header (click-triggered, left or right) | `InteriorPanel` + `ContainerHeader`/`ContainerFooter` | A custom modal-like div with its own header |
 | A chip / badge (pill tint or circular count/icon) | `Badge` (`shape="pill"` or `shape="circle"`) | An inline-styled `<span>` |
 | A breadcrumb trail | `Breadcrumb` + `BreadcrumbList`/`Item`/`Link`/`Page`/`Separator`/`Ellipsis` | A hand-rolled `<nav><ol>` |
 | An icon button | `ActionIconButton` (AppHeader row — Help/Dashboards/Notifications/Ask AI, `size="xl"` → 44px, the canonical AppHeader shape) or `Button` (`variant="icon"`, any other icon-button context — `size="icon-2xl"` is the same 44px AppHeader size `ActionIconButton` composes internally). Both share one `badge` count-overlay implementation (`Button`'s own `badge` prop, rendered via `Badge shape="circle"`) — never hand-roll a second one. | A bare `<button>` with a Lucide icon, or a second hand-rolled badge span |
@@ -117,12 +117,12 @@ reintroduce it):
 | Side | `side="left"` / `side="right"` (required to be explicit at each call site — don't rely on the default when the surrounding layout implies a specific side) | `side="left"` / `side="right"` (same) |
 | Narrow-container behavior | N/A | Becomes an absolute overlay below ~1050px of its parent container's width, instead of squeezing the main content column further |
 
-Both share the same sub-parts (`PanelHeader`, `PanelContent`, `PanelFooter`,
+Both share the same sub-parts (`ContainerHeader`, `PanelContent`, `ContainerFooter`,
 `PanelPinButton` for `SidePanel`) and the same internal drag-resize hook
 (`use-panel-drag-resize.ts`) — reuse those instead of hand-rolling
 resize/pin logic again.
 
-`Draggable`/`DraggablePanel` (float/dockable shells like the AI panel or
+`Draggable` (float/dockable shells like the AI panel or
 notifications dropdown) are a **different, unrelated concept** — don't
 confuse either of them with `SidePanel`/`InteriorPanel`.
 
@@ -358,7 +358,7 @@ All overlapping layers in Lyra UI follow a fixed z-index scale. **Never use an a
 | Base content | `0` – `49` | Normal document flow, sticky headers |
 | Overlays & dropdowns | `9999` | Portal wrappers (e.g. `NotificationsBell` panel portal) |
 | Tooltips | `10000` | `Tooltip` (`TooltipPrimitive.Content`) |
-| Floating `Draggable` panels | `9999` (all) / `10000` (single front-most) | `AiPanel`/`DraggablePanel`/`Draggable` in float mode, per draggable.tsx's documented multi-panel contract (`topPanel` state + `onInteract`). The front-most panel intentionally shares `10000` with tooltips: tooltips are transient hover layers that render later in the DOM, so they still appear above the panel they originate from — do not raise panels higher. |
+| Floating `Draggable` panels | `9999` (all) / `10000` (single front-most) | `AiPanel`/`Draggable` in float mode, per draggable.tsx's documented multi-panel contract (`topPanel` state + `onInteract`). The front-most panel intentionally shares `10000` with tooltips: tooltips are transient hover layers that render later in the DOM, so they still appear above the panel they originate from — do not raise panels higher. |
 | Priority menus | `10001` | `AgentProfile` status menu — always the topmost interactive layer |
 | Tooltips nested inside a priority menu | `10002` | `AgentProfile`'s favorite-star, agent-leg, and connected-apps-badge tooltips — must clear their own `z-[10001]` parent panel |
 | Popovers nested inside another popover | `10003` | `CreateNew`'s per-row channel flyout (Outbound picker); `PhoneInput`'s country dropdown when used inside `CreateNew` (dialpad group and drill-down screen 1, via its `dropdownClassName` prop); `ChannelRow`'s "Log Outcome" popover, reused verbatim inside `InteractionNavItem`'s compact-tile hover-preview popover — both must clear their own `z-[9999]`/`z-50` parent panel |

@@ -64,6 +64,8 @@ export interface MenuRadixProps {
    * trigger (`aria-hidden-focus`), as in the "Submenu Open" story.
    */
   modal?: boolean;
+  /** Row density — `"comfortable"` (default) or `"compact"` (tighter row padding). */
+  density?: "comfortable" | "compact";
 }
 
 /* ── Shared surface classes (top-level Content and every SubContent) ──
@@ -126,7 +128,7 @@ const inputModalityProps = {
 
 /* ── Entry rendering (recursive — used for top-level Content and every
    nested SubContent) ── */
-function renderEntries(entries: MenuEntry[]) {
+function renderEntries(entries: MenuEntry[], compact = false) {
   return entries.map((entry, i) => {
     if (entry === "separator") {
       return (
@@ -146,12 +148,12 @@ function renderEntries(entries: MenuEntry[]) {
         </DropdownMenuPrimitive.Label>
       );
     }
-    return <MenuRadixItem key={entry.id} item={entry} />;
+    return <MenuRadixItem key={entry.id} item={entry} compact={compact} />;
   });
 }
 
 /* ── Single item row — plain item, or a Sub if it has a submenu ── */
-function MenuRadixItem({ item }: { item: MenuItemDef }) {
+function MenuRadixItem({ item, compact = false }: { item: MenuItemDef; compact?: boolean }) {
   const isDestructive = item.destructive;
   const hasSubmenu = !!item.submenuContent || (item.submenu && item.submenu.length > 0);
 
@@ -164,7 +166,8 @@ function MenuRadixItem({ item }: { item: MenuItemDef }) {
     // suffix matches exactly, so a named parent + unnamed child selector
     // compiles to CSS that never matches anything (this was the bug behind
     // the missing hover/accent-bar styling).
-    "group relative flex w-full items-center gap-2.5 px-3 py-2.5 lyra-body-md transition-colors text-left rounded-lyra-sm cursor-pointer select-none outline-none",
+    "group relative flex w-full items-center gap-2.5 px-3 lyra-body-md transition-colors text-left rounded-lyra-sm cursor-pointer select-none outline-none",
+    compact ? "py-1.5" : "py-2.5",
     isDestructive
       ? "text-lyra-status-critical-strong data-[highlighted]:bg-lyra-status-critical-subtle"
       : "text-lyra-fg-default data-[highlighted]:bg-lyra-state-hover",
@@ -269,7 +272,7 @@ function MenuRadixItem({ item }: { item: MenuItemDef }) {
             {...inputModalityProps}
             onClick={stopClickBubble}
           >
-            {item.submenuContent ?? renderEntries(item.submenu!)}
+            {item.submenuContent ?? renderEntries(item.submenu!, compact)}
           </DropdownMenuPrimitive.SubContent>
         </DropdownMenuPrimitive.Portal>
       </DropdownMenuPrimitive.Sub>
@@ -334,6 +337,7 @@ const MenuRadix = React.forwardRef<HTMLButtonElement, MenuRadixProps>(
       sideOffset = 4,
       className,
       modal = true,
+      density = "comfortable",
     },
     ref
   ) => {
@@ -386,7 +390,7 @@ const MenuRadix = React.forwardRef<HTMLButtonElement, MenuRadixProps>(
               onScroll={onScroll}
               className="flex-1 min-h-0 overflow-y-auto lyra-scrollbar-hide flex flex-col"
             >
-              {renderEntries(items)}
+              {renderEntries(items, density === "compact")}
             </div>
             {canScrollDown && <ScrollChevronButton direction="down" onStep={() => scrollStep(6)} />}
           </DropdownMenuPrimitive.Content>

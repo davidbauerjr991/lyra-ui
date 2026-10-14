@@ -139,10 +139,12 @@ interface MenuProps extends React.HTMLAttributes<HTMLDivElement> {
    *  padding (`p-1`) is preserved either way so rows still have breathing
    *  room from the parent's own edge. */
   bare?: boolean;
+  /** Row density — `"comfortable"` (default) or `"compact"` (tighter row padding). */
+  density?: "comfortable" | "compact";
 }
 
 const Menu = React.forwardRef<HTMLDivElement, MenuProps>(
-  ({ className, items, menuRole = "menu", itemRole = "menuitem", bare = false, ...props }, ref) => {
+  ({ className, items, menuRole = "menu", itemRole = "menuitem", bare = false, density = "comfortable", ...props }, ref) => {
     // `listRef` is the direct parent of the mapped items — same node the
     // keyboard-nav query below has always searched relative to — now also
     // doubling as the scrollable region for the hover-chevron affordance
@@ -239,7 +241,7 @@ const Menu = React.forwardRef<HTMLDivElement, MenuProps>(
               );
             }
 
-            return <MenuItemRow key={entry.id} item={entry} itemRole={itemRole} />;
+            return <MenuItemRow key={entry.id} item={entry} itemRole={itemRole} comfortable={density !== "compact"} />;
           })}
         </div>
         {canScrollDown && <ScrollChevronButton direction="down" onStep={() => scrollStep(6)} />}
@@ -254,9 +256,10 @@ Menu.displayName = "Menu";
 interface MenuItemRowProps {
   item: MenuItemDef;
   itemRole?: React.AriaRole;
+  comfortable?: boolean;
 }
 
-const MenuItemRow: React.FC<MenuItemRowProps> = ({ item, itemRole = "menuitem" }) => {
+const MenuItemRow: React.FC<MenuItemRowProps> = ({ item, itemRole = "menuitem", comfortable = true }) => {
   const [submenuOpen, setSubmenuOpen] = React.useState(false);
   const [submenuPos, setSubmenuPos] = React.useState<{ top?: number; bottom?: number; left?: number; right?: number }>({ top: 0, left: 0 });
   const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -376,6 +379,7 @@ const MenuItemRow: React.FC<MenuItemRowProps> = ({ item, itemRole = "menuitem" }
     >
       <MenuItem
         itemRole={itemRole}
+        comfortable={comfortable}
         disabled={item.disabled}
         data-menu-item-id={item.id}
         id={item.domId}
