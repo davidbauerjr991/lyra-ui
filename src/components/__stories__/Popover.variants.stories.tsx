@@ -1,4 +1,6 @@
+import * as React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
+import { expect, userEvent, within } from "@storybook/test";
 import { MoreVertical } from "lucide-react";
 import { Popover } from "../popover";
 import { Button } from "../button";
@@ -124,4 +126,82 @@ export const ScreenReaderHint: Story = {
       <Button>Open Popover</Button>
     </Popover>
   ),
+};
+
+/* Virtual anchor removed while closing — the CreateNew dial pad's Redial
+   case. "Redial" anchors the popover to itself (`virtualAnchorRef`) instead
+   of the trigger. "Connect" closes the popover AND removes the Redial button
+   in the same click, the way a page navigates away when a call connects.
+   The popover should fade out where it was; before the fix it jumped to the
+   window's top-left corner for a frame (a detached element measures as 0,0).
+   The play function asserts the fading popover hasn't moved. */
+function VirtualAnchorRemovedDemo() {
+  const [open, setOpen] = React.useState(false);
+  const [showRedial, setShowRedial] = React.useState(true);
+  const virtualAnchorRef = React.useRef<HTMLElement | null>(null);
+  return (
+    <div className="flex flex-col items-start gap-24 pt-24 pl-48">
+      <Popover
+        open={open}
+        onOpenChange={setOpen}
+        virtualAnchorRef={virtualAnchorRef}
+        placement="bottom"
+        align="start"
+        showArrow={false}
+        title="Dial Pad"
+        content={
+          <div className="pb-5">
+            <Button
+              onClick={() => {
+                setOpen(false);
+                setShowRedial(false);
+              }}
+            >
+              Connect
+            </Button>
+          </div>
+        }
+      >
+        <Button variant="outline">New Outbound</Button>
+      </Popover>
+      {showRedial ? (
+        <Button
+          variant="outline"
+          onClick={(e) => {
+            virtualAnchorRef.current = e.currentTarget;
+            setOpen(true);
+          }}
+        >
+          Redial
+        </Button>
+      ) : (
+        <Button variant="ghost" onClick={() => setShowRedial(true)}>
+          Reset
+        </Button>
+      )}
+    </div>
+  );
+}
+
+export const VirtualAnchorRemovedWhileClosing: Story = {
+  name: "Virtual Anchor Removed While Closing",
+  parameters: { layout: "fullscreen" },
+  render: () => <VirtualAnchorRemovedDemo />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(document.body);
+    await userEvent.click(await canvas.findByText("Redial"));
+    const connect = await body.findByText("Connect");
+    const wrapper = connect.closest("[data-radix-popper-content-wrapper]") as HTMLElement;
+    const before = wrapper.getBoundingClientRect();
+    await userEvent.click(connect);
+    // Let positioning re-run against the removed anchor (two frames).
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    // Still fading out: it must not have jumped to the window's top-left.
+    if (wrapper.isConnected) {
+      const during = wrapper.getBoundingClientRect();
+      await expect(Math.round(during.top)).toBe(Math.round(before.top));
+      await expect(Math.round(during.left)).toBe(Math.round(before.left));
+    }
+  },
 };

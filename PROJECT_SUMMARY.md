@@ -2262,6 +2262,11 @@ Verified: `npm run lint` (`tsc --noEmit`) — matched the standing 3-error basel
 
 2026-10-06. Opt-in (default false) visually hidden "Press Tab to navigate, Escape to close" (or your own string) linked to the panel with `aria-describedby`. Nothing visible changes; the 19 v3 popovers don't pass it. The component body went from an arrow expression to a block so it can call `useId`. Stories: "Screen reader hint" control on Default; Variants "Screen Reader Hint".
 
+### Popover: keep the last anchor position when a virtual anchor is removed (popover.tsx, popover-anchor.ts)
+
+2026-10-14. Bug fix, no new props. With `virtualAnchorRef` set (only `CreateNew`'s Redial dial pad uses it), Radix measures the anchor through `createLastKnownAnchor` (new `popover-anchor.ts`): live while the element is on the page, its last measured position once it's gone. Before, removing the anchor while the popover faded out (the page switching to the new call when a Redial connects) measured a detached element as 0,0, and the fading dial pad flashed in the window's top-left corner. Popovers without a virtual anchor are untouched. Story: Variants "Virtual Anchor Removed While Closing" (with a `play` check).
+- Verified: unit test of `createLastKnownAnchor` in agent-next-gen-demo (`src/lyra-checks/popover-anchor.test.ts`; lyra has no test runner), mutation-checked; tsc at baseline. Not browser-checked.
+
 ### Radio / RadioButtonGroup: all arrow keys, Home/End select, ring around radio + label (radio.tsx)
 
 2026-10-06. `orientation` is no longer passed to Radix (any value limits roving focus to one axis, so vertical ignored ←/→); layout still comes from the class. `Home`/`End` select the first/last enabled radio (Radix only moved focus). A labelled `RadioGroupItem` now rings radio + label together on `:focus-visible` (`has-[[role=radio]:focus-visible]`); the circle's own ring is dropped then. The default ring steps aside when `className` hides the circle (`sr-only`) or brings its own `focus-visible` ring, because v3's next-best-action cards already anchor their own ring and it would have doubled. No new props. Stories: Variants "Keyboard" on Radio and Radio Button Group.

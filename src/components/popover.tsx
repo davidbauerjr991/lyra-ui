@@ -2,6 +2,7 @@ import * as React from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { cn } from "../lib/utils";
 import { ContainerHeader } from "./container-header";
+import { createLastKnownAnchor, type MeasurableAnchor } from "./popover-anchor";
 
 /* ── Types ── */
 
@@ -141,6 +142,12 @@ export interface PopoverProps {
    * every existing consumer, which doesn't pass this prop at all) never
    * mounts the second Anchor, so `children`'s own anchor keeps positioning
    * exactly as before.
+   *
+   * If the anchored element leaves the page while the ref still points at
+   * it (e.g. the Redial button's panel closes while the dial pad fades
+   * out), the popover keeps the element's last measured position instead
+   * of jumping to the window's top-left corner (`createLastKnownAnchor`,
+   * popover-anchor.ts).
    */
   virtualAnchorRef?: React.RefObject<HTMLElement | null>;
   /**
@@ -264,6 +271,15 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
   screenReaderHint = false,
 }, ref) => {
   const hintId = React.useId();
+  // The virtual anchor as Radix measures it: live while the element is on
+  // the page, its last position once it's gone, so a popover fading out
+  // after its anchor was removed doesn't jump to the window's top-left
+  // corner (popover-anchor.ts). Stable for the component's lifetime; it
+  // reads `virtualAnchorRef.current` at measure time.
+  const lastKnownAnchorRef = React.useRef<MeasurableAnchor | null>(null);
+  if (lastKnownAnchorRef.current === null) {
+    lastKnownAnchorRef.current = createLastKnownAnchor(() => virtualAnchorRef?.current);
+  }
   const hintText =
     typeof screenReaderHint === "string" ? screenReaderHint : "Press Tab to navigate, Escape to close";
   return (
@@ -276,7 +292,9 @@ const Popover = React.forwardRef<React.ElementRef<typeof PopoverPrimitive.Conten
     {/* Mounted AFTER `children`'s own Anchor/Trigger above, and only while
         something is actually pointed at — see `virtualAnchorRef`'s own doc
         comment above for why both of those matter. */}
-    {virtualAnchorRef?.current && <PopoverPrimitive.Anchor virtualRef={virtualAnchorRef} />}
+    {virtualAnchorRef?.current && (
+      <PopoverPrimitive.Anchor virtualRef={lastKnownAnchorRef as React.RefObject<MeasurableAnchor>} />
+    )}
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
         ref={ref}
