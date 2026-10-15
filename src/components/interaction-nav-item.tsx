@@ -103,6 +103,12 @@ export interface InteractionNavItemProps {
    * renders exactly as before).
    */
   isNewAssignment?: boolean;
+  /** Color of `isNewAssignment`'s pulsing dots — the one in the expanded
+   *  card's header and the compact tile's bottom-right corner dot — on the
+   *  same scale as `awaitingSeverity`: `"success"` (green), `"warning"`
+   *  (amber) or `"critical"` (red). They pulse at every level. Default
+   *  `"critical"` (red, as before). */
+  newAssignmentSeverity?: "success" | "warning" | "critical";
   /** Whether this is the currently-open/selected interaction. */
   active?: boolean;
   /** Tints the whole expanded card (background + outer border) with the
@@ -272,6 +278,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       awaitingResponse = false,
       awaitingSeverity,
       isNewAssignment = false,
+      newAssignmentSeverity = "critical",
       active = false,
       onHold = false,
       expanded = false,
@@ -518,12 +525,22 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     // merely-`critical`-severity card that ISN'T a new assignment no longer
     // shows that dot (green/warning are untouched either way — only the
     // red tier's meaning changed). See `isNewAssignment`'s own doc comment
-    // above for the full reasoning.
+    // above for the full reasoning. A new assignment's dot takes
+    // `newAssignmentSeverity` (red by default), same as the header dot.
     const cornerDotVariant: "success" | "warning" | "critical" | null = isNewAssignment
-      ? "critical"
+      ? newAssignmentSeverity
       : severity === "critical"
       ? null
       : severity;
+    // The new-assignment ping ring's color, shared by the header dot and the
+    // compact tile's corner dot so each ring matches its `Badge` dot. Literal
+    // class strings so Tailwind's content scanner finds each one.
+    const newAssignmentPingBg =
+      newAssignmentSeverity === "success"
+        ? "bg-lyra-status-success-strong"
+        : newAssignmentSeverity === "warning"
+        ? "bg-lyra-status-warning-strong"
+        : "bg-lyra-status-critical-strong";
 
     const tone =
       // Per explicit request ("a non-active interactionNavItem that is on
@@ -861,12 +878,16 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
               tile's own corner badge uses) — this row already has the
               customer's name right next to it to carry the actual
               meaning, so a plain color signal reads clearly without
-              needing its own icon here too. */}
+              needing its own icon here too. Colored by
+              `newAssignmentSeverity`; the ping ring matches the dot. */}
           {isNewAssignment && (
             <Tooltip content="New assignment" placement="top">
               <span className="relative inline-flex shrink-0">
-                <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full bg-lyra-status-critical-strong opacity-60 motion-reduce:hidden" />
-                <Badge shape="circle" dot variant="critical" size="sm" className="relative shrink-0" aria-label="New assignment" />
+                <span
+                  aria-hidden="true"
+                  className={cn("absolute inset-0 animate-ping rounded-full opacity-60 motion-reduce:hidden", newAssignmentPingBg)}
+                />
+                <Badge shape="circle" dot variant={newAssignmentSeverity} size="sm" className="relative shrink-0" aria-label="New assignment" />
               </span>
             </Tooltip>
           )}
@@ -1418,7 +1439,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                    `cornerDotVariant`'s own doc comment above). */
                 <>
                   {isNewAssignment && (
-                    <span aria-hidden="true" className="absolute bottom-[-2px] right-[-2px] h-2 w-2 animate-ping rounded-full bg-lyra-status-critical-strong opacity-60 motion-reduce:hidden" />
+                    <span aria-hidden="true" className={cn("absolute bottom-[-2px] right-[-2px] h-2 w-2 animate-ping rounded-full opacity-60 motion-reduce:hidden", newAssignmentPingBg)} />
                   )}
                   <Badge
                     shape="circle"

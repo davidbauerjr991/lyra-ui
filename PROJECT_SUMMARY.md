@@ -805,6 +805,14 @@ Stories: Default's Error control now uses the real `error` prop (instead of the 
 - Consumers that pass `awaitingResponse` on inactive cards (default severity `"critical"`) will now see red outlines on those cards in the rail, e.g. "Expanded — Inactive, Awaiting Response".
 Stories: new "Expanded — Unselected, Critical" (inactive, critical, channels collapsed so the header timer shows).
 
+### InteractionNavItem: newAssignmentSeverity colors the pulsing new-assignment dot (2026-10-15)
+`interaction-nav-item.tsx`: new optional `newAssignmentSeverity?: "success" | "warning" | "critical"` (default `"critical"`). It colors `isNewAssignment`'s pulsing dot left of the name in the expanded card header (and in the compact tile's hover preview, which renders the same header): green, amber or red, on the same scale and with the same value names as `awaitingSeverity`. The `animate-ping` ring takes the same color, so the dot pulses at every level. Unset, it's red as before, so existing consumers don't change. The compact tile's own corner dot still turns red for a new assignment; only the header dot takes the severity. The request named the green level "ok"; it was named `"success"` (user's choice) to match `awaitingSeverity`, `HoldSeverity` and `Badge`'s variants.
+Stories: new "Expanded — New Assignment Severity" (one card per level); `newAssignmentSeverity` select control in the meta.
+
+### InteractionNavItem: compact tile's new-assignment corner dot follows newAssignmentSeverity (2026-10-15)
+Supersedes the "compact tile's own corner dot still turns red" note in "InteractionNavItem: newAssignmentSeverity colors the pulsing new-assignment dot". `interaction-nav-item.tsx`: for a new assignment, the collapsed rail tile's bottom-right corner dot (`cornerDotVariant`) and its ping ring now take `newAssignmentSeverity` too, with the same tokens as the header dot (`Badge` `success`/`warning`/`critical` + `bg-lyra-status-*-strong` ring, now one shared `newAssignmentPingBg`). Default `"critical"`, so it's red as before. Cards that aren't new assignments keep the old corner-dot rules (green/amber from `awaitingSeverity`, no dot for critical).
+Stories: "Expanded — New Assignment Severity" became "New Assignment Severity — Expanded & Collapsed Rail" (same export, `ExpandedNewAssignmentSeverity`): a collapsed-rail tile per level beside the expanded cards.
+
 ## Stories
 
 ### AppHeader (`src/components/__stories__/AppHeader.stories.tsx`)
@@ -2552,3 +2560,6 @@ Verified: `npm run lint` (`tsc --noEmit`) — matched the standing 3-error basel
 - v3 Contacts table: slide-out InteriorPanel gets z-30 so the table header column-resize handles (z-10) no longer paint over it.
 - v3 Phase 1: Agent Chat is now a displayable app (header or left nav; no tab option).
 - v3 Phase 1 Home: all five queues (Digital, Inbound Voice, Voicemail, Work Item, Outbound Voice) are selectable in Settings → Home; Digital and Work Item start hidden so 3 show by default.
+
+### LoginCard: saved preferences (additive)
+- New optional props `defaultPhoneNumber`, `defaultStationId`, `defaultSavePreferences` seed the fields on mount; controlled `isDarkMode` + `onDarkModeToggle` let the app own the theme (the card then doesn't write `data-theme` itself). `onLaunch` now receives `LoginCardPreferences` (`phoneSetup`, `phoneNumber`, `stationId`, `savePreferences`; exported type). Every existing prop and default is unchanged, so callers that pass nothing behave as before. Story: "Seeded from saved preferences". First used by agent-next-gen-demo's settings store (P-SETTINGS), where "Save Preferences" persists the phone setup.

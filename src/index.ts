@@ -300,7 +300,7 @@ export type { FormTemplateProps } from "./components/form-template";
 
 /* ── Login Card ── */
 export { LoginCard } from "./components/login-card";
-export type { LoginCardProps, LoginCardPhoneSetup } from "./components/login-card";
+export type { LoginCardProps, LoginCardPhoneSetup, LoginCardPreferences } from "./components/login-card";
 
 /* ── Agent Welcome Message ── */
 export { AgentWelcomeMessage } from "./components/agent-welcome-message";

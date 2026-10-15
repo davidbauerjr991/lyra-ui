@@ -15,6 +15,14 @@ import type { AIProcessStep, AIProcessStepStatus } from "./ai-process";
 
 export type LoginCardPhoneSetup = "soft-phone" | "phone-number" | "work-station";
 
+/** What the agent chose on the card, handed to `onLaunch`. */
+export interface LoginCardPreferences {
+  phoneSetup: LoginCardPhoneSetup;
+  phoneNumber: string;
+  stationId: string;
+  savePreferences: boolean;
+}
+
 type LaunchStepId = "auth" | "sync" | "queue";
 
 export interface LoginCardProps {
@@ -29,8 +37,26 @@ export interface LoginCardProps {
    * Useful for demoing the "Compiling Experience" state. Default: false
    */
   defaultLaunching?: boolean;
-  /** Called once the launch sequence finishes and the card has fully faded out */
-  onLaunch?: () => void;
+  /** Seeds the phone number field on mount (e.g. from saved preferences). Default: "" */
+  defaultPhoneNumber?: string;
+  /** Seeds the Station ID field on mount (e.g. from saved preferences). Default: "" */
+  defaultStationId?: string;
+  /** Seeds the "Save Preferences" checkbox on mount. Default: false */
+  defaultSavePreferences?: boolean;
+  /**
+   * Controlled dark mode. When set, the card shows this value and calls
+   * `onDarkModeToggle` instead of writing `data-theme` itself — the app owns
+   * the theme. Omit both for the original self-contained behavior.
+   */
+  isDarkMode?: boolean;
+  /** Called when the dark-mode button is clicked (controlled mode). */
+  onDarkModeToggle?: () => void;
+  /**
+   * Called once the launch sequence finishes and the card has fully faded out,
+   * with what the agent chose on the card. Callers that ignore the argument
+   * are unaffected.
+   */
+  onLaunch?: (preferences: LoginCardPreferences) => void;
   /**
    * Message shown under the Launch button when the application fails to load. Shift-clicking Launch simulates that failure:
    * the card still runs the loading steps, then returns to idle with this message instead of calling `onLaunch`.
@@ -81,6 +107,11 @@ const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
       appIcon,
       defaultPhoneSetup = "soft-phone",
       defaultLaunching = false,
+      defaultPhoneNumber = "",
+      defaultStationId = "",
+      defaultSavePreferences = false,
+      isDarkMode,
+      onDarkModeToggle,
       onLaunch,
       launchErrorMessage = "An error has occurred. Please try again or contact your administrator.",
       launchButtonLabel,
@@ -97,14 +128,19 @@ const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
     // ID field's own "only show its error after the agent has actually left
     // the field" pattern just below, rather than showing "not valid" before
     // the agent has typed anything at all.
-    const [phoneNumber, setPhoneNumber] = React.useState("");
+    const [phoneNumber, setPhoneNumber] = React.useState(defaultPhoneNumber);
     const [phoneNumberTouched, setPhoneNumberTouched] = React.useState(false);
-    const [stationId, setStationId] = React.useState("");
+    const [stationId, setStationId] = React.useState(defaultStationId);
     const [stationIdTouched, setStationIdTouched] = React.useState(false);
-    const [savePreferences, setSavePreferences] = React.useState(false);
-    const [darkMode, setDarkMode] = React.useState(
+    const [savePreferences, setSavePreferences] = React.useState(defaultSavePreferences);
+    const [uncontrolledDarkMode, setUncontrolledDarkMode] = React.useState(
       () => document.documentElement.getAttribute("data-theme") === "dark"
     );
+    const darkMode = isDarkMode ?? uncontrolledDarkMode;
+    // The launch sequence calls `onLaunch` from a timer, so it reads the
+    // latest choices through a ref rather than a stale closure.
+    const preferencesRef = React.useRef<LoginCardPreferences>({ phoneSetup, phoneNumber, stationId, savePreferences });
+    preferencesRef.current = { phoneSetup, phoneNumber, stationId, savePreferences };
 
     const [launching, setLaunching] = React.useState(defaultLaunching);
     const [fadingOut, setFadingOut] = React.useState(false);
@@ -163,7 +199,7 @@ const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
       timers.current.push(
         setTimeout(() => setStepStatus((s) => ({ ...s, queue: "done" })), STEP_DURATION * 3),
         setTimeout(() => setFadingOut(true), STEP_DURATION * 3 + 500),
-        setTimeout(() => onLaunch?.(), STEP_DURATION * 3 + 500 + CARD_FADE_DURATION)
+        setTimeout(() => onLaunch?.(preferencesRef.current), STEP_DURATION * 3 + 500 + CARD_FADE_DURATION)
       );
     }, [onLaunch]);
 
@@ -174,7 +210,11 @@ const LoginCard = React.forwardRef<HTMLDivElement, LoginCardProps>(
     }, []);
 
     const handleDarkModeToggle = () => {
-      setDarkMode((prev) => {
+      if (isDarkMode !== undefined) {
+        onDarkModeToggle?.();
+        return;
+      }
+      setUncontrolledDarkMode((prev) => {
         const next = !prev;
         document.documentElement.setAttribute("data-theme", next ? "dark" : "light");
         return next;
