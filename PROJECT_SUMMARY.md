@@ -809,6 +809,10 @@ Stories: new "Expanded — Unselected, Critical" (inactive, critical, channels c
 `interaction-nav-item.tsx`: new optional `newAssignmentSeverity?: "success" | "warning" | "critical"` (default `"critical"`). It colors `isNewAssignment`'s pulsing dot left of the name in the expanded card header (and in the compact tile's hover preview, which renders the same header): green, amber or red, on the same scale and with the same value names as `awaitingSeverity`. The `animate-ping` ring takes the same color, so the dot pulses at every level. Unset, it's red as before, so existing consumers don't change. The compact tile's own corner dot still turns red for a new assignment; only the header dot takes the severity. The request named the green level "ok"; it was named `"success"` (user's choice) to match `awaitingSeverity`, `HoldSeverity` and `Badge`'s variants.
 Stories: new "Expanded — New Assignment Severity" (one card per level); `newAssignmentSeverity` select control in the meta.
 
+### InteractionNavItem: compact tile's new-assignment corner dot follows newAssignmentSeverity (2026-10-15)
+Supersedes the "compact tile's own corner dot still turns red" note in "InteractionNavItem: newAssignmentSeverity colors the pulsing new-assignment dot". `interaction-nav-item.tsx`: for a new assignment, the collapsed rail tile's bottom-right corner dot (`cornerDotVariant`) and its ping ring now take `newAssignmentSeverity` too, with the same tokens as the header dot (`Badge` `success`/`warning`/`critical` + `bg-lyra-status-*-strong` ring, now one shared `newAssignmentPingBg`). Default `"critical"`, so it's red as before. Cards that aren't new assignments keep the old corner-dot rules (green/amber from `awaitingSeverity`, no dot for critical).
+Stories: "Expanded — New Assignment Severity" became "New Assignment Severity — Expanded & Collapsed Rail" (same export, `ExpandedNewAssignmentSeverity`): a collapsed-rail tile per level beside the expanded cards.
+
 ## Stories
 
 ### AppHeader (`src/components/__stories__/AppHeader.stories.tsx`)
