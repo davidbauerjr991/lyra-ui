@@ -74,6 +74,13 @@ export interface ContainerHeaderProps extends Omit<React.HTMLAttributes<HTMLDivE
    * title's start.
    */
   topSlot?: React.ReactNode;
+  /**
+   * Header height. `"comfortable"` (default) is the standard 60px header (10px vertical padding
+   * around a 40px title block). `"compact"` tightens it to 48px (8px padding around a 32px block),
+   * the same height as an `Accordion` row, so a header sitting next to or above accordion rows lines
+   * up with them.
+   */
+  density?: "comfortable" | "compact";
   /** Show a bottom border (default: true) — ignored (no border rendered
    *  here) whenever `tabs` is set, since the `TabList` passed there already
    *  supplies its own `border-b` as the header's true bottom edge; a second
@@ -172,10 +179,12 @@ const ContainerHeader = React.forwardRef<HTMLDivElement, ContainerHeaderProps>(
     topSlot,
     tabs,
     bordered = true,
+    density = "comfortable",
     background = "none",
     actionsWrap = false,
     ...props
   }, ref) => {
+    const compact = density === "compact";
     const stringTitle = typeof title === "string" ? title : undefined;
     // `titleText` wins; else a non-empty string title; else a generic label.
     const closeLabel = titleText ? `Close ${titleText}` : stringTitle ? `Close ${stringTitle}` : "Close";
@@ -219,7 +228,7 @@ const ContainerHeader = React.forwardRef<HTMLDivElement, ContainerHeaderProps>(
           padding on the outer wrapper on top of this row's own unchanged
           `px-4`, insetting the title+close cluster from both edges by
           36px combined instead of cleanly swapping to 20px. */}
-      <div className={cn("flex items-center justify-between px-4", tabs ? "pt-2.5" : "py-2.5", className)}>
+      <div className={cn("flex items-center justify-between px-4", tabs ? (compact ? "pt-2" : "pt-2.5") : compact ? "py-2" : "py-2.5", className)}>
       {/* Left: optional top slot, above icon + title + optional subhead.
           `flex-1` (instead of relying on default flex-basis:auto shrinking)
           + `min-w-0` at every level down to the title/subhead text is what
@@ -274,7 +283,7 @@ const ContainerHeader = React.forwardRef<HTMLDivElement, ContainerHeaderProps>(
           {icon && <span className="flex-shrink-0 text-lyra-fg-secondary">{icon}</span>}
           <div className="min-w-0 flex-1">
             {(title || titleBadge) && (
-              <div className="flex min-h-10 flex-col justify-center overflow-hidden min-w-0">
+              <div className={cn("flex flex-col justify-center overflow-hidden min-w-0", compact ? "min-h-8" : "min-h-10")}>
                 {/* min-h-10 (40px floor), not a fixed h-10 — 40px is exactly
                     enough for the plain title+subhead case (was h-9/36px;
                     at that height the subhead's descenders, g/y/etc., were

@@ -18,6 +18,7 @@ interface HeaderDemoProps {
   title?: string;
   bordered?: boolean;
   background?: "none" | "subtle";
+  density?: "comfortable" | "compact";
   showClose?: boolean;
   showDraggable?: boolean;
   showBack?: boolean;
@@ -34,6 +35,7 @@ function HeaderDemo({
   title = "Container Title",
   bordered = false,
   background = "none",
+  density = "comfortable",
   showClose = false,
   showDraggable = false,
   showBack = false,
@@ -52,6 +54,7 @@ function HeaderDemo({
       title={showTitle ? title : undefined}
       bordered={bordered}
       background={background}
+      density={density}
       // Draggable: the grab cursor covers the whole header (like a floating panel, where any part of
       // the header drags), not just the grip. Placement only; nothing moves.
       className={showDraggable ? "cursor-grab select-none active:cursor-grabbing" : undefined}
@@ -122,8 +125,8 @@ export const Default: Story = {
     controls: {
       // Storybook matches `include` against each control's display name, so both names and keys are listed.
       include: [
-        "Title", "Title text", "Style", "Header divider", "Draggable", "Back button", "Close button", "Icon", "Badge", "Subhead", "Actions", "Buttons", "Tabs",
-        "showTitle", "title", "background", "bordered", "showDraggable", "showBack", "showClose", "showIcon", "showBadge", "showSubhead", "showActions", "showButtons", "showTabs",
+        "Title", "Title text", "Style", "Density", "Header divider", "Draggable", "Back button", "Close button", "Icon", "Badge", "Subhead", "Actions", "Buttons", "Tabs",
+        "showTitle", "title", "background", "density", "bordered", "showDraggable", "showBack", "showClose", "showIcon", "showBadge", "showSubhead", "showActions", "showButtons", "showTabs",
       ],
       sort: "none",
     },
@@ -132,6 +135,7 @@ export const Default: Story = {
     title: "Container Title",
     showTitle: true,
     background: "none",
+    density: "comfortable",
     bordered: false,
     showDraggable: false,
     showBack: false,
@@ -164,6 +168,13 @@ export const Default: Story = {
       labels: { none: "None", subtle: "Subtle" },
       description: "Header background (`background`).",
       table: { category: "Appearance", defaultValue: { summary: "none" } },
+    },
+    density: {
+      name: "Density",
+      control: "radio",
+      options: ["comfortable", "compact"],
+      description: "Header height (`density`): comfortable is 60px, compact is 48px, the same height as an Accordion row.",
+      table: { category: "Appearance", defaultValue: { summary: "comfortable" } },
     },
     bordered: {
       name: "Header divider",

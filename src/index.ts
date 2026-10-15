@@ -385,3 +385,5 @@ export type { PhoneValue, PhoneCountry } from "./components/phone-input";
 
 /* ── Utilities ── */
 export { cn } from "./lib/utils";
+export { AICard } from "./components/ai-card";
+export type { AICardProps, AICardColor } from "./components/ai-card";

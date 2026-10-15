@@ -63,9 +63,9 @@ export interface ToggleGroupProps {
    */
   fullWidth?: boolean;
   /**
-   * Opt-in: when a label is cut off with an ellipsis (only possible with
-   * `fullWidth` or `itemMaxWidth`), hovering or focusing that item shows its full label in a
-   * tooltip. Default `false` keeps today's no-tooltip behavior.
+   * When a label is cut off with an ellipsis (only possible with `fullWidth` or `itemMaxWidth`),
+   * hovering or focusing that item shows its full label in a tooltip, the same as `TabList`.
+   * Items that fit show no tooltip. Default `true`; pass `false` to turn it off.
    */
   showTruncationTooltip?: boolean;
   /** Accessible name and tooltip for each item's `menuItems` kebab. Default "More options". */
@@ -129,29 +129,10 @@ function TruncationTooltip({
 }: {
   content: React.ReactNode;
   enabled: boolean;
-  /** An item's own `tooltip`: shown whenever the item is hovered or focused. */
   alwaysContent?: React.ReactNode;
   children: (labelRef: React.RefObject<HTMLSpanElement | null>) => React.ReactElement;
 }) {
   const labelRef = React.useRef<HTMLSpanElement>(null);
-  const [truncated, setTruncated] = React.useState(false);
-  React.useLayoutEffect(() => {
-    const el = labelRef.current;
-    if (!enabled || !el) return;
-    // Opt-in: a label that truncates its own text (e.g. text beside a badge)
-    // marks that element `data-truncatable` so the tooltip still appears.
-    const recompute = () =>
-      setTruncated(
-        el.scrollWidth > el.clientWidth + 1 ||
-          Array.from(el.querySelectorAll<HTMLElement>("[data-truncatable]")).some(
-            (n) => n.scrollWidth > n.clientWidth + 1,
-          ),
-      );
-    recompute();
-    const ro = new ResizeObserver(recompute);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [enabled, content]);
   const button = children(labelRef);
   if (alwaysContent != null) {
     return (
@@ -161,8 +142,11 @@ function TruncationTooltip({
     );
   }
   if (!enabled) return button;
+  // `onlyWhenTruncated` measures the item at the moment the tooltip would open, so it is right
+  // whatever the item's width was when it mounted (a cached "is it cut off" flag went stale, e.g. when
+  // the group's width changed after first render, and some cut-off items then showed no tooltip).
   return (
-    <Tooltip content={content} placement="top" disabled={!truncated}>
+    <Tooltip content={content} placement="top" onlyWhenTruncated>
       {button}
     </Tooltip>
   );
@@ -183,7 +167,7 @@ const ToggleGroup = React.forwardRef<HTMLDivElement, ToggleGroupProps>(
       onValuesChange,
       disabled,
       fullWidth,
-      showTruncationTooltip = false,
+      showTruncationTooltip = true,
       menuAriaLabel = "More options",
       allowDeselect = false,
       itemMaxWidth,

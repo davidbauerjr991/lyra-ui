@@ -2387,3 +2387,72 @@ Verified: `npm run lint` (`tsc --noEmit`) — matched the standing 3-error basel
 
 ### ContentArea stories consolidated
 - ContentArea moved from UI to Custom Primitives with a Default playground (Padding presets, Left nav, Container controls) and a "Custom Padding" page under .../Variants. The component is unchanged (v2, v3 and agent-next-gen-test import it).
+
+### AICard (new)
+- New `AICard` (ai-card.tsx, exported from index.ts): tinted-header card for AI content, with `color` (purple / blue / yellow / green / red), optional `icon`, and `accordion` (collapsible, default) or a plain always-open card. It is the Autosummary card treatment from `CustomerContextOverview` made reusable; that component is unchanged and does not use it yet.
+- Stories: Custom Primitives/AICard (Default = Autosummary playground with Color, Accordion, Starts open, Icon, Title controls) and .../Variants (Journey Summary, Self Service Summary, Transfer Summary, Customer Sentiment, All cards).
+- AICard follow-up: added a `neutral` color and a `headerEnd` slot (counts, external-link/close icons). AICard.shared.tsx holds example cards modelled on the contact details panel (Autosummary, Autosummary Page, Journey/Self Service/Transfer summaries, Conversation Topics, Customer Sentiment negative/neutral/positive, Suggested Questions, Warranty Claim Decision Tree, Checklist (+ items, + complete), Warranty Claim Complete, Information Needed, Customer Info (+ Available), Schedule Your Appointment, Rate Your Copilot Experience start/rating/thanks); each is a story under AICard/Variants plus "All cards". Buttons and icons in the examples are static and do nothing.
+
+### AICard: variants selectable in Default
+- `AICard` Default story now has a **Card** select (Autosummary, Journey Summary, Self Service, Transfer, Conversation Topics, Sentiment x3, Suggested Questions, Decision Tree, Checklist, etc.) listing every card from the Variants page.
+- Color / Accordion / Icon / Starts open act as overrides on the picked card ("Card default" keeps the card's own color/accordion). Shared cards in `AICard.shared.tsx` accept an `o` overrides prop; the Variants page is unchanged.
+
+### AICard: built from lyra-ui components
+- `AICard` accordion mode now renders the lyra-ui `Accordion` (variant "contained", single item, header tint via `headerClassName`); plain mode uses `ContainerHeader` for the header. Both put the body above an optional `ContainerFooter`.
+- New `footer` / `footerAlign` props (default left) on `AICard`. In the example cards, action buttons (View, Open, Submit/Cancel, Start) moved from the body into the footer.
+- Trade-off: the chevron now uses the Accordion's own secondary color instead of the card's accent tone.
+
+- AICard stories moved from "Custom Primitives" to **UI** (`UI/AICard`, `UI/AICard/Variants`).
+
+### ContainerHeader: density
+- `ContainerHeader` `density` prop: "comfortable" (default, 60px) or "compact" (48px, equal to an `Accordion` row). Added a Density control to the ContainerHeader Default story. `ContainerHeaderSlot` passes it through. `AICard`'s plain (non-accordion) header uses compact so it matches the accordion header.
+
+- AICard example cards: row icons (edit, delete, copy, thumbs) are now lyra-ui icon buttons (`Button variant="icon"`); header icons (dismiss, open) use the same style via `asChild` spans so they don't nest buttons inside the Accordion trigger.
+
+- AICard example cards: every icon button has an aria-label plus a hover tooltip (`tooltip`); the "Add topic" control is now a standard outline `Button` (was a dashed custom button).
+
+- AICard Autosummary: Edit now swaps the text for an editable Textarea and the Edit/Copy icon buttons for Cancel/Save (Save keeps the edit, Cancel discards it).
+
+- AICard Conversation Topics is interactive: check crosses a topic off (count follows), Edit makes the text an input (click off / Enter / Edit saves, Escape cancels), Delete removes, Add topic appends a row in edit mode.
+
+- AICard Suggested Questions: Edit makes the question text an input (click off / Enter / pencil saves, Escape cancels).
+
+- AICard: new `onDismiss` prop shows a dismiss X in the header (ContainerHeader `onClose` in plain mode; a real button overlaid beside the chevron in accordion mode). Default story has a Dismiss control that works on every card; Suggested Questions no longer hard-codes its own X.
+
+- AICard: new `onOpenInNewWindow` prop and an "Open in new window" Default-story control for every card (header buttons are real icon buttons; overlaid beside the chevron in accordion mode). Decision Tree's section picker is now a real selectable dropdown (Popover + MenuItem options with dot/name/count; picking a section shows its answered questions).
+
+- AICard Warranty Claim Checklist (items): checking an item crosses it off and the header count updates.
+
+- AICard: new variant "Schedule Your Appointment (Start)" (blue, Open button in the footer); the existing form card stays as "Schedule Your Appointment".
+
+- AICard Schedule Your Appointment form now uses lyra-ui fields: RadioButtonGroup (type), DatePicker, TimePicker, Input (address/city/zip), Select (state).
+
+- AICard Schedule Your Appointment: Appointment Type is a lyra-ui ToggleGroup (single select) instead of radios.
+
+- ToggleGroup: `showTruncationTooltip` now defaults to true (was opt-in), matching TabList: a cut-off item label shows its full text in a tooltip on hover/focus; items that fit show none.
+
+- ToggleGroup truncation tooltip: now measured when it would open (Tooltip `onlyWhenTruncated`) instead of from a cached flag that could go stale, so every cut-off item shows its full label.
+
+- AICard Schedule form: TimePicker uses `ampmSelect` (AM/PM as a dropdown).
+
+- AICard stories: removed the max-width wrappers; cards fill their container (width comes from wherever they are placed).
+
+- AICard: removed the duplicate "Warranty Claim Complete" card; "Warranty Claim Checklist Complete" remains.
+
+- AICard Rate Copilot (Rating): thumbs up/down are toggle buttons (`aria-pressed`, active tint + filled icon); choosing one clears the other, pressing again clears it.
+
+- AICard Rate Copilot thumbs: pressed Helpful uses the success tone, pressed Not helpful the critical tone.
+
+- AICard: new "Approval Request" card based on agent-next-gen-v3's Lucas Thomas approval request (blue Copilot summary, Show more checklist/experience memory/sentiment, "How would you like to proceed?" with Approve / Decline / Something else; Decline and Something else take a note then Perform Task).
+
+- AICard Approval Request now mirrors v3: animated Show more/less, sentiment as a lyra-ui Slider, Approve opens the PayPal panel (Authorize and Place Order), Decline asks for a reason, Something else has suggestion tags and a repeatable instruction.
+
+- AICard Approval Request: sentiment is a lyra-ui ProgressBar (warning, level 2 of 5) instead of a slider.
+
+- AICard: the Approval Request card is labeled "New - Approval Request" in the Card dropdown and on the Variants page.
+
+- AICard Customer Info now uses lyra-ui fields (Input, Select for account level, DatePicker for birth date, read-only Input for balance) instead of a label/value list.
+
+- AICard Customer Info revised: uses the Input "label only, horizontal" layout (lyra-ui Label left, read-only value right, Separator under each row), replacing the earlier editable-fields version.
+
+- AICard Customer Info: new Layout control (List / Conversational), shown when the Customer Info card is picked. Conversational shows the avatar, name, tags, written summary and a View customer info link (from v3).
