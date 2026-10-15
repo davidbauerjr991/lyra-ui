@@ -2540,3 +2540,15 @@ Verified: `npm run lint` (`tsc --noEmit`) — matched the standing 3-error basel
 - v3 panel mode: refresh icon button beside the docked Copilot suggestion chips cycles through a larger pool (3 at a time, 1 when narrow).
 - v3 left-nav (stacked) call controls: Mute / End Call buttons are now size md.
 - v3 Phase 1 Settings → "Left nav": switches for New Outbound at bottom (footer), Home/Settings (+app items) at top (items), and no-collapse interaction cards (hides Collapse/Expand all).
+- v3 left nav: bottom New Outbound now stacks below Home/Settings (footer wrapped in a flex column).
+- v3 left nav: bottom New Outbound drops its extra side padding so it matches the Home/Settings width.
+- v3 left nav: 8px gap between Settings and the bottom New Outbound.
+- v3 left nav: bottom New Outbound drops its extra bottom padding so its bottom edge lines up with the main container / call controls.
+- v3 Phase 1 Settings → "Home": switches for Queue / Contact history / Performance / Productivity with up/down reorder buttons, plus per-queue-item checkboxes; Home renders its sections from that ordered config (adjacent Performance/Productivity share a grid row).
+- v3 Phase 1 Settings → Home: "Show header" switch and an editable greeting (default "Hello") for the Home header title.
+- v3 Phase 1 Settings → Home: "Display agent first name" checkbox (default on) controls whether the header greeting appends the agent's first name.
+- v3 Phase 1 Settings → Home → Contact history: "Show all contacts" checkbox (default off) shows the All Contacts button in the contact history table.
+- v3 Phase 1: "Contacts" is now an app in Show app icons (header / tab / left nav display) backed by the All Contacts table + slide-out (`renderAllContactsBody`); the Contact history "All Contacts" button and its Settings checkbox were removed. "Apps to show" now opens directly under the Show app icons switch.
+- v3 Contacts table: slide-out InteriorPanel gets z-30 so the table header column-resize handles (z-10) no longer paint over it.
+- v3 Phase 1: Agent Chat is now a displayable app (header or left nav; no tab option).
+- v3 Phase 1 Home: all five queues (Digital, Inbound Voice, Voicemail, Work Item, Outbound Voice) are selectable in Settings → Home; Digital and Work Item start hidden so 3 show by default.
