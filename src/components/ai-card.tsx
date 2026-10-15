@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Accordion } from "./accordion";
+import { Accordion, RADIUS_CLASSES, type RadiusSize } from "./accordion";
 import { ContainerFooter, type ContainerFooterAlign } from "./container-footer";
 import { ContainerHeader } from "./container-header";
 import { Button } from "./button";
@@ -33,6 +33,15 @@ const COLOR_CLASSES: Record<AICardColor, { header: string; accent: string }> = {
 export interface AICardProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "title" | "color" | "defaultValue" | "dir"> {
   /** Header title, e.g. "Journey Summary". */
   title: React.ReactNode;
+  /** Corner radius of the card: none, xs 4, sm 6, md 8, lg 12, xl 16px. Default "md". */
+  radius?: RadiusSize;
+  /**
+   * Content (normally the decision `Button`s) that stays visible under the header even when the card is
+   * collapsed, instead of hiding with the body. Unlike `footer`, which is part of the collapsing body.
+   */
+  persistentFooter?: React.ReactNode;
+  /** Optional count shown next to the title (e.g. number of artifacts). Omit for none; 0 is shown. */
+  count?: number;
   /** Optional icon left of the title (a 16px Lucide icon works well). Takes the card color's strong tone. */
   icon?: React.ReactNode;
   /** Header tint. Default "purple". */
@@ -64,6 +73,11 @@ export interface AICardProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 
    * when it is clicked. Omit for no button. Placed like the dismiss X (see `onDismiss`).
    */
   onOpenInNewWindow?: () => void;
+  /**
+   * Header height: "compact" (default) is 40px, "comfortable" is 48px. Passed to the `Accordion` (accordion
+   * mode) or the `ContainerHeader` (plain mode) so both heights match.
+   */
+  density?: "comfortable" | "compact";
   /** Footer actions (normally `Button`s), rendered with `ContainerFooter` under the body. Omit for no footer. */
   footer?: React.ReactNode;
   /** Where the footer buttons sit: "left", "right" or "full". Default "left". */
@@ -73,11 +87,11 @@ export interface AICardProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 
 }
 
 const ITEM = "card";
-const SHELL = "w-full overflow-hidden rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-base shadow-sm";
+const SHELL = "w-full overflow-hidden border border-lyra-border-subtle bg-lyra-bg-surface-base shadow-sm";
 
 const AICard = React.forwardRef<HTMLDivElement, AICardProps>(
   (
-    { title, icon, color = "purple", accordion = true, defaultOpen = true, open, onOpenChange, headerEnd, onDismiss, onOpenInNewWindow, footer, footerAlign = "left", children, className, ...props },
+    { title, count, radius = "md", icon, color = "purple", accordion = true, defaultOpen = true, open, onOpenChange, headerEnd, onDismiss, onOpenInNewWindow, density = "compact", footer, persistentFooter, footerAlign = "left", children, className, ...props },
     ref
   ) => {
     const tone = COLOR_CLASSES[color];
@@ -90,6 +104,17 @@ const AICard = React.forwardRef<HTMLDivElement, AICardProps>(
       <span className="flex items-center gap-2 lyra-body-md-emphasis text-lyra-fg-default">{headerEnd}</span>
     ) : undefined;
     const name = typeof title === "string" ? title : undefined;
+    const titleNode =
+      count === undefined ? (
+        title
+      ) : (
+        <span className="inline-flex items-center gap-2">
+          {title}
+          <span className="tabular-nums text-lyra-fg-secondary" aria-label={`${count} items`}>
+            {count}
+          </span>
+        </span>
+      );
     // Header icon buttons, left to right. Real buttons with a label and hover tooltip.
     const headerButtons = [
       onOpenInNewWindow && { key: "open", label: name ? `Open ${name} in new window` : "Open in new window", icon: ExternalLink, onClick: onOpenInNewWindow },
@@ -107,12 +132,18 @@ const AICard = React.forwardRef<HTMLDivElement, AICardProps>(
       </>
     );
 
+    const [innerOpen, setInnerOpen] = React.useState(defaultOpen);
+    const isOpen = open ?? innerOpen;
+    const persistent = persistentFooter ? (
+      <div className={cn("px-4 pb-4", !isOpen && accordion && "pt-3")}>{persistentFooter}</div>
+    ) : undefined;
+
     if (!accordion) {
       return (
-        <div ref={ref} className={cn(SHELL, className)} {...props}>
+        <div ref={ref} className={cn(SHELL, RADIUS_CLASSES[radius], className)} {...props}>
           <ContainerHeader
             icon={iconNode}
-            title={title}
+            title={titleNode}
             actions={
               endNode || buttons.length ? (
                 <>
@@ -124,21 +155,25 @@ const AICard = React.forwardRef<HTMLDivElement, AICardProps>(
             bordered={false}
             density="compact"
             titleClassName="lyra-body-md-emphasis"
-            className={tone.header}
+            // ContainerHeader's compact row is 48px; 4px less padding top and bottom makes the 40px compact card header.
+            className={cn(tone.header, density === "compact" && "py-1")}
           />
           {content}
+          {persistent}
         </div>
       );
     }
 
-    return (
-      <div ref={ref} className={cn("relative", className)} {...props}>
+    const accordionEl = (
         <Accordion
           variant="contained"
+          {...(persistent ? { className: "border-0 shadow-none" } : {})}
+          density={density}
+          radius={persistent ? "none" : radius}
           items={[
             {
               id: ITEM,
-              title: <span className="lyra-body-md-emphasis">{title}</span>,
+              title: <span className="lyra-body-md-emphasis">{titleNode}</span>,
               icon: iconNode,
               endSlot:
                 endNode || buttons.length ? (
@@ -154,11 +189,25 @@ const AICard = React.forwardRef<HTMLDivElement, AICardProps>(
             },
           ]}
           {...(open !== undefined ? { value: open ? ITEM : "" } : { defaultValue: defaultOpen ? ITEM : undefined })}
-          onValueChange={(v) => onOpenChange?.(v === ITEM)}
+          onValueChange={(v) => {
+            setInnerOpen(v === ITEM);
+            onOpenChange?.(v === ITEM);
+          }}
         />
+    );
+    return (
+      <div ref={ref} className={cn("relative", className)} {...props}>
+        {persistent ? (
+          <div className={cn(SHELL, RADIUS_CLASSES[radius])}>
+            {accordionEl}
+            {persistent}
+          </div>
+        ) : (
+          accordionEl
+        )}
         {buttons.length > 0 && (
-          // Sits over the header row (48px tall), just left of the chevron, outside the accordion trigger.
-          <div className="absolute right-12 top-2 flex gap-1">{buttons}</div>
+          // Sits over the header row (48px, or 40px when compact), just left of the chevron, outside the accordion trigger.
+          <div className={cn("absolute right-12 flex gap-1", density === "compact" ? "top-1" : "top-2")}>{buttons}</div>
         )}
       </div>
     );

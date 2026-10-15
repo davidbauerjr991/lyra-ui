@@ -38,6 +38,7 @@ export default meta;
 
 interface ContainerDemoProps {
   variant?: ContainerVariantName;
+  radius?: "none" | "xs" | "sm" | "md" | "lg" | "xl";
   showHeader?: boolean;
   titleSize?: TitleSize;
   showSubhead?: boolean;
@@ -57,6 +58,7 @@ interface ContainerDemoProps {
    maps the playground args onto Container's own `header*` props. */
 function ContainerDemo({
   variant = "default",
+  radius = "lg",
   showHeader = true,
   titleSize = "md",
   showSubhead = false,
@@ -81,6 +83,7 @@ function ContainerDemo({
   const container = (
     <Container
       variant={variant}
+      radius={radius}
       headerTitle={showHeader && showTitle ? "Container" : undefined}
       headerClassName={showHeader && showDraggable ? DRAG_HEADER_CLASS : undefined}
       headerTitleClassName={TITLE_SIZE_CLASSES[titleSize]}
@@ -126,15 +129,16 @@ export const Default: ContainerDemoStory = {
       // is set, so both the labels and the prop keys are listed.
       include: [
         "Header", "Title", "Draggable", "Subtitle", "Icon", "Alert tag", "Actions", "Tabs",
-        "Footer", "Title size", "Style", "Header divider", "Footer border", "Footer scroll effect",
+        "Footer", "Title size", "Style", "Corner radius", "Header divider", "Footer border", "Footer scroll effect",
         "showHeader", "showTitle", "showDraggable", "showSubhead", "showIcon", "tagPlacement",
-        "showActions", "showTabs", "footerAlign", "titleSize", "variant", "headerBordered", "footerBordered", "footerScrollEffect",
+        "showActions", "showTabs", "footerAlign", "titleSize", "variant", "radius", "headerBordered", "footerBordered", "footerScrollEffect",
       ],
       sort: "none",
     },
   },
   args: {
     variant: "default",
+    radius: "lg",
     showHeader: true,
     showTitle: true,
     showDraggable: false,
@@ -227,6 +231,13 @@ export const Default: ContainerDemoStory = {
       options: ALL_VARIANTS,
       description: "Color and border style, as {color}-{border}. Popover and modal are overlay surfaces.",
       table: { category: "Appearance", defaultValue: { summary: "default" } },
+    },
+    radius: {
+      name: "Corner radius",
+      control: "select",
+      options: ["none", "xs", "sm", "md", "lg", "xl"],
+      description: "Corner radius token (`radius`): none 0, xs 4, sm 6, md 8, lg 12, xl 16px.",
+      table: { category: "Appearance", defaultValue: { summary: "lg" } },
     },
     headerBordered: {
       name: "Header divider",

@@ -2,7 +2,7 @@
    file: it only holds the card compositions. Buttons are static stand-ins that do nothing, except Autosummary's Edit / Save / Cancel. */
 import * as React from "react";
 import {
-  AlignLeft, ArrowLeftRight, BookOpen, Bookmark, CalendarDays, Check, Copy, CreditCard,
+  AlignLeft, ArrowLeftRight, BookOpen, Bookmark, CalendarDays, Check, Copy, CreditCard, Paperclip,
   FileCheck, FileText, Frown, Meh, MessageCircleQuestion, MessagesSquare, Pencil, Plus, Smile, Sparkles,
   ThumbsDown, ThumbsUp, Trash2, TriangleAlert, User, Workflow, ChevronDown, ChevronRight, CircleAlert, CircleCheck, History,
 } from "lucide-react";
@@ -13,6 +13,7 @@ import { Button } from "../button";
 import { Checkbox } from "../checkbox";
 import { DatePicker } from "../date-picker";
 import { Input } from "../input";
+import { Link } from "../link";
 import { Label } from "../label";
 import { ProgressBar } from "../progress-bar";
 import { Tag } from "../tag";
@@ -37,6 +38,14 @@ export interface CardOverrides {
   showOpenWindow?: boolean;
   /** Customer Info only: "list" (label / value rows) or "conversational" (avatar, tags and a written summary). */
   customerInfoLayout?: "list" | "conversational";
+  /** Artifacts only: show the list of artifact links instead of the empty message. */
+  populated?: boolean;
+  /** Which version of a card that has several (Autosummary, Customer Sentiment, Warranty Claim Checklist, Schedule Your Appointment, Rate Your Copilot Experience). */
+  variant?: string;
+  /** Header height: comfortable (48px) or compact (40px). */
+  density?: "comfortable" | "compact";
+  /** Corner radius token. */
+  radius?: "none" | "xs" | "sm" | "md" | "lg" | "xl";
 }
 export interface CardProps {
   o?: CardOverrides;
@@ -58,6 +67,8 @@ const C = ({ o, icon, ...rest }: AICardProps & CardProps) => {
     {...rest}
     onDismiss={o?.showDismiss ? () => setDismissed(true) : undefined}
     onOpenInNewWindow={o?.showOpenWindow ? () => {} : undefined}
+    density={o?.density}
+    radius={o?.radius}
     color={o?.color ?? rest.color}
     accordion={o?.accordion ?? rest.accordion}
     defaultOpen={o?.defaultOpen ?? rest.defaultOpen}
@@ -259,8 +270,8 @@ export const ApprovalRequestCard = ({ o }: CardProps) => {
       color="blue"
       icon={ic(Sparkles)}
       headerEnd={<span className="lyra-body-sm font-normal text-lyra-fg-secondary">Copilot summary</span>}
-      footer={
-        <div className="flex w-full flex-col gap-3 border-t border-lyra-border-subtle pt-4">
+      persistentFooter={
+        <div className="flex w-full flex-col gap-3">
           {final ? (
             <div className="flex items-center gap-1.5 lyra-body-md-emphasis text-lyra-fg-default">
               <CircleCheck className="h-4 w-4 text-lyra-status-success-strong" strokeWidth={1.5} aria-hidden="true" />
@@ -368,9 +379,9 @@ export const ApprovalRequestCard = ({ o }: CardProps) => {
           Checkout AI Agent reached its authorization limit and is requesting an exception: place order NR-11056 with another payment method at the held launch price.
         </p>
         <p>Lucas tried to buy the Aurora X2 launch edition at $189.00. Checkout failed twice during a payment incident.</p>
-        <Button variant="ghost" className="self-start px-0 text-lyra-fg-link hover:bg-transparent hover:underline" aria-expanded={showMore} onClick={() => setShowMore((v) => !v)}>
+        <Link className="self-start" aria-expanded={showMore} onClick={() => setShowMore((v) => !v)}>
           {showMore ? "Show less" : "Show more"}
-        </Button>
+        </Link>
         {/* Animates open and closed: the row height goes from 0 to its content height. */}
         <div
           className={cn(
@@ -438,6 +449,30 @@ export const ApprovalRequestCard = ({ o }: CardProps) => {
     </C>
   );
 };
+
+/* ── Artifacts (from the agent-next-gen-v3 contact details panel) ── */
+
+const ARTIFACTS = ["Fraud screening results", "Aurora X2 launch edition · Product details", "Payment attempts · NR-11056", "Order processing and shipping"];
+
+/** The interaction's artifacts: a list of links when populated, a short message when there are none. */
+export const ArtifactsCard = ({ o }: CardProps) => (
+  <C o={o} title="Artifacts" count={o?.populated ? ARTIFACTS.length : undefined} color="blue" icon={ic(Paperclip)}>
+    {o?.populated ? (
+      <ul className="flex flex-col gap-1.5">
+        {ARTIFACTS.map((label) => (
+          <li key={label} className="flex min-w-0 items-center gap-2">
+            <Paperclip className="h-3.5 w-3.5 shrink-0 text-lyra-fg-secondary" strokeWidth={1.5} aria-hidden="true" />
+            <Link className="min-w-0 truncate">
+              {label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p className="text-lyra-fg-secondary">No artifacts on this interaction yet.</p>
+    )}
+  </C>
+);
 
 /* ── Sentiment and notices ── */
 
@@ -809,9 +844,9 @@ const CustomerInfoList = () => (
         <Separator className="mt-3" />
       </div>
     ))}
-    <Button variant="ghost" className="self-start px-0 text-lyra-fg-link hover:bg-transparent hover:underline">
+    <Link className="self-start">
       Other Information
-    </Button>
+    </Link>
   </div>
 );
 
@@ -819,7 +854,7 @@ const CustomerInfoList = () => (
 const CustomerInfoConversational = () => (
   <div className="flex flex-col gap-3">
     <div className="flex items-center gap-4">
-      <Avatar initials="LT" size="lg" color="green" aria-label="Lucas Thomas" />
+      <Avatar initials="LT" size="lg" color="success" aria-label="Lucas Thomas" />
       <div className="min-w-0">
         <p className="lyra-body-lg-emphasis text-lyra-fg-default">Lucas Thomas</p>
         <p className="lyra-body-lg text-lyra-fg-secondary">Insider since 2023 · 14 orders</p>
@@ -837,9 +872,9 @@ const CustomerInfoConversational = () => (
     <p>
       Today he tried to buy the Aurora X2 launch edition at $189.00. Card checkout failed twice during payment incident INC-2207, and the pay-another-way link failed too.
     </p>
-    <Button variant="ghost" className="self-start px-0 text-lyra-fg-link hover:bg-transparent hover:underline">
+    <Link className="self-start">
       View customer info
-    </Button>
+    </Link>
   </div>
 );
 
@@ -961,7 +996,8 @@ export const ALL_CARDS: Array<[string, React.ComponentType<CardProps>]> = [
   ["Journey Summary", JourneySummaryCard],
   ["Self Service Summary", SelfServiceSummaryCard],
   ["Transfer Summary", TransferSummaryCard],
-  ["New - Approval Request", ApprovalRequestCard],
+  ["~New - Approval Request", ApprovalRequestCard],
+  ["~New - Artifacts", ArtifactsCard],
   ["Conversation Topics", ConversationTopicsCard],
   ["Customer Sentiment (Negative)", SentimentNegativeCard],
   ["Customer Sentiment (Neutral)", SentimentNeutralCard],
@@ -979,4 +1015,35 @@ export const ALL_CARDS: Array<[string, React.ComponentType<CardProps>]> = [
   ["Rate Your Copilot Experience (Start)", RateCopilotStartCard],
   ["Rate Your Copilot Experience (Rating)", RateCopilotCard],
   ["Rate Your Copilot Experience (Thanks)", RateCopilotThanksCard],
+];
+
+/**
+ * The playground's card list: one entry per card. Cards that exist in several versions are a single entry
+ * here that picks its version from `o.variant`; the Variants page still lists every version on its own.
+ */
+const pick = (versions: Record<string, React.ComponentType<CardProps>>, fallback: string): React.ComponentType<CardProps> => {
+  const Pick = ({ o }: CardProps) => {
+    const Version = versions[o?.variant ?? fallback] ?? versions[fallback];
+    return <Version o={o} />;
+  };
+  return Pick;
+};
+
+export const MAIN_CARDS: Array<[string, React.ComponentType<CardProps>]> = [
+  ["Autosummary", pick({ summary: AutosummaryCard, page: AutosummaryPageCard }, "summary")],
+  ["Journey Summary", JourneySummaryCard],
+  ["Self Service Summary", SelfServiceSummaryCard],
+  ["Transfer Summary", TransferSummaryCard],
+  ["~New - Approval Request", ApprovalRequestCard],
+  ["~New - Artifacts", ArtifactsCard],
+  ["Conversation Topics", ConversationTopicsCard],
+  ["Customer Sentiment", pick({ negative: SentimentNegativeCard, neutral: SentimentNeutralCard, positive: SentimentPositiveCard }, "neutral")],
+  ["Suggested Questions", SuggestedQuestionsCard],
+  ["Warranty Claim Decision Tree", DecisionTreeCard],
+  ["Warranty Claim Checklist", pick({ start: ChecklistCard, items: ChecklistItemsCard, complete: ChecklistCompleteCard }, "start")],
+  ["Information Needed", InformationNeededCard],
+  ["Customer Info Available", CustomerInfoAvailableCard],
+  ["Customer Info", CustomerInfoCard],
+  ["Schedule Your Appointment", pick({ start: ScheduleAppointmentStartCard, form: ScheduleAppointmentCard }, "start")],
+  ["Rate Your Copilot Experience", pick({ start: RateCopilotStartCard, rating: RateCopilotCard, thanks: RateCopilotThanksCard }, "start")],
 ];

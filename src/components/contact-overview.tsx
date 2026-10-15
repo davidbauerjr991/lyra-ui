@@ -1,10 +1,13 @@
 import * as React from "react";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
-import { ChevronDown, Phone, MessageCircle, User, Sparkles, FileText, Activity } from "lucide-react";
+import { ChevronDown, Phone, MessageCircle, User, Sparkles, FileText, Activity, Bookmark } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Popover } from "./popover";
 import { MenuItem } from "./menu-item";
 import { Tag } from "./tag";
+import { Avatar } from "./avatar";
+import { Link } from "./link";
+import { AICard } from "./ai-card";
 
 /**
  * Promoted out of agent-next-gen-v2's transcript file (originally a
@@ -557,6 +560,8 @@ export interface CustomerContextOverviewProps extends CustomerContextOverviewInf
   realTimeSummaryUpdatedLabel?: string;
   /** When set, a "View Experience Memory" link renders under the Real-Time Summary text; the caller decides what it opens. */
   onViewExperienceMemory?: () => void;
+  /** Opt-in: render Customer Info and the Real-Time Summary container (retitled "Journey Summary") with `AICard` (conversational Customer Info, purple Journey Summary) instead of the hand-built accordions. Off by default so existing consumers are unchanged. */
+  aiCards?: boolean;
 }
 
 /* ── CustomerContextOverview ──
@@ -607,6 +612,7 @@ const CustomerContextOverview = React.forwardRef<HTMLDivElement, CustomerContext
       showRealTimeSummary = false,
       realTimeSummaryUpdatedLabel,
       onViewExperienceMemory,
+      aiCards = false,
     },
     ref
   ) => {
@@ -1044,6 +1050,105 @@ const CustomerContextOverview = React.forwardRef<HTMLDivElement, CustomerContext
         ) : (
           renderGenericSection(nextBestActionSection, entryIndex++)
         )
+      );
+    }
+    if (aiCards) {
+      return (
+        <div ref={ref} className={cn("w-full pt-4 flex flex-col gap-3", className)}>
+          {showCustomerProfile && (
+            <AICard title="Customer Info" color="blue" icon={<User className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />} defaultOpen>
+              <div className="flex flex-col gap-3">
+                {customerCard ? (
+                  <div className="flex items-center gap-4">
+                    {customerCard.avatarInitials && (
+                      <Avatar initials={customerCard.avatarInitials} size="lg" color="success" aria-label={customerName} />
+                    )}
+                    <div className="min-w-0">
+                      <p className="lyra-body-lg-emphasis text-lyra-fg-default">{customerName}</p>
+                      <p className="lyra-body-lg text-lyra-fg-secondary">{customerCard.subtitle}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="lyra-body-md text-lyra-fg-default">{customerName}</p>
+                )}
+                {customerCard && ((customerCard.tags && customerCard.tags.length > 0) || customerCard.sentiment) && (
+                  <div className="flex flex-wrap gap-2">
+                    {customerCard.sentiment && (
+                      <Tag
+                        label={`${customerCard.sentiment.label ?? "Sentiment"} · ${customerCard.sentiment.value}`}
+                        variant="warning"
+                        shape="pill"
+                      />
+                    )}
+                    {customerCard.tags?.map((tag) => (
+                      <Tag key={tag} label={tag} variant="info" shape="pill" />
+                    ))}
+                  </div>
+                )}
+                {detailedSummary?.map((paragraph, i) => (
+                  <p key={i}>{paragraph}</p>
+                ))}
+                {onViewCustomerInfo && (
+                  <Link onClick={onViewCustomerInfo} className="self-start">
+                    View customer info
+                  </Link>
+                )}
+              </div>
+            </AICard>
+          )}
+          {(showRealTimeSummary || showContactSnapshot) && (
+            <AICard
+              title={showRealTimeSummary ? "Journey Summary" : "Autosummary"}
+              color={showRealTimeSummary || autosummaryBlue ? "blue" : "purple"}
+              icon={
+                showRealTimeSummary ? (
+                  <Bookmark className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+                ) : (
+                  <FileText className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+                )
+              }
+              defaultOpen
+            >
+              <div className="flex flex-col gap-3">
+                {showRealTimeSummary ? (
+                  <p>{realTimeSummary ?? "No journey summary is available for this contact yet."}</p>
+                ) : snapshot && snapshot.length > 0 ? (
+                  <ul className="flex flex-col gap-1 pl-4 list-disc">
+                    {snapshot.map((line, i) => (
+                      <li key={i}>{renderSnapshotLine(line, onSnapshotLink)}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-lyra-fg-secondary">No prior contact history on file — this is a new conversation.</p>
+                )}
+                {showRealTimeSummary && onViewExperienceMemory && (
+                  <Link onClick={onViewExperienceMemory} className="self-start">
+                    View Experience Memory
+                  </Link>
+                )}
+                {!showRealTimeSummary && onViewInteractionHistory && (
+                  <Link onClick={onViewInteractionHistory} className="self-start">
+                    View Customer Contacts
+                  </Link>
+                )}
+                {showRealTimeSummary && realTimeSummaryUpdatedLabel && (
+                  <>
+                    <div className="border-t border-lyra-border-subtle" />
+                    <span className="lyra-body-sm text-lyra-fg-secondary">{realTimeSummaryUpdatedLabel}</span>
+                  </>
+                )}
+              </div>
+            </AICard>
+          )}
+          {nextBestActionSection &&
+            (nextBestActionBare ? (
+              <div key="next-best-action">{nextBestActionSection.content}</div>
+            ) : (
+              <AccordionPrimitive.Root type="multiple" defaultValue={["next-best-action"]}>
+                {renderGenericSection(nextBestActionSection, SECTION_COUNT - 1)}
+              </AccordionPrimitive.Root>
+            ))}
+        </div>
       );
     }
     const orderedValues = [

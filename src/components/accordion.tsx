@@ -33,6 +33,16 @@ import { cn } from "../lib/utils";
 
 /* ── Types ── */
 
+export const RADIUS_CLASSES = {
+  none: "rounded-none",
+  xs: "rounded-lyra-xs",
+  sm: "rounded-lyra-sm",
+  md: "rounded-lyra-md",
+  lg: "rounded-lyra-lg",
+  xl: "rounded-lyra-xl",
+} as const;
+export type RadiusSize = keyof typeof RADIUS_CLASSES;
+
 export interface AccordionItem {
   /** Unique identifier */
   id: string;
@@ -103,6 +113,14 @@ export interface AccordionProps {
    * Default "default".
    */
   variant?: "default" | "contained";
+  /**
+   * Header row height. `"comfortable"` (default) is a 48px row (14px vertical padding around the
+   * 20px chevron); `"compact"` is a 40px row (10px padding). Applies to every row; a per-item
+   * `headerClassName` can still override it.
+   */
+  density?: "comfortable" | "compact";
+  /** `variant="contained"` only: corner radius of the outer card (none, xs 4, sm 6, md 8, lg 12, xl 16px). Default "lg". */
+  radius?: RadiusSize;
   /** Additional className on the root element */
   className?: string;
 }
@@ -113,7 +131,10 @@ function AccordionRow({
   item,
   isOnlyItem,
   hideDivider = false,
+  compact = false,
 }: {
+  /** `density="compact"`: the 40px header row. */
+  compact?: boolean;
   item: AccordionItem;
   isOnlyItem: boolean;
   /** `variant="contained"`: no divider after the last row — the card's own border closes it. */
@@ -124,7 +145,8 @@ function AccordionRow({
       <AccordionPrimitive.Header>
         <AccordionPrimitive.Trigger
           className={cn(
-            "group w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors",
+            "group w-full flex items-center gap-3 px-4 text-left transition-colors",
+            compact ? "py-2.5" : "py-3.5",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-inset",
             item.disabled
               ? "cursor-not-allowed"
@@ -255,6 +277,8 @@ const Accordion = React.forwardRef<HTMLDivElement, AccordionProps>(
       onValueChange,
       onValuesChange,
       variant = "default",
+      density = "comfortable",
+      radius = "lg",
       className,
     },
     ref
@@ -262,7 +286,7 @@ const Accordion = React.forwardRef<HTMLDivElement, AccordionProps>(
     const rootClassName = cn(
       "w-full",
       variant === "contained" &&
-        "overflow-hidden rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-base shadow-sm",
+        `overflow-hidden ${RADIUS_CLASSES[radius]} border border-lyra-border-subtle bg-lyra-bg-surface-base shadow-sm`,
       className
     );
     const renderRows = () =>
@@ -272,6 +296,7 @@ const Accordion = React.forwardRef<HTMLDivElement, AccordionProps>(
           item={item}
           isOnlyItem={items.length === 1}
           hideDivider={variant === "contained" && index === items.length - 1}
+          compact={density === "compact"}
         />
       ));
     const isControlledSingle = value !== undefined;

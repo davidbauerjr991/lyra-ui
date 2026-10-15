@@ -2469,3 +2469,74 @@ Verified: `npm run lint` (`tsc --noEmit`) — matched the standing 3-error basel
 - AICard Customer Info revised: uses the Input "label only, horizontal" layout (lyra-ui Label left, read-only value right, Separator under each row), replacing the earlier editable-fields version.
 
 - AICard Customer Info: new Layout control (List / Conversational), shown when the Customer Info card is picked. Conversational shows the avatar, name, tags, written summary and a View customer info link (from v3).
+
+- AICard: new "New - Artifacts" card (from v3's Details panel): blue, paperclip icon; Populated control (shown for this card) switches between the empty message and a list of artifact links.
+
+- AICard playground: the Card dropdown now lists one entry per card; versions are controls on the main card (Autosummary Format, Customer Sentiment Sentiment, Warranty Claim Checklist state, Schedule Your Appointment step, Rate Your Copilot Experience step). The Variants page still lists every version.
+
+- Accordion: new `density` prop (comfortable 48px / compact 40px header row); the Accordion story's padding control now uses it. AICard: `density` prop (Accordion density in accordion mode; ContainerHeader compact plus py-1 in plain mode = 40px), with a Density control in the AICard Default story.
+
+- AICard: `density` now defaults to compact (40px header) in the component and the Default story; Accordion's own default stays comfortable (48px).
+
+- AICard: the new cards are labeled with a leading ~ ("~New - Approval Request", "~New - Artifacts").
+
+- AICard playground: the Card dropdown is alphabetical.
+
+### v3 contact-details cards now use lyra-ui AICard
+- `contact-overview.tsx`: new opt-in `aiCards` prop on `CustomerContextOverview` (default off). Renders Customer Info (conversational layout: Avatar, tags, summary, "View customer info") and the Real-Time Summary slot retitled "Journey Summary" (purple AICard, Bookmark icon; keeps "View Experience Memory" link and "Updated … ago" label) with `AICard`. Next Best Action unchanged.
+- agent-next-gen-v3 `agent-next-gen-customer-info-panel.tsx`: passes `aiCards`; Artifacts accordion rebuilt as a blue `AICard` (same list, empty text, View All behavior; links are lyra-ui ghost Buttons).
+
+### AICard links + Journey Summary tweaks
+- Links inside AICards (stories, `CustomerContextOverview` `aiCards`, v3 Artifacts) now use lyra-ui `Link` instead of ghost `Button`.
+- `aiCards` layout: Journey Summary is blue; gap between cards is `gap-3` to match the Artifacts spacing.
+
+### Container `radius`
+- New `radius` prop on `Container` (none/xs/sm/md/lg/xl, default lg = unchanged look) via a cva variant; Container story has a 'Corner radius' control.
+
+### AICard `radius`
+- New `radius` prop on `AICard` (none/xs/sm/md/lg/xl), default **md** (was lg, so v3's AICards are now 8px). `Accordion` gained a matching `radius` prop for `variant="contained"` (default lg, unchanged); radius map exported from accordion.tsx. AICard story has a 'Corner radius' control (default md).
+
+### v3 main-column cards use AICard
+- `CustomerContextOverview` `aiCards` now titles the snapshot slot 'Autosummary' (FileText; blue when `autosummaryBlue`, else purple); v3's transcript passes `aiCards`.
+- v3 `ApprovalSummaryAccordion` (agent-next-gen-transcript.tsx) is now a blue `AICard` (title + timestamp, 'Copilot summary' in the header, Link for Show more/checklist links). Behavior change: the decision footer is inside the card body, so it hides when the card is collapsed (previously stayed visible).
+
+### AICard `persistentFooter`
+- New `persistentFooter` prop: content that stays visible under the header when the card is collapsed (card shell wraps the accordion + footer). '~New - Approval Request' story and v3's `ApprovalSummaryAccordion` use it, restoring the decision options when collapsed (reverses the earlier regression).
+
+### v3 Phase 1: Settings → 'Show app icons' switch
+- `AgentWorkspaceAdvancedPage.tsx` (Agent Workspace 2.0 | Phase 1): Settings page now has a lyra-ui `Switch` ('Show app icons', off by default) that toggles the header app icons (Search button, panel icon row, View All Apps picker) previously hard-hidden with `false &&`. State is local (not persisted).
+
+### v3 Phase 1: per-app checkboxes under 'Show app icons'
+- With the switch on, Settings lists a lyra-ui `Checkbox` per app (Search, Customers, Accounts, Tickets, WEM, Screen Pop, Agent Chat, Schedule, Notifications). They are bound to the existing `pinnedKeys` state, so checked apps show in the header and unchecked ones don't (same state the apps menu pin buttons use).
+
+### v3 Phase 1: Customers display setting
+- Settings → checking Customers shows a lyra-ui `Select` ('Customers display'): Display in tab / Display in Left Nav / Display in App Header (default). Tab: Home/Customers `TabList` above the dashboard (re-enables the previously orphaned desk Customers list branch, now gated by `customersViewActive`). Left Nav: a Customers item (between Home and Settings) opens the same table in the main area under a 'Customers' PageHeader. App Header: the header Customers icon opens the draggable panel, which now holds the `CustomersListView` table (was blank). The header icon is hidden for tab/left nav. Changing the select resets to Home. State is local, not persisted.
+
+- Customers table row click now opens the `CustomerRowInfoPanel` slide-out in all three displays (tab/left nav reuse the shared selected row; the App Header panel has its own `headerCustomerRow` and an embedded slide-out).
+
+### v3 Phase 1: display options for Schedule, Accounts, Tickets, WEM
+- The Settings 'display' select (Display in tab / Left Nav / App Header) now exists for Customers, Schedule, Accounts, Tickets and WEM (`panelDisplay` per key, `DISPLAYABLE_KEYS`). Tabs and left-nav items are generated from the checked apps; the main area shows Customers' table or, for the other four, the same body the header panel shows (Schedule's schedule; blank placeholder for Accounts/Tickets/WEM). Header icon hides when an app is shown as a tab or in the left nav.
+
+- v3 Phase 1: the 'View All Apps' menu (and its divider) in the top header only renders when 2+ apps are pinned and set to display in the App Header (`showAppsMenu`).
+
+- v3 Phase 1: Contact History lists all channels (not just voice) when Customers is checked in Settings; otherwise stays voice-only (`contactHistoryByRange` moved below `pinnedKeys`).
+
+### v3 Phase 1: configurable voice controls location
+- Settings → 'Voice controls location' (lyra-ui `Select`): Bottom (default, existing bar) or Top of left nav. Top portals the active call's `VoiceCallControls` into a slot under the Assignments caption (`LeftNavVoiceSlot`), using a new `stacked` layout (v3 `agent-next-gen-voice-call-controls.tsx`): customer avatar/name + timer, icon-only Hold/Mask/Record/Keypad/Transcript/Volume strip, then Mute and End Call side by side. While the left nav is collapsed/hidden the slot isn't mounted, so the bottom bar is used.
+
+### v3 Phase 1: 'AI display' setting (inline / panel)
+- Settings → 'AI display' (Select). 'In the Contact Details panel' strips AI content from the transcripts (`stripAi`/`isAiActionMessage`: interstitials, approval summaries, wrap-ups, events; the autosummary/context overview is not passed to the transcript) so the main area shows the voice transcript (voice thread messages now feed the main transcript) or chat/other channel messages, and renders it via new `AiActionsFeed` (agent-next-gen-transcript.tsx) at the top of `DetailsPanelAccordions` (new `aiFeed` prop), above Customer Info/Journey Summary/Artifacts. Autosummary uses `CustomerContextOverview aiCards`; `getSnapshotLinkHandler` is shared by both modes. Inline stays default/unchanged.
+
+### v3 Phase 1 — "AI display: panel" refinements
+- In panel mode the Contact Details panel now lists the original three cards (Customer Info, Journey Summary, Artifacts) first, with the AI feed (`aiFeed`) below them.
+- The "Ask Copilot" input is docked in the panel (sticky bottom slot via `copilotSlotRef`); `InteractionComposer` gained `copilotMount` and portals the copilot pane there (copilot-only composers render only the portal). Falls back inline if the panel is closed.
+- The Contact Details side panel (Details tab) opens by default whenever an interaction is active in panel mode.
+- v3 panel mode: Ask Copilot input is now fixed to the bottom of the Contact Details panel (outside the scroller) with suggestion chips stacked above the input; the panel feed auto-scrolls to the bottom as it grows (stops following if the agent scrolls up).
+- v3 panel mode: when the docked Ask Copilot container is ≤425px wide, the Takeover Chat button stacks above the suggestion chips (ResizeObserver-driven).
+- v3 panel mode: the Ask Copilot slot now lives in the Contact Details side panel's footer (`CustomerInformationSidePanel.copilotSlotRef`), so the input stays in the panel when switching to Customer Info / Experience Memory / Artifacts views.
+- v3 panel mode: at ≤425px the docked Takeover Chat now sits below the Copilot input (chips above); docked slot has p-4 padding.
+- v3 panel mode: docked Copilot input has the soft fade above it (content scrolls under).
+- v3 panel mode: docked Copilot input is hidden (kept mounted) while Customer Info / Experience Memory / Artifacts are showing; at ≤425px only one suggestion chip shows at a time.
+- v3 panel mode: refresh icon button beside the docked Copilot suggestion chips cycles through a larger pool (3 at a time, 1 when narrow).
+- v3 left-nav (stacked) call controls: Mute / End Call buttons are now size md.
+- v3 Phase 1 Settings → "Left nav": switches for New Outbound at bottom (footer), Home/Settings (+app items) at top (items), and no-collapse interaction cards (hides Collapse/Expand all).

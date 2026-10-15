@@ -8,6 +8,7 @@ import {
   SelfServiceSummaryCard,
   TransferSummaryCard,
   ApprovalRequestCard,
+  ArtifactsCard,
   ConversationTopicsCard,
   SentimentNegativeCard,
   SentimentNeutralCard,
@@ -68,8 +69,18 @@ export const TransferSummary: Story = {
 };
 
 export const ApprovalRequest: Story = {
-  name: "New - Approval Request",
+  name: "~New - Approval Request",
   render: () => <Frame><ApprovalRequestCard /></Frame>,
+};
+
+export const ArtifactsEmpty: Story = {
+  name: "~New - Artifacts (Empty)",
+  render: () => <Frame><ArtifactsCard /></Frame>,
+};
+
+export const ArtifactsPopulated: Story = {
+  name: "~New - Artifacts (Populated)",
+  render: () => <Frame><ArtifactsCard o={{ populated: true }} /></Frame>,
 };
 
 export const ConversationTopics: Story = {

@@ -94,7 +94,7 @@ interface AccordionDemoProps {
   padding?: boolean;
   headerColor?: boolean;
   headerColorValue?: AccentColor;
-  headerPadding?: "comfortable" | "compact";
+  density?: "comfortable" | "compact";
   variant?: "default" | "contained";
 }
 
@@ -112,7 +112,7 @@ function AccordionDemo({
   padding = true,
   headerColor = false,
   headerColorValue = "purple",
-  headerPadding = "comfortable",
+  density = "comfortable",
   variant = "default",
 }: AccordionDemoProps) {
   // Without padding, the first/last trigger rows (and any `headerColor`
@@ -121,11 +121,6 @@ function AccordionDemo({
   // the same way the old "Rich Header + Table Content" variant's Table
   // wrapper needed it for the same reason (content flush to a rounded edge).
   const containerClassName = padding ? "p-4" : "overflow-hidden";
-  // Accordion's own trigger row defaults to `py-3.5` (14px) — "comfortable"
-  // needs no override; "compact" overrides it to `py-2.5` (10px) via
-  // `headerClassName`, which `cn()`'s `twMerge` correctly replaces `py-3.5`
-  // with rather than stacking both.
-  const headerPaddingClass = headerPadding === "compact" ? "py-2.5" : undefined;
   const items = sampleItems.map((item) => ({
     ...item,
     icon: showIcons ? item.icon : undefined,
@@ -138,10 +133,7 @@ function AccordionDemo({
         : undefined,
     endSlot: showEndSlot ? metricsSlot(item.id) : undefined,
     content: richContent ? richItem.content : item.content,
-    headerClassName: cn(
-      headerColor ? ACCENT_HEADER_CLASSES[headerColorValue] : undefined,
-      headerPaddingClass
-    ),
+    headerClassName: headerColor ? ACCENT_HEADER_CLASSES[headerColorValue] : undefined,
   }));
 
   const [value, setValue] = useState(defaultOpen === "none" ? "" : defaultOpen);
@@ -165,6 +157,7 @@ function AccordionDemo({
             <Accordion
               type="single"
               items={[item]}
+              density={density}
               value={separateOpenIds.includes(item.id) ? item.id : ""}
               onValueChange={(openId) =>
                 setSeparateOpenIds((prev) =>
@@ -184,12 +177,13 @@ function AccordionDemo({
     <Accordion
       type="multiple"
       items={items}
+      density={density}
       values={values}
       onValuesChange={setValues}
       variant={variant}
     />
   ) : (
-    <Accordion type="single" items={items} value={value} onValueChange={setValue} variant={variant} />
+    <Accordion type="single" items={items} density={density} value={value} onValueChange={setValue} variant={variant} />
   );
 
   return container ? <Container className={containerClassName}>{accordion}</Container> : accordion;
@@ -212,7 +206,7 @@ export const Default: AccordionDemoStory = {
     padding: true,
     headerColor: false,
     headerColorValue: "purple",
-    headerPadding: "comfortable",
+    density: "comfortable",
     variant: "default",
   },
   argTypes: {
@@ -279,18 +273,18 @@ export const Default: AccordionDemoStory = {
         "default — rows sit on the page with dividers between them. contained — the whole group sits in one bordered, rounded card (`variant`). Not used by “separate containers”, which already draws a card per item.",
       if: { arg: "separateContainers", truthy: false },
     },
-    headerPadding: {
+    density: {
       control: "select",
       options: ["comfortable", "compact"],
       description:
-        "Trigger row vertical padding — comfortable is 14px top/bottom (default), compact is 10px top/bottom",
+        "Header row height (`density`) — comfortable is 48px (default), compact is 40px",
     },
   },
   render: (args) => (
     // `key` remounts the demo when a control changes — `useState`'s initial
     // value only applies on first mount.
     <AccordionDemo
-      key={`${args.multi}-${args.showIcons}-${args.disabledItem}-${args.defaultOpen}-${args.showSubhead}-${args.showEndSlot}-${args.richHeader}-${args.richContent}-${args.container}-${args.separateContainers}-${args.padding}-${args.headerColor}-${args.headerColorValue}-${args.headerPadding}-${args.variant}`}
+      key={`${args.multi}-${args.showIcons}-${args.disabledItem}-${args.defaultOpen}-${args.showSubhead}-${args.showEndSlot}-${args.richHeader}-${args.richContent}-${args.container}-${args.separateContainers}-${args.padding}-${args.headerColor}-${args.headerColorValue}-${args.density}-${args.variant}`}
       {...args}
     />
   ),

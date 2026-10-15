@@ -12,8 +12,17 @@ import { cn } from "../lib/utils";
  *
  * Special surfaces (popover, modal) keep their own names.
  */
-const containerVariants = cva("rounded-lyra-lg", {
+const containerVariants = cva("", {
   variants: {
+    /** Corner radius, from the radius tokens. Default "lg" (12px). */
+    radius: {
+      none: "rounded-none",
+      xs: "rounded-lyra-xs",
+      sm: "rounded-lyra-sm",
+      md: "rounded-lyra-md",
+      lg: "rounded-lyra-lg",
+      xl: "rounded-lyra-xl",
+    },
     variant: {
       /* ── Base / overlay surfaces ── */
       default:          "bg-lyra-bg-surface-base border border-lyra-border-subtle shadow-sm",
@@ -61,6 +70,7 @@ const containerVariants = cva("rounded-lyra-lg", {
   },
   defaultVariants: {
     variant: "default",
+    radius: "lg",
   },
 });
 
@@ -110,7 +120,7 @@ interface ContainerProps
 
 const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
   ({
-    className, variant,
+    className, variant, radius,
     headerTitle, headerIcon, headerActions,
     headerTitleBadge, headerTopSlot, headerSubhead, headerBordered = false,
     headerTitleClassName, headerClassName, headerActionsWrap, headerTabs,
@@ -120,7 +130,7 @@ const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
     return (
       <div
         ref={ref}
-        className={cn(containerVariants({ variant }), className)}
+        className={cn(containerVariants({ variant, radius }), className)}
         {...props}
       >
         <ContainerHeaderSlot
