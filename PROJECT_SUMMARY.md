@@ -797,6 +797,14 @@ From the lyra-vs-Sol UX review (Time Picker). `time-picker.tsx`, `time-picker-sh
 - Re-tested in the side-by-side review harness (Playwright + axe, both sides): all four review gaps measure closed; see ux-review/lyra-vs-sol-ux-review-rerun.html.
 Stories: Default's Error control now uses the real `error` prop (instead of the story-drawn wrapper) and gains Allowed times and Step controls; Variants gains Error and Constraints. TimeRangePicker stories still use the story-drawn error.
 
+### InteractionNavItem: severity outline on unselected cards, separate selection bar (2026-10-15)
+`interaction-nav-item.tsx`, `expandedCardClassName` (the expanded card and the compact tile's hover preview):
+- **Severity outline regardless of `active`:** a card-level `"warning"`/`"critical"` severity (`awaitingResponse` + `awaitingSeverity`) now outlines the whole card in that status color on unselected cards too. Before, an inactive card always had the subtle border, and severity showed only once the card was active. `"success"` is unchanged: a green outline on the active card only.
+- **Selection bar kept distinct:** the active card's thick left border (`border-l-4`) is now always `border-active` blue, colored with `border-l-*` after the outline color (plus a matching `hover:` darkening). An active critical card shows a red outline with a blue left bar; it used to be red all round. An active card with no severity looks the same as before.
+- **Header timer:** the collapsed card's header timer was already colored by severity without checking `active`; unchanged.
+- Consumers that pass `awaitingResponse` on inactive cards (default severity `"critical"`) will now see red outlines on those cards in the rail, e.g. "Expanded — Inactive, Awaiting Response".
+Stories: new "Expanded — Unselected, Critical" (inactive, critical, channels collapsed so the header timer shows).
+
 ## Stories
 
 ### AppHeader (`src/components/__stories__/AppHeader.stories.tsx`)

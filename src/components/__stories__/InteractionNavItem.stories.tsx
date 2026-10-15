@@ -356,6 +356,7 @@ const STACK_VOICE_PREVIEW = randomSkill();
 const NAV_HEADER_VOICE_PREVIEW = randomSkill();
 const HOVER_CARD_VOICE_PREVIEW = randomSkill();
 const EXPANDED_NEW_ASSIGNMENT_PREVIEW = randomSkill();
+const EXPANDED_UNSELECTED_CRITICAL_PREVIEW = randomSkill();
 
 function ExpandedDemo() {
   const [outcome] = useOutcomeDemos(1, { 0: ["Technical"] });
@@ -475,6 +476,43 @@ function ExpandedInactiveDemo() {
 export const ExpandedInactive: Story = {
   name: "Expanded — Inactive, Awaiting Response",
   render: () => <ExpandedInactiveDemo />,
+  parameters: { layout: "padded" },
+};
+
+/* ── Expanded — unselected, critical ──
+   Card-level `"critical"` severity outlines the whole card in red and colors
+   the header timer red even though the card isn't the active one. Starts with
+   its channels collapsed (`channelsExpandedOverride`) so the header timer is
+   showing; the chevron opens it. Compare "Expanded — Active, Awaiting
+   Response", where the same severity sits alongside the blue selection bar. */
+function ExpandedUnselectedCriticalDemo() {
+  const [outcome] = useOutcomeDemos(1);
+  return (
+    <InteractionNavItem
+      customerName="Ray Torres"
+      active={false}
+      awaitingResponse
+      awaitingSeverity="critical"
+      elapsed="09:48"
+      expanded
+      collapsible
+      channelsExpandedOverride={{ expanded: false, version: 1 }}
+      channels={[{
+        type: "chat",
+        elapsed: "09:48",
+        current: true,
+        awaitingResponse: true,
+        awaitingSeverity: "critical",
+        preview: EXPANDED_UNSELECTED_CRITICAL_PREVIEW,
+        outcome,
+      }]}
+    />
+  );
+}
+
+export const ExpandedUnselectedCritical: Story = {
+  name: "Expanded — Unselected, Critical",
+  render: () => <ExpandedUnselectedCriticalDemo />,
   parameters: { layout: "padded" },
 };
 

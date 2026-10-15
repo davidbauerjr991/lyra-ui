@@ -1075,11 +1075,18 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       // branch's own comment for why the drop shadow is scoped to the
       // collapsed rail specifically, per an explicit follow-up request.
       active && "shadow-md",
-      // Border color reflects active state first — an inactive card never
-      // gets the red "needs attention" border, even when awaiting a
-      // response (that's conveyed via the channel chip / avatar badge
-      // instead). Only an active card that's also awaiting response
-      // shows red; every other active card shows the blue active border.
+      // Two separate signals, both visible at once:
+      //  - Severity outline: a card-level `"warning"`/`"critical"` severity
+      //    outlines the WHOLE card in that status color whether or not the
+      //    card is active, so an overdue card in the rail reads as overdue
+      //    without having to be selected first. `"success"` stays an
+      //    active-only tint, as before.
+      //  - Selection bar: `active`'s thick left border (`border-l-4` above)
+      //    is always the blue `border-active`, colored on the left edge only
+      //    (`border-l-*`, after the outline color so it wins), so selection
+      //    never reads as severity or vice versa.
+      // An active card with no warning/critical severity is blue all round,
+      // same as before.
       //
       // Each branch also gets a `hover:` darkening of that same border,
       // per an explicit follow-up request ("darker border color... around
@@ -1106,15 +1113,19 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       // awaiting a response.
       // `onHold` no longer tints the card border/background — per explicit
       // request, a held call keeps its normal severity / active styling.
-      active
-        ? severity === "critical"
-          ? "border-lyra-status-critical-strong hover:border-[color-mix(in_srgb,var(--lyra-color-status-critical-strong)_80%,black_20%)]"
-          : severity === "warning"
-          ? "border-lyra-status-warning-strong hover:border-[color-mix(in_srgb,var(--lyra-color-status-warning-strong)_80%,black_20%)]"
-          : severity === "success"
-          ? "border-lyra-status-success-strong hover:border-[color-mix(in_srgb,var(--lyra-color-status-success-strong)_80%,black_20%)]"
-          : "border-lyra-border-active hover:border-[color-mix(in_srgb,var(--lyra-color-border-active)_80%,black_20%)]"
-        : "border-lyra-border-subtle hover:border-lyra-border-soft"
+      severity === "critical"
+        ? "border-lyra-status-critical-strong hover:border-[color-mix(in_srgb,var(--lyra-color-status-critical-strong)_80%,black_20%)]"
+        : severity === "warning"
+        ? "border-lyra-status-warning-strong hover:border-[color-mix(in_srgb,var(--lyra-color-status-warning-strong)_80%,black_20%)]"
+        : !active
+        ? "border-lyra-border-subtle hover:border-lyra-border-soft"
+        : severity === "success"
+        ? "border-lyra-status-success-strong hover:border-[color-mix(in_srgb,var(--lyra-color-status-success-strong)_80%,black_20%)]"
+        : "border-lyra-border-active hover:border-[color-mix(in_srgb,var(--lyra-color-border-active)_80%,black_20%)]",
+      // Selection bar (see above). `color:` hint so Tailwind reads the
+      // arbitrary value as a color, not a border width.
+      active &&
+        "border-l-lyra-border-active hover:border-l-[color:color-mix(in_srgb,var(--lyra-color-border-active)_80%,black_20%)]"
     );
 
     /* ── Compact: icon-rail avatar tile ── */
