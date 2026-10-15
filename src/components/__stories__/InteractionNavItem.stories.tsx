@@ -28,6 +28,7 @@ const meta: Meta<typeof InteractionNavItem> = {
     active: { control: "boolean" },
     awaitingResponse: { control: "boolean" },
     collapsible: { control: "boolean" },
+    newAssignmentSeverity: { control: "select", options: ["success", "warning", "critical"] },
   },
 };
 
@@ -422,6 +423,47 @@ export const ExpandedNewAssignment: Story = {
   name: "Expanded — New Assignment",
   render: () => <ExpandedNewAssignmentDemo />,
   parameters: { layout: "padded" },
+};
+
+/* ── Expanded — new assignment severity ──
+   `newAssignmentSeverity` colors the pulsing dot left of the name:
+   `"success"` green, `"warning"` amber, `"critical"` red (the default). It
+   pulses at every level. One card per level, nothing else varied. */
+const NEW_ASSIGNMENT_SEVERITY_LEVELS = [
+  { severity: "success", name: "Sofia Martinez", preview: randomSkill() },
+  { severity: "warning", name: "Ray Torres", preview: randomSkill() },
+  { severity: "critical", name: "Priya Nair", preview: randomSkill() },
+] as const;
+
+function ExpandedNewAssignmentSeverityDemo() {
+  const outcomes = useOutcomeDemos(NEW_ASSIGNMENT_SEVERITY_LEVELS.length);
+  return (
+    <div className="flex w-[320px] flex-col gap-2 rounded-lyra-lg bg-lyra-bg-surface-shell p-3">
+      {NEW_ASSIGNMENT_SEVERITY_LEVELS.map((level, i) => (
+        <InteractionNavItem
+          key={level.severity}
+          customerName={level.name}
+          isNewAssignment
+          newAssignmentSeverity={level.severity}
+          elapsed="00:42"
+          expanded
+          collapsible
+          channels={[{
+            type: "chat",
+            elapsed: "00:42",
+            current: true,
+            preview: level.preview,
+            outcome: outcomes[i],
+          }]}
+        />
+      ))}
+    </div>
+  );
+}
+
+export const ExpandedNewAssignmentSeverity: Story = {
+  name: "Expanded — New Assignment Severity",
+  render: () => <ExpandedNewAssignmentSeverityDemo />,
 };
 
 function ExpandedActiveNotAwaitingDemo() {

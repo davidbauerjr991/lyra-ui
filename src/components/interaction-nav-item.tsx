@@ -103,6 +103,12 @@ export interface InteractionNavItemProps {
    * renders exactly as before).
    */
   isNewAssignment?: boolean;
+  /** Color of `isNewAssignment`'s pulsing dot in the expanded card's header,
+   *  on the same scale as `awaitingSeverity`: `"success"` (green),
+   *  `"warning"` (amber) or `"critical"` (red). It pulses at every level.
+   *  Default `"critical"` (red, as before). The compact tile's corner dot
+   *  is unaffected. */
+  newAssignmentSeverity?: "success" | "warning" | "critical";
   /** Whether this is the currently-open/selected interaction. */
   active?: boolean;
   /** Tints the whole expanded card (background + outer border) with the
@@ -272,6 +278,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       awaitingResponse = false,
       awaitingSeverity,
       isNewAssignment = false,
+      newAssignmentSeverity = "critical",
       active = false,
       onHold = false,
       expanded = false,
@@ -861,12 +868,24 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
               tile's own corner badge uses) — this row already has the
               customer's name right next to it to carry the actual
               meaning, so a plain color signal reads clearly without
-              needing its own icon here too. */}
+              needing its own icon here too. Colored by
+              `newAssignmentSeverity`; the ping ring matches the dot. */}
           {isNewAssignment && (
             <Tooltip content="New assignment" placement="top">
               <span className="relative inline-flex shrink-0">
-                <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full bg-lyra-status-critical-strong opacity-60 motion-reduce:hidden" />
-                <Badge shape="circle" dot variant="critical" size="sm" className="relative shrink-0" aria-label="New assignment" />
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "absolute inset-0 animate-ping rounded-full opacity-60 motion-reduce:hidden",
+                    // Literal class strings so Tailwind's content scanner finds each one.
+                    newAssignmentSeverity === "success"
+                      ? "bg-lyra-status-success-strong"
+                      : newAssignmentSeverity === "warning"
+                      ? "bg-lyra-status-warning-strong"
+                      : "bg-lyra-status-critical-strong"
+                  )}
+                />
+                <Badge shape="circle" dot variant={newAssignmentSeverity} size="sm" className="relative shrink-0" aria-label="New assignment" />
               </span>
             </Tooltip>
           )}
