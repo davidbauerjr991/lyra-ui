@@ -21,6 +21,7 @@ import {
   MessageSquareShare,
   PhoneOff,
   Pause,
+  Circle,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Badge } from "./badge";
@@ -208,6 +209,10 @@ export interface InteractionChannel {
    *  reading "Needs outcome · 00:42". The consumer supplies the whole chip;
    *  the timer above is untouched. See `ChannelRowProps.statusBadge`. */
   statusBadge?: React.ReactNode;
+  /** The call is being recorded: the timer's clock icon becomes a pulsing
+   *  red dot (the voice call controls' own recording dot) and the timer
+   *  keeps counting. See `ChannelRowProps.recording`. */
+  recording?: boolean;
   /** Message preview for this channel. */
   preview?: string;
   /**
@@ -498,6 +503,10 @@ interface ChannelRowProps {
    *  `elapsedOverride` it adds a line rather than replacing the timer.
    *  Omit to render nothing extra. */
   statusBadge?: React.ReactNode;
+  /** Swaps the timer's clock icon for a pulsing red dot while the call is
+   *  being recorded; the timer keeps counting and its tooltip reads
+   *  "Recording · Duration: mm:ss". Omit (or `false`) for the plain clock. */
+  recording?: boolean;
 }
 
 // `direction` (see `InteractionChannel.direction`'s own doc comment) is
@@ -581,6 +590,7 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
   controlsDisabled = false,
   onHoldElapsed,
   statusBadge,
+  recording = false,
 }) => {
   // `null` when not awaiting at all (the plain gray look below is
   // untouched); otherwise `awaitingSeverity`, defaulting to `"critical"` —
@@ -979,7 +989,7 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
     <div className="flex items-center gap-1">
       {preview && <p className="min-w-0 flex-1 truncate lyra-body-sm text-lyra-fg-secondary">{preview}</p>}
       {elapsedOverride ?? (elapsed && (
-        <Tooltip content={`Duration: ${elapsed}`} placement="top">
+        <Tooltip content={recording ? `Recording · Duration: ${elapsed}` : `Duration: ${elapsed}`} placement="top">
         <span
           className={cn(
             "flex shrink-0 items-center gap-1 lyra-body-xs",
@@ -992,7 +1002,17 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
               : "text-lyra-fg-secondary"
           )}
         >
-          <Clock className="h-3 w-3" strokeWidth={1.5} aria-hidden="true" />
+          {/* See `ChannelRowProps.recording`: the same pulsing red dot the
+              voice call controls show while recording. */}
+          {recording ? (
+            <Circle
+              className="h-3 w-3 shrink-0 animate-pulse fill-lyra-status-critical-strong text-lyra-status-critical-strong"
+              strokeWidth={1.5}
+              aria-label="Recording"
+            />
+          ) : (
+            <Clock className="h-3 w-3" strokeWidth={1.5} aria-hidden="true" />
+          )}
           {elapsed}
         </span>
         </Tooltip>
@@ -1041,6 +1061,9 @@ export interface ChannelRowInstanceProps {
   /** Passed straight through to `ChannelRow` — see `InteractionChannel.
    *  statusBadge`'s own doc comment. */
   statusBadge?: React.ReactNode;
+  /** Passed straight through to `ChannelRow` — see `InteractionChannel.
+   *  recording`'s own doc comment. */
+  recording?: boolean;
   preview?: string;
   highlighted?: boolean;
   isFirst?: boolean;

@@ -79,6 +79,17 @@ export const Voice: Story = {
 
 /* ── States ── */
 
+/** `recording`: the timer's clock becomes a pulsing red dot while the call
+ *  is recorded; the timer keeps counting. */
+export const VoiceRecording: Story = {
+  name: "Voice — Recording",
+  render: () => (
+    <Frame>
+      <VoiceChannelRow elapsed="03:41" preview="General Support" isFirst recording />
+    </Frame>
+  ),
+};
+
 /** `statusBadge`: a consumer-supplied chip on its own line below the
  *  preview/timer line — here a call that ended and still needs an outcome.
  *  The call timer stays where it is. */
