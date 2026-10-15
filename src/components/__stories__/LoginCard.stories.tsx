@@ -47,6 +47,22 @@ export const StationId: Story = {
   ),
 };
 
+/* ── Seeded from saved preferences ── */
+
+export const SeededFromSavedPreferences: Story = {
+  name: "Seeded from saved preferences",
+  render: () => (
+    <div className="flex justify-center">
+      <LoginCard
+        defaultPhoneSetup="work-station"
+        defaultStationId="12345"
+        defaultSavePreferences
+        onLaunch={(preferences) => console.log("onLaunch", preferences)}
+      />
+    </div>
+  ),
+};
+
 /* ── Launching state ── */
 
 export const Launching: Story = {

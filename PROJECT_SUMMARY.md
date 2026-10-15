@@ -2540,3 +2540,6 @@ Verified: `npm run lint` (`tsc --noEmit`) — matched the standing 3-error basel
 - v3 panel mode: refresh icon button beside the docked Copilot suggestion chips cycles through a larger pool (3 at a time, 1 when narrow).
 - v3 left-nav (stacked) call controls: Mute / End Call buttons are now size md.
 - v3 Phase 1 Settings → "Left nav": switches for New Outbound at bottom (footer), Home/Settings (+app items) at top (items), and no-collapse interaction cards (hides Collapse/Expand all).
+
+### LoginCard: saved preferences (additive)
+- New optional props `defaultPhoneNumber`, `defaultStationId`, `defaultSavePreferences` seed the fields on mount; controlled `isDarkMode` + `onDarkModeToggle` let the app own the theme (the card then doesn't write `data-theme` itself). `onLaunch` now receives `LoginCardPreferences` (`phoneSetup`, `phoneNumber`, `stationId`, `savePreferences`; exported type). Every existing prop and default is unchanged, so callers that pass nothing behave as before. Story: "Seeded from saved preferences". First used by agent-next-gen-demo's settings store (P-SETTINGS), where "Save Preferences" persists the phone setup.
