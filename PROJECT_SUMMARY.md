@@ -2563,3 +2563,11 @@ Verified: `npm run lint` (`tsc --noEmit`) — matched the standing 3-error basel
 
 ### LoginCard: saved preferences (additive)
 - New optional props `defaultPhoneNumber`, `defaultStationId`, `defaultSavePreferences` seed the fields on mount; controlled `isDarkMode` + `onDarkModeToggle` let the app own the theme (the card then doesn't write `data-theme` itself). `onLaunch` now receives `LoginCardPreferences` (`phoneSetup`, `phoneNumber`, `stationId`, `savePreferences`; exported type). Every existing prop and default is unchanged, so callers that pass nothing behave as before. Story: "Seeded from saved preferences". First used by agent-next-gen-demo's settings store (P-SETTINGS), where "Save Preferences" persists the phone setup.
+- PageHeader stories: UI/PageHeader now has one Default playground with controls (layout, title, subtitle, badge, badge color/style, title size, border, compact, icon divider, panel toggle, actions); all the previous examples moved to PageHeader.variants.stories.tsx (UI/PageHeader/Variants, !autodocs), mirroring AICard/Breadcrumb.
+- PageHeader Default story: added Breadcrumb controls (comma-separated trail, real-link toggle).
+- PageHeader Default story: Subtitle is now an on/off control with a separate Subtitle text control that appears when it's on.
+- PageHeader: `subtitle` now also renders under the breadcrumb trail in the breadcrumb layout (was ignored there); Default story subtitle control works in every layout.
+- PageHeader Default story: added a Details row control (channel | contact details | Session Details link, Outcome at right) rendered under the header as a story-level composition, with channel and text controls.
+- PageHeader Default story: header border turns off automatically while the Details row is shown.
+- PageHeader Default story: Details row text (incl. Session Details link and Outcome) uses body-sm.
+- PageHeader Default story: header row bottom padding is 0 (compact) while the Details row is shown.

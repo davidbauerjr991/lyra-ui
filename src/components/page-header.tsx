@@ -112,9 +112,8 @@ interface PageHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
    * the leading icon (record header layout). Without `icon`/`breadcrumb`
    * (the plain title branch), it still renders under the title as a plain
    * caption — e.g. a category label like "CALL CENTERS" under a section
-   * title — just without the icon/divider treatment. Not rendered in the
-   * `breadcrumb` branch (a caption under an inline breadcrumb trail hasn't
-   * had a real usage yet).
+   * title — just without the icon/divider treatment. In the `breadcrumb`
+   * branch it renders as the same caption directly under the breadcrumb trail.
    */
   subtitle?: React.ReactNode;
   /** Actions rendered on the right side (buttons, icons, etc.) */
@@ -436,6 +435,7 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
+            {subtitle && <span className="lyra-body-sm text-lyra-fg-secondary block truncate">{subtitle}</span>}
           </div>
         ) : (
           <div className="flex flex-col justify-center min-w-0">
