@@ -115,3 +115,25 @@ export const VoiceOnly: VoiceOnlyStory = {
   },
   render: (args) => <CreateNewVoiceOnlyDemo {...args} />,
 };
+
+/* ── Ad-hoc channels and address kinds ──
+   `adHocChannels` sets what a typed address offers through "Continue with":
+   here a phone number offers Voice, SMS and WhatsApp (default: Voice and
+   SMS). Each channel option's `addressKind` picks the detail form's address
+   field; WhatsApp is declared a "phone" kind, so it reads "Select Phone"
+   with the typed number instead of a synthesized handle. Type a phone
+   number in the search field, then "Continue with". */
+export const AdHocChannels: Story = {
+  name: "Ad-hoc channels and address kinds",
+  args: {
+    title: "New Outbound",
+    expanded: true,
+    outbound: {
+      ...OUTBOUND_CONFIG,
+      adHocChannels: { phone: ["voice", "sms", "whatsapp"], email: ["email"] },
+      channelOptions: OUTBOUND_CONFIG.channelOptions.map((option) =>
+        option.id === "whatsapp" ? { ...option, addressKind: "phone" as const } : option
+      ),
+    },
+  },
+};

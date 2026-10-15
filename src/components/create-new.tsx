@@ -362,6 +362,20 @@ export interface CreateNewChannelOption {
    *  (defaults to `label` when omitted). */
   selectLabel?: string;
   icon: React.ReactNode;
+  /** What kind of address this channel reaches, which picks the detail
+   *  form's address field ("Select Phone" / "Select Email Address" /
+   *  "Select WhatsApp Handle"). Omitted: by channel id, as before (email →
+   *  email, whatsapp → handle, anything else → phone). */
+  addressKind?: CreateNewAddressKind;
+}
+
+export type CreateNewAddressKind = "phone" | "email" | "handle";
+
+/** The address kind of `channel`: its option's `addressKind`, else by id. */
+function addressKindOf(channel: ChannelType, channelOptions?: CreateNewChannelOption[]): CreateNewAddressKind {
+  const declared = channelOptions?.find((c) => c.id === channel)?.addressKind;
+  if (declared) return declared;
+  return channel === "email" ? "email" : channel === "whatsapp" ? "handle" : "phone";
 }
 
 export interface CreateNewOutboundConfig {
@@ -398,6 +412,11 @@ export interface CreateNewOutboundConfig {
   /** Call/Email/SMS/WhatsApp definitions — drives both the per-row hover
    *  flyout and the detail screen's "Select Channel" dropdown. */
   channelOptions: CreateNewChannelOption[];
+  /** The channels a typed address offers through "Continue with" (the
+   *  ad-hoc contact): a phone number's and an email's, each limited to
+   *  `channelOptions`. Default: Voice and SMS for a phone, Email for an
+   *  email (the previous fixed behavior). */
+  adHocChannels?: { phone?: ChannelType[]; email?: ChannelType[] };
   /** Options for the detail screen's "Select Phone" dropdown */
   phoneOptions: { value: string; label: string }[];
   /** Options for the detail screen's "Outbound Skill" dropdown */
@@ -869,22 +888,31 @@ export function looksLikePhoneNumber(value: string): boolean {
  *  read as the address rather than "New Outbound" — see `headerTitle`'s own
  *  `activeOutboundContact?.name` fallback further down. `id` is namespaced
  *  `adhoc:` so it can never collide with a real contact's id. */
-function buildAdHocSearchContact(query: string): { contact: CreateNewOutboundContact; channel: ChannelType } {
+function buildAdHocSearchContact(
+  query: string,
+  adHocChannels?: CreateNewOutboundConfig["adHocChannels"],
+  channelOptions?: CreateNewChannelOption[]
+): { contact: CreateNewOutboundContact; channel: ChannelType } {
+  // Only the channels the launcher offers at all (its `channelOptions`).
+  const offered = (channels: ChannelType[]) =>
+    channelOptions ? channels.filter((c) => channelOptions.some((o) => o.id === c)) : channels;
   if (looksLikeEmail(query)) {
+    const channels = offered(adHocChannels?.email ?? ["email"]);
     return {
-      contact: { id: `adhoc:${query}`, name: query, initials: "@", channels: ["email"], email: query },
-      channel: "email",
+      contact: { id: `adhoc:${query}`, name: query, initials: "@", channels, email: query },
+      channel: channels[0] ?? "email",
     };
   }
+  const channels = offered(adHocChannels?.phone ?? ["voice", "sms"]);
   return {
     contact: {
       id: `adhoc:${query}`,
       name: query,
       initials: "#",
-      channels: ["voice", "sms"],
+      channels,
       primaryPhone: { value: query, label: query },
     },
-    channel: "voice",
+    channel: channels[0] ?? "voice",
   };
 }
 
@@ -924,10 +952,11 @@ function buildAdHocSearchContact(query: string): { contact: CreateNewOutboundCon
 function isChannelBlockedForContact(
   contact: CreateNewOutboundContact,
   channel: ChannelType,
-  phoneOptions: { value: string; label: string }[]
+  phoneOptions: { value: string; label: string }[],
+  channelOptions?: CreateNewChannelOption[]
 ): boolean {
   if (channel === "voice" && !!contact.openChannelTypes?.includes("voice")) return true;
-  return resolveOutboundDetailField(contact, channel, phoneOptions).options.length === 0;
+  return resolveOutboundDetailField(contact, channel, phoneOptions, channelOptions).options.length === 0;
 }
 
 /** First channel in `channelOptions` that isn't blocked for `contact` (see
@@ -942,7 +971,7 @@ function firstAvailableChannel(
   phoneOptions: { value: string; label: string }[]
 ): ChannelType | null {
   return (
-    channelOptions.find((c) => !isChannelBlockedForContact(contact, c.id, phoneOptions))?.id ??
+    channelOptions.find((c) => !isChannelBlockedForContact(contact, c.id, phoneOptions, channelOptions))?.id ??
     channelOptions[0]?.id ??
     null
   );
@@ -974,17 +1003,21 @@ function firstAvailableChannel(
 function resolveOutboundDetailField(
   contact: CreateNewOutboundContact,
   channel: ChannelType,
-  phoneOptions: { value: string; label: string }[]
+  phoneOptions: { value: string; label: string }[],
+  channelOptions?: CreateNewChannelOption[]
 ): { label: string; options: SelectOption[]; defaultValue: string } {
   const openAddresses = contact.openChannelAddresses?.[channel] ?? [];
   const withoutOpen = (options: SelectOption[]): SelectOption[] =>
     openAddresses.length > 0 ? options.filter((o) => !openAddresses.includes(o.value)) : options;
-  if (channel === "email") {
+  // The address field follows the channel's address kind (its option's
+  // `addressKind`, else by id).
+  const kind = addressKindOf(channel, channelOptions);
+  if (kind === "email") {
     const value = contact.email ?? `${contact.name.toLowerCase().replace(/\s+/g, ".")}@example.com`;
     const defaultValue = openAddresses.includes(value) ? "" : value;
     return { label: "Select Email Address", options: withoutOpen(defaultValue ? [{ value: defaultValue, label: defaultValue }] : []), defaultValue };
   }
-  if (channel === "whatsapp") {
+  if (kind === "handle") {
     const value = `@${contact.name}`;
     const defaultValue = openAddresses.includes(value) ? "" : value;
     return { label: "Select WhatsApp Handle", options: withoutOpen(defaultValue ? [{ value: defaultValue, label: defaultValue }] : []), defaultValue };
@@ -1198,7 +1231,7 @@ const AddChannelButton = React.forwardRef<HTMLButtonElement, AddChannelButtonPro
         setCustomPhoneChannel("");
         return;
       }
-      setDetailPhone(resolveOutboundDetailField(contact, channel, phoneOptions).defaultValue);
+      setDetailPhone(resolveOutboundDetailField(contact, channel, phoneOptions, channelOptions).defaultValue);
       // `detailSkill` is deliberately left alone — `skillOptions` isn't
       // channel-specific (the same Outbound Skill list applies to every
       // channel), so a skill already picked before switching channels is
@@ -1274,7 +1307,7 @@ const AddChannelButton = React.forwardRef<HTMLButtonElement, AddChannelButtonPro
     // "changed" — fixes it without touching the reset effect above.
     useEffect(() => {
       if (!open || !detailChannel || detailChannel === "custom") return;
-      setDetailPhone(resolveOutboundDetailField(contact, detailChannel, phoneOptions).defaultValue);
+      setDetailPhone(resolveOutboundDetailField(contact, detailChannel, phoneOptions, channelOptions).defaultValue);
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, detailChannel]);
 
@@ -1284,7 +1317,7 @@ const AddChannelButton = React.forwardRef<HTMLButtonElement, AddChannelButtonPro
     // Channel Type" branch below instead, which replaces this field
     // entirely while `detailChannel === "custom"`).
     const fieldMeta =
-      detailChannel && detailChannel !== "custom" ? resolveOutboundDetailField(contact, detailChannel, phoneOptions) : null;
+      detailChannel && detailChannel !== "custom" ? resolveOutboundDetailField(contact, detailChannel, phoneOptions, channelOptions) : null;
     // Only meaningful in custom mode — mirrors `AddChannelAdHocButton`'s own
     // `isEmail`/`isPhone` detection verbatim (`looksLikeEmail`/
     // `looksLikePhoneNumber`, both exported from this same file for exactly
@@ -1314,7 +1347,7 @@ const AddChannelButton = React.forwardRef<HTMLButtonElement, AddChannelButtonPro
     // which is the right behavior there — disabling the whole trigger would
     // block channels that are still perfectly available too.
     const blockedForInitialChannel =
-      initialChannel !== undefined && isChannelBlockedForContact(contact, initialChannel, phoneOptions);
+      initialChannel !== undefined && isChannelBlockedForContact(contact, initialChannel, phoneOptions, channelOptions);
     // Voice gets its own, more specific reason (matching
     // `isChannelBlockedForContact`'s own doc comment) — every other channel
     // shares the generic "nothing left to pick" phrasing, using `label`
@@ -1439,7 +1472,7 @@ const AddChannelButton = React.forwardRef<HTMLButtonElement, AddChannelButtonPro
                         ...channelOptions.map((c) => ({
                           value: c.id,
                           label: c.selectLabel ?? c.label,
-                          disabled: isChannelBlockedForContact(contact, c.id, phoneOptions),
+                          disabled: isChannelBlockedForContact(contact, c.id, phoneOptions, channelOptions),
                         })),
                         { value: "custom", label: "Custom" },
                       ]}
@@ -2049,7 +2082,7 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     // out; phone falls back to "" only once every one of
     // `outbound.phoneOptions` is open).
     const defaultDetailValueFor = (contact: CreateNewOutboundContact, channel: ChannelType): string =>
-      resolveOutboundDetailField(contact, channel, outbound?.phoneOptions ?? []).defaultValue;
+      resolveOutboundDetailField(contact, channel, outbound?.phoneOptions ?? [], outbound?.channelOptions).defaultValue;
 
     const goToDetail = (groupId: string, contact: CreateNewOutboundContact, channel: ChannelType) => {
       // Per explicit follow-up request, a `quickLaunch` contact (agents/
@@ -2081,7 +2114,7 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     // there's no more natural choice than "whichever filter the agent was
     // searching from."
     const handleContinueWithSearch = (query: string, groupId: string) => {
-      const { contact, channel } = buildAdHocSearchContact(query);
+      const { contact, channel } = buildAdHocSearchContact(query, outbound?.adHocChannels, outbound?.channelOptions);
       setAdHocContact(contact);
       goToDetail(groupId, contact, channel);
     };
@@ -2368,7 +2401,7 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     // renders empty — no value, no placeholder.
     const detailFieldMeta =
       activeOutboundContact && detailChannel
-        ? resolveOutboundDetailField(activeOutboundContact, detailChannel, outbound?.phoneOptions ?? [])
+        ? resolveOutboundDetailField(activeOutboundContact, detailChannel, outbound?.phoneOptions ?? [], outbound?.channelOptions)
         : { label: "Select Phone", options: outbound?.phoneOptions ?? [] };
 
     // See `CONNECTING_DURATION_MS`'s own doc comment — `onStartCall` (which
@@ -3394,7 +3427,7 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                       options={availableChannelsForContact.map((c) => ({
                         value: c.id,
                         label: c.selectLabel ?? c.label,
-                        disabled: isChannelBlockedForContact(activeOutboundContact, c.id, outbound?.phoneOptions ?? []),
+                        disabled: isChannelBlockedForContact(activeOutboundContact, c.id, outbound?.phoneOptions ?? [], outbound?.channelOptions),
                       }))}
                       value={detailChannel || undefined}
                       onValueChange={(v) => setDetailChannel(v as ChannelType)}

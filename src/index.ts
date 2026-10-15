@@ -78,6 +78,7 @@ export type {
   CreateNewOutboundContact,
   CreateNewOutboundGroup,
   CreateNewChannelOption,
+  CreateNewAddressKind,
   CreateNewOutboundConfig,
   AddChannelButtonProps,
   UseAddChannelButtonResult,
