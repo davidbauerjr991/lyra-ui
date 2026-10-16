@@ -65,6 +65,8 @@ module.exports = {
   "lyra-fg-inverse":          "var(--lyra-color-fg-inverse)",
   "lyra-fg-inverse-disabled": "var(--lyra-color-fg-inverse-disabled)",
   "lyra-fg-on-primary":       "var(--lyra-color-fg-on-primary)",
+  "lyra-bg-accent":           "var(--lyra-color-bg-accent)",
+  "lyra-fg-on-accent":        "var(--lyra-color-fg-on-accent)",
   "lyra-fg-on-destructive":   "var(--lyra-color-fg-on-destructive)",
   "lyra-fg-active-subtle":    "var(--lyra-color-fg-active-subtle)",
   "lyra-fg-active-strong":    "var(--lyra-color-fg-active-strong)",

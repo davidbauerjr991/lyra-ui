@@ -39,6 +39,10 @@
   --lyra-color-fg-inverse: #ffffff;
   --lyra-color-fg-inverse-disabled: rgba(255, 255, 255, 0.30);
   --lyra-color-fg-on-primary: #ffffff;
+  /* The AI accent as a solid fill (the AI avatar) and the text on it. Same
+     in both themes. A consumer's brand accent overrides these. */
+  --lyra-color-bg-accent: #6149C1;
+  --lyra-color-fg-on-accent: #ffffff;
   --lyra-color-fg-on-destructive: #ffffff;
   --lyra-color-fg-active-subtle: #f5faff;
   --lyra-color-fg-active-strong: #185ba4;
@@ -186,6 +190,8 @@
   --lyra-color-fg-inverse: #1f1f1e;
   --lyra-color-fg-inverse-disabled: rgba(0, 0, 0, 0.30);
   --lyra-color-fg-on-primary: #ffffff;
+  --lyra-color-bg-accent: #6149C1;
+  --lyra-color-fg-on-accent: #ffffff;
   --lyra-color-fg-on-destructive: #ffffff;
   --lyra-color-fg-active-subtle: #0c2845;
   --lyra-color-fg-active-strong: #a7d0fe;
@@ -300,11 +306,16 @@
    block above (line ~255) — then swap both consumers' `lyra-purple-soft-
    header-fix` class back to the plain `bg-lyra-accent-purple-soft` they
    used before this override. */
-.lyra-purple-soft-header-fix {
-  background-color: var(--lyra-color-accent-purple-soft);
+/* Through its own token (light: purple-soft; dark: the corrected shade), so
+   a consumer can override it like any other color. */
+:root {
+  --lyra-color-accent-purple-soft-header: var(--lyra-color-accent-purple-soft);
 }
-[data-theme="dark"] .lyra-purple-soft-header-fix {
-  background-color: #3c298e;
+[data-theme="dark"] {
+  --lyra-color-accent-purple-soft-header: #3c298e;
+}
+.lyra-purple-soft-header-fix {
+  background-color: var(--lyra-color-accent-purple-soft-header);
 }
 
 /* ════════════════════════════════════════════════════

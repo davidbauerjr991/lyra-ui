@@ -427,7 +427,7 @@ export function InteractionComposer({
             <Button
               variant="default"
               size="icon-lg"
-              className="rounded-l-none border-l border-white/25"
+              className="rounded-l-none border-l [border-left-color:color-mix(in_srgb,var(--lyra-color-fg-on-primary)_25%,transparent)]"
               disabled={!canSend}
               title="More send options"
               onClick={onSendOptionsClick}

@@ -259,7 +259,7 @@ export function ChatMessage({
               isCustomer
                 ? "bg-lyra-accent-green-soft text-lyra-accent-green-strong"
                 : ai
-                  ? "bg-[#6149C1] text-white"
+                  ? "bg-lyra-bg-accent text-lyra-fg-on-accent"
                   : "bg-lyra-bg-primary text-lyra-fg-on-primary"
             )}
             aria-hidden="true"
