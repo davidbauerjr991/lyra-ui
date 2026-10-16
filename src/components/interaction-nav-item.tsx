@@ -415,13 +415,13 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       setPrevChannelKeys(currentChannelKeys);
       const justOpenedKey = currentChannelKeys.find((k) => !prevChannelKeys.includes(k));
       if (justOpenedKey !== undefined) {
+        // Uncontrolled: the new channel becomes current here. A controlling
+        // parent (`currentChannelKey` passed) is NOT told: a row appearing
+        // isn't the agent picking it, the parent already knows it added the
+        // channel, and calling its setter here would update another
+        // component during render. `onCurrentChannelChange` fires only for
+        // an actual click on a row.
         setManualCurrentKey(justOpenedKey);
-        // Also notify a controlling parent — when this component is
-        // controlled (`currentChannelKey` prop passed), the internal
-        // `setManualCurrentKey` above is inert for *display* purposes (see
-        // `effectiveCurrentKey` below), so the parent's own state needs
-        // this notification to actually pick up the newly-opened channel.
-        onCurrentChannelChange?.(justOpenedKey);
       }
     }
 
