@@ -817,6 +817,13 @@ Stories: "Expanded — New Assignment Severity" became "New Assignment Severity 
 `outcome-panel.tsx`: new optional `ChannelOutcomeConfig.showSaveAndRedial` (default `true`). When `false`, the ended-call footer (`callEnded`) leaves out "Save & Redial" and shows only "Save & Dismiss". It lives on the config, not as a new parameter on `buildOutcomePopoverSlots`, so every surface that renders this footer (`ChannelRow`, `ChannelTab`, `OutcomePanel`, and app-side callers of `buildOutcomePopoverSlots`) gets it through the `outcome` object it already passes. Additive: unset renders exactly as before, and no consumer was changed.
 Stories: new `OutcomePanel` "Call Ended — Without Save & Redial" (voice, `callEnded`, a `showSaveAndRedial` control defaulting to false).
 
+### RadioButtonGroup `disabledReason` / CreateNew `channelDisabledReasons` (2026-10-16)
+Additive, every existing caller unaffected. Rule they serve (agent-next-gen-demo): a control the agent's own state blocks is disabled *with the reason*, never hidden.
+- `radio-button-group.tsx`: `RadioButtonGroupOption.disabledReason` shows in a `Tooltip` on the option (its `<label>` row keeps pointer events) while `disabled`. Tooltip `z-[10006]`, above the nested-popover tiers the group often sits in.
+- `create-new.tsx`: `CreateNewOutboundConfig.channelDisabledReasons` (`CreateNewChannelDisabledReasons = Partial<Record<ChannelType, string>>`, exported). For each listed channel: the row flyout shows it disabled with the reason as the item's `description`; the row's own click and "Select Channel" never open on it (`firstAvailableChannel`, `isChannelBlockedForContact` take the reasons); "Select Channel" disables it with the reason; Start Interaction stays disabled on it. `voice` also disables the Dial Pad's "Dial Number" (Tooltip on a wrapping span; Enter-to-dial refuses too).
+- `AddChannelButtonProps.channelDisabledReasons` (the same, for the "+"; with `initialChannel` on a disabled channel the trigger is disabled with the reason as its tooltip; the Custom flow's SMS/Voice choice too). `useAddChannelButton` passes `outboundConfig.channelDisabledReasons` through.
+Stories: Radio Button Group/Variants "Disabled With Reason"; CreateNew "Channel disabled with a reason".
+
 ## Stories
 
 ### AppHeader (`src/components/__stories__/AppHeader.stories.tsx`)

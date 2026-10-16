@@ -371,6 +371,12 @@ export interface CreateNewChannelOption {
 
 export type CreateNewAddressKind = "phone" | "email" | "handle";
 
+/** Channels the consumer disables for every contact, each with the reason
+ *  shown where the channel is offered (e.g. `{ voice: "Go Available to
+ *  call" }` while the agent's presence blocks calls). The channel stays
+ *  listed, never hidden. */
+export type CreateNewChannelDisabledReasons = Partial<Record<ChannelType, string>>;
+
 /** The address kind of `channel`: its option's `addressKind`, else by id. */
 function addressKindOf(channel: ChannelType, channelOptions?: CreateNewChannelOption[]): CreateNewAddressKind {
   const declared = channelOptions?.find((c) => c.id === channel)?.addressKind;
@@ -387,6 +393,13 @@ export interface CreateNewOutboundConfig {
   /** Which group is selected when screen 1 is first reached (defaults to
    *  the first entry in `groups`). */
   defaultGroupId?: string;
+  /** Channels disabled for every contact, each with its reason (see
+   *  `CreateNewChannelDisabledReasons`): a contact row's channel flyout
+   *  lists it disabled with the reason underneath, "Select Channel" disables
+   *  it with the reason in a tooltip and never defaults to it, and for
+   *  `voice` the Dial Pad's Call button is disabled with the reason. Also
+   *  read by `useAddChannelButton` for its `AddChannelButton`s. */
+  channelDisabledReasons?: CreateNewChannelDisabledReasons;
   /**
    * Visible label for the search field above the group `Select` — one
    * string for the whole outbound flow (default: "Search..."), NOT
@@ -761,12 +774,15 @@ function ContactRow({
 function OutboundContactRow({
   contact,
   channelOptions,
+  channelDisabledReasons,
   onSelect,
   favorited,
   onToggleFavorite,
 }: {
   contact: CreateNewOutboundContact;
   channelOptions: CreateNewChannelOption[];
+  /** Listed but disabled, the reason as the item's second line. */
+  channelDisabledReasons?: CreateNewChannelDisabledReasons;
   onSelect: (channel: ChannelType) => void;
   favorited?: boolean;
   onToggleFavorite?: () => void;
@@ -793,7 +809,9 @@ function OutboundContactRow({
   );
 
   const availableChannels = channelOptions.filter((c) => contact.channels.includes(c.id));
-  const defaultChannel = availableChannels.find((c) => c.id === "voice")?.id ?? availableChannels[0]?.id;
+  // The row's own click: voice when it's open, else the first open channel.
+  const openChannels = availableChannels.filter((c) => !channelDisabledReasons?.[c.id]);
+  const defaultChannel = openChannels.find((c) => c.id === "voice")?.id ?? openChannels[0]?.id;
 
   return (
     <Popover
@@ -820,6 +838,8 @@ function OutboundContactRow({
                 id: c.id,
                 label: c.label,
                 icon: c.icon,
+                disabled: !!channelDisabledReasons?.[c.id],
+                description: channelDisabledReasons?.[c.id],
                 onClick: () => {
                   setFlyoutOpen(false);
                   onSelect(c.id);
@@ -953,8 +973,12 @@ function isChannelBlockedForContact(
   contact: CreateNewOutboundContact,
   channel: ChannelType,
   phoneOptions: { value: string; label: string }[],
-  channelOptions?: CreateNewChannelOption[]
+  channelOptions?: CreateNewChannelOption[],
+  disabledReasons?: CreateNewChannelDisabledReasons
 ): boolean {
+  // 3. The consumer disabled this channel for everyone, with a reason
+  //    (`CreateNewOutboundConfig.channelDisabledReasons`).
+  if (disabledReasons?.[channel]) return true;
   if (channel === "voice" && !!contact.openChannelTypes?.includes("voice")) return true;
   return resolveOutboundDetailField(contact, channel, phoneOptions, channelOptions).options.length === 0;
 }
@@ -968,10 +992,11 @@ function isChannelBlockedForContact(
 function firstAvailableChannel(
   channelOptions: CreateNewChannelOption[],
   contact: CreateNewOutboundContact,
-  phoneOptions: { value: string; label: string }[]
+  phoneOptions: { value: string; label: string }[],
+  disabledReasons?: CreateNewChannelDisabledReasons
 ): ChannelType | null {
   return (
-    channelOptions.find((c) => !isChannelBlockedForContact(contact, c.id, phoneOptions, channelOptions))?.id ??
+    channelOptions.find((c) => !isChannelBlockedForContact(contact, c.id, phoneOptions, channelOptions, disabledReasons))?.id ??
     channelOptions[0]?.id ??
     null
   );
@@ -1136,6 +1161,11 @@ export interface AddChannelButtonProps {
    *  twice. Must be one of `channelOptions`; behaves exactly like today's
    *  plain default otherwise (still editable) if omitted. */
   initialChannel?: ChannelType;
+  /** Channels disabled with a reason, as `CreateNewOutboundConfig`'s:
+   *  "Select Channel" disables them with the reason in a tooltip; with
+   *  `initialChannel` set to one, the trigger itself is disabled and its
+   *  tooltip gives the reason. */
+  channelDisabledReasons?: CreateNewChannelDisabledReasons;
 }
 
 const AddChannelButton = React.forwardRef<HTMLButtonElement, AddChannelButtonProps>(
@@ -1151,6 +1181,7 @@ const AddChannelButton = React.forwardRef<HTMLButtonElement, AddChannelButtonPro
       className,
       icon,
       initialChannel,
+      channelDisabledReasons,
     },
     ref
   ) => {
@@ -1178,7 +1209,7 @@ const AddChannelButton = React.forwardRef<HTMLButtonElement, AddChannelButtonPro
     // Never the opening default (`firstAvailableChannel` only ever returns
     // a real channel or `null`) — the agent has to deliberately pick it.
     const [detailChannel, setDetailChannel] = useState<ChannelType | "custom" | null>(
-      initialChannel ?? firstAvailableChannel(channelOptions, contact, phoneOptions)
+      initialChannel ?? firstAvailableChannel(channelOptions, contact, phoneOptions, channelDisabledReasons)
     );
     const [detailPhone, setDetailPhone] = useState("");
     // Only meaningful while `detailChannel === "custom"` — the raw typed
@@ -1250,7 +1281,7 @@ const AddChannelButton = React.forwardRef<HTMLButtonElement, AddChannelButtonPro
     useEffect(() => {
       if (open) return;
       const t = setTimeout(() => {
-        setDetailChannel(initialChannel ?? firstAvailableChannel(channelOptions, contact, phoneOptions));
+        setDetailChannel(initialChannel ?? firstAvailableChannel(channelOptions, contact, phoneOptions, channelDisabledReasons));
         setDetailPhone("");
         setCustomValue("");
         setCustomPhoneChannel("");
@@ -1263,7 +1294,14 @@ const AddChannelButton = React.forwardRef<HTMLButtonElement, AddChannelButtonPro
         setConnecting(false);
       }, 200);
       return () => clearTimeout(t);
-    }, [open, channelOptions, contact, initialChannel, skillOptions, phoneOptions]);
+    }, [open, channelOptions, contact, initialChannel, skillOptions, phoneOptions, channelDisabledReasons]);
+
+    // A channel disabled while it's the selection (e.g. the agent went
+    // Unavailable with Voice picked) moves to the first one still open.
+    useEffect(() => {
+      if (initialChannel || !detailChannel || detailChannel === "custom" || !channelDisabledReasons?.[detailChannel]) return;
+      setDetailChannel(firstAvailableChannel(channelOptions, contact, phoneOptions, channelDisabledReasons));
+    }, [detailChannel, channelDisabledReasons, initialChannel, channelOptions, contact, phoneOptions]);
 
     // Holds `handleStartCall`'s own pending `setTimeout` id (below) for the
     // "Connecting…" window — a plain ref, not state, since nothing ever
@@ -1347,7 +1385,8 @@ const AddChannelButton = React.forwardRef<HTMLButtonElement, AddChannelButtonPro
     // which is the right behavior there — disabling the whole trigger would
     // block channels that are still perfectly available too.
     const blockedForInitialChannel =
-      initialChannel !== undefined && isChannelBlockedForContact(contact, initialChannel, phoneOptions, channelOptions);
+      initialChannel !== undefined && isChannelBlockedForContact(contact, initialChannel, phoneOptions, channelOptions, channelDisabledReasons);
+    const initialChannelReason = initialChannel !== undefined ? channelDisabledReasons?.[initialChannel] : undefined;
     // Voice gets its own, more specific reason (matching
     // `isChannelBlockedForContact`'s own doc comment) — every other channel
     // shares the generic "nothing left to pick" phrasing, using `label`
@@ -1355,7 +1394,7 @@ const AddChannelButton = React.forwardRef<HTMLButtonElement, AddChannelButtonPro
     // for the record header's per-channel buttons) rather than re-deriving
     // a channel display name from `initialChannel` a second time.
     const blockedTooltip =
-      initialChannel === "voice" ? "Customer is already on a call" : `Every ${label} address is already open`;
+      initialChannelReason ?? (initialChannel === "voice" ? "Customer is already on a call" : `Every ${label} address is already open`);
 
     // Drives the "Start Interaction" button's own `disabled` below —
     // pulled out of `handleStartCall` itself so the button can show its
@@ -1367,8 +1406,8 @@ const AddChannelButton = React.forwardRef<HTMLButtonElement, AddChannelButtonPro
     // this option existed.
     const canStartInteraction = detailSkill
       ? detailChannel === "custom"
-        ? !!customResolvedChannel && !!customTrimmed
-        : !!detailChannel
+        ? !!customResolvedChannel && !!customTrimmed && !channelDisabledReasons?.[customResolvedChannel]
+        : !!detailChannel && !channelDisabledReasons?.[detailChannel]
       : false;
 
     // `connecting` guards re-entrancy — the button is `disabled` while true
@@ -1472,7 +1511,8 @@ const AddChannelButton = React.forwardRef<HTMLButtonElement, AddChannelButtonPro
                         ...channelOptions.map((c) => ({
                           value: c.id,
                           label: c.selectLabel ?? c.label,
-                          disabled: isChannelBlockedForContact(contact, c.id, phoneOptions, channelOptions),
+                          disabled: isChannelBlockedForContact(contact, c.id, phoneOptions, channelOptions, channelDisabledReasons),
+                          disabledReason: channelDisabledReasons?.[c.id],
                         })),
                         { value: "custom", label: "Custom" },
                       ]}
@@ -1527,8 +1567,8 @@ const AddChannelButton = React.forwardRef<HTMLButtonElement, AddChannelButtonPro
                         <RadioButtonGroup
                           label="Select Channel Type"
                           options={[
-                            { value: "sms", label: "SMS" },
-                            { value: "voice", label: "Voice" },
+                            { value: "sms", label: "SMS", disabled: !!channelDisabledReasons?.sms, disabledReason: channelDisabledReasons?.sms },
+                            { value: "voice", label: "Voice", disabled: !!channelDisabledReasons?.voice, disabledReason: channelDisabledReasons?.voice },
                           ]}
                           value={customPhoneChannel}
                           onValueChange={(v) => setCustomPhoneChannel(v as "sms" | "voice")}
@@ -1720,7 +1760,7 @@ export interface UseAddChannelButtonResult {
 }
 
 export function useAddChannelButton(
-  outboundConfig: Pick<CreateNewOutboundConfig, "groups" | "channelOptions" | "phoneOptions" | "skillOptions" | "onStartCall">
+  outboundConfig: Pick<CreateNewOutboundConfig, "groups" | "channelOptions" | "phoneOptions" | "skillOptions" | "onStartCall" | "channelDisabledReasons">
 ): UseAddChannelButtonResult {
   const contactsById = useMemo(
     () => new Map(outboundConfig.groups.flatMap((g) => g.contacts ?? []).map((c) => [c.id, c])),
@@ -1748,6 +1788,7 @@ export function useAddChannelButton(
           showLabel={options?.showLabel}
           icon={options?.icon}
           initialChannel={options?.initialChannel}
+          channelDisabledReasons={outboundConfig.channelDisabledReasons}
         />
       );
     },
@@ -2096,11 +2137,16 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
       // itself is left in place on the type/data (unused here now) rather
       // than deleted outright, in case some OTHER future entry point still
       // wants the old skip-straight-to-launch behavior.
-      setDetailChannel(channel);
-      setDetailPhone(defaultDetailValueFor(contact, channel));
+      // A disabled channel (`channelDisabledReasons`) is never the opening pick.
+      const reasons = outbound?.channelDisabledReasons;
+      const opening = reasons?.[channel]
+        ? firstAvailableChannel(outbound?.channelOptions ?? [], contact, outbound?.phoneOptions ?? [], reasons) ?? channel
+        : channel;
+      setDetailChannel(opening);
+      setDetailPhone(defaultDetailValueFor(contact, opening));
       // First skill, not `""` — see `detailSkill`'s own doc comment above.
       setDetailSkill(outbound?.skillOptions?.[0]?.value ?? "");
-      pushScreen({ kind: "detail", groupId, contactId: contact.id, channel });
+      pushScreen({ kind: "detail", groupId, contactId: contact.id, channel: opening });
     };
 
     // "Continue with" ad-hoc flow (see the empty-search-results `Button`
@@ -2448,8 +2494,10 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
     const isDialpadNumberValid = isPhoneNumberComplete(phone.number, selectedPhoneCountry);
     // See `CONNECTING_DURATION_MS`'s own doc comment — same "Connecting…"
     // deferral as `handleStartCall` above, for exactly the same reason.
+    // The dial pad only places calls: disabled with voice's reason, if any.
+    const dialpadDisabledReason = outbound?.channelDisabledReasons?.voice;
     const handleDialNumber = () => {
-      if (connecting) return;
+      if (connecting || dialpadDisabledReason) return;
       // Picker mode (`dialpadPhoneOptions` set — see that state's own doc
       // comment): the free-text country+digits field isn't even rendered,
       // so there's nothing for `isDialpadNumberValid`/`selectedPhoneCountry`
@@ -2898,7 +2946,7 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                 variant="default"
                 size="lg"
                 className={cn("w-full", connecting && CONNECTING_BUTTON_CLASSNAME)}
-                disabled={!detailSkill || connecting}
+                disabled={!detailSkill || connecting || (!!detailChannel && !!outbound?.channelDisabledReasons?.[detailChannel])}
                 onClick={handleStartCall}
               >
                 <ConnectingButtonContent connecting={connecting} label="Start Interaction" />
@@ -2974,17 +3022,25 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
             />
           ) : screen.kind === "group" && activeGroup?.kind === "dialpad" ? (
             <div className="border-t border-lyra-border-subtle p-4">
-              <Button
-                variant="default"
-                size="lg"
-                className={cn("w-full", connecting && CONNECTING_BUTTON_CLASSNAME)}
-                // Picker mode validates against `dialpadSelectedPhone`
-                // instead — see `handleDialNumber`'s own doc comment.
-                disabled={(dialpadPhoneOptions ? !dialpadSelectedPhone : !isDialpadNumberValid) || connecting}
-                onClick={handleDialNumber}
-              >
-                <ConnectingButtonContent connecting={connecting} label="Dial Number" />
-              </Button>
+              {/* Voice disabled (`channelDisabledReasons.voice`): the button
+                  stays, disabled, and its reason shows in a Tooltip on a
+                  wrapping span (a disabled Button takes no pointer events).
+                  z-[10006]: above this popover's own nested tiers. */}
+              <Tooltip content={dialpadDisabledReason} placement="top" disabled={!dialpadDisabledReason} className="z-[10006]">
+                <span className="flex w-full" data-disabled-reason={dialpadDisabledReason}>
+                  <Button
+                    variant="default"
+                    size="lg"
+                    className={cn("w-full", connecting && CONNECTING_BUTTON_CLASSNAME)}
+                    // Picker mode validates against `dialpadSelectedPhone`
+                    // instead — see `handleDialNumber`'s own doc comment.
+                    disabled={(dialpadPhoneOptions ? !dialpadSelectedPhone : !isDialpadNumberValid) || connecting || !!dialpadDisabledReason}
+                    onClick={handleDialNumber}
+                  >
+                    <ConnectingButtonContent connecting={connecting} label="Dial Number" />
+                  </Button>
+                </span>
+              </Tooltip>
             </div>
           ) : undefined
         }
@@ -3333,6 +3389,7 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                               <OutboundContactRow
                                 contact={contact}
                                 channelOptions={outbound?.channelOptions ?? []}
+                                channelDisabledReasons={outbound?.channelDisabledReasons}
                                 onSelect={(ch) => goToDetail(activeGroup.id, contact, ch)}
                                 favorited={favoriteIds.has(contact.id)}
                                 onToggleFavorite={() =>
@@ -3427,7 +3484,8 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                       options={availableChannelsForContact.map((c) => ({
                         value: c.id,
                         label: c.selectLabel ?? c.label,
-                        disabled: isChannelBlockedForContact(activeOutboundContact, c.id, outbound?.phoneOptions ?? [], outbound?.channelOptions),
+                        disabled: isChannelBlockedForContact(activeOutboundContact, c.id, outbound?.phoneOptions ?? [], outbound?.channelOptions, outbound?.channelDisabledReasons),
+                        disabledReason: outbound?.channelDisabledReasons?.[c.id],
                       }))}
                       value={detailChannel || undefined}
                       onValueChange={(v) => setDetailChannel(v as ChannelType)}

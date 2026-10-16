@@ -79,6 +79,7 @@ export type {
   CreateNewOutboundGroup,
   CreateNewChannelOption,
   CreateNewAddressKind,
+  CreateNewChannelDisabledReasons,
   CreateNewOutboundConfig,
   AddChannelButtonProps,
   UseAddChannelButtonResult,

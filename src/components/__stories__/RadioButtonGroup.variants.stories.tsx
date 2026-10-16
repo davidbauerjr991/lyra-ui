@@ -83,3 +83,22 @@ export const Keyboard: Story = {
     </div>
   ),
 };
+
+/* ── Disabled With Reason — an option's `disabledReason` shows in a tooltip
+   while it's disabled (hover "Voice"), so a disabled choice says what would
+   enable it. ── */
+export const DisabledWithReason: Story = {
+  name: "Disabled With Reason",
+  render: () => (
+    <RadioButtonGroup
+      label="Select Channel"
+      name="disabled-reason"
+      options={[
+        { value: "voice", label: "Voice", disabled: true, disabledReason: "Go Available to call" },
+        { value: "sms", label: "SMS" },
+        { value: "email", label: "Email" },
+      ]}
+      defaultValue="sms"
+    />
+  ),
+};

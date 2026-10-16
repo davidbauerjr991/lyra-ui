@@ -137,3 +137,21 @@ export const AdHocChannels: Story = {
     },
   },
 };
+
+/* ── A channel disabled with a reason ──
+   `channelDisabledReasons` keeps a channel listed but disabled for every
+   contact, with its reason: a row's flyout shows Call disabled with the
+   reason underneath, "Select Channel" disables Voice with a tooltip and
+   never opens on it, and the Dial Pad's "Dial Number" is disabled with the
+   same tooltip. Here: an agent who isn't Available can't place calls. */
+export const ChannelDisabledWithReason: Story = {
+  name: "Channel disabled with a reason",
+  args: {
+    title: "New Outbound",
+    expanded: true,
+    outbound: {
+      ...OUTBOUND_CONFIG,
+      channelDisabledReasons: { voice: "Go Available to call" },
+    },
+  },
+};

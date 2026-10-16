@@ -3,6 +3,7 @@ import { ErrorIconSolid } from "./icons/error-icon-solid";
 import { cn } from "../lib/utils";
 import { RadioGroup, RadioGroupItem } from "./radio";
 import { Label } from "./label";
+import { Tooltip } from "./tooltip";
 
 /* ── Types ── */
 
@@ -13,6 +14,10 @@ export interface RadioButtonGroupOption {
   label: string;
   /** Disable this individual option */
   disabled?: boolean;
+  /** Why it's disabled: shown in a Tooltip on the option while `disabled`
+   *  is true (ignored otherwise), so a disabled choice says what would
+   *  enable it instead of just sitting inert. */
+  disabledReason?: string;
 }
 
 export interface RadioButtonGroupProps {
@@ -100,14 +105,28 @@ const RadioButtonGroup = React.forwardRef<HTMLDivElement, RadioButtonGroupProps>
           aria-describedby={error ? errorId : undefined}
           aria-invalid={error ? true : undefined}
         >
-          {options.map((option) => (
-            <RadioGroupItem
-              key={option.value}
-              value={option.value}
-              label={option.label}
-              disabled={isEffectivelyDisabled || option.disabled}
-            />
-          ))}
+          {options.map((option) => {
+            const item = (
+              <RadioGroupItem
+                key={option.value}
+                value={option.value}
+                label={option.label}
+                disabled={isEffectivelyDisabled || option.disabled}
+              />
+            );
+            if (!option.disabled || !option.disabledReason) return item;
+            // The option's own label row takes the hover (a disabled radio
+            // still has pointer events on its <label>). z-[10006]: above
+            // the nested-popover tiers (z-[10003]/z-[10005]) this group
+            // often sits in, e.g. CreateNew's detail screen.
+            return (
+              <Tooltip key={option.value} content={option.disabledReason} placement="top" className="z-[10006]">
+                <span className="inline-flex w-fit" data-disabled-reason={option.disabledReason}>
+                  {item}
+                </span>
+              </Tooltip>
+            );
+          })}
         </RadioGroup>
 
         {/* Error message */}
