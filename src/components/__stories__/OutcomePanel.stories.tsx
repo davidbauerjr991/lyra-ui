@@ -149,3 +149,40 @@ export const IconTrigger: Story = {
   name: "Icon Trigger (matches ChannelRow)",
   render: (args) => <OutcomePanelIconTriggerDemo voice={!!args.voice} />,
 };
+
+/* ── Call ended — without Save & Redial ──
+   A voice call's ended-call footer (`callEnded`) normally shows "Save &
+   Redial" and "Save & Dismiss". `showSaveAndRedial={false}` drops Save &
+   Redial, leaving only Save & Dismiss (still disabled until a disposition
+   is picked). Toggle the control to compare with the default footer. */
+function OutcomePanelCallEndedDemo({ showSaveAndRedial }: { showSaveAndRedial: boolean }) {
+  const base = useDemoOutcome([], true);
+  const outcome: ChannelOutcomeConfig = {
+    ...base,
+    callEnded: true,
+    showSaveAndRedial,
+    onSaveAndRedial: () => base.onOpenChange(false),
+    onSaveAndDismiss: () => base.onOpenChange(false),
+  };
+  return (
+    <OutcomePanel outcome={outcome} align="start" sideOffset={2} showArrow={false}>
+      <Button variant="outline" size="md" onClick={() => outcome.onOpenChange(true)}>
+        Log Outcome
+      </Button>
+    </OutcomePanel>
+  );
+}
+
+type CallEndedStoryArgs = React.ComponentProps<typeof OutcomePanel> & { showSaveAndRedial?: boolean };
+
+export const CallEndedWithoutSaveAndRedial: StoryObj<CallEndedStoryArgs> = {
+  name: "Call Ended — Without Save & Redial",
+  args: { voice: true, showSaveAndRedial: false } as Partial<CallEndedStoryArgs>,
+  argTypes: {
+    showSaveAndRedial: {
+      control: "boolean",
+      description: "Show the Save & Redial button in the ended-call footer (component default: true).",
+    },
+  },
+  render: (args) => <OutcomePanelCallEndedDemo showSaveAndRedial={!!args.showSaveAndRedial} />,
+};

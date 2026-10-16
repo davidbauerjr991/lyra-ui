@@ -813,6 +813,10 @@ Stories: new "Expanded — New Assignment Severity" (one card per level); `newAs
 Supersedes the "compact tile's own corner dot still turns red" note in "InteractionNavItem: newAssignmentSeverity colors the pulsing new-assignment dot". `interaction-nav-item.tsx`: for a new assignment, the collapsed rail tile's bottom-right corner dot (`cornerDotVariant`) and its ping ring now take `newAssignmentSeverity` too, with the same tokens as the header dot (`Badge` `success`/`warning`/`critical` + `bg-lyra-status-*-strong` ring, now one shared `newAssignmentPingBg`). Default `"critical"`, so it's red as before. Cards that aren't new assignments keep the old corner-dot rules (green/amber from `awaitingSeverity`, no dot for critical).
 Stories: "Expanded — New Assignment Severity" became "New Assignment Severity — Expanded & Collapsed Rail" (same export, `ExpandedNewAssignmentSeverity`): a collapsed-rail tile per level beside the expanded cards.
 
+### Outcome footer (`buildOutcomePopoverSlots`): showSaveAndRedial (2026-10-15)
+`outcome-panel.tsx`: new optional `ChannelOutcomeConfig.showSaveAndRedial` (default `true`). When `false`, the ended-call footer (`callEnded`) leaves out "Save & Redial" and shows only "Save & Dismiss". It lives on the config, not as a new parameter on `buildOutcomePopoverSlots`, so every surface that renders this footer (`ChannelRow`, `ChannelTab`, `OutcomePanel`, and app-side callers of `buildOutcomePopoverSlots`) gets it through the `outcome` object it already passes. Additive: unset renders exactly as before, and no consumer was changed.
+Stories: new `OutcomePanel` "Call Ended — Without Save & Redial" (voice, `callEnded`, a `showSaveAndRedial` control defaulting to false).
+
 ## Stories
 
 ### AppHeader (`src/components/__stories__/AppHeader.stories.tsx`)

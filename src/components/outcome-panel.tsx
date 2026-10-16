@@ -103,6 +103,10 @@ export interface ChannelOutcomeConfig {
    *  OWN footer button isn't a safe anchor on its own, since it unmounts
    *  the instant this popover closes. */
   onSaveAndRedial?: (anchorEl: HTMLElement | null) => void;
+  /** Whether the `callEnded` footer shows "Save & Redial" (default: true).
+   *  False leaves only "Save & Dismiss", e.g. for a channel that can't be
+   *  redialed. */
+  showSaveAndRedial?: boolean;
   /** "Save & Dismiss" clicked — only rendered while `callEnded` is true. */
   onSaveAndDismiss?: () => void;
 }
@@ -200,15 +204,18 @@ export function buildOutcomePopoverSlots(
                 a real disposition — same "never pre-populated, agent must
                 actually pick one" requirement the Disposition field's own
                 `error` state (above) already enforces visually; this is
-                the same rule enforced as an action gate on both buttons. */}
-            <Button
-              variant="outline"
-              size="md"
-              onClick={() => outcome.onSaveAndRedial?.(triggerRef?.current ?? null)}
-              disabled={!outcome.dispositionCode}
-            >
-              Save &amp; Redial
-            </Button>
+                the same rule enforced as an action gate on both buttons.
+                `showSaveAndRedial={false}` omits Save & Redial. */}
+            {outcome.showSaveAndRedial !== false && (
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() => outcome.onSaveAndRedial?.(triggerRef?.current ?? null)}
+                disabled={!outcome.dispositionCode}
+              >
+                Save &amp; Redial
+              </Button>
+            )}
             <Button variant="default" size="md" onClick={outcome.onSaveAndDismiss} disabled={!outcome.dispositionCode}>
               Save &amp; Dismiss
             </Button>
