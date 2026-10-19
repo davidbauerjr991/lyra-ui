@@ -824,6 +824,12 @@ Additive, every existing caller unaffected. Rule they serve (agent-next-gen-demo
 - `AddChannelButtonProps.channelDisabledReasons` (the same, for the "+"; with `initialChannel` on a disabled channel the trigger is disabled with the reason as its tooltip; the Custom flow's SMS/Voice choice too). `useAddChannelButton` passes `outboundConfig.channelDisabledReasons` through.
 Stories: Radio Button Group/Variants "Disabled With Reason"; CreateNew "Channel disabled with a reason".
 
+### Select option `disabledReason` / CreateNew `openAddressReason` (2026-10-18)
+Additive, every existing caller unaffected. Rule they serve (agent-next-gen-demo, E3): an address that already has an open thread on a channel stays visible in the add-channel pickers, disabled with the reason, so the agent sees the channel is active there; only a channel open on every address is disabled itself.
+- `select.tsx`: `SelectOption.disabledReason` shows at the right of a `disabled` option's row (single- and multi-select; outside `ItemText`, so never on the closed trigger), and as the row's `title` and `data-disabled-reason`. Inline rather than a Tooltip: a listbox row is read, not hovered (and Radix disables pointer handling on a disabled `Select.Item`).
+- `create-new.tsx`: `CreateNewOutboundContact.openAddressReason` (opt-in). Set, the addresses in `openChannelAddresses` stay in "Select Phone"/"Select Email Address"/"Select WhatsApp Handle", disabled with it, instead of being dropped (`resolveOutboundDetailField`); the default is the first one not open (`""` when all are). `isChannelBlockedForContact` blocks a channel when every option is disabled (was: when the list was empty), so "Select Channel" still disables a channel open on every address. Unset, open addresses are dropped as before. Applies to `CreateNew`'s detail screen and `AddChannelButton` alike.
+Stories: Select/Variants "Disabled with Reason"; CreateNew "Open address listed with a reason".
+
 ## Stories
 
 ### AppHeader (`src/components/__stories__/AppHeader.stories.tsx`)

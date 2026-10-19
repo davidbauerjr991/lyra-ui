@@ -280,3 +280,20 @@ export const ClearAndCount: Story = {
   name: "Clear and Count",
   render: () => <ClearAndCountDemo />,
 };
+
+/* ── Disabled with a reason — a disabled option stays listed and says why
+   (`disabledReason`), e.g. a phone number already open in another thread. ── */
+const reasonOptions: SelectOption[] = [
+  { value: "(646) 555-0143", label: "(646) 555-0143", disabled: true, disabledReason: "Already open" },
+  { value: "(212) 555-0177", label: "(212) 555-0177" },
+];
+
+export const DisabledWithReason: Story = {
+  name: "Disabled with Reason",
+  render: () => (
+    <div className="flex flex-col gap-6 max-w-[320px]">
+      <Select label="Select Phone" options={reasonOptions} />
+      <Select label="Multiple" options={reasonOptions} multiple />
+    </div>
+  ),
+};

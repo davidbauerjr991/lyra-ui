@@ -55,6 +55,12 @@ interface SelectOption {
   label: string;
   /** Disable this option */
   disabled?: boolean;
+  /** Why a `disabled` option can't be picked (e.g. "Already open"), shown
+   *  at the right of its row in the dropdown (single- and multi-select) and
+   *  as its `title`. Ignored while the option is enabled. Same idea as
+   *  `RadioButtonGroup`'s option `disabledReason`, inline here because a
+   *  listbox row is read, not hovered. */
+  disabledReason?: string;
   /** Optional leading icon shown to the left of `label` in the dropdown
    *  list (both single- and multi-select). Rendered at a fixed `h-4 w-4`
    *  regardless of the size it's authored at, so a consumer's icon doesn't
@@ -737,6 +743,8 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                         role="option"
                         aria-selected={isSelected}
                         disabled={isDisabled}
+                        title={option.disabled ? option.disabledReason : undefined}
+                        data-disabled-reason={option.disabled ? option.disabledReason : undefined}
                         tabIndex={option.value === tabStopValue ? 0 : -1}
                         onClick={() => !isDisabled && toggleMultiValue(option.value)}
                         className={cn(
@@ -777,6 +785,9 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                           </span>
                         )}
                         <span className="flex-1 min-w-0 truncate text-lyra-fg-default">{option.label}</span>
+                        {option.disabled && option.disabledReason && (
+                          <span className="shrink-0 lyra-body-sm text-lyra-fg-secondary">{option.disabledReason}</span>
+                        )}
                       </button>
                     );
                     });
@@ -1028,6 +1039,8 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                     key={option.value}
                     value={option.value}
                     disabled={option.disabled}
+                    title={option.disabled ? option.disabledReason : undefined}
+                    data-disabled-reason={option.disabled ? option.disabledReason : undefined}
                     className={cn(
                       "group relative flex w-full items-center gap-2.5 px-3 py-2.5 lyra-body-md text-left transition-colors rounded-lyra-sm cursor-pointer select-none outline-none",
                       "text-lyra-fg-default data-[highlighted]:bg-lyra-state-hover",
@@ -1064,6 +1077,10 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                         <span className="block truncate">{option.label}</span>
                       </SelectPrimitive.ItemText>
                     </span>
+                    {/* Outside ItemText, so the closed trigger never shows it. */}
+                    {option.disabled && option.disabledReason && (
+                      <span className="shrink-0 lyra-body-sm text-lyra-fg-secondary">{option.disabledReason}</span>
+                    )}
                   </SelectPrimitive.Item>
                   ));
                   return run.group ? (

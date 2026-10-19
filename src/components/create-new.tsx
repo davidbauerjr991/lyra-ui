@@ -257,8 +257,16 @@ export interface CreateNewOutboundContact extends CreateNewContact {
    *  disabled, since starting another interaction on one of those exact
    *  addresses would just duplicate the one already running. Other
    *  addresses/numbers for the same channel (e.g. a third, unused outbound
-   *  phone line) stay selectable. */
+   *  phone line) stay selectable. By default an open address is dropped
+   *  from that field; with `openAddressReason` set it stays listed,
+   *  disabled with that reason. */
   openChannelAddresses?: Partial<Record<ChannelType, string[]>>;
+  /** Opt-in: keep the addresses in `openChannelAddresses` in the detail
+   *  field, disabled with this reason (e.g. "Already open"), so the agent
+   *  sees the channel is active there, instead of dropping them. The
+   *  channel itself is disabled only once every address for it is open.
+   *  Unset (the default), open addresses are dropped, as before. */
+  openAddressReason?: string;
   /** Which channel *types* this contact currently has at least one live
    *  interaction open on, regardless of whether that channel has a
    *  recorded address at all — e.g. `["voice", "email"]`. Deliberately
@@ -980,7 +988,8 @@ function isChannelBlockedForContact(
   //    (`CreateNewOutboundConfig.channelDisabledReasons`).
   if (disabledReasons?.[channel]) return true;
   if (channel === "voice" && !!contact.openChannelTypes?.includes("voice")) return true;
-  return resolveOutboundDetailField(contact, channel, phoneOptions, channelOptions).options.length === 0;
+  // Nothing left to pick: no address at all, or every one already open (listed disabled with `openAddressReason`).
+  return resolveOutboundDetailField(contact, channel, phoneOptions, channelOptions).options.every((o) => o.disabled);
 }
 
 /** First channel in `channelOptions` that isn't blocked for `contact` (see
@@ -1018,13 +1027,13 @@ function firstAvailableChannel(
  *  this, the old unconditional synthesis would have doubled it up into
  *  garbage like "jane@example.com@example.com". WhatsApp: still one
  *  synthesized address (no `whatsappHandle`-style field exists to prefer
- *  yet). Both email and WhatsApp are dropped from `options` (not just
- *  disabled) if already open elsewhere for this contact. Phone:
- *  `contact.primaryPhone` first (see its own doc comment) followed by
- *  every `phoneOptions` entry, minus whichever of those is already open —
- *  defaulting to whichever ends up first, so a contact with a directory-
- *  listed number defaults to *that* one rather than an arbitrary shared
- *  line. */
+ *  yet). An address already open for this contact on the channel is dropped
+ *  from `options`, or, with `contact.openAddressReason` set, kept and
+ *  disabled with that reason. Phone: `contact.primaryPhone` first (see its
+ *  own doc comment) followed by every `phoneOptions` entry. The default is
+ *  the first option that isn't open, so a contact with a directory-listed
+ *  number defaults to *that* one rather than an arbitrary shared line; `""`
+ *  when every one is open. */
 function resolveOutboundDetailField(
   contact: CreateNewOutboundContact,
   channel: ChannelType,
@@ -1032,27 +1041,32 @@ function resolveOutboundDetailField(
   channelOptions?: CreateNewChannelOption[]
 ): { label: string; options: SelectOption[]; defaultValue: string } {
   const openAddresses = contact.openChannelAddresses?.[channel] ?? [];
-  const withoutOpen = (options: SelectOption[]): SelectOption[] =>
-    openAddresses.length > 0 ? options.filter((o) => !openAddresses.includes(o.value)) : options;
+  const markOpen = (options: SelectOption[]): SelectOption[] =>
+    openAddresses.length === 0
+      ? options
+      : contact.openAddressReason
+        ? options.map((o) => (openAddresses.includes(o.value) ? { ...o, disabled: true, disabledReason: contact.openAddressReason } : o))
+        : options.filter((o) => !openAddresses.includes(o.value));
+  const field = (label: string, options: SelectOption[]) => ({ label, options, defaultValue: options.find((o) => !o.disabled)?.value ?? "" });
   // The address field follows the channel's address kind (its option's
   // `addressKind`, else by id).
   const kind = addressKindOf(channel, channelOptions);
   if (kind === "email") {
     const value = contact.email ?? `${contact.name.toLowerCase().replace(/\s+/g, ".")}@example.com`;
-    const defaultValue = openAddresses.includes(value) ? "" : value;
-    return { label: "Select Email Address", options: withoutOpen(defaultValue ? [{ value: defaultValue, label: defaultValue }] : []), defaultValue };
+    return field("Select Email Address", markOpen([{ value, label: value }]));
   }
   if (kind === "handle") {
     const value = `@${contact.name}`;
-    const defaultValue = openAddresses.includes(value) ? "" : value;
-    return { label: "Select WhatsApp Handle", options: withoutOpen(defaultValue ? [{ value: defaultValue, label: defaultValue }] : []), defaultValue };
+    return field("Select WhatsApp Handle", markOpen([{ value, label: value }]));
   }
-  const options = withoutOpen(
-    contact.primaryPhone
-      ? [contact.primaryPhone, ...phoneOptions.filter((o) => o.value !== contact.primaryPhone!.value)]
-      : phoneOptions
+  return field(
+    "Select Phone",
+    markOpen(
+      contact.primaryPhone
+        ? [contact.primaryPhone, ...phoneOptions.filter((o) => o.value !== contact.primaryPhone!.value)]
+        : phoneOptions
+    )
   );
-  return { label: "Select Phone", options, defaultValue: options[0]?.value ?? "" };
 }
 
 /** Parses a display-formatted phone string (e.g. `"(704) 555-0142"`, or

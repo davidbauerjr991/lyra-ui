@@ -155,3 +155,28 @@ export const ChannelDisabledWithReason: Story = {
     },
   },
 };
+
+/* ── An open address, listed with its reason ──
+   `openAddressReason` on a contact keeps the addresses in its
+   `openChannelAddresses` in "Select Phone"/"Select Email Address",
+   disabled with the reason, instead of dropping them, so the agent sees
+   the channel is already active there. Here: every contact's first phone
+   line already has an SMS thread open; pick a contact, then SMS. */
+export const OpenAddressWithReason: Story = {
+  name: "Open address listed with a reason",
+  args: {
+    title: "New Outbound",
+    expanded: true,
+    outbound: {
+      ...OUTBOUND_CONFIG,
+      groups: OUTBOUND_CONFIG.groups.map((group) => ({
+        ...group,
+        contacts: group.contacts?.map((contact) => ({
+          ...contact,
+          openChannelAddresses: { sms: [OUTBOUND_CONFIG.phoneOptions?.[0]?.value ?? ""] },
+          openAddressReason: "Already open",
+        })),
+      })),
+    },
+  },
+};
