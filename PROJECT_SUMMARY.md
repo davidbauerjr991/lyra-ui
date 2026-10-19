@@ -2588,3 +2588,4 @@ Verified: `npm run lint` (`tsc --noEmit`) — matched the standing 3-error basel
 - PageHeader Default story: header border turns off automatically while the Details row is shown.
 - PageHeader Default story: Details row text (incl. Session Details link and Outcome) uses body-sm.
 - PageHeader Default story: header row bottom padding is 0 (compact) while the Details row is shown.
+- Removed the duplicate UI/Autosummary story (Autosummary.stories.tsx, moved to _to_delete/ so it's recoverable). The real AI summary story is AICard -> Autosummary. CustomerContextOverview and its snapshot / autosummaryBlue / onSnapshotLink props are untouched, so no prototype is affected; note CustomerContextOverview now has no Storybook story (that file was its only one — it also demoed [label](key) link tokens toggling a slide-out).
