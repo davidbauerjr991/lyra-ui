@@ -39,7 +39,7 @@ export function Interstitial({
       onClick={onOpen}
       aria-current={active ? "true" : undefined}
       className={cn(
-        "flex w-full animate-in fade-in-0 slide-in-from-bottom-4 duration-200 items-center gap-3 rounded-lyra-md border px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus",
+        "flex w-full animate-in fade-in-0 slide-in-from-bottom-4 duration-200 items-center gap-3 rounded-lyra-md border px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lyra-border-focus",
         active
           ? "border-lyra-border-active bg-lyra-status-info-subtle"
           : "border-lyra-border-subtle bg-lyra-bg-surface-base hover:border-lyra-state-border-hover-neutral",
