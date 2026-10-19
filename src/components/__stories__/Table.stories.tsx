@@ -73,6 +73,7 @@ interface TableDemoProps {
   showColumns?: boolean;
   showActions?: boolean;
   showTitle?: boolean;
+  showRecordCount?: boolean;
   grouped?: boolean;
   groupBy?: string;
   footer?: boolean;
@@ -101,6 +102,7 @@ function TableDemo({
   showColumns = true,
   showActions = true,
   showTitle = false,
+  showRecordCount = false,
   grouped = false,
   groupBy = "team",
   footer = false,
@@ -353,6 +355,7 @@ function TableDemo({
           searchQuery={showSearch ? query : undefined}
           onSearchChange={showSearch ? setQuery : undefined}
           recordCount={rows.length}
+          showRecordCount={showRecordCount}
           showAdvancedSearch={queryBuilder}
           advancedSearchContent={
             queryBuilder ? (
@@ -475,6 +478,7 @@ export const Default: TableDemoStory = {
     showColumns: true,
     showActions: true,
     showTitle: false,
+    showRecordCount: false,
     grouped: false,
     groupBy: "team",
     footer: false,
@@ -502,6 +506,7 @@ export const Default: TableDemoStory = {
         "showColumns",
         "showActions",
         "showTitle",
+        "showRecordCount",
         "grouped",
         "groupBy",
         "footer",
@@ -526,6 +531,7 @@ export const Default: TableDemoStory = {
         "Column toggle",
         "Action buttons",
         "Title",
+        "Record count",
         "Grouped",
         "Group by",
         "Footer",
@@ -616,6 +622,14 @@ export const Default: TableDemoStory = {
       name: "Title",
       control: "boolean",
       description: "Shows a title above the search row (`title`).",
+      if: { arg: "toolbar", truthy: true },
+      table: { category: "Toolbar" },
+    },
+    showRecordCount: {
+      name: "Record count",
+      control: "boolean",
+      description:
+        "Shows the total record count in the toolbar's title area (`showRecordCount` + `recordCount`). With Title on it reads \"Title | 5 Records\"; with Title off the count shows on its own. Off with Title on shows the title only.",
       if: { arg: "toolbar", truthy: true },
       table: { category: "Toolbar" },
     },

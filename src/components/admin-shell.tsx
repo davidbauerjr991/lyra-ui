@@ -1,9 +1,10 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useId } from "react";
 import { SidePanel } from "./side-panel";
 import { InteriorPanel } from "./interior-panel";
 import { PageHeader, type PageHeaderBreadcrumb } from "./page-header";
 import { TreeMenu, type TreeMenuItem } from "./tree-menu";
 import { cn } from "../lib/utils";
+import { MAIN_CONTENT_ID } from "./skip-link";
 
 /* ── Cookie helpers (left-panel pinned state only — mirrors the pattern
    already used by OutboundEngagementPage / DesktopDesignsPage) ── */
@@ -182,14 +183,64 @@ export function AdminShell({
   const effectiveLeftPinned = isNarrowContainer ? false : leftPanelPinned;
   const leftHoverTimeout = useRef<ReturnType<typeof setTimeout>>();
 
+  // Id of the left panel — `aria-controls` target of the header's toggle button, and what
+  // the keyboard-open flow below focuses / looks the toggle up by.
+  const leftPanelId = useId();
+  // True while an UNPINNED (flyout) left panel was opened from the keyboard rather than by
+  // hover — drives the focus-out / Escape close below.
+  const leftKeyboardOpenRef = useRef(false);
+
   const handleLeftToggle = useCallback(() => {
-    if (!effectiveLeftPinned) return;
+    if (!effectiveLeftPinned) {
+      // Keyboard / assistive-tech activation of the toggle while unpinned (a mouse click never
+      // reaches here — see PageHeader). The flyout normally opens on hover only, which left
+      // keyboard users with no way to open it. Toggle it, and on open move focus into the panel
+      // (its region is focusable) so the next Tab enters its content — the panel sits before the
+      // header in tab order, so otherwise focus would be left behind it.
+      clearTimeout(leftHoverTimeout.current);
+      const next = !leftPanelOpen;
+      leftKeyboardOpenRef.current = next;
+      setLeftPanelOpen(next);
+      if (next) requestAnimationFrame(() => document.getElementById(leftPanelId)?.focus());
+      return;
+    }
     setLeftPanelOpen((v) => {
       const next = !v;
       setCookie(openCookieKey, String(next));
       return next;
     });
-  }, [effectiveLeftPinned, openCookieKey]);
+  }, [effectiveLeftPinned, openCookieKey, leftPanelOpen, leftPanelId]);
+
+  // A keyboard-opened flyout has no mouse-leave to close it, so close it when focus moves out
+  // of both the panel and its toggle, or on Escape (returning focus to the toggle if it was
+  // inside the panel).
+  useEffect(() => {
+    if (!leftPanelOpen || effectiveLeftPinned || !leftKeyboardOpenRef.current) return;
+    const panelEl = () => document.getElementById(leftPanelId);
+    const toggleEl = () => document.querySelector<HTMLElement>(`[aria-controls="${CSS.escape(leftPanelId)}"]`);
+    const close = () => {
+      leftKeyboardOpenRef.current = false;
+      setLeftPanelOpen(false);
+    };
+    const onFocusIn = (e: FocusEvent) => {
+      const t = e.target as Node | null;
+      if (t && (panelEl()?.contains(t) || toggleEl()?.contains(t))) return;
+      close();
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      // `defaultPrevented`: a Radix popover / menu inside the panel already consumed this Escape.
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      const focusWasInside = panelEl()?.contains(document.activeElement) ?? false;
+      close();
+      if (focusWasInside) toggleEl()?.focus();
+    };
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [leftPanelOpen, effectiveLeftPinned, leftPanelId]);
 
   const handleLeftHoverStart = useCallback(() => {
     if (!effectiveLeftPinned) { clearTimeout(leftHoverTimeout.current); setLeftPanelOpen(true); }
@@ -286,13 +337,16 @@ export function AdminShell({
         onPinToggle={isNarrowContainer ? undefined : handleLeftPinToggle}
         onMouseEnter={!effectiveLeftPinned ? handleLeftHoverStart : undefined}
         onMouseLeave={!effectiveLeftPinned ? handleLeftHoverEnd : undefined}
-        className="z-[8]"
+        id={leftPanelId}
+        tabIndex={-1}
+        className="z-[8] focus:outline-none"
       >
         <TreeMenu key={navKey} className="px-2" items={navItems} exactSelection={navExactSelection} />
       </SidePanel>
 
       {/* ════ Main content column ════ */}
-      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      {/* `id` + `tabIndex={-1}` — the target of the left nav / side panel's "Skip to main content" link. */}
+      <div id={MAIN_CONTENT_ID} tabIndex={-1} className="flex flex-col flex-1 min-h-0 overflow-hidden focus:outline-none">
 
         {/* ════ Page Header ════ */}
         {showPageHeader && (
@@ -303,6 +357,8 @@ export function AdminShell({
             panelToggle="left"
             badge={pageBadge}
             panelPinned={effectiveLeftPinned}
+            panelOpen={leftPanelOpen}
+            panelControlsId={leftPanelId}
             onPanelToggle={handleLeftToggle}
             onPanelHoverStart={!effectiveLeftPinned ? handleLeftHoverStart : undefined}
             onPanelHoverEnd={!effectiveLeftPinned ? handleLeftHoverEnd : undefined}

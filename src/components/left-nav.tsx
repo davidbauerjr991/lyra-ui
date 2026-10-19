@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { TreeMenu, type TreeMenuItem } from "./tree-menu";
 import { Tooltip } from "./tooltip";
 import { cn } from "../lib/utils";
+import { SkipLink } from "./skip-link";
 
 /* ── Types ── */
 
@@ -150,6 +151,16 @@ interface LeftNavProps extends React.HTMLAttributes<HTMLElement> {
    * still names the outer `<aside>`.
    */
   navAriaLabel?: string;
+  /**
+   * Renders a "Skip to main content" link as the nav's first tab stop —
+   * invisible until a keyboard user tabs onto it, then Enter jumps focus
+   * straight to the main content (WCAG 2.4.1 bypass blocks), so they needn't
+   * tab through every nav item first. Default `true`; pass `false` if the
+   * page provides its own skip link.
+   */
+  skipToMain?: boolean;
+  /** `id` of the main content element the skip link targets (default `"main-content"`; falls back to the page's `<main>`). */
+  skipToMainTargetId?: string;
 }
 
 /**
@@ -206,6 +217,8 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
       headerFillsHeight = false,
       stickyCaption,
       navAriaLabel,
+      skipToMain = true,
+      skipToMainTargetId,
       ...props
     },
     ref
@@ -339,8 +352,11 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
                   aria-label={item.label}
                   aria-current={isActive ? "page" : undefined}
                   className={cn(
-                    "flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lyra-sm transition-colors",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
+                    "relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lyra-sm transition-colors",
+                    // `focus-visible:z-10` — the ring sits outside the button and a
+                    // LATER sibling (e.g. the selected item's filled background)
+                    // would otherwise paint over its bottom edge.
+                    "focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
                     isActive
                       ? "bg-lyra-bg-active-moderate text-lyra-fg-active-strong"
                       : "text-lyra-fg-default hover:bg-lyra-state-hover active:bg-lyra-state-pressed"
@@ -416,6 +432,7 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
           onMouseLeave={onHoverEnd}
           {...props}
         >
+          {skipToMain && <SkipLink targetId={skipToMainTargetId} />}
           {/* Sliding panel: 60px footprint when closed, 256px overlay when open */}
           <div
             className="absolute left-0 top-0 bottom-0 flex flex-col bg-lyra-bg-surface-shell overflow-hidden"
@@ -512,7 +529,18 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
                       // for the full "bottom reserved padding for the fade,
                       // no top padding" writeup; same change, same
                       // reasoning.
-                      itemsFirst && "pb-8"
+                      itemsFirst && "pb-8",
+                      // `pt-1` (4px) when `header` leads the scroll region
+                      // (`!itemsFirst`) — a focus ring is drawn OUTSIDE the
+                      // control (2px ring + 2px offset = 4px), and this
+                      // region's `overflow-y-auto` / wrapper `overflow-hidden`
+                      // clip anything past their padding edge, so a focusable
+                      // control (e.g. a SearchInput) sitting flush at the top
+                      // had the top of its ring cut off. Exactly the ring's
+                      // reach, not a design gap (cf. the oversized `pt-8`
+                      // reverted below) — `itemsFirst` has the rail above, not
+                      // `header`, so it needs no inset.
+                      !itemsFirst && "pt-1"
                     )}
                   >
                     {injectExpanded(header, hoverOpen)}
@@ -589,6 +617,7 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
         )}
         {...props}
       >
+        {skipToMain && <SkipLink targetId={skipToMainTargetId} />}
         {toggleButton}
 
         {pinnedHeader && (
@@ -716,7 +745,7 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
                   // card's own edge — only ever on this reserved, otherwise-
                   // invisible space.
                   //
-                  // No top padding here (reverted per explicit request —
+                  // No `pt-8`-sized top padding here (reverted per explicit request —
                   // the `pt-8` tried briefly alongside `stickyCaption`
                   // moving the caption out of `header` created a visibly
                   // oversized gap above the first card/empty-state block).
@@ -728,7 +757,11 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
                   // child's very top edge now, but it's a soft gradient, not
                   // a hard line, so this trade-off was accepted as the
                   // better one.
-                  itemsFirst && "pb-8"
+                  itemsFirst && "pb-8",
+                  // `pt-1` — see the overlay-mode branch's copy of this line
+                  // for why (focus-ring clearance at the top of the scroll
+                  // region; 4px = ring + offset, not a visual gap).
+                  !itemsFirst && "pt-1"
                 )}
               >
                 {header}
@@ -852,8 +885,11 @@ const NavRail = React.forwardRef<
                   aria-label={item.label}
                   aria-current={isActive ? "page" : undefined}
                   className={cn(
-                    "flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lyra-sm transition-colors",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
+                    "relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lyra-sm transition-colors",
+                    // `focus-visible:z-10` — the ring sits outside the button and a
+                    // LATER sibling (e.g. the selected item's filled background)
+                    // would otherwise paint over its bottom edge.
+                    "focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
                     isActive
                       ? "bg-lyra-bg-active-moderate text-lyra-fg-active-strong"
                       : "text-lyra-fg-default hover:bg-lyra-state-hover active:bg-lyra-state-pressed"

@@ -1,8 +1,9 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { TreeMenu, CollapsiblePanel } from "../tree-menu";
-import type { TreeMenuItem } from "../tree-menu";
+import type { TreeMenuChild, TreeMenuItem } from "../tree-menu";
 import { ChevronDown, Users } from "lucide-react";
+import { Button } from "../button";
 import { defaultItems, noIconItems } from "./TreeMenu.shared";
 
 /* One page per TreeMenu variant, shown under "TreeMenu/Variants" in the
@@ -154,4 +155,69 @@ export function CallCentersTree() {
 export const CallCenters: Story = {
   name: "Call Centers",
   render: () => <CallCentersTree />,
+};
+
+/* ── Controlled ──
+   Every row with children can take `open` + `onOpenChange`, so the caller
+   owns which groups are expanded: here a set of labels. Because the state
+   lives outside the tree, "Rebuild tree" (remounting TreeMenu from scratch,
+   as an app does when it re-renders its nav) keeps every group exactly as
+   the user left it — with only `defaultOpen` they would all snap back — and
+   "Expand all" / "Collapse all" drive the rows from outside. */
+
+function collectParents(items: (TreeMenuItem | TreeMenuChild)[]): string[] {
+  return items.flatMap((i) => (i.children ? [i.label, ...collectParents(i.children)] : []));
+}
+
+function bindOpen<T extends TreeMenuItem | TreeMenuChild>(
+  items: T[],
+  openSet: Set<string>,
+  toggle: (label: string, open: boolean) => void
+): T[] {
+  return items.map((item) =>
+    item.children
+      ? {
+          ...item,
+          open: openSet.has(item.label),
+          onOpenChange: (next: boolean) => toggle(item.label, next),
+          children: bindOpen(item.children, openSet, toggle),
+        }
+      : item
+  );
+}
+
+export function ControlledTree() {
+  const [openSet, setOpenSet] = useState<Set<string>>(() => new Set());
+  const [generation, setGeneration] = useState(0);
+  const toggle = (label: string, open: boolean) =>
+    setOpenSet((prev) => {
+      const next = new Set(prev);
+      if (open) next.add(label);
+      else next.delete(label);
+      return next;
+    });
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="outline" onClick={() => setOpenSet(new Set(collectParents(defaultItems)))}>
+          Expand all
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => setOpenSet(new Set())}>
+          Collapse all
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => setGeneration((g) => g + 1)}>
+          Rebuild tree
+        </Button>
+      </div>
+      <TreeMenu key={generation} items={bindOpen(defaultItems, openSet, toggle)} />
+      <p className="lyra-body-sm text-lyra-fg-secondary">
+        Open: {openSet.size ? Array.from(openSet).join(", ") : "none"}
+      </p>
+    </div>
+  );
+}
+
+export const Controlled: Story = {
+  name: "Controlled",
+  render: () => <ControlledTree />,
 };

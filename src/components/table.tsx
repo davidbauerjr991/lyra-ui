@@ -1018,10 +1018,17 @@ interface TableToolbarProps extends React.HTMLAttributes<HTMLDivElement> {
   onSearchChange?: (value: string) => void;
   /** Search placeholder text (default: "Search") */
   searchPlaceholder?: string;
-  /** Total record count to display */
+  /** Total record count to display (shown only when `showRecordCount` is true) */
   recordCount?: number;
-  /** Custom label for record count (default: "Records") */
+  /** Custom label for the record count (default: "Record" for 1, otherwise "Records") */
   recordLabel?: string;
+  /**
+   * When true, shows the total `recordCount` in the toolbar's title area.
+   * With a `title` it renders "Title | 12 Records"; without one, the count
+   * stands alone in the title area. When false, only the `title` (if any)
+   * shows. Default: false.
+   */
+  showRecordCount?: boolean;
   /** Content rendered below the search row (e.g. filter chips, badges) */
   filters?: React.ReactNode;
   /** Declarative filter definitions — renders FilterChip components automatically */
@@ -1036,7 +1043,7 @@ interface TableToolbarProps extends React.HTMLAttributes<HTMLDivElement> {
   actions?: React.ReactNode;
   /** Structured action definitions — renders icon buttons inline on large screens, labeled menu on small screens */
   actionDefs?: ToolbarActionDef[];
-  /** Optional title — when provided, renders inline with action buttons on row 1; search + filters move to row 2 */
+  /** Optional title — when provided (or when `showRecordCount` is on), renders inline with action buttons on row 1; search + filters move to row 2 */
   title?: string;
   /** Show panel toggle icon button(s) at the far right of the toolbar — always opens interior panels */
   toolbarPanelToggle?: "left" | "right" | "both";
@@ -1067,7 +1074,7 @@ interface TableToolbarProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
-  ({ className, searchQuery, onSearchChange, searchPlaceholder = "Search", recordCount, recordLabel = "Records", filters, filterDefs, filterValues, onFilterChange, onFilterClear, actions, actionDefs, title, toolbarPanelToggle, onLeftPanelToggle, onRightPanelToggle, showAdvancedSearch, advancedSearchContent, advancedSearchApplied, advancedSearchDescription, advancedSearchTitle, onAdvancedSearchApply, onAdvancedSearchCancel, onSaveSearch, ...props }, ref) => {
+  ({ className, searchQuery, onSearchChange, searchPlaceholder = "Search", recordCount, recordLabel, showRecordCount = false, filters, filterDefs, filterValues, onFilterChange, onFilterClear, actions, actionDefs, title, toolbarPanelToggle, onLeftPanelToggle, onRightPanelToggle, showAdvancedSearch, advancedSearchContent, advancedSearchApplied, advancedSearchDescription, advancedSearchTitle, onAdvancedSearchApply, onAdvancedSearchCancel, onSaveSearch, ...props }, ref) => {
     const [advancedOpen, setAdvancedOpen] = useState(false);
     const [saveSearchOpen, setSaveSearchOpen] = useState(false);
     const [saveSearchName, setSaveSearchName] = useState("");
@@ -1629,8 +1636,16 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
     ) : null;
 
 
-    if (title) {
-      /* ── Title mode: row 1 = title + actions, row 2 = search + filters ── */
+    // Title area = the title, the record count, or both ("Title | 12 Records").
+    // Either one puts the toolbar in the two-row layout below (heading + actions
+    // on row 1, search + filters on row 2).
+    const countText =
+      showRecordCount && recordCount !== undefined
+        ? `${recordCount.toLocaleString()} ${recordLabel ?? (recordCount === 1 ? "Record" : "Records")}`
+        : null;
+
+    if (title || countText) {
+      /* ── Title mode: row 1 = title/count + actions, row 2 = search + filters ── */
       return (
         <div
           ref={stableRef}
@@ -1642,7 +1657,23 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
               rather than staying pinned next to the title where they'd
               otherwise be forced to squeeze against it. */}
           <div className="flex items-center justify-between">
-            <span className="lyra-body-md-emphasis text-lyra-fg-default">{title}</span>
+            <div className="flex min-w-0 items-center gap-2">
+              {title && <span className="lyra-body-md-emphasis text-lyra-fg-default">{title}</span>}
+              {title && countText && (
+                <span aria-hidden="true" className="lyra-body-md text-lyra-fg-secondary">|</span>
+              )}
+              {countText && (
+                <span
+                  className={cn(
+                    title
+                      ? "lyra-body-md text-lyra-fg-secondary"
+                      : "lyra-body-md-emphasis text-lyra-fg-default",
+                  )}
+                >
+                  {countText}
+                </span>
+              )}
+            </div>
             {!isNarrow && actionButtons}
           </div>
           {/* Row 2: search + filters — filters collapse into the same

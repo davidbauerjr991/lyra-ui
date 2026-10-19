@@ -9,6 +9,8 @@ import "./lib/input-modality";
 export { Button, buttonVariants } from "./components/button";
 export { Link, linkVariants } from "./components/link";
 export type { LinkProps } from "./components/link";
+export { SkipLink, MAIN_CONTENT_ID } from "./components/skip-link";
+export type { SkipLinkProps } from "./components/skip-link";
 export { TagsInput } from "./components/tags-input";
 export type { TagsInputProps } from "./components/tags-input";
 export { Tag, tagVariants } from "./components/tag";

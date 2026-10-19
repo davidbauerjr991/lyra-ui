@@ -8,6 +8,7 @@ import { PanelPinButton } from "./panel-pin-button";
 import { Tooltip } from "./tooltip";
 import { usePanelDragResize } from "./use-panel-drag-resize";
 import { cn } from "../lib/utils";
+import { SkipLink } from "./skip-link";
 
 /* ── SidePanel ──
    The navigation/tool panel that lives OVER the page header, on the left or
@@ -44,6 +45,16 @@ import { cn } from "../lib/utils";
 export interface SidePanelProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Which edge of the layout the panel is docked to (default: "right") */
   side?: "left" | "right";
+  /**
+   * Renders a "Skip to main content" link as the panel's first tab stop —
+   * invisible until focused; Enter jumps focus to the main content
+   * (WCAG 2.4.1) so keyboard users needn't tab through the whole panel.
+   * Defaults to `true` for `side="left"` panels (they sit before the main
+   * content in tab order) and `false` for `side="right"` (they come after it).
+   */
+  skipToMain?: boolean;
+  /** `id` of the main content element the skip link targets (default `"main-content"`; falls back to the page's `<main>`). */
+  skipToMainTargetId?: string;
   /** Whether the panel is open (default: true) */
   open?: boolean;
   /**
@@ -192,6 +203,8 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
     {
       className,
       side = "right",
+      skipToMain,
+      skipToMainTargetId,
       open = true,
       pinned: pinnedProp = false,
       absoluteBreakpoint,
@@ -426,6 +439,7 @@ const SidePanel = React.forwardRef<HTMLDivElement, SidePanelProps>(
             transition: visible ? "opacity 150ms ease 30ms" : "none",
           }}
         >
+          {(skipToMain ?? side === "left") && <SkipLink targetId={skipToMainTargetId} />}
           {/* Without a title the header is omitted unless `headerWithoutTitle` opts in. */}
           {(headerTitle || (headerWithoutTitle && (headerSubhead || headerIcon || headerTitleBadge || headerActions || headerTabs || enterFullScreen || exitFullScreen || pinButton || closeButton))) && (
             <ContainerHeader

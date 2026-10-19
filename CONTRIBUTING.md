@@ -827,6 +827,7 @@ Work through this list top-to-bottom before marking a component done.
 [ ] Any new TabList has overflowMenu enabled (overflowBreakpoint="compact" in narrow/resizable containers) unless it has its own purpose-built collapse strategy (CLAUDE.md)
 [ ] Card/grid responsiveness is container-query-based (.lyra-container-grid etc.), never a Tailwind sm:/md:/lg: viewport prefix (CLAUDE.md)
 [ ] Any new text-entry/select-style component has the size?: "sm" | "md" prop (with "size" added to the Omit<> list where props extend InputHTMLAttributes) (CLAUDE.md)
+[ ] Any new nav rail / side panel / landmark that sits ahead of the main content in tab order includes a SkipLink (WCAG 2.4.1) — LeftNav and SidePanel (side="left") already do
 [ ] Any control that can sit in a card's headerActions (or another clickable slot) calls e.stopPropagation() on its own trigger (CLAUDE.md)
 [ ] After editing any multi-line /* ... */ doc comment, verified with a direct esbuild bundle of the touched file in addition to tsc --noEmit (CLAUDE.md)
 ```

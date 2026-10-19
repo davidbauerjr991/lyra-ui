@@ -125,7 +125,7 @@ interface PageHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
    * - "both"  — both toggles
    */
   panelToggle?: "left" | "right" | "both";
-  /** Called when the left (outer) panel toggle is clicked (pinned mode) */
+  /** Called when the left (outer) panel toggle is activated — a click when pinned, or a keyboard / assistive-tech activation (Enter, Space, screen-reader click) when unpinned. A mouse click when unpinned is ignored: the panel opens on hover there. */
   onPanelToggle?: () => void;
   /** Whether the outer panel is pinned — controls click vs hover behavior */
   panelPinned?: boolean;
@@ -325,7 +325,15 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
             >
               <Tooltip content="Toggle left panel" placement="right" asLabel>
                 <button
-                  onClick={panelPinned ? onPanelToggle : undefined}
+                  onClick={(e) => {
+                    // Pinned: every click toggles. Unpinned: the panel is a hover
+                    // flyout (`onMouseEnter` on the wrapper above), so a MOUSE click
+                    // must stay a no-op — hover already opened it, and toggling would
+                    // shut it. A keyboard / assistive-tech activation (Enter, Space,
+                    // screen-reader click — all `detail === 0`) has no hover, so it
+                    // toggles the flyout; without this Enter did nothing when unpinned.
+                    if (panelPinned || e.detail === 0) onPanelToggle?.();
+                  }}
                   aria-label="Toggle left panel"
                   aria-expanded={panelOpen}
                   aria-controls={panelControlsId}

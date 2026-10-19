@@ -30,8 +30,24 @@ export interface TreeMenuChild {
    * Omit for a flat leaf row, the original/most common case.
    */
   children?: TreeMenuChild[];
-  /** Only meaningful when `children` is present. */
+  /** Only meaningful when `children` is present. Initial state when uncontrolled (see `open`). */
   defaultOpen?: boolean;
+  /**
+   * Controlled open state for this row (only meaningful when it has `children`).
+   * When provided, the row's expanded/collapsed state is exactly this value —
+   * `defaultOpen` is ignored — and a click only asks for a change via
+   * `onOpenChange`; the caller must update `open` for the row to move. Use it
+   * to remember which groups are open (across page changes, reloads, or a
+   * tree that is rebuilt), or to expand/collapse rows from outside. Omit for
+   * the uncontrolled default (`defaultOpen` seeds it once).
+   */
+  open?: boolean;
+  /**
+   * Fires when the user toggles this row's chevron/button, with the requested
+   * next state. Called in both controlled and uncontrolled modes, so it also
+   * works as a plain "a group was opened/closed" listener.
+   */
+  onOpenChange?: (open: boolean) => void;
 }
 
 export interface TreeMenuItem {
@@ -39,7 +55,24 @@ export interface TreeMenuItem {
   label: string;
   active?: boolean;
   children?: TreeMenuChild[];
+  /** Initial state when uncontrolled (see `open`). */
   defaultOpen?: boolean;
+  /**
+   * Controlled open state for this row (only meaningful when it has `children`).
+   * When provided, the row's expanded/collapsed state is exactly this value —
+   * `defaultOpen` is ignored — and a click only asks for a change via
+   * `onOpenChange`; the caller must update `open` for the row to move. Use it
+   * to remember which groups are open (across page changes, reloads, or a
+   * tree that is rebuilt), or to expand/collapse rows from outside. Omit for
+   * the uncontrolled default (`defaultOpen` seeds it once).
+   */
+  open?: boolean;
+  /**
+   * Fires when the user toggles this row's chevron/button, with the requested
+   * next state. Called in both controlled and uncontrolled modes, so it also
+   * works as a plain "a group was opened/closed" listener.
+   */
+  onOpenChange?: (open: boolean) => void;
   onClick?: () => void;
 }
 
@@ -217,7 +250,16 @@ function TreeMenuRow({
   chevronPosition?: "left" | "right";
   exactSelection?: boolean;
 }) {
-  const [open, setOpen] = useState(item.defaultOpen ?? false);
+  // Open state is controlled when the item passes `open`, otherwise internal
+  // (seeded once from `defaultOpen`). Either way a toggle reports through
+  // `onOpenChange`, and only the uncontrolled case updates local state.
+  const [openState, setOpenState] = useState(item.defaultOpen ?? false);
+  const isControlled = item.open !== undefined;
+  const open = isControlled ? item.open! : openState;
+  const setOpen = (next: boolean) => {
+    if (!isControlled) setOpenState(next);
+    item.onOpenChange?.(next);
+  };
   const hasChildren = Boolean(item.children && item.children.length > 0);
   // Id of this row's child list, so the parent button can point at it via
   // `aria-controls`. The list stays mounted while collapsed (CollapsiblePanel
@@ -251,7 +293,7 @@ function TreeMenuRow({
     <div>
       <button
         onClick={() => {
-          if (hasChildren) setOpen((v) => !v);
+          if (hasChildren) setOpen(!open);
           item.onClick?.();
         }}
         aria-expanded={hasChildren ? open : undefined}
@@ -260,7 +302,10 @@ function TreeMenuRow({
         style={{ paddingLeft: paddingLeftPx, paddingRight: 10 }}
         className={cn(
           "relative flex w-full items-center gap-2.5 rounded-lyra-sm h-9 text-left lyra-body-md transition-colors",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
+          // `focus-visible:z-10` — the offset ring sits outside the row, so the
+          // NEXT row (e.g. a selected one with a filled background) painted over
+          // its bottom edge; raising the focused row keeps the whole ring visible.
+          "focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
           // Nested rows live inside `CollapsiblePanel`, whose `overflow: hidden`
           // (needed for the height animation) clips an outside ring — its
           // offset ring was cut off on the sides and bottom. Drawing the ring
