@@ -400,7 +400,13 @@ function TreeMenuRow({
               className="absolute top-0 bottom-0 w-px bg-lyra-border-subtle"
               style={{ left: childGuideLeftPx }}
             />
-            <ul id={childListId} className="mt-0.5 flex flex-col gap-0.5 list-none m-0 p-0">
+            {/* `pt-0.5`, not `mt-0.5`: a top MARGIN here collapses through the
+                wrappers and shifts the whole measured box down, so the panel
+                (height = this content's scrollHeight, `overflow: hidden`) ends
+                up 2px short and clips the last row's bottom edge — a selected
+                last child lost its rounded bottom corners. Padding stays
+                inside the box and is counted in the height. */}
+            <ul id={childListId} className="pt-0.5 flex flex-col gap-0.5 list-none m-0 p-0">
               {item.children!.map((child, j) => (
                 <li key={j}>
                   <TreeMenuRow item={child} depth={depth + 1} chevronPosition={chevronPosition} exactSelection={exactSelection} />
