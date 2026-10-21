@@ -11,9 +11,23 @@ import {
   StreamedText,
   WaitingState,
 } from "../agentic-parts";
+import {
+  ActionGroup,
+  AIField,
+  AIFieldSection,
+  Alternatives,
+  ProgressRing,
+  SectionDial,
+  StageTrail,
+  SuggestedQuestion,
+  SuggestedReply,
+  SuggestionTag,
+  TaskBoard,
+} from "../agentic-task-parts";
 import { AIProcess } from "../ai-process";
 import { Button } from "../button";
 import { Citation } from "../citation";
+import { Check, Pencil, X } from "lucide-react";
 
 /* "AgenticAICard/Parts": each building block on its own, with the props that drive it. The widgets on the
    Widgets page are made from these. "!autodocs" keeps this folder from getting a second Docs page. */
@@ -116,6 +130,64 @@ export const Gallery: Story = {
               { name: "Milk frother", detail: "NR-10544 · 18 Jun", amount: "$49.00" },
             ]}
           />
+        </Panel>
+        <Panel name="Action group (Button)" spec="primary: { label, icon?, onClick?, disabled? }, secondary?: { … }">
+          <ActionGroup primary={{ label: "Approve", icon: <Check className="h-4 w-4" strokeWidth={1.5} /> }} secondary={{ label: "Decline", icon: <X className="h-4 w-4" strokeWidth={1.5} /> }} />
+          <ActionGroup primary={{ label: "Approve and run 4 tasks" }} secondary={{ label: "Edit answers", icon: <Pencil className="h-4 w-4" strokeWidth={1.5} /> }} />
+        </Panel>
+        <Panel name="AI-filled field (AIField)" spec="label, value?, source?: conversation | self-service | lookup | agent, quote?, sensitive?, required?, fresh?, question?">
+          <div className="divide-y divide-lyra-border-subtle rounded-lyra-md border border-lyra-border-subtle">
+            <AIField label="Symptom" value="Frozen, blinking red light" source="conversation" quote="It just freezes and the light keeps blinking red." />
+            <AIField label="Address" value="•••• Elm Street, Leeds" source="lookup" sensitive />
+            <AIField label="Photo" question="Could you send a photo of the crack?" />
+          </div>
+        </Panel>
+        <Panel name="Section dial (ProgressRing)" spec="name, filled, of, opened?, onClick?">
+          <div className="flex flex-wrap gap-1.5">
+            <SectionDial name="Customer & product" filled={4} of={4} />
+            <SectionDial name="Damage details" filled={1} of={2} opened />
+            <SectionDial name="Technician visit" filled={1} of={3} />
+          </div>
+          <div className="flex items-center gap-3">
+            <ProgressRing value={9} of={12} size={40} />
+            <ProgressRing value={9} of={12} size={28} />
+            <ProgressRing value={12} of={12} size={18} />
+          </div>
+        </Panel>
+        <Panel name="Field section (Accordion)" spec="name, filled, of, why?, open?, defaultOpen?, onOpenChange?">
+          <AIFieldSection name="Damage details" filled={1} of={2} why="Opened because Jordan mentioned a crack">
+            <AIField label="Damage" value="Small crack by the charging port" source="conversation" quote="There’s also a small crack by the charging port." />
+            <AIField label="Photo" />
+          </AIFieldSection>
+        </Panel>
+        <Panel name="Suggested question (Button)" spec="field, question, onInsert?, insertLabel?">
+          <SuggestedQuestion field="Preferred slot" question="Which day suits you for the technician visit?" onInsert={() => {}} />
+        </Panel>
+        <Panel name="Task board (Spinner ring)" spec="tasks: [{ id, name, flow?, state, output?, note?, error?, after?, onRetry? }]  ·  state: done | running | failed | waiting | queued | ready">
+          <TaskBoard
+            tasks={[
+              { id: "1", name: "Raise replacement claim", flow: "Warranty check", state: "done", output: "WC-88214" },
+              { id: "2", name: "Book technician", flow: "Book a technician", state: "running" },
+              { id: "3", name: "Update the customer record", flow: "CRM sync", state: "failed", error: "CRM did not answer within 10 s · nothing was changed", onRetry: () => {} },
+              { id: "4", name: "Email the claim summary", flow: "Customer notifications", state: "waiting", after: "Raise replacement claim" },
+              { id: "5", name: "Close the case", flow: "Case management", state: "queued" },
+              { id: "6", name: "Verify identity", flow: "Identity verification", state: "ready", note: "Ready · runs when you approve" },
+            ]}
+          />
+        </Panel>
+        <Panel name="Stage trail" spec="stages: string[], current: number">
+          <StageTrail stages={["Capture", "Review", "Run"]} current={0} />
+          <StageTrail stages={["Capture", "Review", "Run"]} current={1} />
+          <StageTrail stages={["Capture", "Review", "Run"]} current={2} />
+        </Panel>
+        <Panel name="Suggestion tag, reply and alternatives" spec="SuggestionTag type: say | ask | do  ·  Alternatives: [{ type, text, onUse? }]">
+          <div className="flex gap-1.5">
+            <SuggestionTag type="say" />
+            <SuggestionTag type="ask" />
+            <SuggestionTag type="do" />
+          </div>
+          <SuggestedReply>Is the red light blinking steadily, or flashing in a pattern?</SuggestedReply>
+          <Alternatives alternatives={[{ type: "say", text: "Tell Jordan it is still covered", onUse: () => {} }, { type: "do", text: "Email Jordan the claim summary", onUse: () => {} }]} />
         </Panel>
       </div>
     );

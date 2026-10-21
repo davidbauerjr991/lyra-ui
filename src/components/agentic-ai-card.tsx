@@ -11,11 +11,12 @@ import { Tag, type TagVariant } from "./tag";
  * - `waiting` / `queued`: nothing to show yet (neutral)
  * - `running` / `live`: working or updating as new information arrives (blue, pulsing dot)
  * - `changed`: the content just changed (warning)
+ * - `suggested`: the agent offers something to use (purple)
  * - `needs-you`: the agent has to act (warning)
  * - `authorized` / `done`: finished well (success)
  * - `failed`: something went wrong (critical)
  */
-export type AgenticStatus = "waiting" | "queued" | "running" | "live" | "changed" | "needs-you" | "authorized" | "done" | "failed";
+export type AgenticStatus = "waiting" | "queued" | "running" | "live" | "changed" | "suggested" | "needs-you" | "authorized" | "done" | "failed";
 
 export const AGENTIC_STATUS_META: Record<AgenticStatus, { label: string; variant: TagVariant; pulse: boolean }> = {
   waiting: { label: "Waiting", variant: "neutral", pulse: false },
@@ -23,6 +24,7 @@ export const AGENTIC_STATUS_META: Record<AgenticStatus, { label: string; variant
   running: { label: "Running", variant: "info", pulse: true },
   live: { label: "Live", variant: "info", pulse: true },
   changed: { label: "Changed", variant: "warning", pulse: false },
+  suggested: { label: "Suggestion", variant: "purple", pulse: false },
   "needs-you": { label: "Needs you", variant: "warning", pulse: false },
   authorized: { label: "Authorized", variant: "success", pulse: false },
   done: { label: "Done", variant: "success", pulse: false },

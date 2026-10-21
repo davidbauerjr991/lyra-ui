@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { cn } from "../../lib/utils";
-import { Container } from "../container";
+import { Container, type ContainerAccent, type ContainerBorderSide } from "../container";
 import {
   ALL_VARIANTS,
   BodyText,
@@ -39,6 +39,8 @@ export default meta;
 interface ContainerDemoProps {
   variant?: ContainerVariantName;
   radius?: "none" | "xs" | "sm" | "md" | "lg" | "xl";
+  borders?: ContainerBorderSide[];
+  accent?: ContainerAccent;
   showHeader?: boolean;
   titleSize?: TitleSize;
   showSubhead?: boolean;
@@ -59,6 +61,8 @@ interface ContainerDemoProps {
 function ContainerDemo({
   variant = "default",
   radius = "lg",
+  borders = ["top", "right", "bottom", "left"],
+  accent = "none",
   showHeader = true,
   titleSize = "md",
   showSubhead = false,
@@ -84,6 +88,8 @@ function ContainerDemo({
     <Container
       variant={variant}
       radius={radius}
+      borders={borders}
+      accent={accent}
       headerTitle={showHeader && showTitle ? "Container" : undefined}
       headerClassName={showHeader && showDraggable ? DRAG_HEADER_CLASS : undefined}
       headerTitleClassName={TITLE_SIZE_CLASSES[titleSize]}
@@ -129,9 +135,9 @@ export const Default: ContainerDemoStory = {
       // is set, so both the labels and the prop keys are listed.
       include: [
         "Header", "Title", "Draggable", "Subtitle", "Icon", "Alert tag", "Actions", "Tabs",
-        "Footer", "Title size", "Style", "Corner radius", "Header divider", "Footer border", "Footer scroll effect",
+        "Footer", "Title size", "Style", "Corner radius", "Borders", "Accent bar", "Header divider", "Footer border", "Footer scroll effect",
         "showHeader", "showTitle", "showDraggable", "showSubhead", "showIcon", "tagPlacement",
-        "showActions", "showTabs", "footerAlign", "titleSize", "variant", "radius", "headerBordered", "footerBordered", "footerScrollEffect",
+        "showActions", "showTabs", "footerAlign", "titleSize", "variant", "radius", "borders", "accent", "headerBordered", "footerBordered", "footerScrollEffect",
       ],
       sort: "none",
     },
@@ -139,6 +145,8 @@ export const Default: ContainerDemoStory = {
   args: {
     variant: "default",
     radius: "lg",
+    borders: ["top", "right", "bottom", "left"],
+    accent: "none",
     showHeader: true,
     showTitle: true,
     showDraggable: false,
@@ -238,6 +246,21 @@ export const Default: ContainerDemoStory = {
       options: ["none", "xs", "sm", "md", "lg", "xl"],
       description: "Corner radius token (`radius`): none 0, xs 4, sm 6, md 8, lg 12, xl 16px.",
       table: { category: "Appearance", defaultValue: { summary: "lg" } },
+    },
+    borders: {
+      name: "Borders",
+      control: "check",
+      options: ["top", "right", "bottom", "left"],
+      description: "Which sides draw the variant's border (`borders`). All four is the default; none ticked removes the border. Needs a style that has a border (not the “-none” styles).",
+      table: { category: "Appearance", defaultValue: { summary: "all four sides" } },
+    },
+    accent: {
+      name: "Accent bar",
+      control: "select",
+      options: ["none", "left", "right", "top", "bottom"],
+      labels: { none: "None", left: "Left", right: "Right", top: "Top", bottom: "Bottom" },
+      description: "A thick (4px) bar on one side in the style's strong color (`accent`). It follows the corner radius and sits on top of Borders, so Borders off with a left bar gives a bar alone.",
+      table: { category: "Appearance", defaultValue: { summary: "none" } },
     },
     headerBordered: {
       name: "Header divider",

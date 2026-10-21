@@ -14,6 +14,8 @@ import { getHoldBadgeColor } from "./hold-sla";
 import { Badge, getPillInlineStyles, type BadgeColor } from "./badge";
 import { Button } from "./button";
 import { ShowMoreChevron } from "./show-more";
+import { RADIUS_CLASSES, type RadiusSize } from "./accordion";
+import { containerBorderClasses, type ContainerBorders } from "./container";
 import { formatPhoneForDisplay } from "./phone-input";
 
 /* ── Helpers ── */
@@ -30,6 +32,13 @@ function getInitials(name?: string): string {
 /* ── InteractionNavItem ── */
 
 export interface InteractionNavItemProps {
+  /** Corner radius of the expanded card, from the radius tokens (same scale as `Container`). Default "sm". */
+  radius?: RadiusSize;
+  /**
+   * Which sides of the expanded card draw its border: "all" (default), "none", or a list such as `["left"]`
+   * (same as `Container`'s `borders`). The active card's thick left selection bar shows whatever this is set to.
+   */
+  borders?: ContainerBorders;
   /** Customer's full name — OR, for an interaction with no matched
    *  customer, whatever raw address identifies it instead (a dialed phone
    *  number, a typed email/WhatsApp handle) — the card's title (expanded
@@ -272,6 +281,8 @@ function channelKey(ch: InteractionChannel): string {
 const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemProps>(
   (
     {
+      radius = "sm",
+      borders = "all",
       customerName,
       customerIdentified,
       channels = [],
@@ -1062,13 +1073,17 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     // shared between the real expanded return and the hover popover's
     // preview of it — same reasoning as `cardBody` above.
     const expandedCardClassName = cn(
-      "relative flex w-full cursor-pointer flex-col overflow-hidden rounded-lyra-sm border-y border-r text-left transition-colors",
+      "relative flex w-full cursor-pointer flex-col overflow-hidden text-left transition-colors",
+      // `radius` / `borders` (same props as `Container`): the corner radius token, and which sides draw the border.
+      RADIUS_CLASSES[radius],
+      borders === "all" ? "border" : containerBorderClasses(borders),
       // Per `onHold`'s own doc comment above: overrides the plain surface
       // background unconditionally while true — a `bg-lyra-bg-surface-base`
       // ternary'd branch here rather than baked into the base string above,
       // same reasoning as the border override just below.
       "bg-lyra-bg-surface-base",
-      active ? "border-l-4" : "border-l",
+      // The selection bar: a thick left border whenever the card is active, whatever `borders` says.
+      active && "border-l-4",
       // Active cards get a permanent `shadow-md` (the "elevated" token per
       // Shadows.stories.tsx); inactive cards stay flat, hover or not — the
       // real expanded (rail-expanded) card intentionally has no hover

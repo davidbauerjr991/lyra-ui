@@ -7,6 +7,10 @@ import {
   JourneySummaryCard,
   KnowledgeBaseAnswerCard,
   CustomerSentimentCard,
+  NBA_FRAMES,
+  NextBestActionCard,
+  PROCESS_FRAMES,
+  ProcessAutomationCard,
   RealTimeSummaryCard,
   SENTIMENT_FRAMES,
   SUMMARY_FRAMES,
@@ -62,4 +66,26 @@ export const KnowledgeBaseAnswer: Story = {
 export const JourneySummary: Story = {
   name: "Journey Summary",
   render: () => <Frames names={JOURNEY_FRAMES}>{(f) => <JourneySummaryCard frame={f as (typeof JOURNEY_FRAMES)[number]} forYou />}</Frames>,
+};
+
+/** A proactive suggestion for what to say, ask or do next, with the reason and a reply or action ready to use. */
+export const NextBestAction: Story = {
+  name: "Next Best Action",
+  render: () => <Frames names={NBA_FRAMES}>{(f) => <NextBestActionCard frame={f as (typeof NBA_FRAMES)[number]} forYou />}</Frames>,
+};
+
+/** Captures what a process needs from the conversation, then runs its tasks in parallel once the agent approves. */
+export const ProcessAutomation: Story = {
+  name: "Process Automation",
+  render: () => (
+    <Frames names={PROCESS_FRAMES}>{(f) => <ProcessAutomationCard frame={f as (typeof PROCESS_FRAMES)[number]} forYou />}</Frames>
+  ),
+};
+
+/** The same widget, opening with the task list instead of the form while it captures. */
+export const ProcessAutomationTasksFirst: Story = {
+  name: "Process Automation · tasks first",
+  render: () => (
+    <Frames names={["Capturing"]}>{() => <ProcessAutomationCard frame="Capturing" view="Tasks first" forYou />}</Frames>
+  ),
 };

@@ -193,3 +193,30 @@ export const Nested: Story = {
     </div>
   ),
 };
+
+/* `borders` (which sides keep the border) and `accent` (a thick bar on one side), on a few styles. */
+export const BordersAndAccent: Story = {
+  name: "Borders and Accent Bar",
+  render: () => (
+    <div className="grid max-w-3xl grid-cols-1 gap-4 sm:grid-cols-2">
+      <Container variant="neutral-subtle" radius="md" borders={["top", "bottom"]} className="p-4">
+        <BodyText>borders=[&quot;top&quot;, &quot;bottom&quot;]</BodyText>
+      </Container>
+      <Container variant="neutral-subtle" radius="md" borders={["left"]} className="p-4">
+        <BodyText>borders=[&quot;left&quot;]</BodyText>
+      </Container>
+      <Container variant="info-subtle" radius="md" accent="left" className="p-4">
+        <BodyText>accent=&quot;left&quot; (all borders kept)</BodyText>
+      </Container>
+      <Container variant="info-none" radius="md" borders="none" accent="left" className="p-4">
+        <BodyText>borders=&quot;none&quot; accent=&quot;left&quot;: a bar alone</BodyText>
+      </Container>
+      <Container variant="success-subtle" radius="lg" accent="top" className="p-4">
+        <BodyText>accent=&quot;top&quot; · success</BodyText>
+      </Container>
+      <Container variant="error-subtle" radius="none" accent="left" className="p-4">
+        <BodyText>radius=&quot;none&quot; · error</BodyText>
+      </Container>
+    </div>
+  ),
+};

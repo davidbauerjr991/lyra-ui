@@ -181,7 +181,7 @@ export type {
 export { SidePanel } from "./components/side-panel";
 export type { SidePanelProps } from "./components/side-panel";
 export { Container } from "./components/container";
-export type { ContainerProps } from "./components/container";
+export type { ContainerProps, ContainerBorders, ContainerBorderSide, ContainerAccent } from "./components/container";
 export { PanelContent } from "./components/panel-content";
 export type { PanelContentProps } from "./components/panel-content";
 export { AdminShell } from "./components/admin-shell";
@@ -426,3 +426,23 @@ export type {
   SourceLinksProps,
   SourceLink,
 } from "./components/agentic-parts";
+
+/* ── AgenticAICard phase 3 parts ── */
+export { ProgressRing, SectionDial, SuggestedQuestion, AIField, AIFieldSection, TaskBoard, ActionGroup, StageTrail, SuggestionTag, SuggestedReply, Alternatives } from "./components/agentic-task-parts";
+export type {
+  ProgressRingProps,
+  SectionDialProps,
+  SuggestedQuestionProps,
+  AIFieldProps,
+  FieldSource,
+  AIFieldSectionProps,
+  TaskBoardProps,
+  TaskItem,
+  TaskState,
+  ActionGroupProps,
+  ActionConfig,
+  StageTrailProps,
+  SuggestionType,
+  Alternative,
+  AlternativesProps,
+} from "./components/agentic-task-parts";

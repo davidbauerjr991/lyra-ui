@@ -29,6 +29,8 @@ const meta: Meta<typeof InteractionNavItem> = {
     awaitingResponse: { control: "boolean" },
     collapsible: { control: "boolean" },
     newAssignmentSeverity: { control: "select", options: ["success", "warning", "critical"] },
+    radius: { control: "select", options: ["none", "xs", "sm", "md", "lg", "xl"], description: "Corner radius of the expanded card (`radius`, same scale as Container)." },
+    borders: { control: "check", options: ["top", "right", "bottom", "left"], description: "Which sides draw the card's border (`borders`, same as Container). The active card's thick left bar always shows." },
   },
 };
 
@@ -951,4 +953,31 @@ export const AddChannelButtonPrimitive: AddChannelButtonPrimitiveStory = {
       console.log("Start call:", selection.channel, "→", selection.contact.name);
     },
   },
+};
+
+/* ── Expanded — shape: corner radius and borders (the same two props Container has) ── */
+export const ExpandedShape: Story = {
+  name: "Expanded — Radius and Borders",
+  args: { radius: "sm", borders: ["top", "right", "bottom", "left"], active: true },
+  argTypes: {
+    radius: { name: "Corner radius", control: "select", options: ["none", "xs", "sm", "md", "lg", "xl"], description: "Corner radius token (`radius`): none 0, xs 4, sm 6, md 8, lg 12, xl 16px. Default sm." },
+    borders: { name: "Borders", control: "check", options: ["top", "right", "bottom", "left"], description: "Which sides draw the border (`borders`). None ticked removes it. The active card's thick left selection bar shows either way." },
+    active: { name: "Active", control: "boolean", description: "The selected card: blue border and a thick left bar (`active`)." },
+  },
+  parameters: { layout: "padded", controls: { include: ["Corner radius", "Borders", "Active", "radius", "borders", "active"], sort: "none" } },
+  render: (args) => (
+    <div className="w-72">
+      <InteractionNavItem
+        customerName="Lucas Thomas"
+        expanded
+        collapsible
+        radius={args.radius}
+        borders={args.borders}
+        active={args.active}
+        awaitingResponse={false}
+        elapsed="02:14"
+        channels={[{ type: "chat", elapsed: "02:14", current: true, preview: "AI Review" }]}
+      />
+    </div>
+  ),
 };

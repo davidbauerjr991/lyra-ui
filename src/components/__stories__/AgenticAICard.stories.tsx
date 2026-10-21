@@ -10,6 +10,11 @@ import {
   JourneySummaryCard,
   KnowledgeBaseAnswerCard,
   CustomerSentimentCard,
+  NBA_FRAMES,
+  NextBestActionCard,
+  PROCESS_FRAMES,
+  PROCESS_VIEWS,
+  ProcessAutomationCard,
   RealTimeSummaryCard,
   SENTIMENT_FRAMES,
   STATUS_OPTIONS,
@@ -17,6 +22,9 @@ import {
   WIDGET_NAMES,
   type AnswerFrame,
   type JourneyFrame,
+  type NbaFrame,
+  type ProcessFrame,
+  type ProcessView,
   type SentimentFrame,
   type SummaryFrame,
   type WidgetName,
@@ -34,6 +42,9 @@ interface AgenticDemoProps {
   summaryFrame?: SummaryFrame;
   answerFrame?: AnswerFrame;
   journeyFrame?: JourneyFrame;
+  nbaFrame?: NbaFrame;
+  processFrame?: ProcessFrame;
+  processView?: ProcessView;
   showDetail?: boolean;
   status?: "auto" | AgenticStatus;
   showSubhead?: boolean;
@@ -54,6 +65,9 @@ function AgenticAICardDemo({
   summaryFrame = "Live",
   answerFrame = "Answer",
   journeyFrame = "Journey found",
+  nbaFrame = "Say or ask",
+  processFrame = "Capturing",
+  processView = "Guided form",
   showDetail = true,
   status = "auto",
   showSubhead = true,
@@ -89,6 +103,8 @@ function AgenticAICardDemo({
       {widget === "Real-Time Summary" && <RealTimeSummaryCard key={key} frame={summaryFrame} {...card} />}
       {widget === "Knowledge Base Answer" && <KnowledgeBaseAnswerCard key={key} frame={answerFrame} {...card} />}
       {widget === "Journey Summary" && <JourneySummaryCard key={key} frame={journeyFrame} showDetail={showDetail} {...card} />}
+      {widget === "Next Best Action" && <NextBestActionCard key={key} frame={nbaFrame} {...card} />}
+      {widget === "Process Automation" && <ProcessAutomationCard key={key} frame={processFrame} view={processView} {...card} />}
     </div>
   );
 }
@@ -111,6 +127,9 @@ export const Default: Story = withControlsFor({
     summaryFrame: "Live",
     answerFrame: "Answer",
     journeyFrame: "Journey found",
+    nbaFrame: "Say or ask",
+    processFrame: "Capturing",
+    processView: "Guided form",
     showDetail: true,
     status: "auto",
     showSubhead: true,
@@ -162,6 +181,30 @@ export const Default: Story = withControlsFor({
       description: "Which state the journey is in.",
       if: { arg: "widget", eq: "Journey Summary" },
       table: { category: "Content" },
+    },
+    nbaFrame: {
+      name: "Frame",
+      control: "select",
+      options: [...NBA_FRAMES],
+      description: "Which state the suggestion is in.",
+      if: { arg: "widget", eq: "Next Best Action" },
+      table: { category: "Content" },
+    },
+    processFrame: {
+      name: "Frame",
+      control: "select",
+      options: [...PROCESS_FRAMES],
+      description: "Which stage the process is at: capturing, ready to review, running, a task failed, or done.",
+      if: { arg: "widget", eq: "Process Automation" },
+      table: { category: "Content" },
+    },
+    processView: {
+      name: "Capture view",
+      control: "radio",
+      options: [...PROCESS_VIEWS],
+      description: "While capturing, open with the form (Guided form) or with the task list (Tasks first). Same widget, same data.",
+      if: { arg: "widget", eq: "Process Automation" },
+      table: { category: "Content", defaultValue: { summary: "Guided form" } },
     },
     showDetail: {
       name: "Detailed view",

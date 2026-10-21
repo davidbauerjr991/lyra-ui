@@ -77,9 +77,68 @@ const containerVariants = cva("", {
   },
 });
 
+/* ── Borders and accent bar ──
+   `borders` picks which sides draw the variant's border; `accent` adds a thick bar on one side in the
+   variant's strong color. Both are also used by `InteractionNavItem` (see `containerBorderClasses`). */
+
+type ContainerBorderSide = "top" | "right" | "bottom" | "left";
+/** "all": the variant's own border (default). "none": no border. Or a list of the sides that keep it. */
+type ContainerBorders = "all" | "none" | ContainerBorderSide[];
+type ContainerAccent = "none" | ContainerBorderSide;
+
+const BORDER_SIDE_CLASS: Record<ContainerBorderSide, string> = {
+  top: "border-t",
+  right: "border-r",
+  bottom: "border-b",
+  left: "border-l",
+};
+
+/** Classes that limit the border to some sides. "all" returns "" so the variant's own border stays (a borderless variant stays borderless). */
+function containerBorderClasses(borders: ContainerBorders = "all"): string {
+  if (borders === "all") return "";
+  const sides = borders === "none" ? [] : borders;
+  if (sides.length >= 4) return "";
+  return cn("border-0", sides.map((side) => BORDER_SIDE_CLASS[side]));
+}
+
+/* Accent: 4px on one side. Static strings so Tailwind keeps them. */
+const ACCENT_WIDTH: Record<ContainerBorderSide, string> = { top: "border-t-4", right: "border-r-4", bottom: "border-b-4", left: "border-l-4" };
+const ACCENT_COLOR: Record<ContainerBorderSide, Record<"active" | "success" | "warning" | "critical" | "purple" | "neutral", string>> = {
+  top: { active: "border-t-lyra-border-active", success: "border-t-lyra-status-success-strong", warning: "border-t-lyra-status-warning-strong", critical: "border-t-lyra-status-critical-strong", purple: "border-t-lyra-accent-purple-strong", neutral: "border-t-lyra-border-strong" },
+  right: { active: "border-r-lyra-border-active", success: "border-r-lyra-status-success-strong", warning: "border-r-lyra-status-warning-strong", critical: "border-r-lyra-status-critical-strong", purple: "border-r-lyra-accent-purple-strong", neutral: "border-r-lyra-border-strong" },
+  bottom: { active: "border-b-lyra-border-active", success: "border-b-lyra-status-success-strong", warning: "border-b-lyra-status-warning-strong", critical: "border-b-lyra-status-critical-strong", purple: "border-b-lyra-accent-purple-strong", neutral: "border-b-lyra-border-strong" },
+  left: { active: "border-l-lyra-border-active", success: "border-l-lyra-status-success-strong", warning: "border-l-lyra-status-warning-strong", critical: "border-l-lyra-status-critical-strong", purple: "border-l-lyra-accent-purple-strong", neutral: "border-l-lyra-border-strong" },
+};
+
+function accentTone(variant?: string | null): "active" | "success" | "warning" | "critical" | "purple" | "neutral" {
+  const v = variant ?? "default";
+  if (v.startsWith("success")) return "success";
+  if (v.startsWith("warning")) return "warning";
+  if (v.startsWith("error") || v === "critical") return "critical";
+  if (v.startsWith("purple")) return "purple";
+  if (v.startsWith("neutral")) return "neutral";
+  return "active";
+}
+
+/** Classes for an accent bar on `side`, colored to match `variant`. */
+function containerAccentClasses(side: ContainerAccent = "none", variant?: string | null): string {
+  if (side === "none") return "";
+  return cn(ACCENT_WIDTH[side], ACCENT_COLOR[side][accentTone(variant)]);
+}
+
 interface ContainerProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof containerVariants> {
+  /**
+   * Which sides draw the variant's border: "all" (default), "none", or a list such as `["top", "bottom"]`.
+   * Needs a variant that has a border (`default`, `*-subtle`, `*-strong`…); the `*-none` variants have none to show.
+   */
+  borders?: ContainerBorders;
+  /**
+   * A thick (4px) bar on one side, in the variant's strong color ("left" for a leading accent). It follows the
+   * corner radius and sits on top of `borders`, so `borders="none"` with `accent="left"` is a bar alone.
+   */
+  accent?: ContainerAccent;
   /**
    * Header title — renders a `ContainerHeader` when this or any other
    * `header*` prop below is present. Optional on its own (not just when
@@ -123,7 +182,7 @@ interface ContainerProps
 
 const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
   ({
-    className, variant, radius,
+    className, variant, radius, borders, accent,
     headerTitle, headerIcon, headerActions,
     headerTitleBadge, headerTopSlot, headerSubhead, headerBordered = false,
     headerTitleClassName, headerClassName, headerActionsWrap, headerTabs,
@@ -133,7 +192,7 @@ const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
     return (
       <div
         ref={ref}
-        className={cn(containerVariants({ variant, radius }), className)}
+        className={cn(containerVariants({ variant, radius }), containerBorderClasses(borders), containerAccentClasses(accent, variant), className)}
         {...props}
       >
         <ContainerHeaderSlot
@@ -165,5 +224,5 @@ const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
 );
 Container.displayName = "Container";
 
-export { Container, containerVariants };
-export type { ContainerProps };
+export { Container, containerVariants, containerBorderClasses, containerAccentClasses };
+export type { ContainerProps, ContainerBorders, ContainerBorderSide, ContainerAccent };
