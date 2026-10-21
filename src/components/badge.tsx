@@ -228,6 +228,14 @@ interface BadgeCircleProps extends React.HTMLAttributes<HTMLSpanElement> {
    * prefer reduced motion. Default false.
    */
   pulse?: boolean;
+  /**
+   * Optional icon next to a word or number (e.g. a 12px lucide icon, or a small `ProgressBar shape="ring"`).
+   * Decorative: hidden from screen readers. Ignored for a `dot`. For a badge that is only an icon glyph, pass
+   * the glyph as `children` instead.
+   */
+  icon?: React.ReactNode;
+  /** Where `icon` goes: before the text, after it, or on both sides. Default "left". */
+  iconPosition?: BadgeIconPosition;
 }
 
 export type BadgeShape = "pill" | "circle";
@@ -245,6 +253,8 @@ const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>((props, ref) => {
       size = "md",
       dot = false,
       pulse = false,
+      icon: circleIcon,
+      iconPosition: circleIconPosition = "left",
       count,
       max = 99,
       className,
@@ -270,10 +280,24 @@ const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>((props, ref) => {
     const resolvedAriaLabel =
       ariaLabelProp ?? (dot ? undefined : count !== undefined ? `${count > max ? `${max}+` : count} notifications` : undefined);
 
+    // A glyph beside the text. Sized by the badge's own size; a non-svg icon (a ring) sizes itself.
+    const circleIconEl =
+      circleIcon && !dot ? (
+        <span
+          aria-hidden="true"
+          className={cn(
+            "inline-flex shrink-0",
+            size === "sm" ? "[&>svg]:h-2.5 [&>svg]:w-2.5" : size === "lg" ? "[&>svg]:h-3.5 [&>svg]:w-3.5" : "[&>svg]:h-3 [&>svg]:w-3"
+          )}
+        >
+          {circleIcon}
+        </span>
+      ) : null;
+
     return (
       <span
         ref={ref}
-        className={cn(circleBadgeVariants({ variant, fill, bordered, size, dot }), dot && pulse && "relative", className)}
+        className={cn(circleBadgeVariants({ variant, fill, bordered, size, dot }), dot && pulse && "relative", circleIconEl && "gap-1", className)}
         aria-label={resolvedAriaLabel}
         // `role="img"` only when there's an actual label to announce — a
         // bare, role-less `<span>` carrying `aria-label` is exactly what
@@ -289,7 +313,9 @@ const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>((props, ref) => {
         role={resolvedAriaLabel ? "img" : undefined}
         {...rest}
       >
+        {circleIconEl && circleIconPosition !== "right" && circleIconEl}
         {!dot && label}
+        {circleIconEl && circleIconPosition !== "left" && circleIconEl}
         {dot && pulse && (
           // The ring copies the dot's own background (`bg-inherit`) so it always matches the dot, whatever its
           // variant, fill or a caller's color override, and is scaled up and faded by Tailwind's `animate-ping`.

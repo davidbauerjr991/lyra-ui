@@ -24,7 +24,7 @@ const meta: Meta<typeof AgenticAICard> = {
   title: "UI/AgenticAICard/Widgets",
   component: AgenticAICard,
   tags: ["!autodocs"],
-  parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
+  parameters: { layout: "padded", backgrounds: { default: "lyra-base" } },
 };
 
 export default meta;

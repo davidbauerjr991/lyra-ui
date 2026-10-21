@@ -31,8 +31,11 @@ interface AIInputDemoProps {
   showAttach?: boolean;
   disabled?: boolean;
   placeholder?: string;
+  showLegal?: boolean;
   helperText?: string;
   layout?: "stacked" | "single-line";
+  rounded?: boolean;
+  maxRows?: number;
 }
 
 function AIInputDemo({
@@ -40,8 +43,11 @@ function AIInputDemo({
   showAttach = true,
   disabled = false,
   placeholder = "Ask anything...",
+  showLegal = true,
   helperText = "AI assistant can make mistakes. Double check responses.",
   layout = "stacked",
+  rounded = false,
+  maxRows = 6,
 }: AIInputDemoProps) {
   const [value, setValue] = useState(startingText === "draft" ? DRAFT_TEXT : "");
   const [submitted, setSubmitted] = useState<string[]>([]);
@@ -71,8 +77,10 @@ function AIInputDemo({
         showAttach={showAttach}
         disabled={disabled}
         placeholder={placeholder}
-        helperText={helperText}
+        helperText={showLegal ? helperText : ""}
         singleLine={layout === "single-line"}
+        rounded={rounded}
+        maxRows={maxRows}
       />
       {lastAction && (
         <p className="lyra-body-sm text-lyra-fg-secondary" role="status">
@@ -91,8 +99,11 @@ export const Default: AIInputDemoStory = {
     showAttach: true,
     disabled: false,
     placeholder: "Ask anything...",
+    showLegal: true,
     helperText: "AI assistant can make mistakes. Double check responses.",
     layout: "stacked",
+    rounded: false,
+    maxRows: 6,
   },
   parameters: {
     controls: {
@@ -101,14 +112,20 @@ export const Default: AIInputDemoStory = {
         "showAttach",
         "disabled",
         "placeholder",
+        "showLegal",
         "helperText",
         "layout",
+        "rounded",
+        "maxRows",
         "Starting text",
         "Attach button",
         "Disabled",
         "Placeholder",
-        "Helper text",
+        "Legal statement",
+        "Legal statement text",
         "Layout",
+        "Rounded edges",
+        "Max rows",
       ],
       sort: "none",
     },
@@ -140,11 +157,25 @@ export const Default: AIInputDemoStory = {
       description: "Hint text shown while the field is empty.",
       table: { category: "Content" },
     },
+    showLegal: {
+      name: "Legal statement",
+      control: "boolean",
+      description: "Shows the AI disclaimer caption under the field (`helperText`). Off removes the caption.",
+      table: { category: "Content", defaultValue: { summary: "true" } },
+    },
     helperText: {
-      name: "Helper text",
+      name: "Legal statement text",
       control: "text",
-      description: "Caption under the field. Clear it for no caption.",
+      description: "The caption's wording (`helperText`). Only used while Legal statement is on.",
+      if: { arg: "showLegal", truthy: true },
       table: { category: "Content" },
+    },
+    maxRows: {
+      name: "Max rows",
+      control: { type: "number", min: 2, max: 20, step: 1 },
+      description:
+        "How many lines of text the field grows to before it stops and scrolls inside (`maxRows`, default 6). Applies to both layouts.",
+      table: { category: "Behavior", defaultValue: { summary: "6" } },
     },
     layout: {
       name: "Layout",
@@ -153,6 +184,14 @@ export const Default: AIInputDemoStory = {
       description:
         "Stacked puts the text above a toolbar. Single line puts attach, input and submit in one compact row (`singleLine`).",
       table: { category: "Appearance" },
+    },
+    rounded: {
+      name: "Rounded edges",
+      control: "boolean",
+      description:
+        "Pill-shaped ends on the field and its buttons (`rounded`). Only available with the single-line layout.",
+      if: { arg: "layout", eq: "single-line" },
+      table: { category: "Appearance", defaultValue: { summary: "false" } },
     },
   },
   render: (args) => (

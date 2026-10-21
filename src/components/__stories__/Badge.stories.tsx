@@ -59,6 +59,8 @@ interface BadgeDemoProps {
   circlePulse?: boolean;
   /** Hidden plumbing: "circle shape AND dot content" (`argTypes.if` takes one condition). */
   circlePulseOn?: boolean;
+  /** Hidden plumbing: the pill, or a circle showing a word (the shapes that can carry an icon). */
+  showIconOn?: boolean;
 }
 
 function BadgeDemo({
@@ -80,6 +82,7 @@ function BadgeDemo({
   size = "md",
   circlePulse = false,
 }: BadgeDemoProps) {
+  const IconGlyph = ICONS[pillIcon];
   if (shape === "pill") {
     return (
       <Badge
@@ -99,7 +102,15 @@ function BadgeDemo({
       return <Badge shape="circle" variant={circleVariant} fill={circleFill} bordered={circleBorder} size={size} dot pulse={circlePulse} />;
     case "word":
       return (
-        <Badge shape="circle" variant={circleVariant} fill={circleFill} bordered={circleBorder} size={size}>
+        <Badge
+          shape="circle"
+          variant={circleVariant}
+          fill={circleFill}
+          bordered={circleBorder}
+          size={size}
+          icon={showIcon ? <IconGlyph strokeWidth={2} /> : undefined}
+          iconPosition={iconPosition}
+        >
           {circleWord}
         </Badge>
       );
@@ -204,8 +215,8 @@ export const Default: BadgeDemoStory = withControlsFor({
     showIcon: {
       name: "Show icon",
       control: "boolean",
-      description: "Adds a decorative icon to the pill (`icon`).",
-      if: { arg: "shape", eq: "pill" },
+      description: "Adds a decorative icon (`icon`). Available on a pill, and on a circle showing a word.",
+      if: { arg: "showIconOn", truthy: true },
       table: { category: "Content" },
     },
     iconPosition: {
@@ -240,6 +251,7 @@ export const Default: BadgeDemoStory = withControlsFor({
       table: { category: "Appearance" },
     },
     circlePulseOn: { table: { disable: true } },
+    showIconOn: { table: { disable: true } },
     circleVariant: {
       name: "Color",
       control: "select",
@@ -276,9 +288,12 @@ export const Default: BadgeDemoStory = withControlsFor({
     const [, updateArgs] = useArgs();
     // Keep the hidden plumbing arg in sync so Pulse only shows for a circle dot.
     const pulseOn = args.shape === "circle" && args.circleContent === "dot";
+    // Show icon applies to a pill and to a circle showing a word.
+    const iconOn = args.shape === "pill" || (args.shape === "circle" && args.circleContent === "word");
     useEffect(() => {
       if (args.circlePulseOn !== pulseOn) updateArgs({ circlePulseOn: pulseOn });
-    }, [args.circlePulseOn, pulseOn, updateArgs]);
+      if (args.showIconOn !== iconOn) updateArgs({ showIconOn: iconOn });
+    }, [args.circlePulseOn, pulseOn, args.showIconOn, iconOn, updateArgs]);
     return (
       // `key` remounts the demo when a control changes.
       <BadgeDemo key={JSON.stringify(args)} {...args} />

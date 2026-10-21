@@ -914,7 +914,7 @@ const CustomerInfoConversational = () => (
       <Avatar initials="LT" size="lg" color="success" aria-label="Lucas Thomas" />
       <div className="min-w-0">
         <p className="lyra-body-lg-emphasis text-lyra-fg-default">Lucas Thomas</p>
-        <p className="lyra-body-lg text-lyra-fg-secondary">Insider since 2023 · 14 orders</p>
+        <p className="lyra-body-md text-lyra-fg-secondary">Insider since 2023 · 14 orders</p>
       </div>
     </div>
     <div className="flex flex-wrap gap-2">

@@ -428,9 +428,8 @@ export type {
 } from "./components/agentic-parts";
 
 /* ── AgenticAICard phase 3 parts ── */
-export { ProgressRing, SectionDial, SuggestedQuestion, AIField, AIFieldSection, TaskBoard, ActionGroup, StageTrail, SuggestionTag, SuggestedReply, Alternatives } from "./components/agentic-task-parts";
+export { SectionDial, SuggestedQuestion, AIField, AIFieldSection, TaskBoard, ActionGroup, StageTrail, SuggestionTag, SuggestedReply, Alternatives } from "./components/agentic-task-parts";
 export type {
-  ProgressRingProps,
   SectionDialProps,
   SuggestedQuestionProps,
   AIFieldProps,

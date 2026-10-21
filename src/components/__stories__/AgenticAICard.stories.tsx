@@ -57,6 +57,7 @@ interface AgenticDemoProps {
   showOpenWindow?: boolean;
   density?: "comfortable" | "compact";
   radius?: "none" | "xs" | "sm" | "md" | "lg" | "xl";
+  width?: "max-width" | "full";
 }
 
 function AgenticAICardDemo({
@@ -80,6 +81,7 @@ function AgenticAICardDemo({
   showOpenWindow = false,
   density = "compact",
   radius = "md",
+  width = "max-width",
 }: AgenticDemoProps) {
   const card = {
     statusOverride: status,
@@ -98,7 +100,8 @@ function AgenticAICardDemo({
   // `key` remounts when the open-state controls change so "Starts open" takes effect.
   const key = `${widget}-${accordion}-${defaultOpen}`;
   return (
-    <div className="w-full max-w-[560px]">
+    // Max width caps the card at 350px (a narrow side panel); full takes the whole width available.
+    <div className={width === "max-width" ? "w-full max-w-[350px]" : "w-full"}>
       {widget === "Customer Sentiment" && <CustomerSentimentCard key={key} frame={sentimentFrame} {...card} />}
       {widget === "Real-Time Summary" && <RealTimeSummaryCard key={key} frame={summaryFrame} {...card} />}
       {widget === "Knowledge Base Answer" && <KnowledgeBaseAnswerCard key={key} frame={answerFrame} {...card} />}
@@ -113,7 +116,7 @@ const meta: Meta<typeof AgenticAICardDemo> = {
   title: "UI/AgenticAICard",
   component: AgenticAICard as never,
   tags: ["autodocs"],
-  parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
+  parameters: { layout: "padded", backgrounds: { default: "lyra-base" } },
 };
 
 export default meta;
@@ -141,6 +144,7 @@ export const Default: Story = withControlsFor({
     showOpenWindow: false,
     density: "compact",
     radius: "md",
+    width: "max-width",
   },
   argTypes: {
     widget: {
@@ -258,6 +262,14 @@ export const Default: Story = withControlsFor({
       description: "Header height (`density`): compact is 40px (default), comfortable is 48px. Hidden while Subhead is on, because a subhead sets its own header height.",
       if: { arg: "showSubhead", truthy: false },
       table: { category: "Appearance", defaultValue: { summary: "compact" } },
+    },
+    width: {
+      name: "Width",
+      control: "radio",
+      options: ["max-width", "full"],
+      labels: { "max-width": "Max width (350px)", full: "Full screen" },
+      description: "Max width caps the card at 350px, like a narrow side panel. Full screen lets it take all the width available.",
+      table: { category: "Appearance", defaultValue: { summary: "max-width" } },
     },
     radius: {
       name: "Corner radius",

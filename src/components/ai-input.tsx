@@ -28,15 +28,22 @@ export interface AIInputProps {
   onClear?: () => void;
   /** Hide the + attach button */
   showAttach?: boolean;
-  /** Max rows before scrolling (default 6) */
+  /** Max rows of text before the field stops growing and scrolls inside (default 6). Applies to both layouts. */
   maxRows?: number;
   /** Render the attach button, input, and submit/mic button inline in a
    *  single row instead of the default two-row layout (textarea above,
    *  toolbar below) — a more compact, search-bar-style affordance (e.g.
-   *  a Copilot "ask a quick question" field). The textarea's own
-   *  auto-resize is disabled in this mode (stays a fixed single row);
-   *  overflowing text is clipped rather than growing the field taller. */
+   *  a Copilot "ask a quick question" field). It starts as one row and
+   *  grows with the text up to `maxRows`, then scrolls; the buttons stay
+   *  pinned to the bottom edge as it grows. */
   singleLine?: boolean;
+  /** Fully rounded (pill) ends: the field and its attach / submit / mic
+   *  buttons all go round, like a chat search bar. Only applies with
+   *  `singleLine`; the stacked layout keeps its square-ish corners
+   *  because a pill that tall would look odd. Once the text wraps onto a
+   *  second row, the ends ease from full pill to a large radius so the
+   *  taller field doesn't turn into an oval. Default false. */
+  rounded?: boolean;
   className?: string;
   id?: string;
 }
@@ -58,9 +65,12 @@ const AIInput = React.forwardRef<HTMLTextAreaElement, AIInputProps>(
     showAttach = true,
     maxRows = 6,
     singleLine = false,
+    rounded = false,
     className,
     id,
   }, ref) => {
+    // Pill ends exist only in the single-row layout.
+    const pill          = singleLine && rounded;
     const autoId        = React.useId();
     const inputId       = id ?? autoId;
     const internalRef   = React.useRef<HTMLTextAreaElement>(null);
@@ -71,18 +81,24 @@ const AIInput = React.forwardRef<HTMLTextAreaElement, AIInputProps>(
     const current    = controlled ? value : internalValue;
     const canSubmit  = current.trim().length > 0 && !disabled;
 
-    /* Auto-resize textarea — skipped entirely in `singleLine` mode, which
-       stays a fixed one-row height (see that prop's own doc comment). */
+    /* True once the text wraps past one row — used to ease the pill ends
+       to a large radius in the rounded single-line layout. */
+    const [grown, setGrown] = React.useState(false);
+
+    /* Auto-resize textarea — both layouts: one row up to `maxRows`, then scroll. */
     const resize = React.useCallback(() => {
-      if (singleLine) return;
       const el = textareaRef.current;
       if (!el) return;
       el.style.height = "auto";
-      const lineHeight = parseInt(getComputedStyle(el).lineHeight, 10) || 20;
-      const maxHeight  = lineHeight * maxRows;
+      const cs         = getComputedStyle(el);
+      const lineHeight = parseFloat(cs.lineHeight) || 20;
+      // Padding counts toward the box height, so add it: `maxRows` is then a true row count.
+      const padding    = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+      const maxHeight  = lineHeight * maxRows + padding;
       el.style.height  = `${Math.min(el.scrollHeight, maxHeight)}px`;
       el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
-    }, [maxRows, singleLine]);
+      setGrown(el.scrollHeight > lineHeight + padding + 2);
+    }, [maxRows]);
 
     React.useEffect(() => { resize(); }, [current, resize]);
 
@@ -133,7 +149,8 @@ const AIInput = React.forwardRef<HTMLTextAreaElement, AIInputProps>(
             disabled={disabled}
             aria-label="Add attachment"
             className={cn(
-              "flex h-8 w-8 shrink-0 items-center justify-center rounded-lyra-sm",
+              "flex h-8 w-8 shrink-0 items-center justify-center",
+              pill ? "rounded-full" : "rounded-lyra-sm",
               "text-lyra-fg-secondary transition-colors",
               "hover:bg-lyra-state-hover hover:text-lyra-fg-default",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus"
@@ -198,7 +215,9 @@ const AIInput = React.forwardRef<HTMLTextAreaElement, AIInputProps>(
       <ClearButton
         onClick={handleClear}
         aria-label="Clear input"
-        className="shrink-0"
+        // Single-line rows bottom-align their buttons as the field grows; the 20px
+        // clear box needs 6px under it to sit centred on the 32px submit/attach buttons.
+        className={cn("shrink-0", singleLine && "mb-1.5")}
       />
     );
 
@@ -211,8 +230,9 @@ const AIInput = React.forwardRef<HTMLTextAreaElement, AIInputProps>(
         onClick={handleSubmit}
         aria-label="Submit"
         className={cn(
-          "flex shrink-0 items-center justify-center rounded-lyra-md transition-colors bg-lyra-bg-primary text-lyra-fg-on-primary hover:bg-lyra-state-hover-primary active:bg-lyra-state-pressed-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
-          singleLine ? "h-8 w-8" : "h-9 w-9"
+          "flex shrink-0 items-center justify-center transition-colors bg-lyra-bg-primary text-lyra-fg-on-primary hover:bg-lyra-state-hover-primary active:bg-lyra-state-pressed-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2",
+          singleLine ? "h-8 w-8" : "h-9 w-9",
+          pill ? "rounded-full" : "rounded-lyra-md"
         )}
       >
         <ArrowUp className={singleLine ? "h-4 w-4" : "h-5 w-5"} strokeWidth={2} />
@@ -224,8 +244,9 @@ const AIInput = React.forwardRef<HTMLTextAreaElement, AIInputProps>(
           disabled={disabled}
           aria-label="Voice input"
           className={cn(
-            "flex shrink-0 items-center justify-center rounded-lyra-md transition-colors bg-lyra-bg-surface-shell text-lyra-fg-secondary hover:bg-lyra-state-hover hover:text-lyra-fg-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2 disabled:opacity-40 disabled:pointer-events-none",
-            singleLine ? "h-8 w-8" : "h-9 w-9"
+            "flex shrink-0 items-center justify-center transition-colors bg-lyra-bg-surface-shell text-lyra-fg-secondary hover:bg-lyra-state-hover hover:text-lyra-fg-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-offset-2 disabled:opacity-40 disabled:pointer-events-none",
+            singleLine ? "h-8 w-8" : "h-9 w-9",
+            pill ? "rounded-full" : "rounded-lyra-md"
           )}
         >
           <Mic className={singleLine ? "h-4 w-4" : "h-5 w-5"} strokeWidth={1.5} />
@@ -242,11 +263,15 @@ const AIInput = React.forwardRef<HTMLTextAreaElement, AIInputProps>(
           // `rounded-lyra-sm` + `hover:border-lyra-state-border-hover-neutral`
           // match the other input fields' shared border treatment (see
           // input.tsx / textarea.tsx).
-          "rounded-lyra-sm border bg-lyra-bg-surface-container-subtle transition-colors",
+          "border bg-lyra-bg-surface-container-subtle transition-colors",
+          pill ? (grown ? "rounded-lyra-xl" : "rounded-full") : "rounded-lyra-sm",
           "border-lyra-border-strong hover:border-lyra-state-border-hover-neutral",
           "focus-within:border-lyra-border-active focus-within:ring-2 focus-within:ring-lyra-border-active/20",
           disabled && "opacity-50 pointer-events-none bg-lyra-bg-disabled border-transparent",
-          singleLine ? "flex items-center gap-1 py-1.5 pl-2 pr-1.5" : "flex flex-col"
+          singleLine ? "flex items-end gap-1 py-1.5 pl-2 pr-1.5" : "flex flex-col",
+          // Pill ends: the "+" sits the same 6px from the left edge as the submit button does from the right.
+          // Without an attach button, the text itself needs room to clear the curve.
+          pill && (showAttach ? "pl-1.5" : "pl-4")
         )}>
           {singleLine && attachButton}
           {singleLine && actions}
@@ -266,7 +291,7 @@ const AIInput = React.forwardRef<HTMLTextAreaElement, AIInputProps>(
               "resize-none bg-transparent outline-none",
               "lyra-body-md text-lyra-fg-default placeholder:text-lyra-fg-disabled",
               singleLine
-                ? "min-w-0 flex-1 overflow-hidden px-1 py-1 leading-normal"
+                ? "min-w-0 flex-1 overflow-hidden px-1 py-1.5 leading-5"
                 : "w-full px-4 pt-3 pb-1 leading-relaxed"
             )}
           />

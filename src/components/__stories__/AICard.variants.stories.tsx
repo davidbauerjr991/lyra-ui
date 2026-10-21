@@ -35,7 +35,7 @@ const meta: Meta<typeof AICard> = {
   title: "UI/AICard/Variants",
   component: AICard,
   tags: ["!autodocs"],
-  parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
+  parameters: { layout: "padded", backgrounds: { default: "lyra-base" } },
 };
 
 export default meta;

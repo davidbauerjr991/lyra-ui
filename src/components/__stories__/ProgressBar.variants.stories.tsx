@@ -183,3 +183,18 @@ export const Labelled: Story = {
     </div>
   ),
 };
+
+export const Ring: Story = {
+  name: "Ring",
+  /* `shape="ring"` draws the progress as a circle. Colors follow `variant`; it spins when `indeterminate`. */
+  render: () => (
+    <div className="flex items-center gap-4">
+      <ProgressBar shape="ring" ringSize={18} value={25} label="25 percent" />
+      <ProgressBar shape="ring" ringSize={28} value={60} label="60 percent" />
+      <ProgressBar shape="ring" ringSize={40} value={75} label="75 percent" />
+      <ProgressBar shape="ring" ringSize={40} value={100} variant="success" label="Complete" />
+      <ProgressBar shape="ring" ringSize={40} value={40} variant="critical" label="Failed" />
+      <ProgressBar shape="ring" ringSize={40} indeterminate label="Loading" />
+    </div>
+  ),
+};

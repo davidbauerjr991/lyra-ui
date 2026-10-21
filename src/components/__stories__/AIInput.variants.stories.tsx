@@ -58,6 +58,16 @@ export const SingleLine: Story = {
   ),
 };
 
+export const SingleLineRounded: Story = {
+  name: "Single Line, Rounded Edges",
+  /* `rounded` turns the single-line field and its buttons into a pill. It has no effect on the stacked layout. */
+  render: () => (
+    <div className="w-[480px]">
+      <AIInput singleLine rounded placeholder="Ask Copilot..." helperText="" />
+    </div>
+  ),
+};
+
 export const CustomActions: Story = {
   name: "Custom Actions",
   render: () => (

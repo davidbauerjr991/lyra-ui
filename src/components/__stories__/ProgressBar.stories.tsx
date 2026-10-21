@@ -38,9 +38,23 @@ export const Default: Story = withControlsFor({
       <ProgressBar {...args} label={args.label || undefined} />
     </div>
   ),
-  args: { value: 60, variant: "default", size: "md", showLabel: false, label: "", labelAlign: "start", indeterminate: false },
+  args: { shape: "bar", ringSize: 40, value: 60, variant: "default", size: "md", showLabel: false, label: "", labelAlign: "start", indeterminate: false },
   parameters: { controls: { sort: "none" } },
   argTypes: {
+    shape: {
+      name: "Shape",
+      control: "radio",
+      options: ["bar", "ring"],
+      description: "A horizontal bar, or a ring: the same progress as a circle, small enough to sit beside a label or inside a Badge (`shape`). A ring ignores Size and the label controls.",
+      table: { category: "Appearance", defaultValue: { summary: "bar" } },
+    },
+    ringSize: {
+      name: "Ring size",
+      control: { type: "range", min: 12, max: 80, step: 2 },
+      description: "Ring diameter in px (`ringSize`). Over 30px the stroke gets thicker.",
+      if: { arg: "shape", eq: "ring" },
+      table: { category: "Appearance", defaultValue: { summary: "18" } },
+    },
     value: {
       name: "Value",
       control: { type: "range", min: 0, max: 100, step: 1 },
@@ -56,7 +70,8 @@ export const Default: Story = withControlsFor({
     showLabel: {
       name: "Show label",
       control: "boolean",
-      description: "Shows a label under the track (`showLabel`).",
+      description: "Shows a label under the track (`showLabel`). Bar only.",
+      if: { arg: "shape", eq: "bar" },
       table: { category: "Content", defaultValue: { summary: "false" } },
     },
     labelAlign: {
@@ -85,7 +100,8 @@ export const Default: Story = withControlsFor({
       name: "Size",
       control: "radio",
       options: ["sm", "md", "lg"],
-      description: "Height of the track: sm 4px, md 8px, lg 12px.",
+      description: "Height of the track: sm 4px, md 8px, lg 12px. Bar only.",
+      if: { arg: "shape", eq: "bar" },
       table: { category: "Appearance", defaultValue: { summary: "md" } },
     },
   },

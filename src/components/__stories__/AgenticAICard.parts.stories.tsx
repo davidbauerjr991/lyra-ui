@@ -16,7 +16,6 @@ import {
   AIField,
   AIFieldSection,
   Alternatives,
-  ProgressRing,
   SectionDial,
   StageTrail,
   SuggestedQuestion,
@@ -26,6 +25,7 @@ import {
 } from "../agentic-task-parts";
 import { AIProcess } from "../ai-process";
 import { Button } from "../button";
+import { ProgressBar } from "../progress-bar";
 import { Citation } from "../citation";
 import { Check, Pencil, X } from "lucide-react";
 
@@ -35,7 +35,7 @@ const meta: Meta<typeof AgenticAICard> = {
   title: "UI/AgenticAICard/Parts",
   component: AgenticAICard,
   tags: ["!autodocs"],
-  parameters: { layout: "padded", backgrounds: { default: "lyra-shell" } },
+  parameters: { layout: "padded", backgrounds: { default: "lyra-base" } },
 };
 
 export default meta;
@@ -142,16 +142,16 @@ export const Gallery: Story = {
             <AIField label="Photo" question="Could you send a photo of the crack?" />
           </div>
         </Panel>
-        <Panel name="Section dial (ProgressRing)" spec="name, filled, of, opened?, onClick?">
+        <Panel name="Section dial (Badge + ProgressBar ring)" spec="name, filled, of, opened?, onClick?">
           <div className="flex flex-wrap gap-1.5">
             <SectionDial name="Customer & product" filled={4} of={4} />
             <SectionDial name="Damage details" filled={1} of={2} opened />
             <SectionDial name="Technician visit" filled={1} of={3} />
           </div>
           <div className="flex items-center gap-3">
-            <ProgressRing value={9} of={12} size={40} />
-            <ProgressRing value={9} of={12} size={28} />
-            <ProgressRing value={12} of={12} size={18} />
+            <ProgressBar shape="ring" ringSize={40} value={75} label="9 of 12" />
+            <ProgressBar shape="ring" ringSize={28} value={75} label="9 of 12" />
+            <ProgressBar shape="ring" ringSize={18} value={100} variant="success" label="12 of 12" />
           </div>
         </Panel>
         <Panel name="Field section (Accordion)" spec="name, filled, of, why?, open?, defaultOpen?, onOpenChange?">

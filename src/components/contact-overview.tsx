@@ -492,6 +492,8 @@ export interface CustomerContextOverviewProps extends CustomerContextOverviewInf
   onSnapshotLink?: (key: string) => void;
   /** Renders the "Autosummary" header in the subtle-blue (info) treatment instead of purple. */
   autosummaryBlue?: boolean;
+  /** Renders the "Customer Info" header on a white background (neutral icon/chevron, subtle border) instead of the info-blue tint. */
+  customerInfoWhiteHeader?: boolean;
   /** The customer this overview is about. */
   customerName: string;
   /** Additional className on the root element. */
@@ -598,6 +600,7 @@ const CustomerContextOverview = React.forwardRef<HTMLDivElement, CustomerContext
       snapshot,
       onSnapshotLink,
       autosummaryBlue = false,
+      customerInfoWhiteHeader = false,
       nextBestAction,
       nextBestActionContent,
       nextBestActionBare,
@@ -909,7 +912,10 @@ const CustomerContextOverview = React.forwardRef<HTMLDivElement, CustomerContext
           key="customer-profile"
           value="customer-profile"
           className={cn(
-            "rounded-lyra-md border border-[color-mix(in_srgb,var(--lyra-color-status-info-strong)_25%,transparent)] overflow-hidden transition-all ease-out duration-700",
+            "rounded-lyra-md border overflow-hidden transition-all ease-out duration-700",
+            customerInfoWhiteHeader
+              ? "border-lyra-border-subtle"
+              : "border-[color-mix(in_srgb,var(--lyra-color-status-info-strong)_25%,transparent)]",
             i < enteredCount ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
           )}
         >
@@ -924,11 +930,19 @@ const CustomerContextOverview = React.forwardRef<HTMLDivElement, CustomerContext
                 unchanged — see `customerProfileBody`'s own doc comment
                 above for that reasoning; only the header itself was asked
                 to change. */}
-            <AccordionPrimitive.Trigger className="group w-full flex items-center gap-2 bg-lyra-status-info-subtle px-4 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-inset hover:brightness-95 cursor-pointer">
-              <User className="h-4 w-4 shrink-0 text-lyra-status-info-strong" strokeWidth={1.5} aria-hidden="true" />
+            <AccordionPrimitive.Trigger
+              className={cn(
+                "group w-full flex items-center gap-2 px-4 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus focus-visible:ring-inset hover:brightness-95 cursor-pointer",
+                customerInfoWhiteHeader ? "bg-lyra-bg-surface-base border-b border-lyra-border-subtle" : "bg-lyra-status-info-subtle"
+              )}
+            >
+              <User className={cn("h-4 w-4 shrink-0", customerInfoWhiteHeader ? "text-lyra-fg-secondary" : "text-lyra-status-info-strong")} strokeWidth={1.5} aria-hidden="true" />
               <span className="flex-1 text-left lyra-body-md-emphasis text-lyra-fg-default truncate">Customer Info</span>
               <ChevronDown
-                className="h-5 w-5 shrink-0 text-lyra-status-info-strong transition-transform duration-200 group-data-[state=open]:rotate-180"
+                className={cn(
+                  "h-5 w-5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180",
+                  customerInfoWhiteHeader ? "text-lyra-fg-secondary" : "text-lyra-status-info-strong"
+                )}
                 strokeWidth={1.5}
                 aria-hidden="true"
               />

@@ -22,11 +22,14 @@ import { cn } from "../lib/utils";
 import { Accordion } from "./accordion";
 import { Button } from "./button";
 import { Container } from "./container";
+import { Badge } from "./badge";
+import { ProgressBar } from "./progress-bar";
+import { SuccessIconSolid } from "./icons/success-icon-solid";
 import { Spinner } from "./spinner";
 import { Tag, type TagVariant } from "./tag";
 import { Tooltip } from "./tooltip";
 
-/* Phase 3 building blocks for `AgenticAICard` bodies: the form-capture parts (ProgressRing, SectionDial,
+/* Phase 3 building blocks for `AgenticAICard` bodies: the form-capture parts (SectionDial,
    AIField, AIFieldSection, SuggestedQuestion), the task parts (TaskBoard, ActionGroup, StageTrail) and the
    suggestion parts (SuggestionTag, SuggestedReply, Alternatives). Like the phase 1–2 parts they are
    presentational and driven by props only: no timers, no internal data. Wherever a Lyra component already does
@@ -34,43 +37,16 @@ import { Tooltip } from "./tooltip";
 
 type IconType = React.ComponentType<{ className?: string; strokeWidth?: number }>;
 
-/* ── ProgressRing ── */
-
-export interface ProgressRingProps extends Omit<React.SVGProps<SVGSVGElement>, "ref" | "children"> {
-  /** How many are done. */
-  value: number;
-  /** Out of how many. */
-  of: number;
-  /** Diameter in px. Default 18. Rings over 30px get a thicker stroke. */
-  size?: number;
-}
-
-/** A small circular progress mark: the primary color while in progress, success once `value` reaches `of`. Decorative; say the numbers in text beside it. */
-const ProgressRing = ({ value, of, size = 18, className, ...props }: ProgressRingProps) => {
-  const stroke = size > 30 ? 5 : 3;
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  const p = of > 0 ? Math.min(1, value / of) : 0;
-  const m = size / 2;
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true" className={cn("shrink-0", className)} {...props}>
-      <circle cx={m} cy={m} r={r} fill="none" strokeWidth={stroke} className="stroke-lyra-border-subtle" />
-      <circle
-        cx={m}
-        cy={m}
-        r={r}
-        fill="none"
-        strokeWidth={stroke}
-        strokeLinecap="round"
-        strokeDasharray={c.toFixed(2)}
-        strokeDashoffset={(c * (1 - p)).toFixed(2)}
-        transform={`rotate(-90 ${m} ${m})`}
-        className={cn("transition-[stroke-dashoffset] duration-300 motion-reduce:transition-none", p >= 1 ? "stroke-lyra-status-success-strong" : "stroke-lyra-bg-primary")}
-      />
-    </svg>
+/* The small progress mark used by SectionDial and AIFieldSection: a `ProgressBar shape="ring"` while a section is
+   in progress, and a green check once every field is filled (a row of finished rings reads as too many circles). */
+const sectionRing = (filled: number, of: number, size = 18) =>
+  of > 0 && filled >= of ? (
+    <span className="inline-flex shrink-0 items-center justify-center" style={{ width: size, height: size }} role="img" aria-label="Complete">
+      <SuccessIconSolid className="h-full w-full text-lyra-status-success-strong" />
+    </span>
+  ) : (
+    <ProgressBar shape="ring" ringSize={size} value={of > 0 ? Math.min(100, (filled / of) * 100) : 0} label={`${filled} of ${of} captured`} />
   );
-};
-ProgressRing.displayName = "ProgressRing";
 
 /* ── SectionDial ── */
 
@@ -87,36 +63,36 @@ export interface SectionDialProps extends Omit<React.HTMLAttributes<HTMLElement>
   onClick?: () => void;
 }
 
-/** Progress for one form section: a ring, the section name and "filled/of". Green once complete; tinted when the conversation just opened the section. */
+/** Progress for one form section: a Badge (circle shape, word) with a progress ring, the section name and "filled/of". Green once complete; tinted when the conversation just opened the section. */
 const SectionDial = React.forwardRef<HTMLElement, SectionDialProps>(({ name, filled, of, opened, onClick, className, ...props }, ref) => {
   const full = filled >= of;
-  const cls = cn(
-    "inline-flex h-7 items-center gap-1.5 rounded-lyra-round border pl-1.5 pr-2.5 lyra-body-sm",
-    full
-      ? "border-lyra-status-success-medium bg-lyra-status-success-subtle text-lyra-status-success-strong"
-      : opened
-        ? "border-lyra-border-active bg-lyra-bg-active-subtle text-lyra-fg-default"
-        : "border-lyra-border-subtle bg-lyra-bg-surface-base text-lyra-fg-secondary",
-    onClick && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus",
-    className
-  );
-  const inner = (
-    <>
-      <ProgressRing value={filled} of={of} />
-      <span>
-        {name} · {filled}/{of}
-      </span>
+  const badge = (
+    <Badge
+      shape="circle"
+      size="lg"
+      fill="subtle"
+      variant={full ? "success" : opened ? "default" : "neutral"}
+      icon={sectionRing(filled, of, 16)}
+      className={cn("whitespace-nowrap", !onClick && className)}
+      {...(onClick ? {} : (props as React.HTMLAttributes<HTMLSpanElement>))}
+      ref={onClick ? undefined : (ref as React.Ref<HTMLSpanElement>)}
+    >
+      {name} · {filled}/{of}
       {opened && <span className="sr-only"> (opened by the conversation)</span>}
-    </>
+    </Badge>
   );
   return onClick ? (
-    <button ref={ref as React.Ref<HTMLButtonElement>} type="button" onClick={onClick} className={cls} {...(props as React.ButtonHTMLAttributes<HTMLButtonElement>)}>
-      {inner}
+    <button
+      ref={ref as React.Ref<HTMLButtonElement>}
+      type="button"
+      onClick={onClick}
+      className={cn("cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus", className)}
+      {...(props as React.ButtonHTMLAttributes<HTMLButtonElement>)}
+    >
+      {badge}
     </button>
   ) : (
-    <span ref={ref as React.Ref<HTMLSpanElement>} className={cls} {...props}>
-      {inner}
-    </span>
+    badge
   );
 });
 SectionDial.displayName = "SectionDial";
@@ -277,7 +253,7 @@ const AIFieldSection = React.forwardRef<HTMLDivElement, AIFieldSectionProps>(({ 
         {
           id: "section",
           title: <span className="lyra-body-md-emphasis">{name}</span>,
-          icon: <ProgressRing value={filled} of={of} />,
+          icon: sectionRing(filled, of),
           endSlot: (
             <span className="lyra-body-sm text-lyra-fg-secondary">
               <span className="sr-only">{filled} of {of} filled</span>
@@ -525,4 +501,4 @@ const Alternatives = React.forwardRef<HTMLDivElement, AlternativesProps>(({ alte
 ));
 Alternatives.displayName = "Alternatives";
 
-export { ProgressRing, SectionDial, SuggestedQuestion, AIField, AIFieldSection, TaskBoard, ActionGroup, StageTrail, SuggestionTag, SuggestedReply, Alternatives };
+export { SectionDial, SuggestedQuestion, AIField, AIFieldSection, TaskBoard, ActionGroup, StageTrail, SuggestionTag, SuggestedReply, Alternatives };

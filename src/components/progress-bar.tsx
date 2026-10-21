@@ -35,6 +35,15 @@ const indicatorVariants = cva(
   }
 );
 
+/* Ring: the arc's color per variant (same palette as the bar's indicator). */
+const RING_STROKE: Record<NonNullable<VariantProps<typeof indicatorVariants>["variant"]>, string> = {
+  default: "stroke-lyra-bg-active-strong",
+  success: "stroke-lyra-status-success-strong",
+  warning: "stroke-lyra-status-warning-strong",
+  critical: "stroke-lyra-status-critical-strong",
+  neutral: "stroke-lyra-fg-secondary",
+};
+
 /* Keyframes for the indeterminate bar — injected once, like Spinner's. */
 const STYLE_ID = "lyra-progress-keyframes";
 function ensureKeyframes() {
@@ -89,16 +98,58 @@ export interface ProgressBarProps
   indeterminate?: boolean;
   /** Horizontal alignment of the label (`showLabel`) under the track: "start" (default), "center" or "end". */
   labelAlign?: "start" | "center" | "end";
+  /**
+   * "bar" (default) is the horizontal track. "ring" draws the same progress as a circle: a small mark that fits
+   * beside a label or inside a Badge. A ring ignores `size`, `showLabel` and `labelAlign` (use `label` to name
+   * it for assistive tech, and put the numbers in text next to it); `variant` colors the arc.
+   */
+  shape?: "bar" | "ring";
+  /** Ring diameter in px. Default 18. Rings over 30px get a thicker stroke. Only used when `shape="ring"`. */
+  ringSize?: number;
 }
 
 const ProgressBar = React.forwardRef<
   React.ElementRef<typeof ProgressPrimitive.Root>,
   ProgressBarProps
->(({ className, value = 0, size, variant, showLabel, label, indicatorClassName, indeterminate = false, labelAlign = "start", ...props }, ref) => {
+>(({ className, value = 0, size, variant, showLabel, label, indicatorClassName, indeterminate = false, labelAlign = "start", shape = "bar", ringSize = 18, ...props }, ref) => {
   const labelId = React.useId();
   React.useEffect(() => {
     if (indeterminate) ensureKeyframes();
   }, [indeterminate]);
+  if (shape === "ring") {
+    const stroke = ringSize > 30 ? 5 : 3;
+    const r = (ringSize - stroke) / 2;
+    const c = 2 * Math.PI * r;
+    const m = ringSize / 2;
+    // Unknown progress: a quarter arc that spins (still, for reduced motion).
+    const p = indeterminate ? 0.25 : Math.min(1, Math.max(0, value) / 100);
+    return (
+      <ProgressPrimitive.Root
+        ref={ref}
+        value={indeterminate ? null : value}
+        max={100}
+        className={cn("inline-flex shrink-0", className)}
+        aria-label={label ?? "Progress"}
+        {...props}
+      >
+        <svg width={ringSize} height={ringSize} viewBox={`0 0 ${ringSize} ${ringSize}`} aria-hidden="true" className={cn(indeterminate && "animate-spin motion-reduce:animate-none")}>
+          <circle cx={m} cy={m} r={r} fill="none" strokeWidth={stroke} className="stroke-lyra-border-subtle" />
+          <circle
+            cx={m}
+            cy={m}
+            r={r}
+            fill="none"
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            strokeDasharray={c.toFixed(2)}
+            strokeDashoffset={(c * (1 - p)).toFixed(2)}
+            transform={`rotate(-90 ${m} ${m})`}
+            className={cn("transition-[stroke-dashoffset] duration-300 motion-reduce:transition-none", RING_STROKE[variant ?? "default"], indicatorClassName)}
+          />
+        </svg>
+      </ProgressPrimitive.Root>
+    );
+  }
   // A visible custom label names the bar by reference (`aria-labelledby`), so
   // the name is the text people actually see. A bare percentage ("45%") isn't
   // a good name, so that case keeps the default "Progress".

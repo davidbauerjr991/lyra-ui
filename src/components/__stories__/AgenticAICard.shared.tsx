@@ -7,7 +7,6 @@ import {
   AIField,
   AIFieldSection,
   Alternatives,
-  ProgressRing,
   SectionDial,
   StageTrail,
   SuggestedReply,
@@ -86,7 +85,21 @@ const RTS = [
   " Claim WC-88214 was raised and a technician booked for 1 March, 9:00am.",
 ];
 
-export function RealTimeSummaryCard({ frame = "Live", statusOverride, forYou, showSubhead = true, ...card }: WidgetCardProps & { frame?: SummaryFrame }) {
+export function RealTimeSummaryCard({
+  frame = "Live",
+  statusOverride,
+  forYou,
+  showSubhead = true,
+  text: textOverride,
+  subhead: subheadOverride,
+  ...card
+}: WidgetCardProps & {
+  frame?: SummaryFrame;
+  /** Replaces the sample summary paragraph (use for real content). */
+  text?: string;
+  /** Replaces the "Updated 09:19" line. */
+  subhead?: string;
+}) {
   const base = { title: "Real-Time Summary", icon: ic(Activity), forYou, ...card };
   if (frame === "Waiting") {
     return (
@@ -96,15 +109,15 @@ export function RealTimeSummaryCard({ frame = "Live", statusOverride, forYou, sh
     );
   }
   const upto = frame === "Live" ? 3 : 4;
-  const text = RTS.slice(0, upto).join("");
-  const previous = RTS.slice(0, upto - 1).join("");
+  const text = textOverride ?? RTS.slice(0, upto).join("");
+  const previous = textOverride !== undefined ? textOverride : RTS.slice(0, upto - 1).join("");
   const words = text.split(/\s+/).length;
   return (
     <AgenticAICard
       {...base}
       status={withStatus(frame === "Live" ? "live" : "done", statusOverride)}
       statusLabel={frame === "Up to date" && (!statusOverride || statusOverride === "auto") ? "Up to date" : undefined}
-      subhead={showSubhead ? (frame === "Live" ? "Updated 09:19" : "Updated 09:24") : undefined}
+      subhead={showSubhead ? (subheadOverride ?? (frame === "Live" ? "Updated 09:19" : "Updated 09:24")) : undefined}
       footer={
         <>
           <Button variant="outline" size="sm">
@@ -232,7 +245,31 @@ const JOURNEY = {
   ],
 };
 
-export function JourneySummaryCard({ frame = "Journey found", showDetail = true, statusOverride, forYou, showSubhead = true, ...card }: WidgetCardProps & { frame?: JourneyFrame; showDetail?: boolean }) {
+export function JourneySummaryCard({
+  frame = "Journey found",
+  showDetail = true,
+  statusOverride,
+  forYou,
+  showSubhead = true,
+  summary: summaryOverride,
+  detail: detailOverride,
+  subhead: subheadOverride,
+  statusLabel: statusLabelOverride,
+  onViewMemory,
+  memoryLinkLabel = "View Experience Memory",
+  ...card
+}: WidgetCardProps & {
+  /** Shows a link under the card content (for example, to open Experience Memory in a slide-out). */
+  onViewMemory?: () => void;
+  memoryLinkLabel?: string;
+  frame?: JourneyFrame;
+  showDetail?: boolean;
+  /** Replace the sample journey content (use for real content). */
+  summary?: string;
+  detail?: { name: string; detail: string }[];
+  subhead?: string;
+  statusLabel?: string;
+}) {
   const base = { title: "Journey Summary", icon: ic(History), forYou, ...card };
   if (frame === "Looking up") {
     return (
@@ -249,12 +286,17 @@ export function JourneySummaryCard({ frame = "Journey found", showDetail = true,
     );
   }
   return (
-    <AgenticAICard {...base} status={withStatus("changed", statusOverride)} statusLabel="Repeat contact" subhead={showSubhead ? "3 interactions · last 30 days" : undefined}>
-      <p className="lyra-body-md text-lyra-fg-default">{JOURNEY.summary}</p>
+    <AgenticAICard {...base} status={withStatus("changed", statusOverride)} statusLabel={statusLabelOverride ?? "Repeat contact"} subhead={showSubhead ? (subheadOverride ?? "3 interactions · last 30 days") : undefined}>
+      <p className="lyra-body-md text-lyra-fg-default">{summaryOverride ?? JOURNEY.summary}</p>
       {showDetail && (
         <AgenticSection label="Detailed view">
-          <LineItems rows={JOURNEY.detail} />
+          <LineItems rows={detailOverride ?? JOURNEY.detail} />
         </AgenticSection>
+      )}
+      {onViewMemory && (
+        <button type="button" onClick={onViewMemory} className="lyra-body-md self-start text-lyra-fg-link hover:underline focus-visible:outline-none">
+          {memoryLinkLabel}
+        </button>
       )}
     </AgenticAICard>
   );
@@ -596,7 +638,7 @@ export function ProcessAutomationCard({
           {guided ? (
             <>
               <div className="flex items-center gap-3">
-                <ProgressRing value={counts.n} of={counts.of} size={40} />
+                <ProgressBar shape="ring" ringSize={40} value={(counts.n / counts.of) * 100} variant={counts.n >= counts.of ? "success" : "default"} label={`${counts.n} of ${counts.of} captured`} />
                 <span className="flex flex-col">
                   <span className="lyra-body-md-emphasis text-lyra-fg-default">
                     {counts.n} of {counts.of} captured
@@ -620,7 +662,7 @@ export function ProcessAutomationCard({
               <TaskBoard tasks={tasks} />
               <div className="flex items-center justify-between gap-3">
                 <span className="flex items-center gap-2.5">
-                  <ProgressRing value={counts.n} of={counts.of} size={28} />
+                  <ProgressBar shape="ring" ringSize={28} value={(counts.n / counts.of) * 100} variant={counts.n >= counts.of ? "success" : "default"} label={`${counts.n} of ${counts.of} captured`} />
                   <span className="flex flex-col">
                     <span className="lyra-body-md-emphasis text-lyra-fg-default">
                       Inputs · {counts.n} of {counts.of}
