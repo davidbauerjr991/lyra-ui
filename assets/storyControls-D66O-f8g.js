@@ -1,0 +1,1 @@
+const t=n=>Object.entries(n??{}).flatMap(([a,r])=>r!=null&&r.name&&r.name!==a?[a,r.name]:[a]);function e(n){var a;return{...n,parameters:{...n.parameters,controls:{...(a=n.parameters)==null?void 0:a.controls,include:t(n.argTypes)}}}}export{e as w};
