@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { Headphones, Bot, Bell } from "lucide-react";
 import { Avatar } from "../avatar";
+import { Badge } from "../badge";
 import { AVATAR_SIZES, AVATAR_SHAPES, AVATAR_COLORS } from "./Avatar.shared";
 
 /* One page per Avatar variant, shown under "Avatar/Variants" in the
@@ -134,6 +135,35 @@ export const RealWorldUsage: Story = {
           <span className="lyra-body-sm-emphasis text-lyra-fg-default">Notification</span>
           <span className="lyra-body-xs text-lyra-fg-secondary">Any glyph works, not just User/Headphones</span>
         </div>
+      </div>
+    </div>
+  ),
+};
+
+/**
+ * `badge` takes a circle `Badge` and pins it to the avatar's corner: a status dot
+ * (bottom-right is the usual spot) or an unread count (top-right). Size the badge to
+ * the avatar — `sm` on xs/sm, `md` on md/lg.
+ */
+export const WithBadge: Story = {
+  name: "With badge",
+  render: () => (
+    <div className="flex items-end gap-8">
+      <div className="flex flex-col items-center gap-2">
+        <Avatar initials="NC" color="primary" size="lg" badgePosition="bottom-right" badge={<Badge shape="circle" dot variant="success" bordered size="md" />} />
+        <span className="lyra-body-sm text-lyra-fg-secondary">Online dot</span>
+      </div>
+      <div className="flex flex-col items-center gap-2">
+        <Avatar initials="NC" color="primary" size="lg" badge={<Badge shape="circle" count={3} variant="critical" bordered size="md" />} />
+        <span className="lyra-body-sm text-lyra-fg-secondary">Unread count</span>
+      </div>
+      <div className="flex flex-col items-center gap-2">
+        <Avatar initials="NC" color="active" size="md" shape="rounded" badge={<Badge shape="circle" count={120} variant="info" fill="subtle" bordered size="md" />} />
+        <span className="lyra-body-sm text-lyra-fg-secondary">Rounded, 99+</span>
+      </div>
+      <div className="flex flex-col items-center gap-2">
+        <Avatar icon={Headphones} color="shell" size="xs" badgePosition="bottom-right" badge={<Badge shape="circle" dot variant="warning" bordered size="sm" />} />
+        <span className="lyra-body-sm text-lyra-fg-secondary">xs + sm dot</span>
       </div>
     </div>
   ),

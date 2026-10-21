@@ -28,7 +28,8 @@ import { Pencil, Copy, Trash2, RefreshCw, Check, Plus, SlidersHorizontal, Chevro
 import { Checkbox } from "../checkbox";
 import { cn } from "../../lib/utils";
 import { sampleData, toolbarFilterDefs, toolbarActionDefs } from "./Table.shared";
-import { AdvancedSearchContent, asBuildString, type AsGroup } from "./Table.queryBuilder";
+import { QueryBuilder, describeQuery, emptyQuery, queryHasCriteria, type QueryGroup } from "../query-builder";
+import { sampleQueryCriteria } from "./QueryBuilder.shared";
 import { CircleCheck, Minus, MoreVertical } from "lucide-react";
 
 /* One page per Table variant, shown under "Table/Variants" in the sidebar.
@@ -727,20 +728,17 @@ export const AutoFit: Story = {
 export const AdvancedSearch: Story = {
   name: "Toolbar — Query Builder",
   render: () => {
-    const [appliedRoot, setAppliedRoot] = useState<AsGroup | null>(null);
-    const [root, setRoot] = useState<AsGroup>({ id:"as-root", logicOperator:"and", chips:[], subGroups:[] });
+    const [appliedRoot, setAppliedRoot] = useState<QueryGroup | null>(null);
+    const [root, setRoot] = useState<QueryGroup>(emptyQuery);
     const [savedSearchName, setSavedSearchName] = useState<string | undefined>(undefined);
 
     // Filters are "applied" only when Apply was last clicked AND root has actual chips/groups
-    const hasAnyFilters = (g: AsGroup): boolean =>
-      g.chips.length > 0 || g.subGroups.some(hasAnyFilters);
+    const isApplied = appliedRoot !== null && queryHasCriteria(appliedRoot);
 
-    const isApplied = appliedRoot !== null && hasAnyFilters(appliedRoot);
-
-    const handleUpdate = (g: AsGroup) => {
+    const handleUpdate = (g: QueryGroup) => {
       setRoot(g);
       // If applied filters exist but user removes all chips, auto-clear applied state
-      if (appliedRoot !== null && !hasAnyFilters(g)) setAppliedRoot(null);
+      if (appliedRoot !== null && !queryHasCriteria(g)) setAppliedRoot(null);
     };
 
     return (
@@ -750,10 +748,10 @@ export const AdvancedSearch: Story = {
           onSearchChange={() => {}}
           recordCount={320}
           showAdvancedSearch
-          advancedSearchContent={<AdvancedSearchContent root={root} onUpdate={handleUpdate} />}
+          advancedSearchContent={<QueryBuilder criteria={sampleQueryCriteria} value={root} onChange={handleUpdate} />}
           advancedSearchApplied={isApplied}
           advancedSearchTitle={savedSearchName}
-          advancedSearchDescription={isApplied && appliedRoot ? (asBuildString(appliedRoot) || undefined) : undefined}
+          advancedSearchDescription={isApplied && appliedRoot ? (describeQuery(appliedRoot, sampleQueryCriteria) || undefined) : undefined}
           onAdvancedSearchApply={() => setAppliedRoot(root)}
           onAdvancedSearchCancel={() => {/* just closes — filters preserved */}}
           onSaveSearch={(name) => { setSavedSearchName(name); setAppliedRoot(root); }}
@@ -764,7 +762,7 @@ export const AdvancedSearch: Story = {
           // old criteria.
           onFilterClear={() => {
             setAppliedRoot(null);
-            setRoot({ id: "as-root", logicOperator: "and", chips: [], subGroups: [] });
+            setRoot(emptyQuery());
             setSavedSearchName(undefined);
           }}
         />

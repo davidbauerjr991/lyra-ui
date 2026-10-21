@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/utils";
 import { Tooltip } from "./tooltip";
+import { Badge } from "./badge";
 
 /* ── Types ── */
 
@@ -30,6 +31,10 @@ export interface TagProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: TagVariant;
   /** Shape — "default" uses rounded-xs corners, "pill" uses 50px border-radius */
   shape?: TagShape;
+  /** A small status dot before the label — the circle `Badge` dot (size `sm`, 8×8) in the tag's own text color. It sits in the same 12px box (and the same gap from the label) as the remove "×" button's icon, so a dot and an × have matching spacing. Shown before `icon` when both are given. */
+  dot?: boolean;
+  /** Pulse the `dot` (the `Badge` dot's `pulse`: a ring radiates out and fades). Ignored unless `dot` is on. Default false. */
+  dotPulse?: boolean;
   /** Optional leading icon, rendered before the label — e.g. a channel-type glyph (`Phone`/`MessageCircle`/`Mail`) on a "purple"/"teal"/"pink" channel tag. Sized/colored to match the label text; pass a Lucide icon element at `h-3 w-3` (matches the `X` remove glyph's own size). */
   icon?: React.ReactNode;
   /** Show a remove button — calls onRemove when clicked */
@@ -128,6 +133,8 @@ const Tag = React.forwardRef<HTMLSpanElement, TagProps>(
       label,
       variant = "default",
       shape = "default",
+      dot,
+      dotPulse,
       icon,
       onRemove,
       removeLabel,
@@ -159,6 +166,14 @@ const Tag = React.forwardRef<HTMLSpanElement, TagProps>(
         )}
         {...props}
       >
+        {dot && (
+          // 12px box = the remove button's X box, so the gap to the label matches an ×'s.
+          <span className="flex h-3 w-3 flex-shrink-0 items-center justify-center" aria-hidden="true">
+            {/* The small circle `Badge` dot (8×8), recolored to the tag's own text color (inline: the Badge sets its own text color, which `currentColor` would otherwise pick up) so every variant,
+                including purple/teal/pink (which the circle Badge's own roles don't cover), gets a matching dot. */}
+            <Badge shape="circle" dot pulse={dotPulse} size="sm" style={{ backgroundColor: "currentColor", color: "inherit" }} />
+          </span>
+        )}
         {icon && (
           <span className="flex-shrink-0 [&>svg]:h-3 [&>svg]:w-3" aria-hidden="true">
             {icon}

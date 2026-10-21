@@ -1,4 +1,7 @@
+import { useEffect } from "react";
+import { useArgs } from "@storybook/preview-api";
 import type { Meta, StoryObj } from "@storybook/react";
+import { withControlsFor } from "./storyControls";
 import { Bell, Check, Info, Minus, X } from "lucide-react";
 import { Badge } from "../badge";
 import type { BadgeColor, BadgeIconPosition, BadgePillVariant, BadgeCircleVariant, BadgeCircleFill, BadgeSize } from "../badge";
@@ -53,6 +56,9 @@ interface BadgeDemoProps {
   circleFill?: BadgeCircleFill;
   circleBorder?: boolean;
   size?: BadgeSize;
+  circlePulse?: boolean;
+  /** Hidden plumbing: "circle shape AND dot content" (`argTypes.if` takes one condition). */
+  circlePulseOn?: boolean;
 }
 
 function BadgeDemo({
@@ -72,6 +78,7 @@ function BadgeDemo({
   circleFill = "solid",
   circleBorder = false,
   size = "md",
+  circlePulse = false,
 }: BadgeDemoProps) {
   if (shape === "pill") {
     return (
@@ -89,7 +96,7 @@ function BadgeDemo({
   }
   switch (circleContent) {
     case "dot":
-      return <Badge shape="circle" variant={circleVariant} fill={circleFill} bordered={circleBorder} size={size} dot />;
+      return <Badge shape="circle" variant={circleVariant} fill={circleFill} bordered={circleBorder} size={size} dot pulse={circlePulse} />;
     case "word":
       return (
         <Badge shape="circle" variant={circleVariant} fill={circleFill} bordered={circleBorder} size={size}>
@@ -111,7 +118,7 @@ function BadgeDemo({
 
 type BadgeDemoStory = StoryObj<typeof BadgeDemo>;
 
-export const Default: BadgeDemoStory = {
+export const Default: BadgeDemoStory = withControlsFor({
   args: {
     label: "Badge",
     circleContent: "number",
@@ -129,18 +136,10 @@ export const Default: BadgeDemoStory = {
     circleFill: "solid",
     circleBorder: false,
     size: "md",
+    circlePulse: false,
+    circlePulseOn: false,
   },
-  parameters: {
-    controls: {
-      include: [
-        "shape", "label", "pillColor", "pillVariant", "showIcon", "iconPosition", "pillIcon", "pillFontSize",
-        "circleContent", "circleNumber", "circleWord", "circleIcon", "circleVariant", "circleFill", "circleBorder", "size",
-        "Shape", "Label", "Color", "Fill", "Show icon", "Icon position", "Icon glyph", "Font size",
-        "Circle content", "Number", "Word", "Icon", "Border", "Size",
-      ],
-      sort: "none",
-    },
-  },
+  parameters: { controls: { sort: "none" } },
   argTypes: {
     label: {
       name: "Label",
@@ -233,6 +232,14 @@ export const Default: BadgeDemoStory = {
       if: { arg: "shape", eq: "pill" },
       table: { category: "Appearance" },
     },
+    circlePulse: {
+      name: "Pulse",
+      control: "boolean",
+      description: "A ring of the dot's color radiates outward and fades on a loop — the new-assignment indicator look (`pulse`). Dot content only; off for reduced-motion users.",
+      if: { arg: "circlePulseOn", truthy: true },
+      table: { category: "Appearance" },
+    },
+    circlePulseOn: { table: { disable: true } },
     circleVariant: {
       name: "Color",
       control: "select",
@@ -265,8 +272,16 @@ export const Default: BadgeDemoStory = {
       table: { category: "Appearance" },
     },
   },
-  render: (args) => (
-    // `key` remounts the demo when a control changes.
-    <BadgeDemo key={JSON.stringify(args)} {...args} />
-  ),
-};
+  render: function Render(args) {
+    const [, updateArgs] = useArgs();
+    // Keep the hidden plumbing arg in sync so Pulse only shows for a circle dot.
+    const pulseOn = args.shape === "circle" && args.circleContent === "dot";
+    useEffect(() => {
+      if (args.circlePulseOn !== pulseOn) updateArgs({ circlePulseOn: pulseOn });
+    }, [args.circlePulseOn, pulseOn, updateArgs]);
+    return (
+      // `key` remounts the demo when a control changes.
+      <BadgeDemo key={JSON.stringify(args)} {...args} />
+    );
+  },
+});

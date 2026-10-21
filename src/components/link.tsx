@@ -1,6 +1,7 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/utils";
+import { Tag, type TagVariant } from "./tag";
 
 /* ── Link ──
  *  Extracted from a pattern already hand-rolled twice in this codebase —
@@ -35,6 +36,8 @@ const linkVariants = cva(
       underline: {
         hover: "hover:underline",
         always: "underline underline-offset-2",
+        // Internal: the underline is drawn on the label span instead (when a `tag` sits beside it).
+        none: "",
       },
     },
     defaultVariants: {
@@ -60,12 +63,25 @@ export interface LinkProps
   rel?: string;
   /** Anchor-only (`href` set): download the target instead of navigating. */
   download?: boolean | string;
+  /** Text of a small `Tag` shown after the link text ("Internal", "New"). The tag is not underlined. Omit for none. */
+  tag?: string;
+  /** Color of the `tag`. Default "info". */
+  tagVariant?: TagVariant;
 }
 
 /** Renders a `<button>` by default and an `<a>` when `href` is set — the ref is typed for either element. */
 const Link = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, LinkProps>(
-  ({ className, size, underline, href, target, rel, download, disabled, onClick, ...props }, ref) => {
-    const classes = cn(linkVariants({ size, underline }), className);
+  ({ className, size, underline, href, target, rel, download, disabled, onClick, tag, tagVariant = "info", children, ...props }, ref) => {
+    // With a tag, the underline moves onto the label alone (a tag inside the link would otherwise be underlined too).
+    const classes = cn(linkVariants({ size, underline: tag ? "none" : underline }), tag && "group/link", className);
+    const content = tag ? (
+      <>
+        <span className={cn("inline-flex min-w-0 items-center gap-1.5", (underline ?? "hover") === "always" ? "underline underline-offset-2" : "group-hover/link:underline")}>{children}</span>
+        <Tag label={tag} variant={tagVariant} shape="pill" />
+      </>
+    ) : (
+      children
+    );
     if (href !== undefined) {
       // `type` is a button attribute (a consumer-supplied `type="submit"`
       // would be a bogus MIME hint on an anchor), so it isn't forwarded.
@@ -83,7 +99,9 @@ const Link = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, LinkProps>(
           className={cn(classes, disabled && "pointer-events-none opacity-40")}
           onClick={onClick as unknown as React.MouseEventHandler<HTMLAnchorElement> | undefined}
           {...(anchorProps as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
-        />
+        >
+          {content}
+        </a>
       );
     }
     return (
@@ -94,7 +112,9 @@ const Link = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, LinkProps>(
         onClick={onClick}
         className={classes}
         {...props}
-      />
+      >
+        {content}
+      </button>
     );
   }
 );

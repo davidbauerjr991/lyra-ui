@@ -49,7 +49,7 @@ export const MultipleSpinner: Story = {
   render: () => <MultipleSpinnerDemo />,
 };
 
-/* ── All Variants — bar and circle at every size, plus both on a dark surface
+/* ── All Variants — bar, circle and ring at every size, plus both on a dark surface
    in the inverse color (was All Variants, Spinner Bar, Spinner Circle and On
    Dark Background). ── */
 export const AllVariants: Story = {
@@ -61,12 +61,14 @@ export const AllVariants: Story = {
           <span className="lyra-body-sm text-lyra-fg-secondary w-6">{size}</span>
           <Spinner variant="bar" size={size} />
           <Spinner variant="circle" size={size} />
+          <Spinner variant="ring" size={size} />
         </div>
       ))}
       <div className="flex items-center gap-8 p-6 rounded-lyra-md bg-lyra-bg-surface-inverse">
         <span className="lyra-body-sm text-lyra-fg-inverse w-6">Inverse</span>
         <Spinner variant="bar" color="inverse" size="md" />
         <Spinner variant="circle" color="inverse" size="md" />
+        <Spinner variant="ring" color="inverse" size="md" />
       </div>
     </div>
   ),
@@ -82,6 +84,7 @@ export const WithLabel: Story = {
       <div className="flex items-center gap-8">
         <Spinner variant="bar" size="md" label="Loading conversations" showLabel />
         <Spinner variant="circle" size="md" label="Saving" showLabel />
+        <Spinner variant="ring" size="md" label="Working" showLabel />
       </div>
       <div className="flex items-center gap-8 p-6 rounded-lyra-md bg-lyra-bg-surface-inverse">
         <Spinner variant="bar" size="md" color="inverse" label="Loading" showLabel />

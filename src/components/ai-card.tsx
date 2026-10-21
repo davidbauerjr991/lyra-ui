@@ -2,6 +2,8 @@ import * as React from "react";
 import { Accordion, RADIUS_CLASSES, type RadiusSize } from "./accordion";
 import { ContainerFooter, type ContainerFooterAlign } from "./container-footer";
 import { ContainerHeader } from "./container-header";
+import { Avatar, type AvatarColor } from "./avatar";
+import type { LucideIcon } from "lucide-react";
 import { Button } from "./button";
 import { ExternalLink, X } from "lucide-react";
 import { cn } from "../lib/utils";
@@ -18,7 +20,7 @@ import { cn } from "../lib/utils";
    the footer is a `ContainerFooter`. Colors follow the same pairs used across the system: a subtle tinted header with the
    matching strong tone for the icon and chevron, and the title always in the default foreground. */
 
-export type AICardColor = "purple" | "blue" | "yellow" | "green" | "red" | "neutral";
+export type AICardColor = "purple" | "blue" | "yellow" | "green" | "red" | "neutral" | "white";
 
 /* Literal class strings so Tailwind's content scanner can find each one. */
 const COLOR_CLASSES: Record<AICardColor, { header: string; accent: string }> = {
@@ -28,6 +30,8 @@ const COLOR_CLASSES: Record<AICardColor, { header: string; accent: string }> = {
   green: { header: "bg-lyra-status-success-subtle", accent: "text-lyra-status-success-strong" },
   red: { header: "bg-lyra-status-critical-subtle", accent: "text-lyra-status-critical-strong" },
   neutral: { header: "bg-lyra-bg-surface-shell", accent: "text-lyra-fg-default" },
+  // Header the same white as the body (the card's border and the header's own divider still separate them).
+  white: { header: "bg-lyra-bg-surface-base", accent: "text-lyra-fg-default" },
 };
 
 export interface AICardProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "title" | "color" | "defaultValue" | "dir"> {
@@ -40,10 +44,22 @@ export interface AICardProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 
    * collapsed, instead of hiding with the body. Unlike `footer`, which is part of the collapsing body.
    */
   persistentFooter?: React.ReactNode;
+  /**
+   * A second line under the title (a timestamp, a source, a one-line context). When it is set the header
+   * is always "comfortable" regardless of `density` (the compact 40px row has no room for two lines), with
+   * 8px of padding above and below the two lines instead of the usual 14px.
+   */
+  subhead?: React.ReactNode;
   /** Optional count shown next to the title (e.g. number of artifacts). Omit for none; 0 is shown. */
   count?: number;
   /** Optional icon left of the title (a 16px Lucide icon works well). Takes the card color's strong tone. */
   icon?: React.ReactNode;
+  /**
+   * Show `icon` inside an extra-small rounded `Avatar` of this color (instead of the bare glyph in the
+   * card color's strong tone) — the "adaptive card" header look, meant for the white header. `icon` must
+   * be a Lucide icon element (`<Sparkles />`); anything else is shown as a plain icon.
+   */
+  avatarColor?: AvatarColor;
   /** Header tint. Default "purple". */
   color?: AICardColor;
   /**
@@ -91,14 +107,26 @@ const SHELL = "w-full overflow-hidden border border-lyra-border-subtle bg-lyra-b
 
 const AICard = React.forwardRef<HTMLDivElement, AICardProps>(
   (
-    { title, count, radius = "md", icon, color = "purple", accordion = true, defaultOpen = true, open, onOpenChange, headerEnd, onDismiss, onOpenInNewWindow, density = "compact", footer, persistentFooter, footerAlign = "left", children, className, ...props },
+    { title, subhead, count, radius = "md", icon, avatarColor, color = "purple", accordion = true, defaultOpen = true, open, onOpenChange, headerEnd, onDismiss, onOpenInNewWindow, density: densityProp = "compact", footer, persistentFooter, footerAlign = "left", children, className, ...props },
     ref
   ) => {
     const tone = COLOR_CLASSES[color];
+    // Two lines (title + subhead) need the taller header.
+    const density = subhead ? "comfortable" : densityProp;
+    // The glyph's component, so the Avatar can draw it at its own size (only a Lucide element qualifies).
+    const glyph = React.isValidElement(icon) && typeof icon.type !== "string" ? (icon.type as LucideIcon) : undefined;
     const iconNode = icon ? (
-      <span aria-hidden="true" className={cn("flex h-4 w-4 items-center justify-center", tone.accent)}>
-        {icon}
-      </span>
+      avatarColor && glyph ? (
+        // -my-1: the 28px avatar is taller than the header's text row, so it takes 4px from the header padding
+        // on each side instead of making the header taller (keeps the 40px compact / 48px comfortable heights).
+        <span aria-hidden="true" className="-my-1 flex">
+          <Avatar size="xs" shape="rounded" color={avatarColor} icon={glyph} />
+        </span>
+      ) : (
+        <span aria-hidden="true" className={cn("flex h-4 w-4 items-center justify-center", tone.accent)}>
+          {icon}
+        </span>
+      )
     ) : undefined;
     const endNode = headerEnd ? (
       <span className="flex items-center gap-2 lyra-body-md-emphasis text-lyra-fg-default">{headerEnd}</span>
@@ -115,6 +143,17 @@ const AICard = React.forwardRef<HTMLDivElement, AICardProps>(
           </span>
         </span>
       );
+    // With a subhead, the icon/avatar sits beside the whole title + subhead block and centers against both
+    // lines (the Accordion and ContainerHeader would otherwise center it on the title line alone).
+    const stackedNode = subhead ? (
+      <span className="flex min-w-0 items-center gap-2">
+        {iconNode}
+        <span className="flex min-w-0 flex-col text-left">
+          <span className="truncate">{titleNode}</span>
+          <span className="truncate lyra-body-sm text-lyra-fg-secondary">{subhead}</span>
+        </span>
+      </span>
+    ) : undefined;
     // Header icon buttons, left to right. Real buttons with a label and hover tooltip.
     const headerButtons = [
       onOpenInNewWindow && { key: "open", label: name ? `Open ${name} in new window` : "Open in new window", icon: ExternalLink, onClick: onOpenInNewWindow },
@@ -142,8 +181,8 @@ const AICard = React.forwardRef<HTMLDivElement, AICardProps>(
       return (
         <div ref={ref} className={cn(SHELL, RADIUS_CLASSES[radius], className)} {...props}>
           <ContainerHeader
-            icon={iconNode}
-            title={titleNode}
+            icon={stackedNode ? undefined : iconNode}
+            title={stackedNode ?? titleNode}
             actions={
               endNode || buttons.length ? (
                 <>
@@ -152,11 +191,12 @@ const AICard = React.forwardRef<HTMLDivElement, AICardProps>(
                 </>
               ) : undefined
             }
-            bordered={false}
-            density="compact"
+            // A white header has no tint to set it apart from the body, so it gets a divider.
+            bordered={color === "white"}
+            density={subhead ? "comfortable" : "compact"}
             titleClassName="lyra-body-md-emphasis"
             // ContainerHeader's compact row is 48px; 4px less padding top and bottom makes the 40px compact card header.
-            className={cn(tone.header, density === "compact" && "py-1")}
+            className={cn(tone.header, density === "compact" && "py-1", subhead && "py-2")}
           />
           {content}
           {persistent}
@@ -173,8 +213,8 @@ const AICard = React.forwardRef<HTMLDivElement, AICardProps>(
           items={[
             {
               id: ITEM,
-              title: <span className="lyra-body-md-emphasis">{titleNode}</span>,
-              icon: iconNode,
+              title: <span className="lyra-body-md-emphasis">{stackedNode ?? titleNode}</span>,
+              icon: stackedNode ? undefined : iconNode,
               endSlot:
                 endNode || buttons.length ? (
                   <>
@@ -183,7 +223,9 @@ const AICard = React.forwardRef<HTMLDivElement, AICardProps>(
                     {buttons.length > 0 && <span aria-hidden="true" style={{ width: buttons.length * 32 + (buttons.length - 1) * 4 }} />}
                   </>
                 ) : undefined,
-              headerClassName: tone.header,
+              // White header: divider under it to separate it from the body (only while the body shows, or
+              // while the always-visible footer sits below it; collapsed, the card's own border closes it).
+              headerClassName: cn(tone.header, subhead && "py-2", color === "white" && (isOpen || persistent) && "border-b border-lyra-border-subtle"),
               contentClassName: "p-0",
               content,
             },

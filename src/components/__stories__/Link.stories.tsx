@@ -2,6 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
 import { Link } from "../link";
 import { LINK_LABEL, editIcon, chevronIcon } from "./Link.shared";
+import { withControlsFor } from "./storyControls";
+import type { TagVariant } from "../tag";
 
 const meta: Meta<typeof Link> = {
   title: "Custom Primitives/Link",
@@ -30,6 +32,9 @@ interface LinkDemoProps {
   trailingIcon?: boolean;
   size?: "sm" | "md";
   underline?: "hover" | "always";
+  showTag?: boolean;
+  tagLabel?: string;
+  tagVariant?: TagVariant;
 }
 
 function LinkDemo({
@@ -40,6 +45,9 @@ function LinkDemo({
   trailingIcon = false,
   size = "md",
   underline = "hover",
+  showTag = false,
+  tagLabel = "Internal",
+  tagVariant = "warning",
 }: LinkDemoProps) {
   const [clicks, setClicks] = useState(0);
   return (
@@ -48,6 +56,8 @@ function LinkDemo({
         size={size}
         underline={underline}
         disabled={disabled}
+        tag={showTag ? tagLabel || undefined : undefined}
+        tagVariant={tagVariant}
         href={renders === "anchor" ? "#example" : undefined}
         onClick={() => setClicks((n) => n + 1)}
       >
@@ -64,7 +74,7 @@ function LinkDemo({
 
 type LinkDemoStory = StoryObj<typeof LinkDemo>;
 
-export const Default: LinkDemoStory = {
+export const Default: LinkDemoStory = withControlsFor({
   args: {
     renders: "button",
     disabled: false,
@@ -73,28 +83,11 @@ export const Default: LinkDemoStory = {
     trailingIcon: false,
     size: "md",
     underline: "hover",
+    showTag: false,
+    tagLabel: "Internal",
+    tagVariant: "warning",
   },
-  parameters: {
-    controls: {
-      include: [
-        "renders",
-        "disabled",
-        "label",
-        "leadingIcon",
-        "trailingIcon",
-        "size",
-        "underline",
-        "Renders as",
-        "Disabled",
-        "Label",
-        "Leading icon",
-        "Trailing icon",
-        "Size",
-        "Underline",
-      ],
-      sort: "none",
-    },
-  },
+  parameters: { controls: { sort: "none" } },
   argTypes: {
     renders: {
       name: "Renders as",
@@ -128,6 +121,27 @@ export const Default: LinkDemoStory = {
       description: "Shows a right-pointing chevron after the text.",
       table: { category: "Content" },
     },
+    showTag: {
+      name: "Tag",
+      control: "boolean",
+      description: "Shows a small tag after the link text (`tag`). The tag is not underlined.",
+      table: { category: "Content" },
+    },
+    tagLabel: {
+      name: "Tag text",
+      control: "text",
+      description: "Text of the tag (`tag`).",
+      if: { arg: "showTag", truthy: true },
+      table: { category: "Content" },
+    },
+    tagVariant: {
+      name: "Tag color",
+      control: "select",
+      options: ["default", "success", "warning", "critical", "info", "neutral", "purple", "teal", "pink"],
+      description: "Color of the tag (`tagVariant`).",
+      if: { arg: "showTag", truthy: true },
+      table: { category: "Content", defaultValue: { summary: "info" } },
+    },
     size: {
       name: "Size",
       control: "radio",
@@ -147,4 +161,4 @@ export const Default: LinkDemoStory = {
     // `key` remounts the demo when a control changes.
     <LinkDemo key={JSON.stringify(args)} {...args} />
   ),
-};
+});

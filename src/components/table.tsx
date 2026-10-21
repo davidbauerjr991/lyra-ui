@@ -1,15 +1,15 @@
 import * as React from "react";
 import { useState, useCallback, useRef, useEffect, useLayoutEffect } from "react";
-import { ArrowUp, ArrowDown, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, ChevronRight as ChevronRightIcon, Group, MoreVertical, PanelLeft, PanelRight } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, Group, MoreVertical, PanelLeft, PanelRight } from "lucide-react";
+import { ShowMoreChevron } from "./show-more";
 import { cn } from "../lib/utils";
 import { SearchInput } from "./search-input";
 import { Select } from "./select";
 import { Tooltip } from "./tooltip";
 import { Popover } from "./popover";
-import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Button } from "./button";
 import { Menu } from "./menu";
-import { Input } from "./input";
+import { QueryBuilderFooter } from "./query-builder";
 import { SlidersHorizontal } from "lucide-react";
 import { ColumnsIcon } from "./icons/columns-icon";
 import { FilterChip } from "./filter-chip";
@@ -192,6 +192,12 @@ function useColumnResize(
    ("Name moved to column 2"). A no-op outside a `Table`. */
 const TableAnnounceContext = React.createContext<((message: string) => void) | null>(null);
 
+/* ── Striped rows ──
+   `Table`'s `striped` prop is published here so each `TableRow` can shade its
+   own even rows (a row can't see its ancestor `<table>`'s props). `TableHeader`
+   resets it to `false` so header rows are never striped. */
+const TableStripedContext = React.createContext(false);
+
 /* ── Horizontal scroll ownership ──
    The table itself never scrolls sideways. When resized columns add up to more
    than the available width, only the body rows scroll horizontally; the header
@@ -264,12 +270,17 @@ function ColumnResizeHandle({
       // `focus-visible:bg-lyra-border-active/60` never rendered — Tailwind's
       // `/60` opacity modifier can't be applied to a `var(--…)` color token,
       // so the rule produced no color at all.
-      // Resizable-column indicator: a short, always-visible divider (`before:`)
-      // centered on the column's right edge, so users can see which headers
-      // can be dragged. It turns into the stronger active color while the
-      // handle is hovered or pressed; keyboard focus keeps the full-height
-      // line below (`after:`).
-      className="absolute right-0 top-0 z-10 h-full w-2 -mr-1 cursor-col-resize touch-none select-none focus-visible:outline-none before:pointer-events-none before:absolute before:left-[3px] before:top-1/2 before:h-4 before:w-px before:-translate-y-1/2 before:bg-lyra-border-strong before:content-[''] hover:before:bg-lyra-border-active active:before:bg-lyra-bg-surface-base after:pointer-events-none after:absolute after:inset-y-0 after:left-[3px] after:w-0.5 after:bg-lyra-border-focus after:content-[''] after:opacity-0 focus-visible:after:opacity-100 hover:bg-lyra-border-active/40 active:bg-lyra-border-active"
+      // Resizable-column indicator: a short divider (`before:`) centered on
+      // the column's right edge, so users can see which headers can be
+      // dragged. It is hidden until the pointer is over the table header
+      // (`group-hover/thead`, set on `TableHeader`) so a resizable table's
+      // header isn't a row of dividers at rest. It stays visible while a
+      // drag is in progress (`active:`, the pointer may leave the header),
+      // while the handle has keyboard focus, and on touch screens where
+      // there is no hover. It turns into the stronger active color while the
+      // handle is hovered or pressed; keyboard focus also draws the
+      // full-height line below (`after:`).
+      className="absolute right-0 top-0 z-10 h-full w-2 -mr-1 cursor-col-resize touch-none select-none focus-visible:outline-none before:pointer-events-none before:absolute before:left-[3px] before:top-1/2 before:h-4 before:w-px before:-translate-y-1/2 before:bg-lyra-border-strong before:content-[''] before:opacity-0 before:transition-opacity group-hover/thead:before:opacity-100 focus-visible:before:opacity-100 active:before:opacity-100 [@media(hover:none)]:before:opacity-100 hover:before:bg-lyra-border-active active:before:bg-lyra-bg-surface-base after:pointer-events-none after:absolute after:inset-y-0 after:left-[3px] after:w-0.5 after:bg-lyra-border-focus after:content-[''] after:opacity-0 focus-visible:after:opacity-100 hover:bg-lyra-border-active/40 active:bg-lyra-border-active"
     />
   );
 }
@@ -281,6 +292,13 @@ interface TableProps extends React.HTMLAttributes<HTMLTableElement> {
   columnWidths?: Record<string, number>;
   /** Called with the full updated widths map on every resize (drag or keyboard) */
   onColumnWidthsChange?: (widths: Record<string, number>) => void;
+  /**
+   * Shades every other body row (the even ones) with a subtle surface color so
+   * long rows are easier to follow across. Hover and selected rows keep their
+   * own backgrounds on top of the stripe, and header rows are never striped.
+   * Default: false.
+   */
+  striped?: boolean;
 }
 
 /** Narrowest a flexible column can be squeezed (px). This is the one rule for
@@ -292,7 +310,7 @@ interface TableProps extends React.HTMLAttributes<HTMLTableElement> {
 const COLUMN_MIN_WIDTH = 80;
 
 const Table = React.forwardRef<HTMLTableElement, TableProps>(
-  ({ className, columnWidths, onColumnWidthsChange, style, ...props }, ref) => {
+  ({ className, columnWidths, onColumnWidthsChange, striped = false, style, ...props }, ref) => {
     const resize = useColumnResize(columnWidths, onColumnWidthsChange);
     const [announcement, setAnnouncement] = useState("");
     const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -320,6 +338,7 @@ const Table = React.forwardRef<HTMLTableElement, TableProps>(
       <ColumnResizeContext.Provider value={resize}>
         <TableAnnounceContext.Provider value={setAnnouncement}>
         <TableScrollSyncContext.Provider value={scrollSync}>
+        <TableStripedContext.Provider value={striped}>
         <div ref={wrapperRef} className="relative w-full flex flex-col overflow-hidden h-full" role="presentation">
           {/* Polite, visually-hidden live region for sort / column-move announcements. */}
           <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
@@ -360,6 +379,7 @@ const Table = React.forwardRef<HTMLTableElement, TableProps>(
             {...props}
           />
         </div>
+        </TableStripedContext.Provider>
         </TableScrollSyncContext.Provider>
         </TableAnnounceContext.Provider>
       </ColumnResizeContext.Provider>
@@ -371,7 +391,7 @@ Table.displayName = "Table";
 const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
->(({ className, onScroll, ...props }, ref) => {
+>(({ className, onScroll, children, ...props }, ref) => {
   const sync = React.useContext(TableScrollSyncContext);
   return (
   <thead
@@ -397,12 +417,18 @@ const TableHeader = React.forwardRef<
     // `<table>` above for why an explicit width/min-width is actively wrong
     // here, not just unnecessary.
     // `overflow-hidden`: the header never shows its own scrollbar; it is
-    // scrolled by the body (see `TableScrollSyncContext`). `scrollbar-gutter`
-    // reserves the same width the body's vertical scrollbar takes so the
+    // scrolled by the body (see `TableScrollSyncContext`). `TableBody` pads
+    // this header's right edge by the width of the body's vertical scrollbar
+    // — only while one is showing — so the
     // columns stay aligned.
-    className={cn("flex flex-col bg-lyra-bg-surface-base flex-shrink-0 overflow-hidden [scrollbar-gutter:stable]", className)}
+    // `group/thead`: lets a resizable column's divider appear only while the
+    // header is hovered (see `ColumnResizeHandle`).
+    className={cn("group/thead flex flex-col bg-lyra-bg-surface-base flex-shrink-0 overflow-hidden", className)}
     {...props}
-  />
+  >
+    {/* Header rows are never striped, even inside a `striped` table. */}
+    <TableStripedContext.Provider value={false}>{children}</TableStripedContext.Provider>
+  </thead>
   );
 });
 TableHeader.displayName = "TableHeader";
@@ -412,6 +438,31 @@ const TableBody = React.forwardRef<
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, onKeyDown, onScroll, ...props }, ref) => {
   const sync = React.useContext(TableScrollSyncContext);
+  // Keeps the header's columns aligned with the body's: when the body shows a
+  // vertical scrollbar it takes width from the rows, so the header gets the
+  // same amount of right padding; with no scrollbar (or overlay scrollbars,
+  // which take no width) the padding is cleared and rows run edge to edge. The
+  // body's content box shrinks/grows when a scrollbar appears/disappears, which
+  // is what the ResizeObserver reacts to. Written straight to the header
+  // element's style rather than through state, so it never re-renders the table.
+  React.useLayoutEffect(() => {
+    const body = sync?.bodyRef.current;
+    if (!body) return;
+    const apply = () => {
+      const header = sync?.headerRef.current;
+      if (!header) return;
+      const w = body.offsetWidth - body.clientWidth;
+      header.style.paddingRight = w > 0 ? `${w}px` : "";
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(body);
+    return () => {
+      ro.disconnect();
+      const header = sync?.headerRef.current;
+      if (header) header.style.paddingRight = "";
+    };
+  }, [sync]);
   return (
   <tbody
     ref={(node) => {
@@ -483,8 +534,12 @@ const TableBody = React.forwardRef<
     // `display:table` ancestor to belong to, and no `min-w-full`/`w-full`
     // (see the long comment on `Table`'s `<table>` for why).
     // The body is the scroll container: sideways when resized columns are
-    // wider than the table, and vertically (header stays in view).
-    className={cn("flex flex-col flex-1 min-h-0 overflow-auto [scrollbar-gutter:stable] [&_tr:last-child]:border-0", className)}
+    // wider than the table, and vertically (header stays in view). No
+    // `scrollbar-gutter: stable` — that reserved a blank strip on the right
+    // all the time on systems with always-visible scrollbars, even when
+    // nothing scrolled. Instead the header is padded to match only while a
+    // vertical scrollbar is actually showing (effect above).
+    className={cn("flex flex-col flex-1 min-h-0 overflow-auto [&_tr:last-child]:border-0", className)}
     {...props}
   />
   );
@@ -512,7 +567,9 @@ interface TableRowProps extends React.HTMLAttributes<HTMLTableRowElement> {
 }
 
 const TableRow = React.forwardRef<HTMLTableRowElement, TableRowProps>(
-  ({ className, selectable = false, tabIndex, onKeyDown, style, ...props }, ref) => (
+  ({ className, selectable = false, tabIndex, onKeyDown, style, ...props }, ref) => {
+    const striped = React.useContext(TableStripedContext);
+    return (
     <tr
       ref={ref}
       role="row"
@@ -564,11 +621,17 @@ const TableRow = React.forwardRef<HTMLTableRowElement, TableRowProps>(
         "data-[state=selected]:active:bg-lyra-state-pressed-active-subtle",
         selectable &&
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lyra-border-focus",
+        // Striped: every even row gets a subtle surface. Same specificity as
+        // the hover/pressed/selected backgrounds above, but Tailwind emits
+        // `even:` before `hover:`/`active:`/`data-[…]:`, so those states
+        // still paint over the stripe.
+        striped && "even:bg-lyra-bg-surface-container-subtle",
         className
       )}
       {...props}
     />
-  )
+    );
+  }
 );
 TableRow.displayName = "TableRow";
 
@@ -1018,6 +1081,17 @@ interface TableToolbarProps extends React.HTMLAttributes<HTMLDivElement> {
   onSearchChange?: (value: string) => void;
   /** Search placeholder text (default: "Search") */
   searchPlaceholder?: string;
+  /**
+   * Server-side search: when provided, the search field shows a submit button
+   * (an arrow at the field's trailing edge) as soon as the user has typed a
+   * term, and the search runs only when they click it or press Enter —
+   * `onSearchSubmit` is called with the term, so the caller can request the
+   * results from the server instead of filtering on every keystroke.
+   * `searchQuery` / `onSearchChange` still carry the text being typed; clearing
+   * the field (the X button) also calls `onSearchSubmit("")` so the results
+   * reset. Omit for the default live search, which has no submit button.
+   */
+  onSearchSubmit?: (value: string) => void;
   /** Total record count to display (shown only when `showRecordCount` is true) */
   recordCount?: number;
   /** Custom label for the record count (default: "Record" for 1, otherwise "Records") */
@@ -1052,16 +1126,23 @@ interface TableToolbarProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Called when the right interior panel toggle is clicked */
   onRightPanelToggle?: () => void;
   /**
-   * When true, shows an "Query Builder" button that opens a filter-builder popover.
+   * When true, shows a "Query Builder" button that opens a popover for building a query.
+   * Fill the popover with `advancedSearchContent` — normally lyra-ui's `QueryBuilder`
+   * component — and wire the applied query to the toolbar with `advancedSearchApplied`,
+   * `advancedSearchDescription` (use `describeQuery`) and `onAdvancedSearchApply`.
    */
   showAdvancedSearch?: boolean;
+  /** Text on the Query Builder button (default: "Query Builder"). */
+  advancedSearchLabel?: string;
+  /** Text on that button once a query is applied (default: "Applied Filters"). */
+  advancedSearchAppliedLabel?: string;
   /**
    * Written-out criteria description shown as a tooltip on the "Applied Filters" button.
    */
   advancedSearchDescription?: string;
   /** Title shown in the Advanced Search popover header (e.g. a saved search name) */
   advancedSearchTitle?: string;
-  /** Content rendered inside the Advanced Search popover (the filter builder) */
+  /** Content rendered inside the Advanced Search popover — normally `<QueryBuilder criteria value onChange />` (see `QueryBuilder`) */
   advancedSearchContent?: React.ReactNode;
   /** Whether advanced filters are currently applied — changes button label to "Applied Filters" */
   advancedSearchApplied?: boolean;
@@ -1069,15 +1150,23 @@ interface TableToolbarProps extends React.HTMLAttributes<HTMLDivElement> {
   onAdvancedSearchApply?: () => void;
   /** Called when the Cancel button is clicked or popover closes without applying */
   onAdvancedSearchCancel?: () => void;
-  /** Called when user saves a named search — receives the search name */
+  /**
+   * Show the popover's footer — the Apply and Cancel buttons (and Save Search, when `onSaveSearch`
+   * is set). Default: true. Turn it off for a builder that applies as the user edits: wire
+   * `advancedSearchContent`'s `onChange` straight to your filtering, and there is nothing to
+   * confirm (so no Save Search either).
+   */
+  advancedSearchFooter?: boolean;
+  /**
+   * Called when user saves a named search — receives the search name. Providing it shows the
+   * "Save Search" button in the footer; omit it for no Save button (the Apply / Cancel buttons stay).
+   */
   onSaveSearch?: (name: string) => void;
 }
 
 const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
-  ({ className, searchQuery, onSearchChange, searchPlaceholder = "Search", recordCount, recordLabel, showRecordCount = false, filters, filterDefs, filterValues, onFilterChange, onFilterClear, actions, actionDefs, title, toolbarPanelToggle, onLeftPanelToggle, onRightPanelToggle, showAdvancedSearch, advancedSearchContent, advancedSearchApplied, advancedSearchDescription, advancedSearchTitle, onAdvancedSearchApply, onAdvancedSearchCancel, onSaveSearch, ...props }, ref) => {
+  ({ className, searchQuery, onSearchChange, searchPlaceholder = "Search", onSearchSubmit, recordCount, recordLabel, showRecordCount = false, filters, filterDefs, filterValues, onFilterChange, onFilterClear, actions, actionDefs, title, toolbarPanelToggle, onLeftPanelToggle, onRightPanelToggle, showAdvancedSearch, advancedSearchLabel = "Query Builder", advancedSearchAppliedLabel = "Applied Filters", advancedSearchFooter = true, advancedSearchContent, advancedSearchApplied, advancedSearchDescription, advancedSearchTitle, onAdvancedSearchApply, onAdvancedSearchCancel, onSaveSearch, ...props }, ref) => {
     const [advancedOpen, setAdvancedOpen] = useState(false);
-    const [saveSearchOpen, setSaveSearchOpen] = useState(false);
-    const [saveSearchName, setSaveSearchName] = useState("");
     const [moreOpen, setMoreOpen] = useState(false);
     const moreRef = useRef<HTMLDivElement>(null);
     const measureRef = useRef<HTMLDivElement>(null);
@@ -1429,6 +1518,12 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
     ) : null;
 
     const hasSearch = onSearchChange !== undefined;
+    // Server-side search: clearing the field also submits an empty term so the
+    // caller's results reset, instead of staying on the last submitted search.
+    const handleSearchValueChange = (value: string) => {
+      onSearchChange?.(value);
+      if (onSearchSubmit && value === "" && (searchQuery ?? "") !== "") onSearchSubmit("");
+    };
     const hasFilters = filterChips || filters || showAdvancedSearch;
 
     /* Advanced Search popover button */
@@ -1441,97 +1536,27 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
         }}
         showArrow={false}
         maxHeight={`calc(100vh - 120px)`}
-        // advancedSearchContent is an arbitrary consumer-supplied slot (the
-        // filter-builder UI is defined by whoever renders TableToolbar, not
-        // by this component) that's always expected to own its own padding
-        // end to end (see AdvancedSearchContent in Table.stories.tsx, which
-        // already wraps itself in `p-4`) — Popover's default 20px body inset
+        // advancedSearchContent is a consumer-supplied slot (normally lyra-ui's
+        // `QueryBuilder`, which wraps itself in `p-4`) that's expected to own
+        // its own padding end to end — Popover's default 20px body inset
         // would double up on top of whatever padding that content supplies.
         bodyPadding={false}
         content={advancedSearchContent}
         footer={
-          <div className="flex items-center justify-end gap-2 px-4 pb-4 pt-2">
-            {/* Save Search */}
-            {onSaveSearch && (
-              <PopoverPrimitive.Root
-                open={saveSearchOpen}
-                onOpenChange={(o) => { setSaveSearchOpen(o); if (!o) setSaveSearchName(""); }}
-              >
-                {/* Anchor instead of Trigger — avoids aria-controls on a portal that may be unmounted */}
-                <PopoverPrimitive.Anchor asChild>
-                  <Button variant="outline" onClick={() => setSaveSearchOpen(v => !v)}>
-                    Save Search
-                  </Button>
-                </PopoverPrimitive.Anchor>
-                <PopoverPrimitive.Portal>
-                  <PopoverPrimitive.Content
-                    side="top"
-                    sideOffset={8}
-                    avoidCollisions
-                    collisionPadding={4}
-                    className="z-50 w-[320px] rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-overlay shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-100"
-                  >
-                    <div className="px-4 pt-4 pb-1">
-                      <h3 className="lyra-heading-sm text-lyra-fg-default mb-3">Save Search</h3>
-                    </div>
-                    <div className="flex flex-col gap-4 px-4 pb-4">
-                      <Input
-                        label="Search name"
-                        placeholder="e.g. Active agents in Engineering"
-                        value={saveSearchName}
-                        onChange={(e) => setSaveSearchName(e.target.value)}
-                        autoFocus
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && saveSearchName.trim()) {
-                            onSaveSearch(saveSearchName.trim());
-                            setSaveSearchOpen(false);
-                            setSaveSearchName("");
-                          }
-                        }}
-                      />
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={() => { setSaveSearchOpen(false); setSaveSearchName(""); }}>
-                          Cancel
-                        </Button>
-                        <Button
-                          disabled={!saveSearchName.trim()}
-                          onClick={() => {
-                            if (saveSearchName.trim()) {
-                              onSaveSearch(saveSearchName.trim());
-                              setSaveSearchOpen(false);
-                              setSaveSearchName("");
-                            }
-                          }}
-                        >
-                          Save
-                        </Button>
-                      </div>
-                    </div>
-                  </PopoverPrimitive.Content>
-                </PopoverPrimitive.Portal>
-              </PopoverPrimitive.Root>
-            )}
-
-            <div className="flex-1" />
-
-            <Button
-              variant="outline"
-              onClick={() => {
+          advancedSearchFooter ? (
+            <QueryBuilderFooter
+              className="px-4 pb-4 pt-2"
+              onSave={onSaveSearch}
+              onCancel={() => {
                 setAdvancedOpen(false);
                 onAdvancedSearchCancel?.();
               }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
+              onApply={() => {
                 setAdvancedOpen(false);
                 onAdvancedSearchApply?.();
               }}
-            >
-              Apply
-            </Button>
-          </div>
+            />
+          ) : undefined
         }
         placement="bottom"
         title={advancedSearchTitle}
@@ -1540,7 +1565,7 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
         {/* Button is always the direct Popover trigger (asChild requires a DOM element) */}
         <Button variant={advancedSearchApplied ? "default" : "outline"} size="md">
           <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
-          {advancedSearchApplied ? "Applied Filters" : "Query Builder"}
+          {advancedSearchApplied ? advancedSearchAppliedLabel : advancedSearchLabel}
         </Button>
       </Popover>
     ) : null;
@@ -1695,7 +1720,8 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
                 <SearchInput
                   placeholder={searchPlaceholder}
                   value={searchQuery ?? ""}
-                  onValueChange={onSearchChange}
+                  onValueChange={handleSearchValueChange}
+                  onSubmit={onSearchSubmit}
                   className="flex-1 min-w-[240px] max-w-[320px]"
                   aria-label={searchPlaceholder}
                   size="sm"
@@ -1754,7 +1780,8 @@ const TableToolbar = React.forwardRef<HTMLDivElement, TableToolbarProps>(
               <SearchInput
                 placeholder={searchPlaceholder}
                 value={searchQuery ?? ""}
-                onValueChange={onSearchChange}
+                onValueChange={handleSearchValueChange}
+                onSubmit={onSearchSubmit}
                 className="flex-1 min-w-[240px] max-w-[320px]"
                 aria-label={searchPlaceholder}
                 size="sm"
@@ -2104,11 +2131,7 @@ const TableGroupRow = React.forwardRef<HTMLTableRowElement, TableGroupRowProps>(
           onClick={onToggle}
           className="flex h-10 w-full cursor-pointer items-center gap-2 px-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lyra-border-focus"
         >
-          {expanded ? (
-            <ChevronDown className="h-4 w-4 text-lyra-fg-secondary flex-shrink-0" strokeWidth={1.5} aria-hidden="true" />
-          ) : (
-            <ChevronRightIcon className="h-4 w-4 text-lyra-fg-secondary flex-shrink-0" strokeWidth={1.5} aria-hidden="true" />
-          )}
+          <ShowMoreChevron open={expanded} direction="right" animate={false} className="text-lyra-fg-secondary" />
           <span className="lyra-body-md-emphasis text-lyra-fg-default">{label}</span>
           <span
             aria-hidden="true"

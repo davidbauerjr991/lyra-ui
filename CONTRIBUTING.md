@@ -727,6 +727,7 @@ type Story = StoryObj<typeof MyComponent>;
 
 - **Always export a `Default` story** — the baseline single-instance view.
 - **Export an `AllVariants` story** — renders every variant/size combination in a grid for visual regression.
+- **Controls panel `include` lists must contain each control's display `name`, not just its key.** Storybook filters Controls rows by the argType's `name` when it has one, so `argTypes.badge = { name: "Badge" }` with `include: ["badge"]` silently shows nothing — no error, the row just isn't there. Don't hand-maintain the list: wrap the story in `withControlsFor({ args, argTypes, … })` from `__stories__/storyControls.ts`, which generates `include` from the story's own `argTypes` (key and name). Used by `Avatar` and `QueryBuilder`; older stories still carry hand-written lists.
 - **Use stateful wrapper components for stories with hooks** — never put `useState`/`useEffect`/`useCallback` directly in a `render` function; extract them into a named React component inside the story file to avoid "Maximum call stack" errors from Storybook's argTypes serialisation.
 
 ```tsx

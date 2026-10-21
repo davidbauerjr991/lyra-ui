@@ -53,6 +53,9 @@ const containerVariants = cva("", {
       "error-strong":   "bg-lyra-status-critical-subtle border border-lyra-status-critical-strong",
       "error-dotted":   "bg-lyra-status-critical-subtle border border-dashed border-lyra-status-critical-strong",
 
+      /* ── Purple (the AI accent) ── */
+      "purple-subtle":  "bg-lyra-accent-purple-soft border border-[color-mix(in_srgb,var(--lyra-color-accent-purple-strong)_30%,transparent)]",
+
       /* ── Neutral ── */
       "neutral-none":   "bg-lyra-bg-surface-container-subtle",
       "neutral-subtle": "bg-lyra-bg-surface-container-subtle border border-lyra-border-subtle",

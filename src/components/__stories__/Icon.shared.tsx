@@ -14,7 +14,7 @@ export const ICON_COLORS: IconColor[] = [
 ];
 
 export const ICON_BACKGROUNDS: IconBackground[] = [
-  "none", "primary", "active", "success", "warning", "critical", "info", "neutral", "surface", "shell",
+  "none", "primary", "active", "success", "warning", "critical", "info", "neutral", "surface", "shell", "success-strong", "warning-strong", "critical-strong",
 ];
 
 export const ICON_SHAPES: IconShape[] = ["none", "rounded", "circle"];

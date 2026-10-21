@@ -1,10 +1,11 @@
 import * as React from "react";
+import { Loader } from "lucide-react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/utils";
 
 /* ── Types ── */
 
-export type SpinnerVariant = "bar" | "circle";
+export type SpinnerVariant = "bar" | "circle" | "ring";
 export type SpinnerSize = "sm" | "md" | "lg";
 export type SpinnerColor = "primary" | "inverse";
 
@@ -87,6 +88,9 @@ function ensureKeyframes() {
       0%   { transform: scale(0); opacity: 0.8; }
       100% { transform: scale(1); opacity: 0;   }
     }
+    @keyframes lyra-ring-spin {
+      to { transform: rotate(360deg); }
+    }
     @keyframes lyra-spinner-fade {
       0%, 100% { opacity: 0.35; }
       50%      { opacity: 1;    }
@@ -95,7 +99,8 @@ function ensureKeyframes() {
        fade slowly; a circle shows one small dot fading in and out. */
     @media (prefers-reduced-motion: reduce) {
       [data-lyra-spinner] [data-lyra-bar],
-      [data-lyra-spinner] [data-lyra-ripple] {
+      [data-lyra-spinner] [data-lyra-ripple],
+      [data-lyra-spinner] [data-lyra-ring] {
         animation: lyra-spinner-fade 1.6s ease-in-out infinite !important;
         transform: none !important;
       }
@@ -162,6 +167,24 @@ const CircleSpinner: React.FC<{ size: SpinnerSize; color: SpinnerColor }> = ({ s
   );
 };
 
+/* ── Ring Spinner ──
+   The in-progress mark `AIProcess` uses for its active step: the Lucide `Loader` glyph (eight spokes)
+   turning once a second. Same sizes as the circle (16 / 24 / 32px). Under reduced motion it fades in
+   place instead of turning. */
+
+const RingSpinner: React.FC<{ size: SpinnerSize; color: SpinnerColor }> = ({ size, color }) => {
+  React.useEffect(() => { ensureKeyframes(); }, []);
+  return (
+    <Loader
+      aria-hidden="true"
+      data-lyra-ring=""
+      strokeWidth={2}
+      className={spinnerCircleVariants({ size })}
+      style={{ color: colorVar[color], animation: "lyra-ring-spin 1s linear infinite" }}
+    />
+  );
+};
+
 /* ── Spinner ── */
 
 const Spinner = React.forwardRef<HTMLDivElement, SpinnerProps>(
@@ -175,7 +198,12 @@ const Spinner = React.forwardRef<HTMLDivElement, SpinnerProps>(
       className,
     },
     ref
-  ) => (
+  ) => {
+    const glyph =
+      variant === "bar" ? <BarSpinner size={size} color={color} /> :
+      variant === "ring" ? <RingSpinner size={size} color={color} /> :
+      <CircleSpinner size={size} color={color} />;
+    return (
     <div
       ref={ref}
       role="status"
@@ -187,22 +215,18 @@ const Spinner = React.forwardRef<HTMLDivElement, SpinnerProps>(
       {showLabel ? (
         <>
           <span aria-hidden="true" className="inline-flex">
-            {variant === "bar"
-              ? <BarSpinner size={size} color={color} />
-              : <CircleSpinner size={size} color={color} />
-            }
+            {glyph}
           </span>
           <span className={cn("lyra-body-sm", color === "inverse" ? "text-lyra-fg-inverse" : "text-lyra-fg-secondary")}>
             {label}
           </span>
         </>
-      ) : variant === "bar" ? (
-        <BarSpinner size={size} color={color} />
       ) : (
-        <CircleSpinner size={size} color={color} />
+        glyph
       )}
     </div>
-  )
+    );
+  }
 );
 
 Spinner.displayName = "Spinner";

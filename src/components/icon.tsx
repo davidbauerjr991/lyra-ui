@@ -32,7 +32,10 @@ export type IconBackground =
   | "info"
   | "neutral"
   | "surface"
-  | "shell";
+  | "shell"
+  | "success-strong"
+  | "warning-strong"
+  | "critical-strong";
 
 export type IconShape = "none" | "rounded" | "circle";
 
@@ -116,6 +119,10 @@ const iconContainerVariants = cva(
         success:  "bg-lyra-status-success-subtle text-lyra-status-success-strong",
         warning:  "bg-lyra-status-warning-subtle text-lyra-status-warning-strong",
         critical: "bg-lyra-status-critical-subtle text-lyra-status-critical-strong",
+        // Solid versions of success / warning / critical (white glyph on the strong status color); `primary` is the solid blue.
+        "success-strong":  "bg-lyra-status-success-strong text-lyra-fg-on-primary",
+        "warning-strong":  "bg-lyra-status-warning-strong text-lyra-fg-on-primary",
+        "critical-strong": "bg-lyra-status-critical-strong text-lyra-fg-on-primary",
         info:     "bg-lyra-accent-purple-soft text-lyra-accent-purple-strong",
         neutral:  "bg-lyra-bg-surface-container-subtle text-lyra-fg-secondary",
         surface:  "bg-lyra-bg-surface-base border border-lyra-border-subtle text-lyra-fg-default",

@@ -222,6 +222,12 @@ interface BadgeCircleProps extends React.HTMLAttributes<HTMLSpanElement> {
    * If both `dot` and `count` are provided, `dot` wins.
    */
   dot?: boolean;
+  /**
+   * Pulse a `dot` badge: a ring of the dot's own color radiates outward and fades, on a loop — the "new
+   * assignment" indicator look (`InteractionNavItem`). Ignored unless `dot` is on. Hidden for people who
+   * prefer reduced motion. Default false.
+   */
+  pulse?: boolean;
 }
 
 export type BadgeShape = "pill" | "circle";
@@ -238,6 +244,7 @@ const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>((props, ref) => {
       bordered = false,
       size = "md",
       dot = false,
+      pulse = false,
       count,
       max = 99,
       className,
@@ -266,7 +273,7 @@ const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>((props, ref) => {
     return (
       <span
         ref={ref}
-        className={cn(circleBadgeVariants({ variant, fill, bordered, size, dot }), className)}
+        className={cn(circleBadgeVariants({ variant, fill, bordered, size, dot }), dot && pulse && "relative", className)}
         aria-label={resolvedAriaLabel}
         // `role="img"` only when there's an actual label to announce — a
         // bare, role-less `<span>` carrying `aria-label` is exactly what
@@ -283,6 +290,11 @@ const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>((props, ref) => {
         {...rest}
       >
         {!dot && label}
+        {dot && pulse && (
+          // The ring copies the dot's own background (`bg-inherit`) so it always matches the dot, whatever its
+          // variant, fill or a caller's color override, and is scaled up and faded by Tailwind's `animate-ping`.
+          <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full bg-inherit opacity-60 motion-reduce:hidden" />
+        )}
       </span>
     );
   }

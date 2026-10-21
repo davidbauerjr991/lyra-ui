@@ -315,6 +315,7 @@ export const Default: DraggableDemoStory = {
         "showFullScreen",
         "showTitle",
         "title",
+        "Title text",
         "showSubhead",
         "showIcon",
         "showTag",

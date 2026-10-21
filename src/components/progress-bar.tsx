@@ -87,12 +87,14 @@ export interface ProgressBarProps
    * false. Honors reduced motion (the segment fades in place instead).
    */
   indeterminate?: boolean;
+  /** Horizontal alignment of the label (`showLabel`) under the track: "start" (default), "center" or "end". */
+  labelAlign?: "start" | "center" | "end";
 }
 
 const ProgressBar = React.forwardRef<
   React.ElementRef<typeof ProgressPrimitive.Root>,
   ProgressBarProps
->(({ className, value = 0, size, variant, showLabel, label, indicatorClassName, indeterminate = false, ...props }, ref) => {
+>(({ className, value = 0, size, variant, showLabel, label, indicatorClassName, indeterminate = false, labelAlign = "start", ...props }, ref) => {
   const labelId = React.useId();
   React.useEffect(() => {
     if (indeterminate) ensureKeyframes();
@@ -127,9 +129,8 @@ const ProgressBar = React.forwardRef<
         }
       />
     </ProgressPrimitive.Root>
-
     {(showLabel && !(indeterminate && !label)) && (
-      <span id={labelId} className="lyra-body-sm text-lyra-fg-secondary tabular-nums">
+      <span id={labelId} className={cn("lyra-body-sm text-lyra-fg-secondary tabular-nums", labelAlign === "center" && "text-center", labelAlign === "end" && "text-right")}>
         {label ?? `${Math.round(value)}%`}
       </span>
     )}

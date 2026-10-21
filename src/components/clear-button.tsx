@@ -18,7 +18,11 @@ import { cn } from "../lib/utils";
    can keep as specific an accessible name as it wants (`SearchInput` uses
    "Clear search", `Autocomplete` uses "Clear") — independent of
    `tooltipLabel`, which is the *visible* tooltip text and defaults to the
-   plain "Clear" both consumers actually want shown on hover. */
+   plain "Clear" both consumers actually want shown on hover.
+
+   Keyboard: this is a real tab stop with its own focus-visible ring (it used
+   to be `tabIndex={-1}`, which made clearing mouse-only — WCAG 2.1.1). Every
+   consumer gets that for free; none needs to opt in. */
 
 export interface ClearButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -32,9 +36,8 @@ const ClearButton = React.forwardRef<HTMLButtonElement, ClearButtonProps>(
       <button
         ref={ref}
         type="button"
-        tabIndex={-1}
         className={cn(
-          "flex h-5 w-5 items-center justify-center rounded-lyra-xs text-lyra-fg-action hover:text-lyra-fg-default hover:bg-lyra-state-hover transition-colors",
+          "flex h-5 w-5 items-center justify-center rounded-lyra-xs text-lyra-fg-action hover:text-lyra-fg-default hover:bg-lyra-state-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus",
           className
         )}
         {...props}

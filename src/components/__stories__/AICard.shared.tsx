@@ -7,7 +7,7 @@ import {
   ThumbsDown, ThumbsUp, Trash2, TriangleAlert, User, Workflow, ChevronDown, ChevronRight, CircleAlert, CircleCheck, History,
 } from "lucide-react";
 import { AICard, type AICardColor, type AICardProps } from "../ai-card";
-import { Avatar } from "../avatar";
+import { Avatar, type AvatarColor } from "../avatar";
 import { Badge } from "../badge";
 import { Button } from "../button";
 import { Checkbox } from "../checkbox";
@@ -16,7 +16,7 @@ import { Input } from "../input";
 import { Link } from "../link";
 import { Label } from "../label";
 import { ProgressBar } from "../progress-bar";
-import { Tag } from "../tag";
+import { Tag, type TagVariant, type TagShape } from "../tag";
 import { Select } from "../select";
 import { Separator } from "../separator";
 import { TimePicker } from "../time-picker";
@@ -46,7 +46,39 @@ export interface CardOverrides {
   density?: "comfortable" | "compact";
   /** Corner radius token. */
   radius?: "none" | "xs" | "sm" | "md" | "lg" | "xl";
+  /** White header only: show the icon bare ("icon") or inside an xs rounded Avatar ("avatar"). */
+  iconType?: "icon" | "avatar";
+  avatarColor?: AvatarColor;
+  /** Show a `Tag` at the right end of the header (works on every card). */
+  showTag?: boolean;
+  /** A named header tag from TAG_PRESETS, or "Custom" to use the label / variant / shape below. */
+  tagType?: string;
+  tagLabel?: string;
+  tagVariant?: TagVariant;
+  tagShape?: TagShape;
+  /** Leading dot inside the tag. */
+  tagDot?: boolean;
+  /** Pulse the tag's dot (when it has one). */
+  tagPulse?: boolean;
+  /** Custom card only: its title and body text. */
+  customTitle?: string;
+  /** Show a subhead (a second line under the title); the header then turns comfortable by itself. */
+  showSubhead?: boolean;
+  subheadText?: string;
+  customContent?: string;
 }
+/** The header tags used on the AI cards (status of a card's content), by name: text, color and shape (the dot is the separate Tag dot control). "Custom" in the playground uses the free-form tag controls instead. */
+export const TAG_PRESETS: Record<string, { label: string; variant: TagVariant; shape: TagShape }> = {
+  "New": { label: "New", variant: "info", shape: "pill" },
+  "Ready": { label: "Ready", variant: "success", shape: "pill" },
+  "Answer found": { label: "Answer found", variant: "success", shape: "pill" },
+  "Live (blue)": { label: "Live", variant: "info", shape: "pill" },
+  "Live (green)": { label: "Live", variant: "success", shape: "pill" },
+  "Suggested": { label: "Suggested", variant: "warning", shape: "pill" },
+  "Internal only": { label: "Internal only", variant: "warning", shape: "pill" },
+};
+export const TAG_TYPES = [...Object.keys(TAG_PRESETS), "Custom"];
+
 export interface CardProps {
   o?: CardOverrides;
 }
@@ -62,14 +94,32 @@ const C = ({ o, icon, ...rest }: AICardProps & CardProps) => {
       </Button>
     );
   }
+  // The playground's Tag control sits at the right end of the header, after any header content the card has itself.
+  const preset = o?.tagType && o.tagType !== "Custom" ? TAG_PRESETS[o.tagType] : undefined;
+  // The dot is its own control (Tag dot), for presets and Custom alike.
+  const tag = o?.showTag
+    ? { ...(preset ?? { label: o.tagLabel?.trim() || "New", variant: o.tagVariant ?? "info", shape: o.tagShape ?? "pill" }), dot: o.tagDot ?? true }
+    : undefined;
+  const tagNode = tag ? (
+    <Tag
+      label={tag.label}
+      variant={tag.variant}
+      shape={tag.shape}
+      dot={tag.dot}
+      dotPulse={tag.dot && o?.tagPulse}
+    />
+  ) : undefined;
   return (
   <AICard
     {...rest}
+    subhead={o?.showSubhead ? o.subheadText?.trim() || "Subhead text" : rest.subhead}
+    headerEnd={tagNode ? <>{rest.headerEnd}{tagNode}</> : rest.headerEnd}
     onDismiss={o?.showDismiss ? () => setDismissed(true) : undefined}
     onOpenInNewWindow={o?.showOpenWindow ? () => {} : undefined}
     density={o?.density}
     radius={o?.radius}
     color={o?.color ?? rest.color}
+    avatarColor={(o?.color ?? rest.color) === "white" && o?.iconType === "avatar" ? o.avatarColor ?? "info" : undefined}
     accordion={o?.accordion ?? rest.accordion}
     defaultOpen={o?.defaultOpen ?? rest.defaultOpen}
     icon={o?.showIcon === false ? undefined : icon}
@@ -168,6 +218,13 @@ export const AutosummaryPageCard = ({ o }: CardProps) => (
         </div>
       ))}
     </div>
+  </C>
+);
+
+/** The "Custom" card: the title and body are whatever the playground's Title and Content controls say. */
+export const CustomCard = ({ o }: CardProps) => (
+  <C o={o} title={o?.customTitle || "Custom card"} color="purple" icon={ic(Sparkles)}>
+    <p className="whitespace-pre-wrap">{o?.customContent ?? ""}</p>
   </C>
 );
 
@@ -1037,6 +1094,7 @@ export const MAIN_CARDS: Array<[string, React.ComponentType<CardProps>]> = [
   ["~New - Approval Request", ApprovalRequestCard],
   ["~New - Artifacts", ArtifactsCard],
   ["Conversation Topics", ConversationTopicsCard],
+  ["Custom", CustomCard],
   ["Customer Sentiment", pick({ negative: SentimentNegativeCard, neutral: SentimentNeutralCard, positive: SentimentPositiveCard }, "neutral")],
   ["Suggested Questions", SuggestedQuestionsCard],
   ["Warranty Claim Decision Tree", DecisionTreeCard],

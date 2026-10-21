@@ -39,6 +39,8 @@ export { Checkbox } from "./components/checkbox";
 export type { CheckboxProps } from "./components/checkbox";
 export { CheckboxGroup } from "./components/checkbox-group";
 export type { CheckboxGroupProps, CheckboxGroupOption } from "./components/checkbox-group";
+export { QueryBuilder, QueryBuilderFooter, emptyQuery, queryHasCriteria, describeQuery } from "./components/query-builder";
+export type { QueryBuilderProps, QueryBuilderFooterProps, QueryCriteria, QueryOption, QueryChip, QueryGroup, QueryLogic } from "./components/query-builder";
 export { Switch } from "./components/switch";
 export type { SwitchProps } from "./components/switch";
 export {
@@ -236,6 +238,8 @@ export type { AgentLegDisconnectedToastProps } from "./components/agent-leg-disc
 
 /* ── Spinner ── */
 export { Spinner, spinnerBarVariants, spinnerCircleVariants } from "./components/spinner";
+export { Skeleton, skeletonLineVariants } from "./components/skeleton";
+export type { SkeletonProps } from "./components/skeleton";
 export type { SpinnerProps, SpinnerVariant, SpinnerSize, SpinnerColor } from "./components/spinner";
 
 /* ── Popover ── */
@@ -312,7 +316,7 @@ export type { AgentWelcomeMessageProps } from "./components/agent-welcome-messag
 
 /* ── Avatar ── */
 export { Avatar, avatarVariants } from "./components/avatar";
-export type { AvatarProps, AvatarSize, AvatarShape, AvatarColor } from "./components/avatar";
+export type { AvatarProps, AvatarSize, AvatarShape, AvatarColor, AvatarBadgePosition } from "./components/avatar";
 
 /* ── Icon ── */
 export { Icon, iconVariants, iconContainerVariants } from "./components/icon";
@@ -356,7 +360,7 @@ export { Interstitial } from "./components/interstitial";
 export type { InterstitialProps } from "./components/interstitial";
 export { AiPanel, AiIndicatorSmall, AiIndicatorLarge, useAiPanelContent } from "./components/ai-panel";
 export type { AiPanelProps, AiPanelSuggestion, AiPanelContentProps } from "./components/ai-panel";
-export type { AIProcessStep, AIProcessStepStatus } from "./components/ai-process";
+export type { AIProcessStep, AIProcessStepStatus, AIProcessVariant, AIProcessIntensity } from "./components/ai-process";
 export { ContactOverview } from "./components/contact-overview";
 export type { ContactOverviewInfo, ContactOverviewProps } from "./components/contact-overview";
 export { CustomerContextOverview } from "./components/contact-overview";
@@ -391,3 +395,34 @@ export type { PhoneValue, PhoneCountry } from "./components/phone-input";
 export { cn } from "./lib/utils";
 export { AICard } from "./components/ai-card";
 export type { AICardProps, AICardColor } from "./components/ai-card";
+
+export { AgenticAICard, AgenticSection, AGENTIC_STATUS_META } from "./components/agentic-ai-card";
+export type { AgenticAICardProps, AgenticSectionProps, AgenticStatus } from "./components/agentic-ai-card";
+export {
+  WaitingState,
+  StatusChecklist,
+  Meter,
+  StreamedText,
+  MemoryList,
+  PolicyNote,
+  LineItems,
+  SourceLinks,
+} from "./components/agentic-parts";
+export { ShowMore, ShowMoreChevron } from "./components/show-more";
+export type { ShowMoreProps, ShowMoreChevronProps, ShowMoreTextSize, ShowMoreChevronPosition, ShowMoreChevronDirection } from "./components/show-more";
+export { Citation } from "./components/citation";
+export type { CitationProps, CitationSource } from "./components/citation";
+export type {
+  WaitingStateProps,
+  StatusChecklistProps,
+  ChecklistItem,
+  ChecklistState,
+  MeterProps,
+  StreamedTextProps,
+  MemoryListProps,
+  PolicyNoteProps,
+  LineItemsProps,
+  LineItem,
+  SourceLinksProps,
+  SourceLink,
+} from "./components/agentic-parts";

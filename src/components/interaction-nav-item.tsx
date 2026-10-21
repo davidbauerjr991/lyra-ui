@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ChevronDown, Clock, Pause, TriangleAlert, CircleAlert, User } from "lucide-react";
+import { Clock, Pause, TriangleAlert, CircleAlert, User } from "lucide-react";
 import { cn } from "../lib/utils";
 import {
   CHANNEL_ROW_COMPONENTS,
@@ -13,6 +13,7 @@ import { Tooltip } from "./tooltip";
 import { getHoldBadgeColor } from "./hold-sla";
 import { Badge, getPillInlineStyles, type BadgeColor } from "./badge";
 import { Button } from "./button";
+import { ShowMoreChevron } from "./show-more";
 import { formatPhoneForDisplay } from "./phone-input";
 
 /* ── Helpers ── */
@@ -532,16 +533,6 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       : severity === "critical"
       ? null
       : severity;
-    // The new-assignment ping ring's color, shared by the header dot and the
-    // compact tile's corner dot so each ring matches its `Badge` dot. Literal
-    // class strings so Tailwind's content scanner finds each one.
-    const newAssignmentPingBg =
-      newAssignmentSeverity === "success"
-        ? "bg-lyra-status-success-strong"
-        : newAssignmentSeverity === "warning"
-        ? "bg-lyra-status-warning-strong"
-        : "bg-lyra-status-critical-strong";
-
     const tone =
       // Per explicit request ("a non-active interactionNavItem that is on
       // hold should have the yellow background and border and avatar when
@@ -840,11 +831,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
           setChannelsExpanded((v) => !v);
         }}
       >
-        <ChevronDown
-          className={cn("h-3.5 w-3.5 transition-transform duration-200", channelsExpanded && "rotate-180")}
-          strokeWidth={1.5}
-          aria-hidden="true"
-        />
+        <ShowMoreChevron open={channelsExpanded} size="sm" />
       </Button>
     );
 
@@ -879,16 +866,10 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
               customer's name right next to it to carry the actual
               meaning, so a plain color signal reads clearly without
               needing its own icon here too. Colored by
-              `newAssignmentSeverity`; the ping ring matches the dot. */}
+              `newAssignmentSeverity`; `pulse` is the `Badge` dot's own ping ring. */}
           {isNewAssignment && (
             <Tooltip content="New assignment" placement="top">
-              <span className="relative inline-flex shrink-0">
-                <span
-                  aria-hidden="true"
-                  className={cn("absolute inset-0 animate-ping rounded-full opacity-60 motion-reduce:hidden", newAssignmentPingBg)}
-                />
-                <Badge shape="circle" dot variant={newAssignmentSeverity} size="sm" className="relative shrink-0" aria-label="New assignment" />
-              </span>
+              <Badge shape="circle" dot pulse variant={newAssignmentSeverity} size="sm" className="shrink-0" aria-label="New assignment" />
             </Tooltip>
           )}
           {/* Open-channel count — per explicit request, shown once there's
@@ -1437,19 +1418,15 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                    (`getAwaitingSeverity`, AgentNextGenPage.tsx); red now
                    means "new assignment" specifically (see
                    `cornerDotVariant`'s own doc comment above). */
-                <>
-                  {isNewAssignment && (
-                    <span aria-hidden="true" className={cn("absolute bottom-[-2px] right-[-2px] h-2 w-2 animate-ping rounded-full opacity-60 motion-reduce:hidden", newAssignmentPingBg)} />
-                  )}
-                  <Badge
-                    shape="circle"
-                    dot
-                    variant={cornerDotVariant}
-                    size="sm"
-                    className="absolute bottom-[-2px] right-[-2px] ring-2 ring-lyra-bg-surface-shell"
-                    aria-hidden="true"
-                  />
-                </>
+                <Badge
+                  shape="circle"
+                  dot
+                  pulse={isNewAssignment}
+                  variant={cornerDotVariant}
+                  size="sm"
+                  className="absolute bottom-[-2px] right-[-2px] ring-2 ring-lyra-bg-surface-shell"
+                  aria-hidden="true"
+                />
               )}
             </span>
             {/* Same "success"/"warning"/"critical" color escalation

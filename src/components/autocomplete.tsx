@@ -98,9 +98,17 @@ const Autocomplete = React.forwardRef<HTMLDivElement, AutocompleteProps>(
     const [inputValue,  setInputValue]  = React.useState(selectedOption?.label ?? "");
     const [activeIndex, setActiveIndex] = React.useState<number>(-1);
 
+    // Set when Tab closes the list so the typed text survives long enough for focus
+    // to land on the Clear button (see `handleShellBlur`).
+    const keepTextOnCloseRef = React.useRef(false);
+
     // Sync external value changes
     React.useEffect(() => {
       if (!open) {
+        if (keepTextOnCloseRef.current) {
+          keepTextOnCloseRef.current = false;
+          return;
+        }
         setInputValue(selectedOption?.label ?? "");
       }
     }, [value, open]);
@@ -167,6 +175,16 @@ const Autocomplete = React.forwardRef<HTMLDivElement, AutocompleteProps>(
       inputRef.current?.focus();
     };
 
+    const shellRef = React.useRef<HTMLDivElement>(null);
+
+    // Focus left the field (input + Clear button) while the list is closed: drop any
+    // un-picked text, as closing the list does. Moves between the input and the Clear
+    // button stay inside the shell and are ignored.
+    const handleShellBlur = (e: React.FocusEvent<HTMLDivElement>) => {
+      if (open || shellRef.current?.contains(e.relatedTarget as Node | null)) return;
+      setInputValue(selectedOption?.label ?? "");
+    };
+
     const handleClear = () => {
       setInputValue("");
       onInputChange?.("");
@@ -203,6 +221,11 @@ const Autocomplete = React.forwardRef<HTMLDivElement, AutocompleteProps>(
           setInputValue(selectedOption?.label ?? "");
           break;
         case "Tab":
+          // Closing the list normally reverts un-picked text to the selected label.
+          // Not on Tab: that emptied the field, which unmounted the Clear button the
+          // keyboard user was about to land on, dropping focus to <body>. The revert
+          // happens instead once focus leaves the whole field (`handleShellBlur`).
+          if (open && !e.shiftKey && inputValue) keepTextOnCloseRef.current = true;
           setOpen(false);
           break;
       }
@@ -260,6 +283,8 @@ const Autocomplete = React.forwardRef<HTMLDivElement, AutocompleteProps>(
         <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
           <PopoverPrimitive.Anchor asChild>
             <div
+              ref={shellRef}
+              onBlur={handleShellBlur}
               className={inputShell}
               onClick={() => !disabled && !readonly && setOpen(true)}
             >
@@ -309,7 +334,13 @@ const Autocomplete = React.forwardRef<HTMLDivElement, AutocompleteProps>(
               // `Menu` below) is what `aria-controls` points at.
               role="presentation"
               onOpenAutoFocus={(e) => e.preventDefault()}
-              onInteractOutside={() => {
+              onInteractOutside={(e) => {
+                // The input shell also holds the Clear button. Focus moving onto it
+                // (Tab from the input, while the list is still animating out) counts
+                // as "outside" the popover, but it must NOT revert the typed text:
+                // that emptied the field, which unmounted the Clear button right as
+                // it received focus, so keyboard users could never reach it.
+                if (shellRef.current?.contains(e.target as Node)) return;
                 setOpen(false);
                 setInputValue(selectedOption?.label ?? "");
               }}

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { withControlsFor } from "./storyControls";
 import { useState } from "react";
 import { Tag } from "../tag";
 import type { TagVariant, TagShape } from "../tag";
@@ -28,6 +29,8 @@ interface TagDemoProps {
   disabled?: boolean;
   variant?: TagVariant;
   shape?: TagShape;
+  dot?: boolean;
+  dotPulse?: boolean;
 }
 
 function TagDemo({
@@ -36,6 +39,8 @@ function TagDemo({
   disabled = false,
   variant = "default",
   shape = "default",
+  dot = false,
+  dotPulse = false,
 }: TagDemoProps) {
   const [removed, setRemoved] = useState(false);
   if (removed) {
@@ -54,6 +59,8 @@ function TagDemo({
       label={label}
       variant={variant}
       shape={shape}
+      dot={dot}
+      dotPulse={dotPulse}
       disabled={disabled}
       onRemove={removable ? () => setRemoved(true) : undefined}
     />
@@ -62,32 +69,25 @@ function TagDemo({
 
 type TagDemoStory = StoryObj<typeof TagDemo>;
 
-export const Default: TagDemoStory = {
+export const Default: TagDemoStory = withControlsFor({
   args: {
     label: "Tag label",
     removable: false,
     disabled: false,
     variant: "default",
     shape: "default",
+    dot: false,
+    dotPulse: false,
   },
-  parameters: {
-    controls: {
-      include: [
-        "removable",
-        "disabled",
-        "label",
-        "variant",
-        "shape",
-        "Removable",
-        "Disabled",
-        "Label",
-        "Color",
-        "Shape",
-      ],
-      sort: "none",
-    },
-  },
+  parameters: { controls: { sort: "none" } },
   argTypes: {
+    dotPulse: {
+      name: "Pulse",
+      control: "boolean",
+      description: "Pulse the dot — a ring radiates out and fades (`dotPulse`).",
+      if: { arg: "dot", truthy: true },
+      table: { category: "Appearance" },
+    },
     removable: {
       name: "Removable",
       control: "boolean",
@@ -120,9 +120,15 @@ export const Default: TagDemoStory = {
       description: "Default has rounded corners. Pill is fully rounded (`shape`).",
       table: { category: "Appearance" },
     },
+    dot: {
+      name: "Dot",
+      control: "boolean",
+      description: "A small status dot before the label, in the tag's color (`dot`). Same spacing as the remove (×) button.",
+      table: { category: "Appearance" },
+    },
   },
   render: (args) => (
     // `key` remounts the demo when a control changes.
     <TagDemo key={JSON.stringify(args)} {...args} />
   ),
-};
+});

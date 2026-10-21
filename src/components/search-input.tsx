@@ -112,8 +112,8 @@ const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
         />
         {hasValue && !readonly && (
           <ClearButton
-            // In the tab order (ClearButton defaults to `tabIndex={-1}`), so
-            // keyboard users can clear the field: input → clear → submit.
+            // `ClearButton` is a tab stop by default, so keyboard users can clear
+            // the field: input → clear → submit. Out of the order only while disabled.
             tabIndex={props.disabled ? -1 : 0}
             disabled={props.disabled}
             onClick={() => {

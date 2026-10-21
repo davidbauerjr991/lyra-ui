@@ -15,6 +15,8 @@ import {
   TableGroupRow,
   useAutoFitRows,
 } from "../table";
+import { Container } from "../container";
+import { footerButtons, headerActions as containerHeaderActionButtons } from "./Container.shared";
 import type { SortDirection } from "../table";
 import { Checkbox } from "../checkbox";
 import { MenuRadix } from "../menu-radix";
@@ -28,8 +30,9 @@ import {
   filterValueFor,
   emptyFilterValues,
 } from "./Table.shared";
-import { AdvancedSearchContent, asBuildString, asHasAnyFilters, emptyAsRoot } from "./Table.queryBuilder";
-import type { AsGroup } from "./Table.queryBuilder";
+import { QueryBuilder, describeQuery, emptyQuery, queryHasCriteria } from "../query-builder";
+import type { QueryGroup } from "../query-builder";
+import { sampleQueryCriteria } from "./QueryBuilder.shared";
 
 const meta: Meta<typeof Table> = {
   title: "Custom Primitives/Table",
@@ -65,10 +68,28 @@ interface TableDemoProps {
   startingSelection?: "none" | "some" | "all";
   sortable?: boolean;
   resizable?: boolean;
+  striped?: boolean;
+  container?: boolean;
+  containerHeader?: boolean;
+  containerHeaderTitle?: string;
+  containerHeaderSubhead?: string;
+  containerHeaderActions?: boolean;
+  containerHeaderBordered?: boolean;
+  containerFooter?: boolean;
+  containerFooterAlign?: "left" | "right" | "full";
+  containerFooterBordered?: boolean;
   toolbar?: boolean;
   showSearch?: boolean;
+  serverSearch?: boolean;
+  /** Story plumbing, not a table setting: true while the toolbar AND its search are on. Drives which controls show. */
+  searchControlsOn?: boolean;
   showFilters?: boolean;
   queryBuilder?: boolean;
+  queryBuilderLabel?: string;
+  queryBuilderFooter?: boolean;
+  queryBuilderSave?: boolean;
+  /** Story plumbing, not a table setting: true while the toolbar AND its Query Builder are on. Drives which controls show. */
+  queryBuilderControlsOn?: boolean;
   filterCount?: number;
   showColumns?: boolean;
   showActions?: boolean;
@@ -94,10 +115,24 @@ function TableDemo({
   startingSelection = "none",
   sortable = false,
   resizable = false,
+  striped = false,
+  container = false,
+  containerHeader = false,
+  containerHeaderTitle = "Agent desktops",
+  containerHeaderSubhead = "",
+  containerHeaderActions = true,
+  containerHeaderBordered = true,
+  containerFooter = false,
+  containerFooterAlign = "right",
+  containerFooterBordered = true,
   toolbar = false,
   showSearch = true,
+  serverSearch = false,
   showFilters: showFiltersArg = true,
   queryBuilder = false,
+  queryBuilderLabel = "Query Builder",
+  queryBuilderFooter = true,
+  queryBuilderSave = true,
   filterCount = 2,
   showColumns = true,
   showActions = true,
@@ -142,18 +177,22 @@ function TableDemo({
   const [filterValues, setFilterValues] = useState<Record<string, string[]>>(emptyFilterValues);
   const [visibleCols, setVisibleCols] = useState<Set<string>>(new Set(defaultToggleColumns.map((c) => c.key)));
 
-  // The query builder replaces the filter chips — they are never shown together.
-  const showFilters = showFiltersArg && !queryBuilder;
+  // Filter chips and the query builder can be on together; both narrow the rows.
+  const showFilters = showFiltersArg;
 
   // Query builder state — only used while `queryBuilder` is on. Applying it
   // is display-only here (its criteria describe people, not these rows).
-  const [qbRoot, setQbRoot] = useState<AsGroup>(emptyAsRoot);
-  const [qbApplied, setQbApplied] = useState<AsGroup | null>(null);
+  const [qbRoot, setQbRoot] = useState<QueryGroup>(emptyQuery);
+  const [qbApplied, setQbApplied] = useState<QueryGroup | null>(null);
   const [qbName, setQbName] = useState<string | undefined>(undefined);
-  const qbIsApplied = qbApplied !== null && asHasAnyFilters(qbApplied);
+  const qbIsApplied = qbApplied !== null && queryHasCriteria(qbApplied);
 
   const activeFilterDefs = defaultFilterDefs.slice(0, filterCount);
-  const q = toolbar && showSearch ? query.trim().toLowerCase() : "";
+  // Server-side search: the rows only react to the term once it is submitted
+  // (button or Enter), the way a request to a server would; `query` is just the
+  // text being typed. Live search filters on every keystroke.
+  const [submittedQuery, setSubmittedQuery] = useState("");
+  const q = toolbar && showSearch ? (serverSearch ? submittedQuery : query).trim().toLowerCase() : "";
   const matches = (r: (typeof sortableData)[number]) => {
     if (q && ![r.name, r.description, r.createdBy].some((v) => v.toLowerCase().includes(q))) return false;
     if (toolbar && showFilters) {
@@ -341,54 +380,72 @@ function TableDemo({
       );
   };
 
-  return (
+  // `TableToolbar` and `TableFooter` have no built-in side padding (they only add
+  // `py-3` / `py-2.5`), so full-bleed pages pass their own `px-*`. Inside a
+  // Container they would sit flush against its edge, so the demo insets both.
+  const insetClass = container ? "px-4" : undefined;
+  const content = (
     // Max height on: a fixed 400px box (the table scrolls inside it). Off: the
     // box fills the page (the canvas's 1rem padding on each side is
     // subtracted) and the footer, when shown, sits at the very bottom.
     <div
-      className="flex flex-col"
-      style={{ height: maxHeight ? 400 : "calc(100vh - 2rem)" }}
+      className={container ? "flex min-h-0 flex-1 flex-col" : "flex flex-col"}
+      style={container ? undefined : { height: maxHeight ? 400 : "calc(100vh - 2rem)" }}
     >
       {toolbar && (
         <TableToolbar
+          className={insetClass}
           title={showTitle ? "Agent desktops" : undefined}
           searchQuery={showSearch ? query : undefined}
           onSearchChange={showSearch ? setQuery : undefined}
+          onSearchSubmit={showSearch && serverSearch ? setSubmittedQuery : undefined}
           recordCount={rows.length}
           showRecordCount={showRecordCount}
           showAdvancedSearch={queryBuilder}
+          advancedSearchLabel={queryBuilderLabel.trim() || undefined}
           advancedSearchContent={
             queryBuilder ? (
-              <AdvancedSearchContent
-                root={qbRoot}
-                onUpdate={(g) => {
+              <QueryBuilder
+                criteria={sampleQueryCriteria}
+                value={qbRoot}
+                onChange={(g) => {
                   setQbRoot(g);
-                  if (qbApplied !== null && !asHasAnyFilters(g)) setQbApplied(null);
+                  // With the footer on, a query only applies on Apply; without one there is nothing to
+                  // confirm, so every edit applies straight away.
+                  if (!queryBuilderFooter) setQbApplied(queryHasCriteria(g) ? g : null);
+                  else if (qbApplied !== null && !queryHasCriteria(g)) setQbApplied(null);
                 }}
               />
             ) : undefined
           }
           advancedSearchApplied={queryBuilder && qbIsApplied}
           advancedSearchTitle={qbName}
-          advancedSearchDescription={qbIsApplied && qbApplied ? asBuildString(qbApplied) || undefined : undefined}
+          advancedSearchDescription={qbIsApplied && qbApplied ? describeQuery(qbApplied, sampleQueryCriteria) || undefined : undefined}
           onAdvancedSearchApply={() => setQbApplied(qbRoot)}
-          onSaveSearch={(name) => {
-            setQbName(name);
-            setQbApplied(qbRoot);
-          }}
+          advancedSearchFooter={queryBuilderFooter}
+          onSaveSearch={
+            queryBuilderFooter && queryBuilderSave
+              ? (name) => {
+                  setQbName(name);
+                  setQbApplied(qbRoot);
+                }
+              : undefined
+          }
           filterDefs={showFilters ? activeFilterDefs : undefined}
           filterValues={showFilters ? filterValues : undefined}
           onFilterChange={showFilters ? (key, vals) => setFilterValues((p) => ({ ...p, [key]: vals })) : undefined}
+          // One Clear button for whichever of the two are on — with both on, it resets both.
           onFilterClear={
-            showFilters
-              ? () => setFilterValues(emptyFilterValues())
-              : queryBuilder
-                ? () => {
+            showFilters || queryBuilder
+              ? () => {
+                  if (showFilters) setFilterValues(emptyFilterValues());
+                  if (queryBuilder) {
                     setQbApplied(null);
-                    setQbRoot(emptyAsRoot());
+                    setQbRoot(emptyQuery());
                     setQbName(undefined);
                   }
-                : undefined
+                }
+              : undefined
           }
           actionDefs={showActions ? toolbarActionDefs : undefined}
           actions={
@@ -399,7 +456,7 @@ function TableDemo({
         />
       )}
       <div ref={useAuto ? autoFitRows.containerRef : undefined} className="min-h-0 flex-1">
-      <Table aria-label={ariaLabel}>
+      <Table aria-label={ariaLabel} striped={striped}>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             <TableHead className="w-[40px] shrink-0">
@@ -443,6 +500,7 @@ function TableDemo({
       </div>
       {footer && (
         <TableFooter
+          className={insetClass}
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={setPage}
@@ -461,6 +519,28 @@ function TableDemo({
       )}
     </div>
   );
+  // Container on: the whole demo sits in a lyra-ui `Container` the reader can drag to resize
+  // (bottom-right corner) — to try the footer's auto-fit rows (rows per page
+  // follows the box's height) and the toolbar/footer's width breakpoints. The
+  // box's size replaces Max height.
+  return container ? (
+    <Container
+      radius="md"
+      className="flex flex-col overflow-hidden"
+      headerTitle={containerHeader ? containerHeaderTitle : undefined}
+      headerSubhead={containerHeader ? containerHeaderSubhead || undefined : undefined}
+      headerActions={containerHeader && containerHeaderActions ? containerHeaderActionButtons : undefined}
+      headerBordered={containerHeader && containerHeaderBordered}
+      footerActions={containerFooter ? footerButtons : undefined}
+      footerAlign={containerFooterAlign}
+      footerBordered={containerFooter && containerFooterBordered}
+      style={{ resize: "both", width: "100%", maxWidth: "100%", height: 420, minWidth: 320, minHeight: 200 }}
+    >
+      {content}
+    </Container>
+  ) : (
+    content
+  );
 }
 
 type TableDemoStory = StoryObj<typeof TableDemo>;
@@ -470,10 +550,26 @@ export const Default: TableDemoStory = {
     startingSelection: "none",
     sortable: false,
     resizable: false,
+    striped: false,
+    container: false,
+    containerHeader: false,
+    containerHeaderTitle: "Agent desktops",
+    containerHeaderSubhead: "",
+    containerHeaderActions: true,
+    containerHeaderBordered: true,
+    containerFooter: false,
+    containerFooterAlign: "right",
+    containerFooterBordered: true,
     toolbar: false,
     showSearch: true,
+    serverSearch: false,
+    searchControlsOn: false,
     showFilters: true,
     queryBuilder: false,
+    queryBuilderLabel: "Query Builder",
+    queryBuilderFooter: true,
+    queryBuilderSave: true,
+    queryBuilderControlsOn: false,
     filterCount: 2,
     showColumns: true,
     showActions: true,
@@ -497,11 +593,28 @@ export const Default: TableDemoStory = {
         "startingSelection",
         "sortable",
         "resizable",
+        "striped",
+        "container",
+        "containerHeader",
+        "containerHeaderTitle",
+        "containerHeaderSubhead",
+        "containerHeaderActions",
+        "containerHeaderBordered",
+        "containerFooter",
+        "containerFooterAlign",
+        "containerFooterBordered",
         "toolbar",
         "showSearch",
+        "serverSearch",
         "showFilters",
         "queryBuilder",
         "Query builder",
+        "queryBuilderLabel",
+        "Query builder label",
+        "queryBuilderFooter",
+        "Query builder footer",
+        "queryBuilderSave",
+        "Query builder save",
         "filterCount",
         "showColumns",
         "showActions",
@@ -524,8 +637,19 @@ export const Default: TableDemoStory = {
         "Starting selection",
         "Sortable columns",
         "Resizable columns",
+        "Striped rows",
+        "Resizable container",
+        "Container header",
+        "Header title",
+        "Header subhead",
+        "Header actions",
+        "Header divider",
+        "Container footer",
+        "Footer alignment",
+        "Footer divider",
         "Toolbar",
         "Search",
+        "Server-side search",
         "Filters",
         "Number of filters",
         "Column toggle",
@@ -563,8 +687,79 @@ export const Default: TableDemoStory = {
       name: "Resizable columns",
       control: "boolean",
       description:
-        "Adds a drag handle on the right edge of the Name, Description and Created By headers (`resizable`, `columnKey`). Focus a handle and use the arrow keys to resize from the keyboard.",
+        "Adds a drag handle on the right edge of the Name, Description and Created By headers (`resizable`, `columnKey`). Focus a handle and use the arrow keys to resize from the keyboard. The dividers only show while the pointer is over the table header (always on touch screens).",
       table: { category: "Behavior" },
+    },
+    striped: {
+      name: "Striped rows",
+      control: "boolean",
+      description:
+        "Shades every other body row with a subtle surface so long rows are easier to follow (`striped` on `Table`). Hover and selected rows keep their own colors; the header is never striped.",
+      table: { category: "Appearance" },
+    },
+    container: {
+      name: "Resizable container",
+      control: "boolean",
+      description:
+        "Puts the table in a lyra-ui `Container` you can drag to resize from its bottom-right corner. Use it to try Auto-fit rows (turn on Footer, then Auto-fit rows: rows per page follows the box's height) and the toolbar and footer width breakpoints. The box's size replaces Max height.",
+      table: { category: "Behavior" },
+    },
+    containerHeader: {
+      name: "Container header",
+      control: "boolean",
+      description: "A title and a settings button across the top of the container (`headerTitle`, `headerActions`), with a divider below it.",
+      if: { arg: "container", truthy: true },
+      table: { category: "Behavior" },
+    },
+    containerFooter: {
+      name: "Container footer",
+      control: "boolean",
+      description: "Cancel and Save buttons along the bottom of the container (`footerActions`), with a divider above them.",
+      if: { arg: "container", truthy: true },
+      table: { category: "Behavior" },
+    },
+    containerHeaderTitle: {
+      name: "Header title",
+      control: "text",
+      description: "Title text in the container header (`headerTitle`).",
+      if: { arg: "containerHeader", truthy: true },
+      table: { category: "Container header" },
+    },
+    containerHeaderSubhead: {
+      name: "Header subhead",
+      control: "text",
+      description: "Caption under the title (`headerSubhead`). Leave empty for none.",
+      if: { arg: "containerHeader", truthy: true },
+      table: { category: "Container header" },
+    },
+    containerHeaderActions: {
+      name: "Header actions",
+      control: "boolean",
+      description: "A settings icon button on the right of the header (`headerActions`).",
+      if: { arg: "containerHeader", truthy: true },
+      table: { category: "Container header" },
+    },
+    containerHeaderBordered: {
+      name: "Header divider",
+      control: "boolean",
+      description: "A dividing line below the header (`headerBordered`).",
+      if: { arg: "containerHeader", truthy: true },
+      table: { category: "Container header" },
+    },
+    containerFooterAlign: {
+      name: "Footer alignment",
+      control: "inline-radio",
+      options: ["left", "right", "full"],
+      description: "Where the footer buttons sit: left, right, or stretched to fill the width (`footerAlign`).",
+      if: { arg: "containerFooter", truthy: true },
+      table: { category: "Container footer" },
+    },
+    containerFooterBordered: {
+      name: "Footer divider",
+      control: "boolean",
+      description: "A dividing line above the footer (`footerBordered`).",
+      if: { arg: "containerFooter", truthy: true },
+      table: { category: "Container footer" },
     },
     toolbar: {
       name: "Toolbar",
@@ -580,6 +775,21 @@ export const Default: TableDemoStory = {
       if: { arg: "toolbar", truthy: true },
       table: { category: "Toolbar" },
     },
+    serverSearch: {
+      name: "Server-side search",
+      control: "boolean",
+      description:
+        "Adds a submit button to the search field (`onSearchSubmit`). Once a term is typed, an arrow button appears; the rows only filter when it is clicked or Enter is pressed, instead of on every keystroke. Clearing the field resets the results.",
+      // Only while the toolbar and its Search are both on (see `searchControlsOn`
+      // and the `useEffect` in `render` — a control can only depend on one arg).
+      if: { arg: "searchControlsOn", truthy: true },
+      table: { category: "Toolbar" },
+    },
+    searchControlsOn: {
+      description: "Story plumbing: true while Toolbar and Search are both on.",
+      control: false,
+      table: { disable: true },
+    },
     showFilters: {
       name: "Filters",
       control: "boolean",
@@ -591,9 +801,37 @@ export const Default: TableDemoStory = {
       name: "Query builder",
       control: "boolean",
       description:
-        "A Query Builder button that opens a panel for building a query from criteria and And/Or/Not groups (`showAdvancedSearch`). It replaces the filter chips, so turning it on switches Filters off and Filters can't be turned back on while it is on. Applying a query is display-only in this demo.",
+        "A Query Builder button that opens a panel for building a query from criteria and And/Or/Not groups (`showAdvancedSearch`). It can be on together with the filter chips; one Clear button resets both. Applying a query is display-only in this demo.",
       if: { arg: "toolbar", truthy: true },
       table: { category: "Toolbar" },
+    },
+    queryBuilderLabel: {
+      name: "Query builder label",
+      control: "text",
+      description: "Text on the Query Builder button (`advancedSearchLabel`). Once a query is applied the button reads \"Applied Filters\" (`advancedSearchAppliedLabel`).",
+      if: { arg: "queryBuilderControlsOn", truthy: true },
+      table: { category: "Toolbar" },
+    },
+    queryBuilderFooter: {
+      name: "Query builder footer",
+      control: "boolean",
+      description:
+        "The Apply and Cancel buttons along the bottom of the Query Builder popover (`advancedSearchFooter`). Off: no footer, so there's nothing to confirm and every edit applies straight away (this demo does that).",
+      if: { arg: "queryBuilderControlsOn", truthy: true },
+      table: { category: "Toolbar" },
+    },
+    queryBuilderSave: {
+      name: "Query builder save",
+      control: "boolean",
+      description:
+        "The Save Search button in the popover footer (shown when `onSaveSearch` is passed). Only applies while the footer is on.",
+      if: { arg: "queryBuilderControlsOn", truthy: true },
+      table: { category: "Toolbar" },
+    },
+    queryBuilderControlsOn: {
+      description: "Story plumbing: true while Toolbar and Query builder are both on.",
+      control: false,
+      table: { disable: true },
     },
     filterCount: {
       name: "Number of filters",
@@ -601,7 +839,7 @@ export const Default: TableDemoStory = {
       options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
       description:
         "How many filter chips the toolbar shows, up to 10, added in this order: Description, Created By, Published, Team, Region, Status, Priority, Channel, Language, Tier. Each one filters the rows.",
-      if: { arg: "showFilters", truthy: true },
+      if: { arg: "toolbar", truthy: true },
       table: { category: "Toolbar" },
     },
     showColumns: {
@@ -696,7 +934,8 @@ export const Default: TableDemoStory = {
       name: "Max height",
       control: "boolean",
       description:
-        "On: the table sits in a 400px box. Off: it fills the full page height and the footer is fixed to the bottom of the page.",
+        "On: the table sits in a 400px box. Off: it fills the full page height and the footer is fixed to the bottom of the page. Hidden while Resizable container is on, because the container's own size sets the height then.",
+      if: { arg: "container", truthy: false },
       table: { category: "Appearance" },
     },
     ariaLabel: {
@@ -713,14 +952,16 @@ export const Default: TableDemoStory = {
     },
   },
   render: function Render(args) {
-    // `useArgs` only works inside a story function, so it lives here rather
-    // than in a child component. Query builder and filter chips are mutually
-    // exclusive: while the query builder is on, Filters is switched off and
-    // stays off.
+    // A control can only depend on one other control, but Server-side search needs
+    // Toolbar and Search on, and the Query builder options need Toolbar and Query
+    // builder on — so keep hidden args in step with each pair.
     const [, updateArgs] = useArgs();
+    const searchControlsOn = Boolean(args.toolbar && args.showSearch);
+    const queryBuilderControlsOn = Boolean(args.toolbar && args.queryBuilder);
     useEffect(() => {
-      if (args.queryBuilder && args.showFilters) updateArgs({ showFilters: false });
-    }, [args.queryBuilder, args.showFilters, updateArgs]);
+      if (args.searchControlsOn !== searchControlsOn) updateArgs({ searchControlsOn });
+      if (args.queryBuilderControlsOn !== queryBuilderControlsOn) updateArgs({ queryBuilderControlsOn });
+    }, [args.searchControlsOn, searchControlsOn, args.queryBuilderControlsOn, queryBuilderControlsOn, updateArgs]);
     return (
       // `key` remounts the demo when a control changes — `useState`'s initial
       // value only applies on first mount.

@@ -8,6 +8,8 @@ import { cn } from "../lib/utils";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg";
 export type AvatarShape = "circle" | "rounded";
+/** Which corner of the avatar its `badge` sits on. */
+export type AvatarBadgePosition = "top-right" | "bottom-right";
 export type AvatarColor =
   | "primary"
   | "active"
@@ -53,6 +55,16 @@ export interface AvatarProps {
   shape?: AvatarShape;
   /** One of this library's own `Icon`-style background tokens. */
   color?: AvatarColor;
+  /**
+   * A small marker on the avatar's corner — a status dot, an unread count, an
+   * icon. Pass a circle `Badge` (`<Badge shape="circle" dot variant="success" bordered />`);
+   * the avatar only positions it. Size it to the avatar (`sm` for `xs`/`sm`, `md` for
+   * `md`/`lg`). A badge with a count carries its own accessible name, so it is
+   * announced even though the avatar itself is decorative.
+   */
+  badge?: React.ReactNode;
+  /** Corner for `badge` (default: "top-right"). Status dots usually go bottom-right. */
+  badgePosition?: AvatarBadgePosition;
   className?: string;
   /**
    * Accessible name. Omit for a purely decorative avatar sitting next to
@@ -66,7 +78,7 @@ export interface AvatarProps {
 
 /* ── CVA definitions ── */
 
-const avatarVariants = cva("inline-flex shrink-0 items-center justify-center", {
+const avatarVariants = cva("relative inline-flex shrink-0 items-center justify-center", {
   variants: {
     size: {
       // Matches the chat-bubble avatars in `InteractionTranscript`'s
@@ -142,6 +154,20 @@ const AVATAR_ICON_CLASS: Record<AvatarSize, string> = {
   lg: "h-5 w-5",
 };
 
+// Badge placement. The badge's CENTER sits where the avatar's outline is: for a
+// circle that is the 45° point (14.6% in from each side of the bounding box), for the
+// rounded square it is the corner itself (a small inset keeps it on the curve).
+const AVATAR_BADGE_POSITION: Record<AvatarShape, Record<AvatarBadgePosition, string>> = {
+  circle: {
+    "top-right": "right-[14.6%] top-[14.6%] translate-x-1/2 -translate-y-1/2",
+    "bottom-right": "bottom-[14.6%] right-[14.6%] translate-x-1/2 translate-y-1/2",
+  },
+  rounded: {
+    "top-right": "right-0.5 top-0.5 translate-x-1/2 -translate-y-1/2",
+    "bottom-right": "bottom-0.5 right-0.5 translate-x-1/2 translate-y-1/2",
+  },
+};
+
 /* ── Component ── */
 
 /**
@@ -161,19 +187,28 @@ export function Avatar({
   size = "md",
   shape = "circle",
   color = "shell",
+  badge,
+  badgePosition = "top-right",
   className,
   ...rest
 }: AvatarProps) {
   const ariaLabel = rest["aria-label"];
+  // A decorative avatar is normally `aria-hidden` as a whole. With a badge that would
+  // also hide the badge (an unread count would never be announced), so only the
+  // initials/glyph are hidden and the badge stays in the accessibility tree.
+  const hideWhole = !ariaLabel && !badge;
   return (
     <span
       className={cn(avatarVariants({ size, shape, color }), className)}
-      {...(ariaLabel ? { role: "img", "aria-label": ariaLabel } : { "aria-hidden": true })}
+      {...(ariaLabel ? { role: "img", "aria-label": ariaLabel } : hideWhole ? { "aria-hidden": true } : {})}
     >
       {initials ? (
-        <span className={AVATAR_LABEL_CLASS[size]}>{initials}</span>
+        <span className={AVATAR_LABEL_CLASS[size]} aria-hidden={!ariaLabel && badge ? true : undefined}>{initials}</span>
       ) : (
         <IconGlyph className={AVATAR_ICON_CLASS[size]} strokeWidth={1.5} aria-hidden="true" />
+      )}
+      {badge && (
+        <span className={cn("absolute z-[1] inline-flex", AVATAR_BADGE_POSITION[shape][badgePosition])}>{badge}</span>
       )}
     </span>
   );

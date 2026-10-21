@@ -19,6 +19,7 @@ export const ALL_VARIANTS = [
   "warning-none",  "warning-subtle", "warning-solid",  "warning-dotted",
   "error-none",    "error-subtle",   "error-strong",   "error-dotted",
   "neutral-none",  "neutral-subtle", "neutral-strong", "neutral-dotted",
+  "purple-subtle",
   "popover", "modal",
 ] as const;
 
@@ -30,6 +31,7 @@ export const COLOR_GROUPS = [
   { label: "Warning", variants: ["warning-none", "warning-subtle", "warning-solid", "warning-dotted"] },
   { label: "Error",   variants: ["error-none", "error-subtle", "error-strong", "error-dotted"] },
   { label: "Neutral", variants: ["neutral-none", "neutral-subtle", "neutral-strong", "neutral-dotted"] },
+  { label: "Purple",  variants: ["purple-subtle"] },
 ] as const;
 
 export const BASE_SURFACES = ["default", "popover", "modal"] as const;

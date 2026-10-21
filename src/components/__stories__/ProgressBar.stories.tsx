@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { ProgressBar } from "../progress-bar";
+import { withControlsFor } from "./storyControls";
 
 const meta: Meta<typeof ProgressBar> = {
   title: "Headless Primitives/Progress Bar",
@@ -29,7 +30,7 @@ type Story = StoryObj<typeof ProgressBar>;
 /* ── Default — the interactive playground. Replaces the old All Variants /
    Sizes / States / Custom Label stories' one-off bars: pick the variant, size,
    value and label here instead. ── */
-export const Default: Story = {
+export const Default: Story = withControlsFor({
   render: (args) => (
     <div className="w-full max-w-md">
       {/* `label` is "" when the Label text control is cleared — fall back to
@@ -37,18 +38,8 @@ export const Default: Story = {
       <ProgressBar {...args} label={args.label || undefined} />
     </div>
   ),
-  args: { value: 60, variant: "default", size: "md", showLabel: false, label: "", indeterminate: false },
-  parameters: {
-    controls: {
-      // Storybook matches `include` against each control's display `name`
-      // (falling back to its key), so list the names; keys are kept too.
-      include: [
-        "Value", "Indeterminate", "Show label", "Label text", "Variant", "Size",
-        "value", "indeterminate", "showLabel", "label", "variant", "size",
-      ],
-      sort: "none",
-    },
-  },
+  args: { value: 60, variant: "default", size: "md", showLabel: false, label: "", labelAlign: "start", indeterminate: false },
+  parameters: { controls: { sort: "none" } },
   argTypes: {
     value: {
       name: "Value",
@@ -67,6 +58,14 @@ export const Default: Story = {
       control: "boolean",
       description: "Shows a label under the track (`showLabel`).",
       table: { category: "Content", defaultValue: { summary: "false" } },
+    },
+    labelAlign: {
+      name: "Label alignment",
+      control: "radio",
+      options: ["start", "center", "end"],
+      description: "Where the label sits under the track: left (default), centered or right (`labelAlign`).",
+      if: { arg: "showLabel", truthy: true },
+      table: { category: "Content", defaultValue: { summary: "start" } },
     },
     label: {
       name: "Label text",
@@ -90,4 +89,4 @@ export const Default: Story = {
       table: { category: "Appearance", defaultValue: { summary: "md" } },
     },
   },
-};
+});

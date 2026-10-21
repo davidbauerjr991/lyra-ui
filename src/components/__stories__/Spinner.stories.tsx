@@ -9,7 +9,7 @@ const meta: Meta<typeof Spinner> = {
   // Real Spinner props stay on the Docs page; Default's own
   // `parameters.controls.include` below curates the Controls panel.
   argTypes: {
-    variant: { control: "radio", options: ["bar", "circle"] },
+    variant: { control: "radio", options: ["bar", "circle", "ring"] },
     size:    { control: "radio", options: ["sm", "md", "lg"] },
     color:   { control: "radio", options: ["primary", "inverse"] },
   },
@@ -59,8 +59,8 @@ export const Default: Story = {
     variant: {
       name: "Variant",
       control: "radio",
-      options: ["bar", "circle"],
-      description: "Three pulsing bars or a pulsing circle.",
+      options: ["bar", "circle", "ring"],
+      description: "Three pulsing bars, a pulsing circle, or a small turning ring (for inline use, e.g. a checklist row).",
       table: { category: "Appearance", defaultValue: { summary: "bar" } },
     },
     size: {

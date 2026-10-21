@@ -224,7 +224,11 @@ function CalendarCaption() {
   );
 }
 
-/* ── Year picker overlay ── */
+/* ── Year picker overlay ──
+   The overlay scrolls (`overflow-auto`), which clips anything painted outside its
+   box — so the outer columns lost the left/right edge of their focus ring (2px,
+   outside the button) and the "this year" border. `p-1` leaves room for both. The
+   month picker below uses the same overlay. */
 
 function YearPicker({ currentYear }: { currentYear: number }) {
   const { viewYear, setViewYear, setView, size } = React.useContext(ViewContext);
@@ -234,7 +238,7 @@ function YearPicker({ currentYear }: { currentYear: number }) {
   const years = Array.from({ length: 24 }, (_, i) => start + i);
 
   return (
-    <div className="absolute inset-0 bg-lyra-bg-surface-base z-10 flex flex-col gap-3 overflow-auto">
+    <div className="absolute inset-0 bg-lyra-bg-surface-base z-10 flex flex-col gap-3 overflow-auto p-1">
       <div className="grid grid-cols-4 gap-1">
         {years.map(y => (
           <button key={y} type="button"
@@ -268,7 +272,7 @@ function MonthPicker({ currentMonth }: { currentMonth: Date }) {
   const todayYear  = new Date().getFullYear();
 
   return (
-    <div className="absolute inset-0 bg-lyra-bg-surface-base z-10 flex flex-col gap-3 overflow-auto">
+    <div className="absolute inset-0 bg-lyra-bg-surface-base z-10 flex flex-col gap-3 overflow-auto p-1">
       <div className="grid grid-cols-4 gap-1">
         {MONTHS_SHORT.map((name, i) => {
           const isSelected = viewYear === currentMonth.getFullYear() && i === currentMonth.getMonth();
