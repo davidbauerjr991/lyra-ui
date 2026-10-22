@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { AgenticAICard } from "../agentic-ai-card";
+import { LYRA_CARD_MAX_WIDTH } from "../../lib/size-tokens";
 import type { AICardColor } from "../ai-card";
 import type { AgenticStatus } from "../agentic-ai-card";
 import type { AvatarColor } from "../avatar";
@@ -100,8 +101,8 @@ function AgenticAICardDemo({
   // `key` remounts when the open-state controls change so "Starts open" takes effect.
   const key = `${widget}-${accordion}-${defaultOpen}`;
   return (
-    // Max width caps the card at 350px (a narrow side panel); full takes the whole width available.
-    <div className={width === "max-width" ? "w-full max-w-[350px]" : "w-full"}>
+    // Max width caps the card at the max card width token (a narrow side panel); full takes the whole width available.
+    <div className={width === "max-width" ? "w-full max-w-[var(--lyra-size-card-max-width)]" : "w-full"}>
       {widget === "Customer Sentiment" && <CustomerSentimentCard key={key} frame={sentimentFrame} {...card} />}
       {widget === "Real-Time Summary" && <RealTimeSummaryCard key={key} frame={summaryFrame} {...card} />}
       {widget === "Knowledge Base Answer" && <KnowledgeBaseAnswerCard key={key} frame={answerFrame} {...card} />}
@@ -267,8 +268,8 @@ export const Default: Story = withControlsFor({
       name: "Width",
       control: "radio",
       options: ["max-width", "full"],
-      labels: { "max-width": "Max width (350px)", full: "Full screen" },
-      description: "Max width caps the card at 350px, like a narrow side panel. Full screen lets it take all the width available.",
+      labels: { "max-width": `Max width (${LYRA_CARD_MAX_WIDTH}px)`, full: "Full screen" },
+      description: `Max width caps the card at ${LYRA_CARD_MAX_WIDTH}px (the --lyra-size-card-max-width token), like a narrow side panel. Full screen lets it take all the width available.`,
       table: { category: "Appearance", defaultValue: { summary: "max-width" } },
     },
     radius: {
