@@ -36,6 +36,7 @@ There are three repos:
 ## Architecture
 - Tailwind preset (`src/tailwind-preset.ts`) maps CSS variables to utility classes
 - Design tokens live in `src/styles/lyra-tokens.css` (light + dark themes)
+- **Size tokens** (added for agent-next-gen-demo's P-CANVAS): `--lyra-size-card-max-width` (350px, provisional) is the max card width — AgenticAICard's "Max width" story option and the demo's reference column both read it. `LYRA_CARD_MAX_WIDTH` (`src/lib/size-tokens.ts`, exported) mirrors it as a number for px props such as `SidePanel`'s `width`; change both together. Use `max-w-[var(--lyra-size-card-max-width)]`, not a literal.
 - Storybook fallback tokens in `src/storybook.css`
 - Tailwind config at `tailwind.config.js` (must mirror preset for Storybook)
 - Components export from `src/index.ts`

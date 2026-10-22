@@ -147,6 +147,12 @@
   --lyra-border-default: 1px;
   --lyra-border-md: 2px;
   --lyra-border-lg: 4px;
+
+  /* ── Sizes ── */
+  /* The max card width: a card capped like a narrow side panel (AgenticAICard's "Max width"). Mirrored by
+     `LYRA_CARD_MAX_WIDTH` in src/lib/size-tokens.ts for props that take px numbers (SidePanel's `width`);
+     change both together. */
+  --lyra-size-card-max-width: 350px;
 }
 
 /* ════════════════════════════════════════════════════
