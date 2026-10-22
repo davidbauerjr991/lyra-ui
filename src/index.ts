@@ -338,6 +338,8 @@ export { ColumnsIcon } from "./components/icons/columns-icon";
 
 export { ProgressBar } from "./components/progress-bar";
 export type { ProgressBarProps } from "./components/progress-bar";
+export { Stepper } from "./components/stepper";
+export type { StepperProps, StepperStep, StepperOrientation, StepperLabelPlacement, StepperNavigation, StepperNavigationAlign, StepperButtonProps } from "./components/stepper";
 export { Overlay, OverlayBackdrop } from "./components/overlay";
 export { Modal } from "./components/modal";
 export type { ModalProps } from "./components/modal";
