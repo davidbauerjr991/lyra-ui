@@ -256,7 +256,7 @@ export const Default: Story = withControlsFor({
       control: "radio",
       options: ["auto", "always", "never"],
       description:
-        "The phone-sized look for horizontal steppers: the current step's title with \"Step 2 of 5\" and a segmented progress bar. Auto switches to it when the container is under 425px wide (`compact`, `compactBelow`); Always and Never force it. Vertical steppers never collapse.",
+        "The phone-sized look for horizontal steppers: the current step's title with \"Step 2 of 5\" and a segmented progress bar. Auto switches to it when the container is 480px wide or narrower, Lyra\'s small-screen breakpoint (`compact`); Always and Never force it. Vertical steppers never collapse.",
       if: { arg: "orientation", eq: "horizontal" },
       table: { category: "Appearance", defaultValue: { summary: "auto" } },
     },

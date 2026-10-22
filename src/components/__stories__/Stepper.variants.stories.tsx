@@ -96,7 +96,7 @@ export const States: Story = {
   ),
 };
 
-/* ── Compact (phone) — what a horizontal stepper becomes below 425px: the current
+/* ── Compact (phone) — what a horizontal stepper becomes at 480px and under: the current
    step's title, "Step n of N", and a segmented bar. Shown here at 375px wide
    with "auto" (no `compact` prop), the way it behaves in a real narrow
    container. ── */

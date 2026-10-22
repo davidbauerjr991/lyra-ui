@@ -1436,3 +1436,50 @@
    already uses for its Add/Day/Week collapse (SchedulePanel.tsx) — an
    established, working precedent in that codebase for "a component
    collapses based on its own rendered width." */
+
+/* ════════════════════════════════════════════════════
+   Stepper compact view (CSS container query)
+   ════════════════════════════════════════════════════
+   A horizontal `Stepper` (stepper.tsx, `compact="auto"`, the default) turns
+   into its phone summary (current step + "Step 2 of 5" + a segmented bar)
+   when ITS OWN container is 480px or narrower, the same small-screen
+   threshold as `.lyra-form-grid`'s single-column stage, `.lyra-card-split`
+   and the page-header breadcrumb collapse. Container query, not `@media`,
+   so a side panel opening around it collapses it too while the window stays
+   the same size.
+
+   `.lyra-stepper-wrap` is the query boundary (a full-width block).
+   `.lyra-stepper-full` is the real numbered list: below the threshold it is
+   not hidden but visually hidden (clipped to 1px, the same as Tailwind's
+   `sr-only`), so screen readers still get every step.
+   `.lyra-stepper-compact` is the summary, `display: none` until then.
+   `.lyra-stepper-column` is the wrapper holding steps + Back/Next buttons:
+   normally only as wide as the steps (so the buttons line up with them),
+   full width once compact. Scoped under the wrap, for the same specificity
+   reason as `.lyra-tab-overflow-wrap` above. */
+.lyra-stepper-wrap {
+  container-type: inline-size;
+}
+.lyra-stepper-wrap .lyra-stepper-compact {
+  display: none;
+}
+@container (max-width: 480px) {
+  .lyra-stepper-wrap .lyra-stepper-full {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+  .lyra-stepper-wrap .lyra-stepper-compact {
+    display: flex;
+  }
+  .lyra-stepper-wrap .lyra-stepper-column {
+    width: 100%;
+    max-width: none;
+  }
+}

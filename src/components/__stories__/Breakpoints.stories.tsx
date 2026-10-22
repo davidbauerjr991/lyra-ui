@@ -17,6 +17,7 @@ import { PhoneInput } from "../phone-input";
 import { InteriorPanel } from "../interior-panel";
 import { SidePanel } from "../side-panel";
 import { Button } from "../button";
+import { Stepper } from "../stepper";
 
 /* ── Foundations/Breakpoints ──
    A live reference for every responsive threshold in lyra-ui. Almost all
@@ -65,6 +66,7 @@ const REGISTRY = [
   { family: "Card Split", wrap: ".lyra-card-split-wrap", query: ".lyra-card-split", thresholds: "480px", usedBy: "DashboardCard children composition; agent-next-gen-v1's Customer Information Overview tab (fields list + Latest Interaction, via -even)" },
   { family: "Metric Row", wrap: ".lyra-metric-row-wrap", query: ".lyra-metric-row", thresholds: "768px, 550px, 360px", usedBy: "DashboardCard's metrics mode" },
   { family: "Tab Overflow", wrap: ".lyra-tab-overflow-wrap", query: ".lyra-tab-overflow-full / -collapsed", thresholds: "400px", usedBy: "TabList overflowMenu" },
+  { family: "Stepper Compact", wrap: ".lyra-stepper-wrap", query: ".lyra-stepper-full / -compact / -column", thresholds: "480px", usedBy: "Stepper (horizontal, compact=\"auto\")" },
   { family: "Breadcrumb Collapse", wrap: ".lyra-page-header-breadcrumb-wrap", query: "-full / -collapsed", thresholds: "480px", usedBy: "PageHeader" },
   { family: "Container Header Actions Boundary", wrap: ".lyra-container-header-actions-wrap", query: "(boundary only — see the two families below)", thresholds: "480px", usedBy: "ContainerHeader actionsWrap prop" },
   { family: "Container Header Filter Collapse", wrap: ".lyra-container-header-actions-wrap", query: "-filter-full / -filter-compact / -filter-trigger", thresholds: "480px (same boundary as Actions Boundary above)", usedBy: "agent-next-gen-v1's DateFilterChip / ContactHistoryDateFilterChip" },
@@ -680,6 +682,37 @@ export const BreadcrumbCollapse: Story = {
             ]}
           />
         </div>
+      </ResizeBox>
+    </div>
+  ),
+};
+
+/* ════════════════════════════════════════════════════
+   Stepper Compact — .lyra-stepper-wrap (real Stepper)
+   ════════════════════════════════════════════════════ */
+
+export const StepperCompact: Story = {
+  name: "Stepper Compact",
+  render: () => (
+    <div className="flex flex-col gap-4">
+      <p className="lyra-body-sm text-lyra-fg-secondary">
+        A horizontal `Stepper` — at ≤480px of its own container's width, the
+        numbered row of steps swaps for a one-line summary (the current
+        step's title, "Step 2 of 4") and a segmented progress bar. The full
+        list stays in the page, visually hidden, for screen readers.
+      </p>
+      <ResizeBox width={620}>
+        <Stepper
+          aria-label="Setup progress"
+          steps={[
+            { title: "Tenant setup" },
+            { title: "Prepare tenant access" },
+            { title: "Create employee access" },
+            { title: "Verify" },
+          ]}
+          currentStep={1}
+          fill
+        />
       </ResizeBox>
     </div>
   ),

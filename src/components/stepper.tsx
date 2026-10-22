@@ -33,9 +33,10 @@ import { ContainerFooter } from "./container-footer";
        connectors.
 
    Narrow containers: a horizontal stepper with several titles does not fit a
-   phone. Below `compactBelow` px (default 425, measured on the stepper's own
-   container, so a narrow card collapses it too) it switches to a compact
-   summary: the current step's circle and title with "Step 2 of 5" beneath, and
+   phone. At 480px or narrower (Lyra's small-screen breakpoint, a CSS container
+   query on the stepper's own parent, see `.lyra-stepper-wrap` in
+   lyra-tokens.css, so a narrow card or a side panel opening collapses it too)
+   it switches to a compact summary: the current step's circle and title with "Step 2 of 5" beneath, and
    a segmented bar (one `ProgressBar` per step: finished green, current blue,
    upcoming empty). The full list stays in the DOM, visually hidden, so screen
    readers still get every step. Vertical steppers already fit narrow widths and
@@ -49,7 +50,6 @@ import { ContainerFooter } from "./container-footer";
    state: the buttons call `onBack` / `onNext` / `onFinish` and the parent
    changes `currentStep`. */
 
-const COMPACT_BELOW_DEFAULT = 425;
 
 export type StepperOrientation = "horizontal" | "vertical";
 export type StepperLabelPlacement = "inline" | "below";
@@ -107,10 +107,8 @@ export interface StepperProps
   backButtonProps?: StepperButtonProps;
   /** Style the Next button with any `Button` prop. Default variant "default" (primary). */
   nextButtonProps?: StepperButtonProps;
-  /** Compact summary for narrow spaces (horizontal only): "auto" (default) turns it on when the stepper's container is narrower than `compactBelow`; `true` always, `false` never. */
+  /** Compact summary for narrow spaces (horizontal only): "auto" (default) switches to it when the stepper's container is 480px wide or narrower (a CSS container query); `true` always, `false` never. */
   compact?: "auto" | boolean;
-  /** Container width in px under which "auto" compact turns on. Default 425. */
-  compactBelow?: number;
   /** Builds the compact caption, e.g. "Step 2 of 5". Override it to translate. */
   stepOfLabel?: (current: number, total: number) => string;
 }
@@ -214,12 +212,14 @@ function CompactSummary({
   optionalLabel,
   stepOfLabel,
   disabled,
+  className,
 }: {
   steps: StepperStep[];
   currentStep: number;
   optionalLabel: string;
   stepOfLabel: (current: number, total: number) => string;
   disabled: boolean;
+  className?: string;
 }) {
   const total = steps.length;
   const done = currentStep >= total;
@@ -228,7 +228,7 @@ function CompactSummary({
   const muted = disabled || !!step.disabled;
   const caption = [stepOfLabel(index + 1, total), step.optional ? optionalLabel : null].filter(Boolean).join(" · ");
   return (
-    <div aria-hidden="true" className="flex w-full flex-col gap-3">
+    <div aria-hidden="true" className={cn("flex w-full flex-col gap-3", className)}>
       <div className="flex items-center gap-2.5">
         <StepIndicator index={index} status={done ? "complete" : "current"} disabled={muted} error={!!step.error} />
         <span className="flex min-w-0 flex-col">
@@ -342,7 +342,6 @@ const Stepper = React.forwardRef<HTMLOListElement, StepperProps>(
       backButtonProps,
       nextButtonProps,
       compact = "auto",
-      compactBelow = COMPACT_BELOW_DEFAULT,
       stepOfLabel = (current, total) => `Step ${current} of ${total}`,
       className,
       ...props
@@ -352,19 +351,10 @@ const Stepper = React.forwardRef<HTMLOListElement, StepperProps>(
     const horizontal = orientation === "horizontal";
     const below = labelPlacement === "below";
 
-    // Measure the container (not the window) so a narrow card collapses it too.
-    const wrapRef = React.useRef<HTMLDivElement>(null);
-    const [narrow, setNarrow] = React.useState(false);
-    React.useLayoutEffect(() => {
-      const el = wrapRef.current;
-      if (compact !== "auto" || !el) return;
-      const update = () => setNarrow(el.getBoundingClientRect().width < compactBelow);
-      update();
-      const observer = new ResizeObserver(update);
-      observer.observe(el);
-      return () => observer.disconnect();
-    }, [compact, compactBelow]);
-    const showCompact = horizontal && steps.length > 0 && (compact === true || (compact === "auto" && narrow));
+    // "auto" is pure CSS (container query on `.lyra-stepper-wrap`, lyra-tokens.css): the summary and the list are
+    // both rendered and CSS shows one. `true` forces the summary; `false` never renders it.
+    const compactAuto = horizontal && compact === "auto" && steps.length > 0;
+    const showCompact = horizontal && compact === true && steps.length > 0;
 
     const list = (
       <ol
@@ -374,7 +364,7 @@ const Stepper = React.forwardRef<HTMLOListElement, StepperProps>(
           showCompact
             ? "sr-only"
             : horizontal
-              ? cn("flex", fill ? "w-full" : "inline-flex")
+              ? cn("flex", compactAuto && "lyra-stepper-full", fill ? "w-full" : "inline-flex")
               : cn("flex flex-col", fill && (navigation === "none" ? "h-full" : "min-h-0 flex-1"), below ? "items-center" : "items-start"),
           className
         )}
@@ -434,21 +424,29 @@ const Stepper = React.forwardRef<HTMLOListElement, StepperProps>(
 
     if (!horizontal && !buttons) return list;
     return (
-      // Outer box: the container's full width (measured for compact mode) and, when filling, its full height.
-      <div ref={wrapRef} className={cn("w-full", buttons && fill && "h-full")}>
+      // Outer box: the container's full width (the compact query boundary) and, when filling, its full height.
+      <div className={cn("w-full", compactAuto && "lyra-stepper-wrap", buttons && fill && "h-full")}>
         {/* Inner column: steps, then the button row. Filling, it spans the container (so a footer can sit at the
-            bottom); otherwise it is only as wide as the steps, so the buttons line up with them. The compact
-            summary always uses the full width. */}
+            bottom); otherwise it is only as wide as the steps, so the buttons line up with them. Compact makes it
+            full width (also via CSS for "auto"). */}
         <div
           className={cn(
             buttons && "flex flex-col gap-5",
             buttons && (fill || showCompact ? "w-full" : "w-fit max-w-full"),
-            buttons && fill && "h-full"
+            buttons && fill && "h-full",
+            buttons && compactAuto && "lyra-stepper-column"
           )}
         >
           {list}
-          {showCompact && (
-            <CompactSummary steps={steps} currentStep={currentStep} optionalLabel={optionalLabel} stepOfLabel={stepOfLabel} disabled={disabled} />
+          {(showCompact || compactAuto) && (
+            <CompactSummary
+              steps={steps}
+              currentStep={currentStep}
+              optionalLabel={optionalLabel}
+              stepOfLabel={stepOfLabel}
+              disabled={disabled}
+              className={compactAuto ? "lyra-stepper-compact" : undefined}
+            />
           )}
           {buttons}
         </div>
