@@ -191,6 +191,11 @@ silently.
 
 ## Key Components
 
+### useListReorder, hideChip, NavItem badge (added for agent-next-gen-demo's P-PROFILES, 2026-10-23)
+- **`useListReorder({ order, onReorder, keyboardReorder?, orientation?, disabled?, getLabel? })`** (`src/components/use-list-reorder.ts`, exported) is the one reorder primitive for lists (a nav's cards, a settings list). It is controlled: the consumer owns `order` and the hook keeps only transient drag state. Pointer drag is native HTML5 on each item; the keyboard follows `TabList`'s convention (Ctrl+Shift+Up/Down, or Left/Right horizontally, moves the focused item and announces it). Spread `itemProps(key)` on each item and style the drop target with `data-[drag-over]:`. Prefer it over `useColumnReorder` (uncontrolled) for anything that isn't table columns. Stories: `Headless Primitives/useListReorder`.
+- **`hideChip`** on `InteractionNavItem` (every row) and `InteractionChannel` (one row) hides the channel pill; the channel name stays as sr-only text. Story: "Expanded — Hide Chip".
+- **`NavItem.badge`** (and `TreeMenuItem` / `TreeMenuChild.badge`): a critical circle count, overlaid on the icon in the collapsed rail (the same overlay as `Button`'s `badge`) and after the label when expanded; the rail button's accessible name includes the count. Story: `UI/LeftNav` "Item Badge".
+
 ### Icon (`src/components/icon.tsx`)
 - New `"info"` value added to `IconBackground` (existing: none/primary/active/success/warning/critical/neutral/surface) — renders `bg-lyra-accent-purple-soft text-lyra-accent-purple-strong`, giving a purple icon-badge option alongside the existing blue (`active`)/green (`success`)/amber (`warning`)/red (`critical`) badges.
 - The `--lyra-color-accent-purple-soft`/`-strong` tokens already existed in `lyra-tokens.css` and were already mapped in `tailwind.config.js`, but were missing from `tailwind-preset.ts` (the file Storybook itself uses) — added there too so the utility classes resolve identically in both the templates app and Storybook. Always add new Tailwind color utilities to **both** files, per Important Patterns below — this was a pre-existing gap in that rule being followed for this token pair specifically.
