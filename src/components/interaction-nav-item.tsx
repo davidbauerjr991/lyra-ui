@@ -266,6 +266,9 @@ export interface InteractionNavItemProps {
    * `allExpanded` to match, without having to wait for another bulk click.
    */
   onChannelsExpandedChange?: (expanded: boolean) => void;
+  /** Hides the channel chip on every channel row of this card (a row's own
+   *  `InteractionChannel.hideChip` hides just that one). Default `false`. */
+  hideChip?: boolean;
   className?: string;
 }
 
@@ -305,6 +308,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       collapsible = false,
       channelsExpandedOverride,
       onChannelsExpandedChange,
+      hideChip = false,
       className,
     },
     ref
@@ -709,6 +713,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                 <RowComponent
                   key={`${channelKey(ch)}-${i}`}
                   elapsed={ch.elapsed}
+                  hideChip={hideChip || ch.hideChip}
                   // Was missing entirely, same class of bug as `outcome`'s
                   // own doc comment just below — every other per-channel
                   // field here got forwarded from `ch`, but this one (added

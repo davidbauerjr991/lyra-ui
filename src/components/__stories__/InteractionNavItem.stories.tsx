@@ -644,6 +644,31 @@ export const ExpandedMultiChannelInactive: Story = {
   parameters: { layout: "padded" },
 };
 
+/* `hideChip` hides the channel pill on every row (the channel name stays as
+   screen-reader text). Same card with and without, side by side. */
+function ExpandedHideChipDemo() {
+  const outcomes = useOutcomeDemos(RAY_CHANNELS.length);
+  const channels = withOutcomes(RAY_CHANNELS, outcomes);
+  return (
+    <div className="flex items-start gap-6">
+      <div className="flex w-64 flex-col gap-2">
+        <span className="lyra-label">Chips shown</span>
+        <InteractionNavItem customerName="Ray Torres" active elapsed="04:00" expanded channels={channels} />
+      </div>
+      <div className="flex w-64 flex-col gap-2">
+        <span className="lyra-label">hideChip</span>
+        <InteractionNavItem customerName="Ray Torres" active elapsed="04:00" expanded hideChip channels={channels} />
+      </div>
+    </div>
+  );
+}
+
+export const ExpandedHideChip: Story = {
+  name: "Expanded — Hide Chip",
+  render: () => <ExpandedHideChipDemo />,
+  parameters: { layout: "padded" },
+};
+
 export const ExpandedVoice: Story = {
   name: "Expanded — Voice Channel",
   // `channels` (a nested array prop) isn't something Storybook's

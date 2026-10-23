@@ -157,6 +157,10 @@ export const CHANNEL_TYPE_TAG_VARIANT: Record<ChannelType, TagVariant> = {
 };
 
 export interface InteractionChannel {
+  /** Hides this row's channel chip (the "Chat"/"Voice" pill). The channel
+   *  name stays available to screen readers. `InteractionNavItem`'s own
+   *  `hideChip` hides it on every row at once. */
+  hideChip?: boolean;
   /** Keeps this row blue-highlighted (like the current channel) even when it isn't the card's current channel, e.g. a live call alongside an open chat. Only applies on the active card. */
   alwaysHighlighted?: boolean;
   /** Unique identifier for this specific channel instance. Required to
@@ -379,6 +383,9 @@ export function buildVoiceMenuItems(onDismiss?: () => void): MenuEntry[] {
 interface ChannelRowProps {
   icon: React.ReactNode;
   label: string;
+  /** Hides the channel chip; `label` is kept as screen-reader text. See
+   *  `InteractionChannel.hideChip`. */
+  hideChip?: boolean;
   /** Per explicit request ("when hovering on the channel chips - add a
    *  tooltip that is {channel name} ie. inbound voice / outbound voice /
    *  sms / chat / whatsapp / etc.") — the chip's own hover `Tooltip` text.
@@ -566,6 +573,7 @@ function stripPromotedChannelRowActions(items: MenuEntry[], options?: { keepCons
 const ChannelRow: React.FC<ChannelRowProps> = ({
   icon,
   label,
+  hideChip = false,
   tooltipLabel,
   variant,
   elapsed,
@@ -670,12 +678,16 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
           second signal, not a clarifying one. The chip's own color swap
           (`severity ?? variant` just below) still carries the same
           information on its own, unchanged. */}
-      <Tooltip content={tooltipLabel ?? label} placement="top">
-        <span className={cn(tagVariants({ variant: severity ?? variant, shape: "pill" }))}>
-          <span aria-hidden="true">{icon}</span>
-          {label}
-        </span>
-      </Tooltip>
+      {hideChip ? (
+        <span className="sr-only">{tooltipLabel ?? label}</span>
+      ) : (
+        <Tooltip content={tooltipLabel ?? label} placement="top">
+          <span className={cn(tagVariants({ variant: severity ?? variant, shape: "pill" }))}>
+            <span aria-hidden="true">{icon}</span>
+            {label}
+          </span>
+        </Tooltip>
+      )}
       {/* Trailing button cluster — Consult/Transfer, Outcome, and the kebab
           — grouped together as siblings in ONE wrapper so all three read as
           a single unit in the code, with `gap-0` applied consistently
@@ -1052,6 +1064,8 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
 
 export interface ChannelRowInstanceProps {
   elapsed: string;
+  /** Passed straight through to `ChannelRow` — see `InteractionChannel.hideChip`. */
+  hideChip?: boolean;
   /** Passed straight through to `ChannelRow` — see `InteractionChannel.
    *  elapsedOverride`'s own doc comment. */
   elapsedOverride?: React.ReactNode;
