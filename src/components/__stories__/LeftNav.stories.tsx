@@ -252,6 +252,34 @@ export const Collapsed: Story = {
   },
 };
 
+/* ── Item badge ── a `NavItem`'s `badge` count: on the icon in the collapsed
+   rail (the same overlay as Button's `badge`), after the label when
+   expanded. Toggle the rail to see both. ── */
+
+const badgeItems: NavItem[] = [
+  { icon: <Home className="h-5 w-5" strokeWidth={1.5} />, label: "Home", active: true },
+  { icon: <Inbox className="h-5 w-5" strokeWidth={1.5} />, label: "Assignments", badge: 3 },
+  { icon: <Settings className="h-5 w-5" strokeWidth={1.5} />, label: "Settings" },
+];
+
+function ItemBadgeDemo() {
+  const [open, setOpen] = useState(false);
+  return (
+    <LeftNav
+      items={[]}
+      open={open}
+      overlay={false}
+      onToggle={() => setOpen((v) => !v)}
+      footer={<NavRail expanded={open} items={badgeItems} />}
+    />
+  );
+}
+
+export const ItemBadge: Story = {
+  name: "Item Badge",
+  render: () => <ItemBadgeDemo />,
+};
+
 /* ── No Toggle (always expanded) ── */
 
 export const NoToggle: Story = {

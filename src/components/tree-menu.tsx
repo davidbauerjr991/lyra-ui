@@ -2,6 +2,7 @@ import * as React from "react";
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "../lib/utils";
+import { Badge } from "./badge";
 
 /* ── Types ── */
 
@@ -9,6 +10,8 @@ export interface TreeMenuChild {
   label: string;
   active?: boolean;
   onClick?: () => void;
+  /** Count shown as a critical circle badge after the label (hidden at 0). */
+  badge?: number;
   /**
    * Optional leading icon for this row — e.g. a per-item type glyph in a
    * flat list of leaves under a category (see the "Call Centers" story,
@@ -54,6 +57,8 @@ export interface TreeMenuItem {
   icon?: React.ReactNode;
   label: string;
   active?: boolean;
+  /** Count shown as a critical circle badge after the label (hidden at 0). */
+  badge?: number;
   children?: TreeMenuChild[];
   /** Initial state when uncontrolled (see `open`). */
   defaultOpen?: boolean;
@@ -345,7 +350,14 @@ function TreeMenuRow({
               {item.icon}
             </span>
           );
-          const label = <span className="flex-1 text-left truncate">{item.label}</span>;
+          const label = (
+            <>
+              <span className="flex-1 text-left truncate">{item.label}</span>
+              {item.badge != null && item.badge > 0 && (
+                <Badge shape="circle" variant="critical" size="sm" count={item.badge} className="flex-shrink-0" />
+              )}
+            </>
+          );
           const chevron = hasChildren && (
             <span
               aria-hidden="true"

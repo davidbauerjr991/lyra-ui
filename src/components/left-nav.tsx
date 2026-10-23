@@ -5,6 +5,7 @@ import { TreeMenu, type TreeMenuItem } from "./tree-menu";
 import { Tooltip } from "./tooltip";
 import { cn } from "../lib/utils";
 import { SkipLink } from "./skip-link";
+import { Badge } from "./badge";
 
 /* ── Types ── */
 
@@ -22,6 +23,26 @@ export interface NavItem {
   defaultOpen?: boolean;
   children?: NavChild[];
   onClick?: () => void;
+  /** Count badge: on the icon's top-right corner in the collapsed rail (the
+   *  same overlay as `Button`'s `badge`), after the label when expanded.
+   *  Hidden when 0 or unset. */
+  badge?: number;
+}
+
+/** The collapsed rail's icon, with `badge` overlaid like `Button`'s. */
+function NavItemIcon({ item }: { item: NavItem }) {
+  if (item.badge == null || item.badge <= 0) return <span aria-hidden="true">{item.icon}</span>;
+  return (
+    <span className="relative inline-flex" aria-hidden="true">
+      {item.icon}
+      <Badge shape="circle" variant="critical" size="sm" count={item.badge} className="absolute -top-2 -right-2" />
+    </span>
+  );
+}
+
+/** The rail button's accessible name, with the count when there is one. */
+function navItemAriaLabel(item: NavItem): string {
+  return item.badge != null && item.badge > 0 ? `${item.label}, ${item.badge}` : item.label;
 }
 
 /* ── LeftNav ── */
@@ -194,6 +215,7 @@ function toTreeItems(items: NavItem[]): TreeMenuItem[] {
     icon: item.icon,
     label: item.label,
     active: item.active,
+    badge: item.badge,
     defaultOpen: item.defaultOpen,
     onClick: item.onClick,
     children: item.expandable ? item.children : undefined,
@@ -349,7 +371,7 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
               <Tooltip content={item.label} placement="right" asLabel>
                 <button
                   onClick={item.onClick}
-                  aria-label={item.label}
+                  aria-label={navItemAriaLabel(item)}
                   aria-current={isActive ? "page" : undefined}
                   className={cn(
                     "relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lyra-sm transition-colors",
@@ -362,7 +384,7 @@ const LeftNav = React.forwardRef<HTMLElement, LeftNavProps>(
                       : "text-lyra-fg-default hover:bg-lyra-state-hover active:bg-lyra-state-pressed"
                   )}
                 >
-                  <span aria-hidden="true">{item.icon}</span>
+                  <NavItemIcon item={item} />
                 </button>
               </Tooltip>
             </div>
@@ -882,7 +904,7 @@ const NavRail = React.forwardRef<
               <Tooltip content={item.label} placement="right" asLabel>
                 <button
                   onClick={item.onClick}
-                  aria-label={item.label}
+                  aria-label={navItemAriaLabel(item)}
                   aria-current={isActive ? "page" : undefined}
                   className={cn(
                     "relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lyra-sm transition-colors",
@@ -895,7 +917,7 @@ const NavRail = React.forwardRef<
                       : "text-lyra-fg-default hover:bg-lyra-state-hover active:bg-lyra-state-pressed"
                   )}
                 >
-                  <span aria-hidden="true">{item.icon}</span>
+                  <NavItemIcon item={item} />
                 </button>
               </Tooltip>
             </div>
