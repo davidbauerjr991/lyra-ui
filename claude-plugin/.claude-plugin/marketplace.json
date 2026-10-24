@@ -1,0 +1,11 @@
+{
+  "name": "lyra-ui",
+  "owner": { "name": "David Bauer" },
+  "plugins": [
+    {
+      "name": "lyra-prototype",
+      "source": "./",
+      "description": "Build Lyra UI prototypes, repos and component galleries from a few questions; map mockups onto Lyra components; review agents for lyra conformance, bloat and agent walkthroughs."
+    }
+  ]
+}

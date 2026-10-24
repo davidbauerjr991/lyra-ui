@@ -10,6 +10,23 @@ React component library built on the **Lyra Foundations (Beta)** design system f
 - **You are Claude, modifying library components**: `CLAUDE.md` + `CONTRIBUTING.md` are the binding rulebooks.
 - **Your own components** (not in the library): `src/components/local/` — gitignored, survives pulls; see its README.
 
+## Use in Claude Code / Cowork
+
+This repo ships a Claude Code plugin, `lyra-prototype`, in [`claude-plugin/`](claude-plugin/). It turns the wizard into an in-chat skill: Claude asks the wizard's questions in chat and then runs the flow itself, with no prompt to copy and paste.
+
+1. In Claude Code (or Cowork), run `/plugin`, choose **Add marketplace**, and enter the path to this repo's plugin folder, e.g. `../lyra-ui/claude-plugin` (or `/plugin marketplace add ../lyra-ui/claude-plugin`).
+2. Install **lyra-prototype** from that marketplace (`/plugin install lyra-prototype@lyra-ui`), then restart if prompted.
+3. Ask for a prototype ("build me a Lyra admin prototype"), or type `/lyra-prototype` and pick the skill from the slash menu.
+
+The HTML wizard (`create-lyra-prototype.html`) stays for people without the plugin and produces the same results.
+
+The plugin also bundles four read-only subagents:
+
+- **component-matcher**: maps a screenshot, wireframe, storyboard html or prose onto Lyra components (region, component, props, story, confidence) before anything is built.
+- **lyra-review**: checks a repo's diff for Lyra conformance: hand-rolled UI where a Lyra component exists, raw values where a token exists, unauthorized lyra-ui edits, and the `.lyra-ui-sync` file.
+- **bloat-review**: checks a repo's diff for oversized or fast-growing files, duplicate implementations, new module-level state and dead exports.
+- **agent-walkthrough**: drives a running prototype as its end user with a throwaway Playwright script, compares each step with the spec and reports with screenshots.
+
 ## Components
 
 The full, current component catalog lives in the [live Storybook](https://davidbauerjr991.github.io/lyra-ui/) and `src/index.ts` — a hand-maintained list here would go stale (and did). Categories: Custom Primitives, Headless Primitives, UI, Charts, and Templates (Admin UIs, Agent Next Gen, Data Management, Dashboards, Forms).

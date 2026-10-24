@@ -2409,6 +2409,14 @@ Verified: `npm run lint` (`tsc --noEmit`) — matched the standing 3-error basel
 - A string title renders in the `<h2>` as before. An element title renders in a `<div>` with the same classes (a heading can't contain a breadcrumb's `<nav>`/`<ol>`), plus `<h2 className="sr-only">{titleText}</h2>` when `titleText` is set, so the header keeps its heading for screen readers.
 - Every existing caller passes a string, so nothing changes for them. Story: ContainerHeader "With element title".
 
+### claude-plugin/ — lyra-prototype skill + component-matcher and review agents
+2026-10-24. New Claude Code plugin in `claude-plugin/` (no component changes).
+- `skills/lyra-prototype/SKILL.md`: the in-chat version of `create-lyra-prototype.html`. Finds or clones lyra-ui, asks the wizard's questions with AskUserQuestion, then runs the same flows (createPrompt, createRepoDupPrompt, createGalleryPrompt, createSubmitPrompt, the Storybook update, publish) by pointing at CLAUDE-INSTRUCTIONS.md and prototype-kit rather than restating them. Adds a "build from a mockup" flow. Claude Design is the only flow that still hands over a prompt.
+- `agents/`: component-matcher (maps a mockup onto Lyra components, with stories and confidence), lyra-review, bloat-review and agent-walkthrough (Playwright, scratchpad-only). All read-only, model sonnet.
+- `.claude-plugin/marketplace.json` makes the folder a local marketplace: `/plugin marketplace add <path>/lyra-ui/claude-plugin`, then `/plugin install lyra-prototype@lyra-ui`.
+- README "Use in Claude Code / Cowork" section; one line under the wizard's title pointing plugin users at the skill.
+- If a wizard prompt changes, check the matching SKILL.md bullet still describes it.
+
 ## Planned Future Work
 - Empty template
 - Edit template (settings/configure)
