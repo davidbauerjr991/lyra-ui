@@ -738,6 +738,9 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                   // The standalone Consult / Transfer button is off unless the
                   // channel asks for it; when on, the kebab drops its copy.
                   showConsultTransfer={ch.showConsultTransfer ?? false}
+                  consultTransferLabel={ch.consultTransferLabel}
+                  consultTransferDisabledReason={ch.consultTransferDisabledReason}
+                  endCallDisabledReason={ch.endCallDisabledReason}
                   showKebab={ch.showKebab}
                   alwaysShowOutcome={ch.alwaysShowOutcome}
                   showDismissButton={ch.showDismissButton}

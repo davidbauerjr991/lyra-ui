@@ -62,6 +62,18 @@ const WhatsAppIcon = ({ className = "h-3 w-3" }: { className?: string }) => (
  *  single Lucide icon covered "transfer" at the time); replaced with
  *  Lucide's own `ArrowLeftRight` (two opposing horizontal arrows), a
  *  single glyph, so this is now a plain icon rather than a composed one. */
+/** A disabled button takes no pointer events, so its reason tooltip sits on a wrapping span. No reason: the child alone. */
+const WithDisabledReason = ({ reason, children }: { reason?: string; children: React.ReactNode }) =>
+  reason ? (
+    <Tooltip content={reason} placement="top">
+      <span className="inline-flex" data-disabled-reason={reason}>
+        {children}
+      </span>
+    </Tooltip>
+  ) : (
+    <>{children}</>
+  );
+
 const ConsultTransferIcon = () => (
   <ArrowLeftRight className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
 );
@@ -269,6 +281,13 @@ export interface InteractionChannel {
    *  false is `AgentNextGenPage.tsx`'s own `channels` builder — every other
    *  caller omits this and keeps the button exactly as before. */
   showConsultTransfer?: boolean;
+  /** The standalone transfer button's name, for a channel with no consult
+   *  (e.g. "Transfer"). Default: "Consult / Transfer". */
+  consultTransferLabel?: string;
+  /** Disables the transfer button and says why in a tooltip. */
+  consultTransferDisabledReason?: string;
+  /** Disables the End Call button (see `onEndCall`) and says why in a tooltip. */
+  endCallDisabledReason?: string;
   /** Show the trailing "More Options" kebab (⋮) button — see
    *  `ChannelRowProps.showKebab`'s own doc comment for the full reasoning.
    *  Default: true. Per explicit request (Agent Workspace 2.0 Phase 1
@@ -454,6 +473,12 @@ interface ChannelRowProps {
    *  Phase 1 only). Default: true (every other consumer keeps this button
    *  exactly as before). */
   showConsultTransfer?: boolean;
+  /** See `InteractionChannel.consultTransferLabel`. */
+  consultTransferLabel?: string;
+  /** See `InteractionChannel.consultTransferDisabledReason`. */
+  consultTransferDisabledReason?: string;
+  /** See `InteractionChannel.endCallDisabledReason`. */
+  endCallDisabledReason?: string;
   /** Hide just the trailing "More Options" kebab (⋮) button, leaving
    *  Consult/Transfer and Outcome (each governed by their own prop)
    *  untouched — per explicit request (Agent Workspace 2.0 Phase 1 only).
@@ -591,6 +616,9 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
   onMenuOpenChange,
   outcome,
   showConsultTransfer = true,
+  consultTransferLabel = "Consult / Transfer",
+  consultTransferDisabledReason,
+  endCallDisabledReason,
   showKebab = true,
   alwaysShowOutcome = true,
   showDismissButton = false,
@@ -776,15 +804,17 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
             }
           >
             {showConsultTransfer && (
-              <Button
-                variant="icon"
-                size="icon-sm"
-                title="Consult / Transfer"
-                disabled={controlsDisabled}
-                className="shrink-0 text-lyra-fg-secondary"
-              >
-                <ConsultTransferIcon />
-              </Button>
+              <WithDisabledReason reason={consultTransferDisabledReason}>
+                <Button
+                  variant="icon"
+                  size="icon-sm"
+                  title={consultTransferLabel}
+                  disabled={controlsDisabled || !!consultTransferDisabledReason}
+                  className="shrink-0 text-lyra-fg-secondary"
+                >
+                  <ConsultTransferIcon />
+                </Button>
+              </WithDisabledReason>
             )}
             {/* Kebab ("More Options") — per explicit request, sits
                 immediately to the left of Outcome now, rather than as the
@@ -898,25 +928,22 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
               </Button>
             )}
             {onEndCall && (
-              // Per explicit follow-up ("sorry I don't want it in a solid
-              // square - just make the hang up icon red"): reverted from a
-              // solid-red-FILLED `variant="destructive"` button to a plain
-              // ghost icon button matching this same overlay's own
-              // Unassign & Dismiss treatment just below (`showDismissButton`)
-              // — no background fill, just the `PhoneOff` glyph itself in
-              // red, with a light red hover/press state.
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                title="End Call"
-                className="shrink-0 text-lyra-status-critical-strong hover:bg-lyra-status-critical-subtle hover:text-lyra-status-critical-strong active:bg-lyra-status-critical-medium"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEndCall();
-                }}
-              >
-                <PhoneOff className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
-              </Button>
+              // A plain ghost icon button: just the red `PhoneOff` glyph, with a light red hover/press state.
+              <WithDisabledReason reason={endCallDisabledReason}>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  title="End Call"
+                  disabled={!!endCallDisabledReason}
+                  className="shrink-0 text-lyra-status-critical-strong hover:bg-lyra-status-critical-subtle hover:text-lyra-status-critical-strong active:bg-lyra-status-critical-medium"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEndCall();
+                  }}
+                >
+                  <PhoneOff className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+                </Button>
+              </WithDisabledReason>
             )}
             {showDismissButton && onDismiss && (
               <Button
@@ -1105,6 +1132,12 @@ export interface ChannelRowInstanceProps {
   outcome?: ChannelOutcomeConfig;
   /** Passed straight through to `ChannelRow` — see its own doc comment. */
   showConsultTransfer?: boolean;
+  /** Passed straight through to `ChannelRow` — see its own doc comment. */
+  consultTransferLabel?: string;
+  /** Passed straight through to `ChannelRow` — see its own doc comment. */
+  consultTransferDisabledReason?: string;
+  /** Passed straight through to `ChannelRow` — see its own doc comment. */
+  endCallDisabledReason?: string;
   /** Passed straight through to `ChannelRow` — see its own doc comment. */
   showKebab?: boolean;
   /** Passed straight through to `ChannelRow` — see its own doc comment. */
