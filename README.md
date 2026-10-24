@@ -22,7 +22,7 @@ This repo ships a Claude Code plugin, `lyra-prototype`, in [`claude-plugin/`](cl
 
 The HTML wizard (`create-lyra-prototype.html`) stays for people without the plugin and produces the same results.
 
-The plugin also bundles seven read-only subagents:
+The plugin also bundles nine read-only subagents:
 
 - **component-matcher**: maps a screenshot, wireframe, storyboard html or prose onto Lyra components (region, component, props, story, confidence) before anything is built.
 - **lyra-review**: checks a repo's diff for Lyra conformance: hand-rolled UI where a Lyra component exists, raw values where a token exists, unauthorized lyra-ui edits, and the `.lyra-ui-sync` file.
@@ -31,6 +31,8 @@ The plugin also bundles seven read-only subagents:
 - **commit-check**: pre-commit reviewer. Re-runs the type-check and tests itself, checks the staged diff (or a commit range) against the repo's CLAUDE.md rules and the step's done-criteria, and returns a `BLOCK` / `FIX BEFORE COMMIT` / `CLEAN — OK to commit` verdict.
 - **heuristic-evaluator**: walks a running prototype or a set of screens against Nielsen's 10 heuristics plus contact-center criteria, rates findings 0–4, pairs each with a Lyra UI fix, and writes the report to `docs/ux/`.
 - **market-researcher**: researches how CXone, Genesys, Salesforce, Connect, Flex, Zendesk, Intercom, Front and others handle a given UX pattern, with sources, and writes a pattern table plus a Lyra recommendation to `docs/ux/`.
+- **a11y-review**: runs axe via Playwright for every theme × light/dark mode plus scripted keyboard, focus, live-region and touch-target checks; findings against WCAG 2.2 AA with Lyra fixes.
+- **theme-conformance**: finds raw values that should be tokens, tokens and classes no theme defines, and contrast failures per theme, with counts.
 
 ## Components
 
