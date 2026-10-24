@@ -14,7 +14,9 @@ React component library built on the **Lyra Foundations (Beta)** design system f
 
 This repo ships a Claude Code plugin, `lyra-prototype`, in [`claude-plugin/`](claude-plugin/). It turns the wizard into an in-chat skill: Claude asks the wizard's questions in chat and then runs the flow itself, with no prompt to copy and paste.
 
-1. In Claude Code (or Cowork), run `/plugin`, choose **Add marketplace**, and enter the path to this repo's plugin folder, e.g. `../lyra-ui/claude-plugin` (or `/plugin marketplace add ../lyra-ui/claude-plugin`).
+1. In Claude Code (or Cowork), add the marketplace one of two ways (or run `/plugin`, choose **Add marketplace**, and enter either value):
+   - **From GitHub, no clone needed**: `/plugin marketplace add davidbauerjr991/lyra-ui`
+   - **From a local clone**: `/plugin marketplace add ../lyra-ui/claude-plugin` (the path to this repo's plugin folder)
 2. Install **lyra-prototype** from that marketplace (`/plugin install lyra-prototype@lyra-ui`), then restart if prompted.
 3. Ask for a prototype ("build me a Lyra admin prototype"), or type `/lyra-prototype` and pick the skill from the slash menu.
 
