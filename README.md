@@ -22,13 +22,15 @@ This repo ships a Claude Code plugin, `lyra-prototype`, in [`claude-plugin/`](cl
 
 The HTML wizard (`create-lyra-prototype.html`) stays for people without the plugin and produces the same results.
 
-The plugin also bundles five read-only subagents:
+The plugin also bundles seven read-only subagents:
 
 - **component-matcher**: maps a screenshot, wireframe, storyboard html or prose onto Lyra components (region, component, props, story, confidence) before anything is built.
 - **lyra-review**: checks a repo's diff for Lyra conformance: hand-rolled UI where a Lyra component exists, raw values where a token exists, unauthorized lyra-ui edits, and the `.lyra-ui-sync` file.
 - **bloat-review**: checks a repo's diff for oversized or fast-growing files, duplicate implementations, new module-level state and dead exports.
 - **agent-walkthrough**: drives a running prototype as its end user with a throwaway Playwright script, compares each step with the spec and reports with screenshots.
 - **commit-check**: pre-commit reviewer. Re-runs the type-check and tests itself, checks the staged diff (or a commit range) against the repo's CLAUDE.md rules and the step's done-criteria, and returns a `BLOCK` / `FIX BEFORE COMMIT` / `CLEAN — OK to commit` verdict.
+- **heuristic-evaluator**: walks a running prototype or a set of screens against Nielsen's 10 heuristics plus contact-center criteria, rates findings 0–4, pairs each with a Lyra UI fix, and writes the report to `docs/ux/`.
+- **market-researcher**: researches how CXone, Genesys, Salesforce, Connect, Flex, Zendesk, Intercom, Front and others handle a given UX pattern, with sources, and writes a pattern table plus a Lyra recommendation to `docs/ux/`.
 
 ## Components
 
