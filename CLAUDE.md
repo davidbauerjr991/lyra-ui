@@ -83,6 +83,7 @@ When this repo (or a sibling repo mounted alongside it, e.g. `agent-next-gen-v3`
 ## Process & verification
 
 - Don't add Co-Authored-By, Claude-Session or any other attribution lines to commit messages.
+- **Before each commit run `lyra-prototype:commit-check` on the staged diff and fix its `block`/`fix` findings; before reporting a component or token change also run `lyra-prototype:bloat-review`, `lyra-prototype:a11y-review` (against the Storybook story for the component) and `lyra-prototype:theme-conformance`.** The plugin lives in `claude-plugin/`; install per README "Use in Claude Code / Cowork".
 - **After editing a multi-line `/* ... */` doc comment in this repo, re-read the whole comment, not just your own diff — `tsc --noEmit` is not sufficient to catch a premature closing `*/`.** This exact mistake (a new paragraph accidentally closes the block early, leaving the original comment's remaining text as bare unparseable code) has happened twice — once in `agent-dashboard.tsx` (`tsc` caught it, 19 cascading errors) and once in `Dashboards.stories.tsx` (`tsc` reported clean; the user only found out live via Storybook's "Failed to fetch dynamically imported module" error). After any doc-comment edit, verify with a direct `esbuild` bundle of the touched file (`platform: "browser"`, `jsx: "automatic"`, `external` for `react`/`react-dom`/`lucide-react`/`@storybook/*`) in addition to `tsc --noEmit` — that's the same bundler Storybook's Vite dev server actually uses, and it will catch what `tsc` sometimes doesn't.
 
 ## Repo history & scope rules
