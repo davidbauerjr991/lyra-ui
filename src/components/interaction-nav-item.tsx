@@ -735,17 +735,9 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                   removable={ch.removable}
                   removeVariant={ch.removeVariant}
                   menuItems={ch.menuItems}
-                  // Hidden from the standalone icon-button slot in both
-                  // expanded views (the real expanded card and the compact
-                  // tile's hover-preview — the only two places `ChannelRow`
-                  // renders here at all; the compact tile itself shows no
-                  // channel rows) per explicit request, regardless of
-                  // `ch.showConsultTransfer` — `stripPromotedChannelRowActions`
-                  // below still keeps "Consult / Transfer" reachable from the
-                  // row's own kebab menu (`keepConsultTransfer: true` exactly
-                  // because this is `false`), so the action itself isn't lost,
-                  // just moved out of the always-visible cluster.
-                  showConsultTransfer={false}
+                  // The standalone Consult / Transfer button is off unless the
+                  // channel asks for it; when on, the kebab drops its copy.
+                  showConsultTransfer={ch.showConsultTransfer ?? false}
                   showKebab={ch.showKebab}
                   alwaysShowOutcome={ch.alwaysShowOutcome}
                   showDismissButton={ch.showDismissButton}
