@@ -168,6 +168,10 @@ interface ToastProps
    *  auto-dismissed from view (Radix requires one for actions). Defaults to
    *  `actionLabel`. */
   actionAltText?: string;
+  /** Replaces the status icon in the leading slot — e.g. an `Avatar` for a
+   *  toast about a person ("Maya Chen: new message"). Unset (default): the
+   *  variant's status icon, as before. `variant` still colors the toast. */
+  leading?: React.ReactNode;
 }
 
 const Toast =React.forwardRef<React.ElementRef<typeof RadixToast.Root>, ToastProps>(
@@ -182,6 +186,7 @@ const Toast =React.forwardRef<React.ElementRef<typeof RadixToast.Root>, ToastPro
       actionLabel,
       onAction,
       actionAltText,
+      leading,
       children,
       ...props
     },
@@ -247,7 +252,7 @@ const Toast =React.forwardRef<React.ElementRef<typeof RadixToast.Root>, ToastPro
         {...props}
       >
         <span className="flex-shrink-0 pt-0.5">
-          <Icon icon={StatusIcon} size="md" color={iconColorMap[variant]} decorative />
+          {leading ?? <Icon icon={StatusIcon} size="md" color={iconColorMap[variant]} decorative />}
         </span>
         <div className="flex-1 min-w-0">
           {title && (

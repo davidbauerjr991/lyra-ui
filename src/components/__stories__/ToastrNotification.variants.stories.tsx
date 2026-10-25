@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { Avatar } from "../avatar";
 import { Button } from "../button";
+import { Tag } from "../tag";
 import { Toast, ToastContainer, useToast } from "../toast";
 import type { ToastVariant } from "../toast";
 import { TOAST_COPY, TOAST_DEMO_COPY, TOAST_VARIANTS } from "./ToastrNotification.shared";
@@ -88,6 +90,40 @@ export const WithAction: Story = {
       </Toast>
       <Toast variant="info" title="New transcript ready" actionLabel="View" onAction={() => {}} onDismiss={() => {}}>
         The call from 2:14 PM has been transcribed.
+      </Toast>
+    </ToastContainer>
+  ),
+};
+
+/* ── With Leading Avatar — `leading` replaces the status icon, e.g. with the
+   person a toast is about (an event on another assignment). `variant` still
+   sets the toast's color; the body can carry a Tag and one line. ── */
+export const WithLeadingAvatar: Story = {
+  name: "With Leading Avatar",
+  render: () => (
+    <ToastContainer className="static inset-auto w-[400px]">
+      <Toast
+        variant="info"
+        title="Maya Chen"
+        leading={<Avatar initials="MC" size="sm" />}
+        actionLabel="View"
+        onAction={() => {}}
+        onDismiss={() => {}}
+      >
+        <span className="flex flex-col items-start gap-1">
+          <Tag shape="pill" variant="teal" label="Chat" />
+          <span>Is the replacement tank shipping today?</span>
+        </span>
+      </Toast>
+      <Toast
+        variant="warning"
+        title="Lucas Thomas"
+        leading={<Avatar initials="LT" size="sm" />}
+        actionLabel="View"
+        onAction={() => {}}
+        onDismiss={() => {}}
+      >
+        Checkout AI Agent requested approval.
       </Toast>
     </ToastContainer>
   ),
