@@ -1,6 +1,7 @@
 import * as React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
-import { MessageSquare, Mail, Phone } from "lucide-react";
+import { CalendarDays, MessageSquare, Mail, Phone } from "lucide-react";
+import { Tag } from "../tag";
 import { InteractionNavItem, type InteractionChannel } from "../interaction-nav-item";
 import { CreateNew, AddChannelButton, useAddChannelButton, type CreateNewOutboundConfig, type CreateNewOutboundContact } from "../create-new";
 import { WhatsAppIcon, type ChannelType, type ChannelOutcomeConfig } from "../channel-row";
@@ -978,6 +979,32 @@ export const AddChannelButtonPrimitive: AddChannelButtonPrimitiveStory = {
       console.log("Start call:", selection.channel, "→", selection.contact.name);
     },
   },
+};
+
+/* ── Kind card — an assignment with no channels (a meeting, a training, a
+   task): `kindIcon` sits on the compact tile's top-left corner, where a
+   channel count would; expanded, the kind is a `Tag` with its icon in
+   `headerAction`. ── */
+export const KindCard: Story = {
+  name: "Kind Card (No Channels)",
+  parameters: { layout: "padded" },
+  render: () => (
+    <div className="flex items-start gap-6">
+      <div className="w-16">
+        <InteractionNavItem customerName="Returns team stand-up" customerIdentified={false} elapsed="12:00" expanded={false} kindIcon={<CalendarDays strokeWidth={1.5} />} />
+      </div>
+      <div className="w-72">
+        <InteractionNavItem
+          customerName="Returns team stand-up"
+          elapsed="12:00"
+          expanded
+          active
+          headerAction={<Tag shape="pill" variant="info" icon={<CalendarDays strokeWidth={1.5} />} label="Meeting" />}
+          kindIcon={<CalendarDays strokeWidth={1.5} />}
+        />
+      </div>
+    </div>
+  ),
 };
 
 /* ── Expanded — shape: corner radius and borders (the same two props Container has) ── */

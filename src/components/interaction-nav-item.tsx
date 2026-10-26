@@ -71,6 +71,14 @@ export interface InteractionNavItemProps {
    *  `SmsChannelRow`/`WhatsAppChannelRow`/`VoiceChannelRow` in
    *  `channel-row.tsx`) based on `type`. */
   channels?: InteractionChannel[];
+  /**
+   * For a card with no channels — an assignment that isn't a conversation
+   * (a meeting, a training, a task…): its kind's icon, shown on the compact
+   * tile's top-left corner, where a channel icon or count would be. Pass a
+   * Lucide icon element; it's sized to fit. Ignored while the card has
+   * channels. Unset (default): nothing changes.
+   */
+  kindIcon?: React.ReactNode;
   /** Elapsed time label as 4-digit MM:SS (e.g. "00:02" = 2 seconds since the
    *  customer's last response) — shown under the compact avatar tile. */
   elapsed: string;
@@ -289,6 +297,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       customerName,
       customerIdentified,
       channels = [],
+      kindIcon,
       elapsed,
       awaitingResponse = false,
       awaitingSeverity,
@@ -1348,6 +1357,16 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
               >
                 {hasCustomerName ? initials : <User className="h-4 w-4" strokeWidth={1.5} />}
               </span>
+              {/* A channel-less card's kind, in the corner a channel count would take. */}
+              {kindIcon && channelCount === 0 && (
+                <span
+                  className="absolute -left-1.5 -top-1.5 flex h-[18px] w-[18px] items-center justify-center rounded-full border border-lyra-border-subtle bg-lyra-bg-surface-base text-lyra-fg-secondary [&>svg]:h-3 [&>svg]:w-3"
+                  aria-hidden="true"
+                  data-kind-icon=""
+                >
+                  {kindIcon}
+                </span>
+              )}
               {/* Per explicit follow-up: the top-left "!" badge is
                   reserved for SLA-breach signaling (`severity ===
                   "critical"`, below) — `isNewAssignment` does NOT also
