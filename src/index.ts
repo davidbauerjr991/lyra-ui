@@ -138,7 +138,7 @@ export {
   VoiceDirectionIcon,
   SmsDirectionIcon,
 } from "./components/channel-row";
-export type { ChannelRowInstanceProps, ChannelTabProps, ChannelToggleProps, ChannelToggleGroupProps, PlainToggleTabProps, ChannelOutcomeConfig, ChannelDirection } from "./components/channel-row";
+export type { ChannelKindRow, ChannelRowInstanceProps, ChannelTabProps, ChannelToggleProps, ChannelToggleGroupProps, PlainToggleTabProps, ChannelOutcomeConfig, ChannelDirection } from "./components/channel-row";
 export { OutcomePanel } from "./components/outcome-panel";
 export type { OutcomePanelProps } from "./components/outcome-panel";
 export { VoiceCallControls } from "./components/voice-call-controls";

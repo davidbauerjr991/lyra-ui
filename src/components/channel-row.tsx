@@ -168,11 +168,27 @@ export const CHANNEL_TYPE_TAG_VARIANT: Record<ChannelType, TagVariant> = {
   email: "pink",
 };
 
+/** A non-channel assignment row's chip and Outcome (`InteractionChannel.kind`). */
+export interface ChannelKindRow {
+  label: string;
+  icon: React.ReactNode;
+  outcome?: React.ReactNode;
+}
+
 export interface InteractionChannel {
   /** Hides this row's channel chip (the "Chat"/"Voice" pill). The channel
    *  name stays available to screen readers. `InteractionNavItem`'s own
    *  `hideChip` hides it on every row at once. */
   hideChip?: boolean;
+  /** A row for an assignment that isn't a channel — a callback, task,
+   *  meeting… — on the same card as its channels, in whatever order the
+   *  consumer lists them. The chip shows this label and icon (neutral)
+   *  instead of `type`'s; everything else is a normal row (elapsed, preview,
+   *  the Outcome/kebab cluster, highlight, select). `type` isn't shown for
+   *  it. `outcome`: the consumer's own Outcome trigger (with its popover),
+   *  in the Outcome button's place, for a kind whose outcome isn't a
+   *  contact's. Unset (default): a channel row, as before. */
+  kind?: ChannelKindRow;
   /** Keeps this row blue-highlighted (like the current channel) even when it isn't the card's current channel, e.g. a live call alongside an open chat. Only applies on the active card. */
   alwaysHighlighted?: boolean;
   /** Unique identifier for this specific channel instance. Required to
@@ -402,6 +418,9 @@ export function buildVoiceMenuItems(onDismiss?: () => void): MenuEntry[] {
 interface ChannelRowProps {
   icon: React.ReactNode;
   label: string;
+  /** The consumer's own Outcome trigger, in the Outcome button's place (a
+   *  kind row's, `InteractionChannel.kind.outcome`). */
+  outcomeTrigger?: React.ReactNode;
   /** Hides the channel chip; `label` is kept as screen-reader text. See
    *  `InteractionChannel.hideChip`. */
   hideChip?: boolean;
@@ -598,6 +617,7 @@ function stripPromotedChannelRowActions(items: MenuEntry[], options?: { keepCons
 const ChannelRow: React.FC<ChannelRowProps> = ({
   icon,
   label,
+  outcomeTrigger,
   hideChip = false,
   tooltipLabel,
   variant,
@@ -837,7 +857,9 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
                 />
               </Tooltip>
             )}
-            {outcome ? (
+            {outcomeTrigger ? (
+              outcomeTrigger
+            ) : outcome ? (
               // Tooltip wraps the Popover from the OUTSIDE, via a plain
               // `<span className="inline-flex">` DOM element for Radix's
               // `asChild` to clone onto — same composition `ChannelToggle`
@@ -1091,6 +1113,8 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
 
 export interface ChannelRowInstanceProps {
   elapsed: string;
+  /** `KindChannelRow` only — see `InteractionChannel.kind`. */
+  kind?: ChannelKindRow;
   /** Passed straight through to `ChannelRow` — see `InteractionChannel.hideChip`. */
   hideChip?: boolean;
   /** Passed straight through to `ChannelRow` — see `InteractionChannel.
@@ -1242,6 +1266,22 @@ const VoiceChannelRow: React.FC<ChannelRowInstanceProps> = ({ menuItems, removab
     // `buildVoiceMenuItems` for voice — untouched, since only
     // `InteractionNavItem`'s copy was reported as mismatched.
     menuItems={menuItems ?? buildDigitalMenuItems(onDismiss)}
+    showMenu={removable !== false}
+    onDismiss={onDismiss}
+  />
+);
+
+/** A non-channel assignment row (`InteractionChannel.kind`): the kind's chip,
+ *  neutral, and a kebab only when the consumer gives it items. */
+const KindChannelRow: React.FC<ChannelRowInstanceProps> = ({ kind, menuItems, removable, onDismiss, direction: _direction, ...rest }) => (
+  <ChannelRow
+    {...rest}
+    icon={<span className="inline-flex [&>svg]:h-3 [&>svg]:w-3">{kind?.icon}</span>}
+    label={kind?.label ?? ""}
+    outcomeTrigger={kind?.outcome}
+    variant="neutral"
+    menuItems={menuItems ?? []}
+    showKebab={(rest.showKebab ?? true) && (menuItems?.length ?? 0) > 0}
     showMenu={removable !== false}
     onDismiss={onDismiss}
   />
@@ -2138,6 +2178,7 @@ export {
   SmsChannelRow,
   WhatsAppChannelRow,
   VoiceChannelRow,
+  KindChannelRow,
   CHANNEL_ROW_COMPONENTS,
   CHANNEL_TYPE_META,
   ChannelTab,

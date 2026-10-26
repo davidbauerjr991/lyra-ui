@@ -1007,6 +1007,42 @@ export const KindCard: Story = {
   ),
 };
 
+/* ── Kind rows (`InteractionChannel.kind`) and the new outline (`newOutline`):
+   a callback's card lists its Callback row first and, once the call starts,
+   the Voice row under it, in the order they were opened. A card not yet
+   opened since it arrived has the darker outline. ── */
+export const KindRows: Story = {
+  name: "Kind Rows and New Outline",
+  parameters: { layout: "padded" },
+  render: () => {
+    const callback: InteractionChannel = {
+      id: "callback",
+      type: "voice",
+      kind: { label: "Callback", icon: <Phone strokeWidth={1.5} /> },
+      elapsed: "",
+      preview: "Refund hasn't posted",
+      showConsultTransfer: false,
+    };
+    return (
+      <div className="flex items-start gap-6">
+        <div className="w-72">
+          <InteractionNavItem customerName="Priya Shah" elapsed="" expanded newOutline isNewAssignment kindIcon={<Phone strokeWidth={1.5} />} channels={[callback]} />
+        </div>
+        <div className="w-72">
+          <InteractionNavItem
+            customerName="Priya Shah"
+            elapsed="01:12"
+            expanded
+            active
+            currentChannelKey="voice"
+            channels={[callback, { id: "voice", type: "voice", direction: "outbound", elapsed: "01:12", preview: "General Support", onEndCall: () => {} }]}
+          />
+        </div>
+      </div>
+    );
+  },
+};
+
 /* ── Expanded — shape: corner radius and borders (the same two props Container has) ── */
 export const ExpandedShape: Story = {
   name: "Expanded — Radius and Borders",

@@ -5,6 +5,7 @@ import {
   CHANNEL_ROW_COMPONENTS,
   CHANNEL_TYPE_META,
   CHANNEL_TYPE_TAG_VARIANT,
+  KindChannelRow,
   type InteractionChannel,
   type ChannelType,
 } from "./channel-row";
@@ -76,9 +77,17 @@ export interface InteractionNavItemProps {
    * (a meeting, a training, a task…): its kind's icon, shown on the compact
    * tile's top-left corner, where a channel icon or count would be. Pass a
    * Lucide icon element; it's sized to fit. Ignored while the card has
-   * channels. Unset (default): nothing changes.
+   * channels (rows that are kind rows, `InteractionChannel.kind`, don't
+   * count). Unset (default): nothing changes.
    */
   kindIcon?: React.ReactNode;
+  /**
+   * The "new" outline: while the card is inactive and has no warning or
+   * critical severity, its border is `border-strong` instead of
+   * `border-subtle`, so a card not yet opened since it arrived stands out.
+   * Pass it with `isNewAssignment` until the first click. Default `false`.
+   */
+  newOutline?: boolean;
   /** Elapsed time label as 4-digit MM:SS (e.g. "00:02" = 2 seconds since the
    *  customer's last response) — shown under the compact avatar tile. */
   elapsed: string;
@@ -298,6 +307,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
       customerIdentified,
       channels = [],
       kindIcon,
+      newOutline = false,
       elapsed,
       awaitingResponse = false,
       awaitingSeverity,
@@ -717,10 +727,11 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
               // Only ever highlighted on the active card — an inactive card's
               // "current" channel still renders plain, same as every other row.
               const highlighted = active && (channelKey(ch) === effectiveCurrentKey || !!ch.alwaysHighlighted);
-              const RowComponent = CHANNEL_ROW_COMPONENTS[ch.type];
+              const RowComponent = ch.kind ? KindChannelRow : CHANNEL_ROW_COMPONENTS[ch.type];
               return (
                 <RowComponent
                   key={`${channelKey(ch)}-${i}`}
+                  kind={ch.kind}
                   elapsed={ch.elapsed}
                   hideChip={hideChip || ch.hideChip}
                   // Was missing entirely, same class of bug as `outcome`'s
@@ -939,7 +950,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
               present in `BadgeColor` — the cast below is narrowing to what
               the map is already guaranteed to contain, not asserting
               something unverified. */}
-          {collapsible && !channelsExpanded && channelCount === 1 && channels[0] && (
+          {collapsible && !channelsExpanded && channelCount === 1 && channels[0] && !channels[0].kind && (
             <Tooltip content={`${CHANNEL_TYPE_META[channels[0].type].label} channel`} placement="top">
             <Badge
               shape="circle"
@@ -1143,6 +1154,8 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
         ? "border-lyra-status-critical-strong hover:border-[color-mix(in_srgb,var(--lyra-color-status-critical-strong)_80%,black_20%)]"
         : severity === "warning"
         ? "border-lyra-status-warning-strong hover:border-[color-mix(in_srgb,var(--lyra-color-status-warning-strong)_80%,black_20%)]"
+        : !active && newOutline
+        ? "border-lyra-border-strong hover:border-[color-mix(in_srgb,var(--lyra-color-border-strong)_80%,black_20%)]"
         : !active
         ? "border-lyra-border-subtle hover:border-lyra-border-soft"
         : severity === "success"
@@ -1358,7 +1371,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                 {hasCustomerName ? initials : <User className="h-4 w-4" strokeWidth={1.5} />}
               </span>
               {/* A channel-less card's kind, in the corner a channel count would take. */}
-              {kindIcon && channelCount === 0 && (
+              {kindIcon && channels.every((c) => c.kind) && (
                 <span
                   className="absolute -left-1.5 -top-1.5 flex h-[18px] w-[18px] items-center justify-center rounded-full border border-lyra-border-subtle bg-lyra-bg-surface-base text-lyra-fg-secondary [&>svg]:h-3 [&>svg]:w-3"
                   aria-hidden="true"
