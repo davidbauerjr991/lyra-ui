@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect, useRef, useState } from "react";
+import { CalendarDays, MessageSquare, PhoneCall } from "lucide-react";
 import { Tag } from "../tag";
 import type { TagVariant } from "../tag";
 import { TAG_VARIANTS, TAG_SHAPES, variantLabel } from "./Tag.shared";
@@ -133,4 +134,43 @@ export const HoverState: Story = {
       ))}
     </div>
   ),
+};
+
+/* Selectable — with `selected` and `onClick` a Tag is a toggle chip (a
+   `<button>` with `aria-pressed`): a multi-select filter row with counts,
+   and one with leading icons. "All" clears the others; the rest toggle
+   independently and stack. */
+function SelectableRows() {
+  const [filters, setFilters] = useState<Set<string>>(new Set());
+  const [kinds, setKinds] = useState<Set<string>>(new Set(["Callback"]));
+  const toggle = (set: Set<string>, value: string) => {
+    const next = new Set(set);
+    if (next.has(value)) next.delete(value);
+    else next.add(value);
+    return next;
+  };
+  const kindIcons: Record<string, JSX.Element> = {
+    Conversation: <MessageSquare strokeWidth={1.5} />,
+    Callback: <PhoneCall strokeWidth={1.5} />,
+    Meeting: <CalendarDays strokeWidth={1.5} />,
+  };
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap gap-2">
+        {Object.entries(kindIcons).map(([kind, icon]) => (
+          <Tag key={kind} label={kind} shape="pill" variant="neutral" icon={icon} selected={kinds.has(kind)} onClick={() => setKinds((k) => toggle(k, kind))} />
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Tag label="All" shape="pill" variant="neutral" selected={filters.size === 0} onClick={() => setFilters(new Set())} />
+        <Tag label="Assignments" count={7} shape="pill" variant="neutral" selected={filters.has("a")} onClick={() => setFilters((f) => toggle(f, "a"))} />
+        <Tag label="History" count={3} shape="pill" variant="neutral" selected={filters.has("h")} onClick={() => setFilters((f) => toggle(f, "h"))} />
+        <Tag label="Disabled" count={0} shape="pill" variant="neutral" selected={false} onClick={() => {}} disabled />
+      </div>
+    </div>
+  );
+}
+
+export const Selectable: Story = {
+  render: () => <SelectableRows />,
 };

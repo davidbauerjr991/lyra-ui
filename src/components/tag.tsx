@@ -60,6 +60,20 @@ export interface TagProps extends React.HTMLAttributes<HTMLSpanElement> {
   trailingIcon?: React.ReactNode;
   /** Disable the tag and remove button */
   disabled?: boolean;
+  /** Optional count after the label — e.g. how many rows a filter chip matches. Rendered as muted text, not a badge. */
+  count?: number;
+  /**
+   * Selectable mode: with `selected` (true or false) and `onClick`, the Tag
+   * renders as a `<button>` — a toggle chip, e.g. a row of feed filters —
+   * with `aria-pressed` and, when selected, `ToggleGroup`'s on-state look
+   * (active-subtle fill, active border and text, whatever the `variant`).
+   * `onRemove` is ignored in this mode (a button can't hold another
+   * button). Without `selected` the Tag stays the static pill it always
+   * was, even with an `onClick`: a Radix `asChild` trigger such as
+   * `Tooltip`'s composes its own `onClick` onto a Tag it wraps, and that
+   * Tag must stay a `<span>`.
+   */
+  selected?: boolean;
 }
 
 /* ── CVA definitions ── */
@@ -140,14 +154,60 @@ const Tag = React.forwardRef<HTMLSpanElement, TagProps>(
       removeLabel,
       trailingIcon,
       disabled,
+      count,
+      selected,
+      onClick,
       className,
       ...props
     },
     ref
   ) => {
+      const selectable = selected !== undefined && !!onClick;
+      const content = (
+        <>
+          {dot && (
+            // 12px box = the remove button's X box, so the gap to the label matches an ×'s.
+            <span className="flex h-3 w-3 flex-shrink-0 items-center justify-center" aria-hidden="true">
+              {/* The small circle `Badge` dot (8×8), recolored to the tag's own text color (inline: the Badge sets its own text color, which `currentColor` would otherwise pick up) so every variant,
+                  including purple/teal/pink (which the circle Badge's own roles don't cover), gets a matching dot. */}
+              <Badge shape="circle" dot pulse={dotPulse} size="sm" style={{ backgroundColor: "currentColor", color: "inherit" }} />
+            </span>
+          )}
+          {icon && (
+            <span className="flex-shrink-0 [&>svg]:h-3 [&>svg]:w-3" aria-hidden="true">
+              {icon}
+            </span>
+          )}
+          <span className="truncate max-w-[200px]">{label}</span>
+          {count !== undefined && <span className="ms-0.5 opacity-70">{count}</span>}
+        </>
+      );
+      if (selectable) {
+        return (
+          <button
+            ref={ref as unknown as React.Ref<HTMLButtonElement>}
+            type="button"
+            aria-pressed={!!selected}
+            disabled={disabled}
+            onClick={onClick as unknown as React.MouseEventHandler<HTMLButtonElement>}
+            className={cn(
+              tagVariants({ variant, shape }),
+              "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lyra-border-focus",
+              !disabled && !selected && "hover:brightness-95 dark:hover:brightness-125",
+              selected && !disabled && "bg-lyra-bg-active-subtle border-lyra-border-active text-lyra-fg-active-strong hover:bg-lyra-state-hover-active-subtle",
+              disabled && "bg-lyra-bg-disabled text-lyra-fg-disabled border-lyra-border-disabled opacity-60 cursor-not-allowed",
+              className
+            )}
+            {...(props as React.ButtonHTMLAttributes<HTMLButtonElement>)}
+          >
+            {content}
+          </button>
+        );
+      }
       return (
       <span
         ref={ref}
+        onClick={onClick}
         className={cn(
           tagVariants({ variant, shape, className }),
           // Every Tag reacts to hover by default — the tag's own color
@@ -166,20 +226,7 @@ const Tag = React.forwardRef<HTMLSpanElement, TagProps>(
         )}
         {...props}
       >
-        {dot && (
-          // 12px box = the remove button's X box, so the gap to the label matches an ×'s.
-          <span className="flex h-3 w-3 flex-shrink-0 items-center justify-center" aria-hidden="true">
-            {/* The small circle `Badge` dot (8×8), recolored to the tag's own text color (inline: the Badge sets its own text color, which `currentColor` would otherwise pick up) so every variant,
-                including purple/teal/pink (which the circle Badge's own roles don't cover), gets a matching dot. */}
-            <Badge shape="circle" dot pulse={dotPulse} size="sm" style={{ backgroundColor: "currentColor", color: "inherit" }} />
-          </span>
-        )}
-        {icon && (
-          <span className="flex-shrink-0 [&>svg]:h-3 [&>svg]:w-3" aria-hidden="true">
-            {icon}
-          </span>
-        )}
-        <span className="truncate max-w-[200px]">{label}</span>
+        {content}
 
         {onRemove && !disabled ? (
           <Tooltip content={removeLabel ?? `Remove ${label}`} placement="top" delayMs={400}>
