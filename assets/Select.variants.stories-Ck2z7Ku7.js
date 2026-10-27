@@ -1,0 +1,64 @@
+import{j as e}from"./jsx-runtime-D_zvdyIk.js";import{r as l}from"./index-DhMLlvMY.js";import{S as a}from"./select-CqLB1K6d.js";import{s as o,E as ue,m as y}from"./Select.shared-DlcXxgem.js";import{S as ge}from"./sliders-horizontal-DYIYVQYC.js";import{C as xe}from"./chevron-down-gMYAX9-q.js";import"./_commonjsHelpers-CqkleIqs.js";import"./index-2UU9FgV2.js";import"./index-D7lG0nq1.js";import"./index-pcZVUfq6.js";import"./index-DOha2xPu.js";import"./index-4W-125c9.js";import"./index-C-870Axa.js";import"./index-0SMGJ9Xv.js";import"./index-CylpBFcA.js";import"./index-Bbt6qZUg.js";import"./Combination-DrhKiBYc.js";import"./tslib.es6-Ytcc2UEA.js";import"./tooltip-BnyLRSaS.js";import"./utils-BLSKlp9E.js";import"./error-icon-solid-eVlwMcX6.js";import"./label-FhkANc9R.js";import"./circle-help-DYnzmdO5.js";import"./createLucideIcon-aII_sYFw.js";import"./popover-DKthd7ap.js";import"./index-DjOBIGyd.js";import"./container-header-CRBwP-Mp.js";import"./arrow-left-Bi_-X62A.js";import"./x-CzxgOx-T.js";import"./checkbox-BvtSqiEO.js";import"./minus-CVnigrff.js";import"./check-Dr3vGcdY.js";import"./button-Cje2PXGX.js";import"./index-1evVQkiP.js";import"./badge-DnlHYDBX.js";import"./spinner-C_wii8DA.js";import"./loader-D8U98l95.js";import"./scroll-chevron-CXy7dwCM.js";import"./chevron-right-BP9ksYh_.js";import"./chevron-left-CtyUClJQ.js";import"./chevron-up-dmEEfYqc.js";import"./search-CZxBQJsH.js";const da={title:"Headless Primitives/Select/Variants",component:a,tags:["!autodocs"],parameters:{layout:"padded",backgrounds:{default:"lyra-shell"}}};function be(){const[s,r]=l.useState(["item-1","item-2","item-3"]);return e.jsx(a,{label:"Input Label",options:y,multiple:!0,searchable:!0,showSelectAll:!0,values:s,onValuesChange:r})}const t={name:"Multi-Select",render:()=>e.jsx(be,{})},he=[{value:"yellow",label:"Yellow"},{value:"blue",label:"Blue"},{value:"white",label:"White"},{value:"selected-white",label:"Selected White"},{value:"red",label:"Red"},{value:"magenta",label:"Magenta"},{value:"cyan",label:"Cyan"},{value:"dark-red",label:"Dark Red"},{value:"green",label:"Green"},{value:"orange",label:"Orange"}];function Se(){const[s,r]=l.useState([]);return e.jsx(a,{label:"Color",options:he,multiple:!0,searchable:!0,maxSelection:4,values:s,onValuesChange:r})}const n={name:"Max Selection",render:()=>e.jsx(Se,{})};function fe(){const[s,r]=l.useState("opt2");return e.jsxs("div",{className:"flex flex-col gap-4",children:[e.jsx(a,{label:"Input Label",options:o,value:s,onValueChange:r}),e.jsxs("p",{className:"lyra-body-sm text-lyra-fg-secondary",children:["Selected: ",e.jsx("span",{className:"text-lyra-fg-default",children:s})]})]})}const i={render:()=>e.jsx(fe,{})};function ye(){const[s,r]=l.useState("opt2");return e.jsxs("div",{className:"flex items-center justify-end rounded-lyra-md border border-lyra-border-subtle p-2 w-72",children:[e.jsx("span",{className:"lyra-body-md text-lyra-fg-default mr-auto",children:"Card header"}),e.jsx(a,{options:o,value:s,onValueChange:r,trigger:e.jsx(ge,{className:"h-4 w-4","aria-hidden":"true"}),dropdownAlign:"right"})]})}function ve(){const[s,r]=l.useState(["opt1","opt3"]),[j,C]=l.useState(!1);return e.jsx("div",{className:"flex justify-end w-72",children:e.jsx(a,{multiple:!0,options:o,values:s,onValuesChange:r,onOpenChange:C,dropdownAlign:"right",trigger:e.jsxs("button",{type:"button",className:"inline-flex items-center gap-1.5 h-8 px-3 rounded-lyra-sm border border-lyra-border-strong bg-lyra-bg-field hover:border-lyra-state-border-hover-neutral transition-colors",children:[e.jsx("span",{className:"lyra-body-md-emphasis text-lyra-fg-default",children:s.length>0?`${s.length} selected`:"Filter"}),e.jsx(xe,{className:`h-3.5 w-3.5 flex-shrink-0 transition-transform ${j?"rotate-180":""}`,strokeWidth:1.5,"aria-hidden":"true"})]})})})}const p={name:"Custom Triggers",render:()=>e.jsxs("div",{className:"flex flex-col gap-8",children:[e.jsxs("div",{className:"flex flex-col gap-2",children:[e.jsx("p",{className:"lyra-body-sm-emphasis text-lyra-fg-secondary",children:"Icon, single-select"}),e.jsx(ye,{})]}),e.jsxs("div",{className:"flex flex-col gap-2",children:[e.jsx("p",{className:"lyra-body-sm-emphasis text-lyra-fg-secondary",children:"Button, multi-select"}),e.jsx(ve,{})]})]})},c={name:"All States",render:()=>e.jsxs("div",{className:"flex flex-col gap-6",children:[e.jsx(a,{label:"Input Label",placeholder:"Select...",options:o}),e.jsx(a,{label:"Input Label",options:o,disabled:!0}),e.jsx(a,{label:"Input Label",options:o,error:ue})]})},m={name:"Loading",render:()=>e.jsx(a,{label:"Assignee",placeholder:"Select...",options:[],loading:!0,className:"max-w-[320px]"})},d={name:"Empty",render:()=>e.jsx(a,{label:"Assignee",placeholder:"Select...",options:[],emptyMessage:"No assignees yet",className:"max-w-[320px]"})},u={name:"No Results",render:()=>e.jsx(a,{label:"Assignee",placeholder:"Select...",options:o,searchable:!0,noResultsMessage:"No matches. Try a different search.",className:"max-w-[320px]"})},g={name:"Load Error",render:()=>e.jsx(a,{label:"Assignee",placeholder:"Select...",options:[],loadError:"Couldn't load assignees.",onRetry:()=>{},className:"max-w-[320px]"})},v=[{value:"red",label:"Red",group:"Warm"},{value:"orange",label:"Orange",group:"Warm"},{value:"blue",label:"Blue",group:"Cool"},{value:"green",label:"Green",group:"Cool"},{value:"gray",label:"Gray"}],x={name:"Option Groups",render:()=>e.jsxs("div",{className:"flex flex-col gap-6 max-w-[320px]",children:[e.jsx(a,{label:"Single",options:v}),e.jsx(a,{label:"Multiple",options:v,multiple:!0})]})};function je(){const[s,r]=l.useState(["item-1"]);return e.jsxs("div",{className:"flex flex-col gap-2 max-w-[320px]",children:[e.jsx(a,{label:"Columns",options:y,multiple:!0,applyFooter:!0,values:s,onValuesChange:r}),e.jsxs("p",{className:"lyra-body-sm text-lyra-fg-secondary",children:["Applied: ",s.join(", ")||"none"]})]})}const b={name:"Apply / Cancel Footer",render:()=>e.jsx(je,{})},h={name:"Values In Trigger",render:()=>e.jsxs("div",{className:"flex flex-col gap-6 max-w-[320px]",children:[e.jsx(a,{label:"Count (default)",options:v,multiple:!0,values:["red","blue","green"],onValuesChange:()=>{}}),e.jsx(a,{label:"Values",options:v,multiple:!0,triggerDisplay:"values",values:["red","blue","green"],onValuesChange:()=>{}})]})};function Ce(){const[s,r]=l.useState(["item-1","item-2"]),[j,C]=l.useState(["item-1"]);return e.jsxs("div",{className:"flex flex-col gap-6 max-w-[320px]",children:[e.jsx(a,{label:"Search, select all, clear and count",options:y,multiple:!0,searchable:!0,showSelectAll:!0,showClear:!0,showCount:!0,values:s,onValuesChange:r}),e.jsx(a,{label:"With Apply / Cancel",options:y,multiple:!0,showSelectAll:!0,showClear:!0,showCount:!0,applyFooter:!0,values:j,onValuesChange:C})]})}const S={name:"Clear and Count",render:()=>e.jsx(Ce,{})},N=[{value:"(646) 555-0143",label:"(646) 555-0143",disabled:!0,disabledReason:"Already open"},{value:"(212) 555-0177",label:"(212) 555-0177"}],f={name:"Disabled with Reason",render:()=>e.jsxs("div",{className:"flex flex-col gap-6 max-w-[320px]",children:[e.jsx(a,{label:"Select Phone",options:N}),e.jsx(a,{label:"Multiple",options:N,multiple:!0})]})};var w,A,O;t.parameters={...t.parameters,docs:{...(w=t.parameters)==null?void 0:w.docs,source:{originalSource:`{
+  name: "Multi-Select",
+  render: () => <MultiSelectDemo />
+}`,...(O=(A=t.parameters)==null?void 0:A.docs)==null?void 0:O.source}}};var V,M,R;n.parameters={...n.parameters,docs:{...(V=n.parameters)==null?void 0:V.docs,source:{originalSource:`{
+  name: "Max Selection",
+  render: () => <MaxSelectionDemo />
+}`,...(R=(M=n.parameters)==null?void 0:M.docs)==null?void 0:R.source}}};var D,E,I;i.parameters={...i.parameters,docs:{...(D=i.parameters)==null?void 0:D.docs,source:{originalSource:`{
+  render: () => <ControlledDemo />
+}`,...(I=(E=i.parameters)==null?void 0:E.docs)==null?void 0:I.source}}};var L,T,F;p.parameters={...p.parameters,docs:{...(L=p.parameters)==null?void 0:L.docs,source:{originalSource:`{
+  name: "Custom Triggers",
+  render: () => <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-2">
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary">Icon, single-select</p>
+        <IconTriggerDemo />
+      </div>
+      <div className="flex flex-col gap-2">
+        <p className="lyra-body-sm-emphasis text-lyra-fg-secondary">Button, multi-select</p>
+        <ButtonTriggerDemo />
+      </div>
+    </div>
+}`,...(F=(T=p.parameters)==null?void 0:T.docs)==null?void 0:F.source}}};var G,W,B;c.parameters={...c.parameters,docs:{...(G=c.parameters)==null?void 0:G.docs,source:{originalSource:`{
+  name: "All States",
+  render: () => <div className="flex flex-col gap-6">
+      <Select label="Input Label" placeholder="Select..." options={sampleOptions} />
+      <Select label="Input Label" options={sampleOptions} disabled />
+      <Select label="Input Label" options={sampleOptions} error={ERROR_MESSAGE} />
+    </div>
+}`,...(B=(W=c.parameters)==null?void 0:W.docs)==null?void 0:B.source}}};var k,_,P;m.parameters={...m.parameters,docs:{...(k=m.parameters)==null?void 0:k.docs,source:{originalSource:`{
+  name: "Loading",
+  render: () => <Select label="Assignee" placeholder="Select..." options={[]} loading className="max-w-[320px]" />
+}`,...(P=(_=m.parameters)==null?void 0:_.docs)==null?void 0:P.source}}};var H,$,z;d.parameters={...d.parameters,docs:{...(H=d.parameters)==null?void 0:H.docs,source:{originalSource:`{
+  name: "Empty",
+  render: () => <Select label="Assignee" placeholder="Select..." options={[]} emptyMessage="No assignees yet" className="max-w-[320px]" />
+}`,...(z=($=d.parameters)==null?void 0:$.docs)==null?void 0:z.source}}};var Y,q,J;u.parameters={...u.parameters,docs:{...(Y=u.parameters)==null?void 0:Y.docs,source:{originalSource:`{
+  name: "No Results",
+  render: () => <Select label="Assignee" placeholder="Select..." options={sampleOptions} searchable noResultsMessage="No matches. Try a different search." className="max-w-[320px]" />
+}`,...(J=(q=u.parameters)==null?void 0:q.docs)==null?void 0:J.source}}};var K,Q,U;g.parameters={...g.parameters,docs:{...(K=g.parameters)==null?void 0:K.docs,source:{originalSource:`{
+  name: "Load Error",
+  render: () => <Select label="Assignee" placeholder="Select..." options={[]} loadError="Couldn't load assignees." onRetry={() => {}} className="max-w-[320px]" />
+}`,...(U=(Q=g.parameters)==null?void 0:Q.docs)==null?void 0:U.source}}};var X,Z,ee;x.parameters={...x.parameters,docs:{...(X=x.parameters)==null?void 0:X.docs,source:{originalSource:`{
+  name: "Option Groups",
+  render: () => <div className="flex flex-col gap-6 max-w-[320px]">
+      <Select label="Single" options={groupedOptions} />
+      <Select label="Multiple" options={groupedOptions} multiple />
+    </div>
+}`,...(ee=(Z=x.parameters)==null?void 0:Z.docs)==null?void 0:ee.source}}};var ae,se,re;b.parameters={...b.parameters,docs:{...(ae=b.parameters)==null?void 0:ae.docs,source:{originalSource:`{
+  name: "Apply / Cancel Footer",
+  render: () => <ApplyFooterDemo />
+}`,...(re=(se=b.parameters)==null?void 0:se.docs)==null?void 0:re.source}}};var le,oe,te;h.parameters={...h.parameters,docs:{...(le=h.parameters)==null?void 0:le.docs,source:{originalSource:`{
+  name: "Values In Trigger",
+  render: () => <div className="flex flex-col gap-6 max-w-[320px]">
+      <Select label="Count (default)" options={groupedOptions} multiple values={["red", "blue", "green"]} onValuesChange={() => {}} />
+      <Select label="Values" options={groupedOptions} multiple triggerDisplay="values" values={["red", "blue", "green"]} onValuesChange={() => {}} />
+    </div>
+}`,...(te=(oe=h.parameters)==null?void 0:oe.docs)==null?void 0:te.source}}};var ne,ie,pe;S.parameters={...S.parameters,docs:{...(ne=S.parameters)==null?void 0:ne.docs,source:{originalSource:`{
+  name: "Clear and Count",
+  render: () => <ClearAndCountDemo />
+}`,...(pe=(ie=S.parameters)==null?void 0:ie.docs)==null?void 0:pe.source}}};var ce,me,de;f.parameters={...f.parameters,docs:{...(ce=f.parameters)==null?void 0:ce.docs,source:{originalSource:`{
+  name: "Disabled with Reason",
+  render: () => <div className="flex flex-col gap-6 max-w-[320px]">
+      <Select label="Select Phone" options={reasonOptions} />
+      <Select label="Multiple" options={reasonOptions} multiple />
+    </div>
+}`,...(de=(me=f.parameters)==null?void 0:me.docs)==null?void 0:de.source}}};const ua=["MultiSelect","MaxSelection","Controlled","CustomTriggers","AllStates","Loading","Empty","NoResults","LoadError","OptionGroups","ApplyFooter","ValuesInTrigger","ClearAndCount","DisabledWithReason"];export{c as AllStates,b as ApplyFooter,S as ClearAndCount,i as Controlled,p as CustomTriggers,f as DisabledWithReason,d as Empty,g as LoadError,m as Loading,n as MaxSelection,t as MultiSelect,u as NoResults,x as OptionGroups,h as ValuesInTrigger,ua as __namedExportsOrder,da as default};
