@@ -30,6 +30,7 @@ For any repo change of more than a trivial edit, run the subagents lyra-review a
 - commit-check — run on the staged diff before every commit, and on request against a commit range; the session fixes `block` and `fix` findings before committing and pastes the verdict line into its report.
 - heuristic-evaluator and market-researcher — run on request, or before a redesign of a flow; each writes its report to docs/ux/ in the repo under review and returns the summary in chat.
 - a11y-review and theme-conformance — run on request and before a step's final report when the step touched layout, styling or a theme; fix findings before reporting.
+- retro-review — run on request at the end of a step or a batch of fixes, against a commit range in the consumer repo; it returns proposed rules grouped by target file and writes nothing — show the report and let the user pick which rules to apply.
 
 ## 5. Prototype-workflow conventions (repos only; from agent-next-gen-demo's CLAUDE.md)
 One page with layout decided by settings; everything simulated behind provider seams; registries over JSX for cards, tabs and views; settings in a section-keyed store with agent/admin/personal scopes; capabilities hide, never disable; presence/state blocks disable with a reason; lyra edits need the user's explicit authorization and a story; a .lyra-ui-sync file records the lyra commit the repo was last verified against. Multi-commit steps: plan first, build, reviews (§4), report. No attribution lines in commits unless the user asks.
