@@ -1,4 +1,6 @@
+import * as React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
+import { Button } from "../button";
 import { InteriorPanel } from "../interior-panel";
 import { InfoIcon } from "../icons/info-icon";
 import { PanelForm, PanelFrame, PanelTabs, panelFooter } from "./InteriorPanel.shared";
@@ -80,4 +82,41 @@ export const HeaderAndFooter: Story = {
       </PanelFrame>
     </div>
   ),
+};
+
+/** `defaultFullScreen` + `onFullScreenChange`: a consumer that remounts the panel per context (one slide-over per
+ *  assignment) keeps each one's full-screen state and brings it back in it. Toggle full screen on A, switch to B and
+ *  back: A comes back full-screen, B as it was left. */
+function RememberedFullScreen() {
+  const [context, setContext] = React.useState<"A" | "B">("A");
+  const [fullScreenBy, setFullScreenBy] = React.useState<Record<string, boolean>>({});
+  return (
+    <div className="flex flex-col gap-3 max-w-3xl">
+      <div className="flex gap-2">
+        {(["A", "B"] as const).map((c) => (
+          <Button key={c} variant={c === context ? "default" : "outline"} onClick={() => setContext(c)}>
+            {`Assignment ${c}`}
+          </Button>
+        ))}
+      </div>
+      <PanelFrame label={`Assignment ${context} · full screen: ${fullScreenBy[context] ? "on" : "off"}`}>
+        <InteriorPanel
+          key={context}
+          open
+          headerTitle={`Assignment ${context}`}
+          allowFullScreen
+          defaultFullScreen={!!fullScreenBy[context]}
+          onFullScreenChange={(on) => setFullScreenBy((prev) => ({ ...prev, [context]: on }))}
+          onClose={() => {}}
+        >
+          <PanelForm />
+        </InteriorPanel>
+      </PanelFrame>
+    </div>
+  );
+}
+
+export const FullScreenRemembered: Story = {
+  name: "Full Screen Remembered per Context",
+  render: () => <RememberedFullScreen />,
 };

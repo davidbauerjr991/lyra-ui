@@ -200,6 +200,16 @@ export interface InteriorPanelProps extends React.HTMLAttributes<HTMLDivElement>
    * default) is a no-op both times. No effect if the panel isn't currently
    * full-screen. */
   exitFullScreenSignal?: number | string;
+  /**
+   * Whether the panel mounts full-screen (read once, on mount; default
+   * `false`). With `onFullScreenChange`, lets a consumer that remounts the
+   * panel per context (e.g. one slide-over per assignment) bring each one
+   * back in the full-screen state it was left in. Still uncontrolled after
+   * mount, like `width`/`storageKey`: the toggle owns the value from then on.
+   */
+  defaultFullScreen?: boolean;
+  /** Fired whenever full screen turns on or off (the toggle, `autoFullScreen`, `exitFullScreenSignal`). */
+  onFullScreenChange?: (fullScreen: boolean) => void;
 
   /**
    * Width (px) of the panel's PARENT container below which it switches to
@@ -328,6 +338,8 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
       headerTabs,
       allowFullScreen = false,
       exitFullScreenSignal,
+      defaultFullScreen = false,
+      onFullScreenChange,
       absoluteBreakpoint = 1440,
       overlayHeader = false,
       footer,
@@ -364,9 +376,18 @@ const InteriorPanel = React.forwardRef<HTMLDivElement, InteriorPanelProps>(
 
     // Full-screen state lives up here (not next to the toggle further down) so
     // the drag callback below can flip it for `autoFullScreen`.
-    const [isFullScreen, setIsFullScreen] = useState(false);
-    const isFullScreenRef = useRef(false);
+    const [isFullScreen, setIsFullScreen] = useState(defaultFullScreen);
+    const isFullScreenRef = useRef(defaultFullScreen);
     isFullScreenRef.current = isFullScreen;
+    // `onFullScreenChange`: reports each flip (not the mount value).
+    const onFullScreenChangeRef = useRef(onFullScreenChange);
+    onFullScreenChangeRef.current = onFullScreenChange;
+    const reportedFullScreenRef = useRef(defaultFullScreen);
+    useEffect(() => {
+      if (reportedFullScreenRef.current === isFullScreen) return;
+      reportedFullScreenRef.current = isFullScreen;
+      onFullScreenChangeRef.current?.(isFullScreen);
+    }, [isFullScreen]);
     const parentWidthRef = useRef(9999);
     const autoEnteredRef = useRef(false);
 
