@@ -71,3 +71,18 @@ export const OnlyWhenTruncated: Story = {
     </div>
   ),
 };
+
+/* Focus target — the label isn't focusable; Tab to the button around it and the cut-off label's tooltip opens
+   (`focusTarget="ancestor"`, as an accordion header's title does; a row passes a ref to its stretched Button). */
+export const FocusTarget: Story = {
+  name: "Only When Truncated — Focus Target",
+  render: () => (
+    <div className="p-8">
+      <Button variant="outline" className="w-48 justify-start">
+        <Tooltip content="A long header title that gets cut off" onlyWhenTruncated focusTarget="ancestor" delayMs={0}>
+          <span className="block min-w-0 truncate">A long header title that gets cut off</span>
+        </Tooltip>
+      </Button>
+    </div>
+  ),
+};

@@ -451,7 +451,8 @@ SuggestionTag.displayName = "SuggestionTag";
 
 /* ── SuggestedReply ── */
 
-/** The words to say or ask, ready to put into the reply: an info `Container` with a left accent bar and no other border. */
+/** The words to say or ask, ready to put into the reply: an info `Container` with a left accent bar and no other border.
+ *  The bar's side is square (full height, no rounding top-left/bottom-left); the right corners keep their radius. */
 const SuggestedReply = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
   <Container
     ref={ref}
@@ -460,7 +461,7 @@ const SuggestedReply = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTM
     borders="none"
     accent="left"
     role="note"
-    className={cn("px-3 py-2.5 lyra-body-md text-lyra-fg-default", className)}
+    className={cn("rounded-l-none px-3 py-2.5 lyra-body-md text-lyra-fg-default", className)}
     {...props}
   />
 ));

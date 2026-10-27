@@ -1043,6 +1043,33 @@ export const KindRows: Story = {
   },
 };
 
+/* ── Truncated name and preview: hover either (or Tab to the card / the row) and the cut-off one shows its full
+   text in a tooltip; the card on the right fits and shows none. ── */
+export const TruncatedTooltips: Story = {
+  name: "Truncated Name and Preview",
+  parameters: { layout: "padded" },
+  render: () => {
+    const training: InteractionChannel = {
+      id: "training",
+      type: "voice",
+      kind: { label: "Training", icon: <CalendarDays strokeWidth={1.5} /> },
+      elapsed: "",
+      preview: "Module · 20 min · due Friday at 5:00 PM",
+      showConsultTransfer: false,
+    };
+    return (
+      <div className="flex items-start gap-6">
+        <div className="w-60">
+          <InteractionNavItem customerName="RET-1.3 refund policy update for the spring returns window" elapsed="" expanded kindIcon={<CalendarDays strokeWidth={1.5} />} channels={[training]} />
+        </div>
+        <div className="w-72">
+          <InteractionNavItem customerName="RET-1.3" elapsed="" expanded kindIcon={<CalendarDays strokeWidth={1.5} />} channels={[{ ...training, preview: "Module · 20 min" }]} />
+        </div>
+      </div>
+    );
+  },
+};
+
 /* ── Expanded — shape: corner radius and borders (the same two props Container has) ── */
 export const ExpandedShape: Story = {
   name: "Expanded — Radius and Borders",

@@ -43,6 +43,26 @@ type Story = StoryObj<typeof AICard>;
 
 const Frame = ({ children }: { children: React.ReactNode }) => <div className="w-full">{children}</div>;
 
+/* A title cut off by a narrow card shows in full in a tooltip on hover, or on the header's keyboard focus; one that
+   fits shows none. */
+export const TruncatedTitle: Story = {
+  name: "Truncated Title",
+  render: () => (
+    <div className="flex flex-col gap-4">
+      <div className="w-64">
+        <AICard title="Experience Memory for the spring returns window" color="white">Body</AICard>
+      </div>
+      <div className="w-64">
+        <AICard title="Journey Summary" color="white">Body</AICard>
+      </div>
+      {/* Not an accordion: the title stays ContainerHeader's <h2>, with the same tooltip. */}
+      <div className="w-64">
+        <AICard title="Experience Memory for the spring returns window" color="white" accordion={false}>Body</AICard>
+      </div>
+    </div>
+  ),
+};
+
 export const Autosummary: Story = {
   name: "Autosummary",
   render: () => <Frame><AutosummaryCard /></Frame>,

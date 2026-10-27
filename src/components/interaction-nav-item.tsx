@@ -654,6 +654,8 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
     // is the actual Tab-order entry point into the preview now that the
     // wrapper div itself is no longer focusable.
     const previewEntryButtonRef = React.useRef<HTMLButtonElement | null>(null);
+    /** The expanded card's stretched `Button`: its keyboard focus opens a cut-off name's tooltip. */
+    const cardButtonRef = React.useRef<HTMLButtonElement | null>(null);
 
     // Every element inside the preview a Tab press could land on, in DOM
     // (== visual) order — deliberately a plain allow-list query, not a
@@ -982,7 +984,15 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
               yields space to the `shrink-0` timer, which floats to the
               right beside the chevron and is never clipped. Same severity colors as the
               compact tile's timer (onHold/critical/warning/success). */}
-          <Tooltip content={displayName} placement="top" disabled={!(collapsible && !channelsExpanded)}>
+          {/* The full name in a tooltip while it's cut off (hover, or the card's keyboard focus); a collapsed card
+              shows it either way. */}
+          <Tooltip
+            content={displayName}
+            placement="top"
+            onlyWhenTruncated={!(collapsible && !channelsExpanded)}
+            // Keyboard focus opens it only while it's cut off: never on a collapsed card's name that fits.
+            focusTarget={collapsible && !channelsExpanded ? undefined : cardButtonRef}
+          >
             <span
               className={cn(
                 "min-w-0 flex-1 truncate lyra-heading-sm text-lyra-fg-default"
@@ -1568,6 +1578,7 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
             above, so keyboard, screen reader and mouse all run the same
             handler once. */}
         <Button
+          ref={cardButtonRef}
           variant="ghost"
           aria-label={ariaLabel}
           aria-current={active ? "true" : undefined}

@@ -38,3 +38,15 @@ export const AllVariants: Story = {
     </div>
   ),
 };
+
+/* A string title cut off by a narrow header shows in full in a tooltip on hover (DashboardCard's and every Container
+   header's); one that fits shows none. */
+export const TruncatedTitle: Story = {
+  name: "Truncated Title",
+  render: () => (
+    <div className="flex w-64 flex-col divide-y divide-lyra-border-subtle rounded-lyra-lg border border-lyra-border-subtle bg-lyra-bg-surface-base">
+      <ContainerHeader title="Service level by queue for the spring returns window" bordered={false} />
+      <ContainerHeader title="Pipeline" bordered={false} />
+    </div>
+  ),
+};

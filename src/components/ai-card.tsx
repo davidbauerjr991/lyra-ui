@@ -5,6 +5,7 @@ import { ContainerHeader } from "./container-header";
 import { Avatar, type AvatarColor } from "./avatar";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "./button";
+import { Tooltip } from "./tooltip";
 import { ExternalLink, X } from "lucide-react";
 import { cn } from "../lib/utils";
 
@@ -132,12 +133,23 @@ const AICard = React.forwardRef<HTMLDivElement, AICardProps>(
       <span className="flex items-center gap-2 lyra-body-md-emphasis text-lyra-fg-default">{headerEnd}</span>
     ) : undefined;
     const name = typeof title === "string" ? title : undefined;
+    // A string title shows in full in a tooltip, only while it's cut off (hover, or the accordion trigger's
+    // keyboard focus). The ellipsis is the title's own, so the tooltip can measure it. Without the accordion the
+    // string goes to ContainerHeader as is: its <h2> carries the same tooltip.
+    const titleText =
+      name !== undefined && accordion ? (
+        <Tooltip content={name} onlyWhenTruncated focusTarget="ancestor">
+          <span className="block min-w-0 truncate">{name}</span>
+        </Tooltip>
+      ) : (
+        title
+      );
     const titleNode =
       count === undefined ? (
-        title
+        titleText
       ) : (
-        <span className="inline-flex items-center gap-2">
-          {title}
+        <span className="inline-flex min-w-0 max-w-full items-center gap-2">
+          {titleText}
           <span className="tabular-nums text-lyra-fg-secondary" aria-label={`${count} items`}>
             {count}
           </span>

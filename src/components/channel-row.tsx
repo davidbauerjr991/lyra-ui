@@ -675,6 +675,8 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
   // param doc comment) that stays mounted across this popover opening and
   // closing, unlike the popover's own footer button.
   const outcomeTriggerRef = React.useRef<HTMLButtonElement>(null);
+  /** The row's stretched select `Button`: its keyboard focus opens a cut-off preview's tooltip. */
+  const selectButtonRef = React.useRef<HTMLButtonElement>(null);
   return (
   <div
     onClick={onSelect}
@@ -706,6 +708,7 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
         same handler. */}
     {onSelect && (
       <Button
+        ref={selectButtonRef}
         variant="ghost"
         aria-label={`${label} channel${severity ? ", awaiting response" : ""}${elapsed ? `, ${elapsed}` : ""}`}
         aria-current={highlighted ? "true" : undefined}
@@ -1048,7 +1051,12 @@ const ChannelRow: React.FC<ChannelRowProps> = ({
         (own doc comment above) takes priority over this whole span whenever
         supplied — `preview` is untouched either way. */}
     <div className="flex items-center gap-1">
-      {preview && <p className="min-w-0 flex-1 truncate lyra-body-sm text-lyra-fg-secondary">{preview}</p>}
+      {preview && (
+        // The full preview in a tooltip, only while it's cut off (hover, or the row's keyboard focus).
+        <Tooltip content={preview} onlyWhenTruncated focusTarget={selectButtonRef}>
+          <p className="min-w-0 flex-1 truncate lyra-body-sm text-lyra-fg-secondary">{preview}</p>
+        </Tooltip>
+      )}
       {elapsedOverride ?? (elapsed && (
         <Tooltip content={recording ? `Recording · Duration: ${elapsed}` : `Duration: ${elapsed}`} placement="top">
         <span

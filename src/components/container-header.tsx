@@ -318,7 +318,10 @@ const ContainerHeader = React.forwardRef<HTMLDivElement, ContainerHeaderProps>(
                     rendered directly as a sibling flex item here instead. */}
                 <div className="flex items-center gap-2 min-w-0">
                   {title && (stringTitle !== undefined ? (
-                    <h2 className={cn(titleClassName, "text-lyra-fg-default truncate min-w-0")}>{title}</h2>
+                    // The full title in a tooltip, only while it's cut off.
+                    <Tooltip content={stringTitle} onlyWhenTruncated>
+                      <h2 className={cn(titleClassName, "text-lyra-fg-default truncate min-w-0")}>{title}</h2>
+                    </Tooltip>
                   ) : (
                     <>
                       {titleText && <h2 className="sr-only">{titleText}</h2>}

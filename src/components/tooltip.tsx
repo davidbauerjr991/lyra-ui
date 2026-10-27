@@ -43,6 +43,12 @@ interface TooltipProps {
    *  `forceOpen` still wins. Delay and width: it opens after `delayMs`
    *  (default 200) and is capped at 320px wide, wrapping longer text. */
   onlyWhenTruncated?: boolean;
+  /** The control whose keyboard focus also opens the tooltip, for a trigger
+   *  that isn't focusable itself: a truncated label inside a row whose
+   *  stretched `Button` takes focus (a ref to it), or inside an accordion
+   *  trigger (`"ancestor"`: the trigger's nearest focusable ancestor).
+   *  `onlyWhenTruncated` applies to it too. */
+  focusTarget?: React.RefObject<HTMLElement | null> | "ancestor";
 }
 
 /** True when `el` or any descendant has content wider/taller than its box. */
@@ -137,8 +143,36 @@ const Tooltip: React.FC<TooltipProps> = ({
   disabled = false,
   forceOpen = false,
   onlyWhenTruncated = false,
+  focusTarget,
 }) => {
   const triggerRef = React.useRef<HTMLButtonElement | null>(null);
+
+  // Open while `focusTarget` has keyboard focus (not a mouse focus, which the hover already covers).
+  const [focusOpen, setFocusOpen] = useState(false);
+  useEffect(() => {
+    if (!focusTarget) return;
+    const target =
+      focusTarget === "ancestor"
+        ? triggerRef.current?.parentElement?.closest<HTMLElement>('button, a[href], [tabindex]:not([tabindex="-1"])')
+        : focusTarget.current;
+    if (!target) return;
+    const show = () => {
+      let keyboard = true;
+      try {
+        keyboard = target.matches(":focus-visible");
+      } catch {
+        // A DOM without :focus-visible: any focus counts.
+      }
+      setFocusOpen(keyboard && (!onlyWhenTruncated || isTruncated(triggerRef.current)));
+    };
+    const hide = () => setFocusOpen(false);
+    target.addEventListener("focus", show);
+    target.addEventListener("blur", hide);
+    return () => {
+      target.removeEventListener("focus", show);
+      target.removeEventListener("blur", hide);
+    };
+  }, [focusTarget, onlyWhenTruncated]);
   const contentString = typeof content === "string" ? content : undefined;
   const triggerAriaProps: Record<string, unknown> = {};
   if (asLabel && contentString) {
@@ -183,9 +217,11 @@ const Tooltip: React.FC<TooltipProps> = ({
   return (
     <TooltipPrimitive.Provider delayDuration={delayMs} skipDelayDuration={0}>
       <TooltipPrimitive.Root
-        open={disabled || !allowOpen ? false : forceOpen || open}
+        open={disabled || !allowOpen ? false : forceOpen || open || focusOpen}
         onOpenChange={(next) => {
           if (disabled || !allowOpen) return;
+          // Escape (or leaving) closes a focus-opened tooltip too (WCAG 1.4.13: dismissible).
+          if (!next) setFocusOpen(false);
           if (next && onlyWhenTruncated && !isTruncated(triggerRef.current)) return;
           setOpen(next);
         }}
