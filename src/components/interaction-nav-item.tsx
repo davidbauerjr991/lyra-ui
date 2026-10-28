@@ -1374,7 +1374,9 @@ const InteractionNavItem = React.forwardRef<HTMLDivElement, InteractionNavItemPr
                   "flex h-8 w-8 items-center justify-center rounded-lyra-sm border lyra-body-sm-emphasis",
                   tone.bg,
                   tone.text,
-                  tone.border
+                  // `newOutline` (not yet opened) darkens the collapsed tile's border too, as it does the expanded
+                  // card's — unless a warning or critical severity already speaks for it.
+                  !active && newOutline && severity !== "critical" && severity !== "warning" ? "border-lyra-border-strong" : tone.border
                 )}
                 aria-hidden="true"
               >

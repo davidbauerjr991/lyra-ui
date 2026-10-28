@@ -1010,7 +1010,9 @@ export const KindCard: Story = {
 /* ── Kind rows (`InteractionChannel.kind`) and the new outline (`newOutline`):
    a callback's card lists its Callback row first and, once the call starts,
    the Voice row under it, in the order they were opened. A card not yet
-   opened since it arrived has the darker outline. ── */
+   opened since it arrived has the darker outline, the expanded card and the
+   collapsed rail's tile alike (the tile only while it isn't active, and not
+   when a warning or critical severity already colors its border). ── */
 export const KindRows: Story = {
   name: "Kind Rows and New Outline",
   parameters: { layout: "padded" },
@@ -1037,6 +1039,11 @@ export const KindRows: Story = {
             currentChannelKey="voice"
             channels={[callback, { id: "voice", type: "voice", direction: "outbound", elapsed: "01:12", preview: "General Support", onEndCall: () => {} }]}
           />
+        </div>
+        {/* The collapsed rail: not yet opened (the darker outline), then opened. */}
+        <div className="flex flex-col items-center gap-2">
+          <InteractionNavItem customerName="Priya Shah" elapsed="" expanded={false} newOutline channels={[callback]} />
+          <InteractionNavItem customerName="Priya Shah" elapsed="" expanded={false} channels={[callback]} />
         </div>
       </div>
     );

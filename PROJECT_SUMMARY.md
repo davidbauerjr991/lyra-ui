@@ -860,6 +860,9 @@ Stories: new "Expanded — New Assignment Severity" (one card per level); `newAs
 
 `agentic-task-parts.tsx`: `SuggestedReply` (the Next Best Action's Say/Ask callout) is `rounded-l-none`, so the left accent bar runs full height with square corners while the right corners keep `md`. Stories: Tooltip/Variants "Only When Truncated — Focus Target", AICard/Variants "Truncated Title" (accordion and not), ContainerHeader/Variants "Truncated Title", InteractionNavItem "Truncated Name and Preview".
 
+### InteractionNavItem: newOutline on the collapsed tile (2026-10-28)
+`interaction-nav-item.tsx`: `newOutline` now also darkens the collapsed rail tile's border (`border-strong`), under the same conditions as the expanded card: inactive, with no warning or critical severity. Before, a card not yet opened stood out only while the rail was expanded. Story: "Kind Rows and New Outline" gains a collapsed pair, not opened and opened.
+
 ### InteractionNavItem: compact tile's new-assignment corner dot follows newAssignmentSeverity (2026-10-15)
 Supersedes the "compact tile's own corner dot still turns red" note in "InteractionNavItem: newAssignmentSeverity colors the pulsing new-assignment dot". `interaction-nav-item.tsx`: for a new assignment, the collapsed rail tile's bottom-right corner dot (`cornerDotVariant`) and its ping ring now take `newAssignmentSeverity` too, with the same tokens as the header dot (`Badge` `success`/`warning`/`critical` + `bg-lyra-status-*-strong` ring, now one shared `newAssignmentPingBg`). Default `"critical"`, so it's red as before. Cards that aren't new assignments keep the old corner-dot rules (green/amber from `awaitingSeverity`, no dot for critical).
 Stories: "Expanded — New Assignment Severity" became "New Assignment Severity — Expanded & Collapsed Rail" (same export, `ExpandedNewAssignmentSeverity`): a collapsed-rail tile per level beside the expanded cards.
