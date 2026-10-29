@@ -1606,6 +1606,7 @@ const AddChannelButton = React.forwardRef<HTMLButtonElement, AddChannelButtonPro
                     value={detailSkill || undefined}
                     onValueChange={setDetailSkill}
                     options={skillOptions}
+                    searchable
                     dropdownClassName="z-[10005]"
                   />
                   <Button
@@ -3334,6 +3335,7 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                         value={detailSkill || undefined}
                         onValueChange={setDetailSkill}
                         options={outbound?.skillOptions ?? []}
+                        searchable
                         className="mt-4"
                         disabled={connecting}
                       />
@@ -3516,6 +3518,7 @@ const CreateNew = React.forwardRef<HTMLButtonElement, CreateNewProps>(
                       value={detailSkill || undefined}
                       onValueChange={setDetailSkill}
                       options={outbound?.skillOptions ?? []}
+                      searchable
                     />
                   </div>
                 )}
