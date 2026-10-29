@@ -220,3 +220,45 @@ export const BordersAndAccent: Story = {
     </div>
   ),
 };
+
+/* `background="gradient-<name>"`: the semantic tone at the top fading to the surface (the `--lyra-gradient-*`
+   tokens). One story per gradient, then all six in light and dark side by side — under Storybook's light global
+   theme (the light values live on `:root`, so with the global theme on dark both columns are dark). */
+const GRADIENTS = ["brand", "info", "success", "warning", "critical", "neutral"] as const;
+
+function GradientCard({ name }: { name: (typeof GRADIENTS)[number] }) {
+  return (
+    <Container background={`gradient-${name}`} headerTitle={`gradient-${name}`} headerSubhead="Fades to the surface" className="h-40 w-72">
+      <div className="px-5 pb-5">
+        <BodyText>Content on the gradient stays on the surface tone at the bottom.</BodyText>
+      </div>
+    </Container>
+  );
+}
+
+const gradientStory = (name: (typeof GRADIENTS)[number]): Story => ({
+  name: `Gradient · ${name}`,
+  render: () => <GradientCard name={name} />,
+});
+
+export const GradientBrand = gradientStory("brand");
+export const GradientInfo = gradientStory("info");
+export const GradientSuccess = gradientStory("success");
+export const GradientWarning = gradientStory("warning");
+export const GradientCritical = gradientStory("critical");
+export const GradientNeutral = gradientStory("neutral");
+
+export const AllGradients: Story = {
+  name: "Gradients · light and dark",
+  render: () => (
+    <div className="flex flex-wrap gap-6">
+      {(["light", "dark"] as const).map((theme) => (
+        <div key={theme} data-theme={theme === "dark" ? "dark" : undefined} className="grid grid-cols-1 gap-4 rounded-lyra-lg bg-lyra-bg-surface-canvas p-4 sm:grid-cols-2">
+          {GRADIENTS.map((name) => (
+            <GradientCard key={name} name={name} />
+          ))}
+        </div>
+      ))}
+    </div>
+  ),
+};

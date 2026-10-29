@@ -153,6 +153,17 @@
      `LYRA_CARD_MAX_WIDTH` in src/lib/size-tokens.ts for props that take px numbers (SidePanel's `width`);
      change both together. */
   --lyra-size-card-max-width: 350px;
+
+  /* ── Gradients ── */
+  /* A semantic tone at the top fading to the surface at the bottom (white in light, the surface in dark). Built
+     from the color tokens, so a theme or brand override flows through. Declared again in the dark block (same
+     text): a custom property's var() resolves where it's declared. `Container background="gradient-<name>"`. */
+  --lyra-gradient-brand: linear-gradient(to bottom, var(--lyra-color-bg-active-subtle), var(--lyra-color-bg-surface-base));
+  --lyra-gradient-info: linear-gradient(to bottom, var(--lyra-color-status-info-subtle), var(--lyra-color-bg-surface-base));
+  --lyra-gradient-success: linear-gradient(to bottom, var(--lyra-color-status-success-subtle), var(--lyra-color-bg-surface-base));
+  --lyra-gradient-warning: linear-gradient(to bottom, var(--lyra-color-status-warning-subtle), var(--lyra-color-bg-surface-base));
+  --lyra-gradient-critical: linear-gradient(to bottom, var(--lyra-color-status-critical-subtle), var(--lyra-color-bg-surface-base));
+  --lyra-gradient-neutral: linear-gradient(to bottom, var(--lyra-color-accent-slate-soft), var(--lyra-color-bg-surface-base));
 }
 
 /* ════════════════════════════════════════════════════
@@ -270,6 +281,14 @@
   --lyra-color-accent-purple-strong: #d1c9f2;
   --lyra-color-accent-pink-soft: #91296e;
   --lyra-color-accent-pink-strong: #fccaeb;
+
+  /* ── Gradients ── (same text as the light block, so they resolve against the dark colors) */
+  --lyra-gradient-brand: linear-gradient(to bottom, var(--lyra-color-bg-active-subtle), var(--lyra-color-bg-surface-base));
+  --lyra-gradient-info: linear-gradient(to bottom, var(--lyra-color-status-info-subtle), var(--lyra-color-bg-surface-base));
+  --lyra-gradient-success: linear-gradient(to bottom, var(--lyra-color-status-success-subtle), var(--lyra-color-bg-surface-base));
+  --lyra-gradient-warning: linear-gradient(to bottom, var(--lyra-color-status-warning-subtle), var(--lyra-color-bg-surface-base));
+  --lyra-gradient-critical: linear-gradient(to bottom, var(--lyra-color-status-critical-subtle), var(--lyra-color-bg-surface-base));
+  --lyra-gradient-neutral: linear-gradient(to bottom, var(--lyra-color-accent-slate-soft), var(--lyra-color-bg-surface-base));
 
   /* Tailwind class overrides for dark mode */
   color-scheme: dark;

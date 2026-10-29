@@ -120,6 +120,27 @@ function accentTone(variant?: string | null): "active" | "success" | "warning" |
   return "active";
 }
 
+/* ── Gradient background ──
+   A semantic tone at the top fading to the surface (the `--lyra-gradient-*` tokens), painted over the variant's
+   own background color, so the variant still sets the border and the surface under a translucent dark tone. */
+type ContainerBackground =
+  | "gradient-brand"
+  | "gradient-info"
+  | "gradient-success"
+  | "gradient-warning"
+  | "gradient-critical"
+  | "gradient-neutral";
+
+/* Static strings so Tailwind keeps them. */
+const BACKGROUND_CLASS: Record<ContainerBackground, string> = {
+  "gradient-brand": "bg-[image:var(--lyra-gradient-brand)]",
+  "gradient-info": "bg-[image:var(--lyra-gradient-info)]",
+  "gradient-success": "bg-[image:var(--lyra-gradient-success)]",
+  "gradient-warning": "bg-[image:var(--lyra-gradient-warning)]",
+  "gradient-critical": "bg-[image:var(--lyra-gradient-critical)]",
+  "gradient-neutral": "bg-[image:var(--lyra-gradient-neutral)]",
+};
+
 /** Classes for an accent bar on `side`, colored to match `variant`. */
 function containerAccentClasses(side: ContainerAccent = "none", variant?: string | null): string {
   if (side === "none") return "";
@@ -139,6 +160,11 @@ interface ContainerProps
    * corner radius and sits on top of `borders`, so `borders="none"` with `accent="left"` is a bar alone.
    */
   accent?: ContainerAccent;
+  /**
+   * A gradient background: the named semantic tone at the top fading to the surface at the bottom (white in light,
+   * the surface in dark), from the `--lyra-gradient-*` tokens. Painted over the variant's own background.
+   */
+  background?: ContainerBackground;
   /**
    * Header title — renders a `ContainerHeader` when this or any other
    * `header*` prop below is present. Optional on its own (not just when
@@ -182,7 +208,7 @@ interface ContainerProps
 
 const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
   ({
-    className, variant, radius, borders, accent,
+    className, variant, radius, borders, accent, background,
     headerTitle, headerIcon, headerActions,
     headerTitleBadge, headerTopSlot, headerSubhead, headerBordered = false,
     headerTitleClassName, headerClassName, headerActionsWrap, headerTabs,
@@ -192,7 +218,13 @@ const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
     return (
       <div
         ref={ref}
-        className={cn(containerVariants({ variant, radius }), containerBorderClasses(borders), containerAccentClasses(accent, variant), className)}
+        className={cn(
+          containerVariants({ variant, radius }),
+          containerBorderClasses(borders),
+          containerAccentClasses(accent, variant),
+          background && BACKGROUND_CLASS[background],
+          className,
+        )}
         {...props}
       >
         <ContainerHeaderSlot
@@ -225,4 +257,4 @@ const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
 Container.displayName = "Container";
 
 export { Container, containerVariants, containerBorderClasses, containerAccentClasses };
-export type { ContainerProps, ContainerBorders, ContainerBorderSide, ContainerAccent };
+export type { ContainerProps, ContainerBorders, ContainerBorderSide, ContainerAccent, ContainerBackground };
