@@ -108,6 +108,53 @@ function validatePhone(digits: string, country: PhoneCountry): string | null {
   return null;
 }
 
+/* ── Dial-code detection ── */
+// Dial codes without the "+", deduped (US/CA share "1").
+const DIAL_DIGITS = Array.from(new Set(PHONE_COUNTRIES.map((c) => c.dial.slice(1))));
+const MAX_DIAL_LENGTH = Math.max(...DIAL_DIGITS.map((d) => d.length));
+
+type DialResolution =
+  | { kind: "none" }
+  /** `rest` = everything typed after the code (separator dropped), raw. */
+  | { kind: "waiting" | "unknown"; rest: string }
+  | { kind: "match"; dial: string; rest: string };
+
+/**
+ * Reads a leading "+<code>" typed or pasted into the number field. A code is
+ * only "match"ed once it's certain: the digits start with a dial code AND no
+ * longer dial code could still begin with them ("+3"/"+35" wait, "+33"/"+351"
+ * match), or a space/dash after the digits says the user is done. A "+" with
+ * digits no dial code can start with is "unknown".
+ */
+function resolveDialPrefix(text: string): DialResolution {
+  const m = /^\s*\+(\d*)/.exec(text);
+  if (!m) return { kind: "none" };
+  const digits = m[1];
+  let after = text.slice(m[0].length);
+  const terminated = digits !== "" && /^[\s-]/.test(after);
+  if (terminated) after = after.slice(1);
+  if (!digits) return { kind: "waiting", rest: after };
+
+  const couldGrow = !terminated && DIAL_DIGITS.some((d) => d.length > digits.length && d.startsWith(digits));
+  if (couldGrow) return { kind: "waiting", rest: after };
+
+  const head = DIAL_DIGITS.filter((d) => digits.startsWith(d)).sort((a, b) => b.length - a.length)[0];
+  if (head) return { kind: "match", dial: `+${head}`, rest: digits.slice(head.length) + after };
+  // No code to split on — treat the longest possible dial code as the code.
+  return { kind: "unknown", rest: digits.slice(MAX_DIAL_LENGTH) + after };
+}
+
+/** Countries whose national format includes a leading trunk "0" (their
+ *  `example` starts with it — UK, Germany, Japan today). A number given in
+ *  international form drops that 0, so put it back when exactly one digit
+ *  short; any other length is left alone (already includes it, or isn't a
+ *  trunk-0 mistake). */
+function withTrunkZero(digits: string, country: PhoneCountry): string {
+  return country.example.startsWith("0") && digits.length === maskDigitCount(country.mask) - 1
+    ? `0${digits}`
+    : digits;
+}
+
 /** True once `digits` (raw, unformatted — same shape as `PhoneValue.number`)
  *  is a complete number for `country` — the same completeness check
  *  PhoneInput uses internally to decide whether to show its own validation
@@ -278,14 +325,32 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
     const listboxId = `${inputId}-countries`;
     const optionDomId = (i: number) => `${inputId}-country-${i}`;
     const [touched,     setTouched]     = React.useState(false);
+    // Text of the number field while it starts with "+" and the code isn't
+    // settled yet (still being typed, or unknown) — shown as typed, unmasked.
+    const [draft,       setDraft]       = React.useState<string | null>(null);
+    // Live-region text for a country change made by typing/pasting a "+code".
+    const [announcement, setAnnouncement] = React.useState("");
+
+    // Country whose digits came in through a "+code" in this field. Only those
+    // get the trunk 0 on blur (a national-format number one digit short is just
+    // incomplete). Forgotten when the field is emptied or the dropdown changes
+    // country; an outside country change simply stops matching it.
+    const codeOriginRef = React.useRef<string | null>(null);
 
     const countryCode = value?.countryCode ?? defaultCountry;
     const rawDigits   = value?.number ?? "";
 
     const selected    = PHONE_COUNTRIES.find((c) => c.code === countryCode) ?? PHONE_COUNTRIES[0];
     const formatted   = applyMask(rawDigits, selected.mask);
-    const error       = (touched || forceShowError) ? validatePhone(rawDigits, selected) : null;
+    const codeError   = draft !== null && resolveDialPrefix(draft).kind === "unknown" ? "Unknown country code" : null;
+    const error       = codeError ?? ((touched || forceShowError) ? validatePhone(rawDigits, selected) : null);
     const ph          = placeholder ?? selected.example;
+
+    // The draft only lives until the value changes under it from outside
+    // (country picked/reset, or digits arriving) — while it's showing we
+    // report `number: ""`, so any non-empty number isn't ours.
+    React.useEffect(() => { setDraft(null); }, [countryCode]);
+    React.useEffect(() => { if (rawDigits) setDraft(null); }, [rawDigits]);
 
     const filtered = React.useMemo(() => {
       const q = search.trim().toLowerCase();
@@ -302,12 +367,44 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
     }, [open]);
 
     const selectCountry = (c: PhoneCountry) => {
-      onChange?.({ countryCode: c.code, number: rawDigits });
+      // Mid-"+code" draft: keep the digits typed after the code, not the
+      // (empty) value, so picking a country never wipes what was typed.
+      const draftResolved = draft !== null ? resolveDialPrefix(draft) : null;
+      const number = draftResolved && draftResolved.kind !== "none"
+        ? withTrunkZero(stripDigits(draftResolved.rest), c).slice(0, maskDigitCount(c.mask))
+        : rawDigits;
+      setDraft(null);
+      codeOriginRef.current = null;
+      onChange?.({ countryCode: c.code, number });
       setOpen(false);
     };
 
     const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setAnnouncement("");
+      // A leading "+" is a country code typed/pasted into the number field.
+      // Without a country selector there's nothing to reflect it in.
+      const resolved = hideCountrySelector ? ({ kind: "none" } as const) : resolveDialPrefix(e.target.value);
+      if (resolved.kind === "match") {
+        // Keep the current country if it already has this code (US/CA share
+        // +1); otherwise the first list entry with it (US, RU, GB).
+        const next = selected.dial === resolved.dial
+          ? selected
+          : PHONE_COUNTRIES.find((c) => c.dial === resolved.dial) ?? selected;
+        const number = withTrunkZero(stripDigits(resolved.rest), next).slice(0, maskDigitCount(next.mask));
+        setDraft(null);
+        codeOriginRef.current = next.code;
+        onChange?.({ countryCode: next.code, number });
+        if (next.code !== countryCode) setAnnouncement(`Country set to ${next.name}`);
+        return;
+      }
+      if (resolved.kind !== "none") {
+        setDraft(e.target.value);
+        if (rawDigits) onChange?.({ countryCode, number: "" });
+        return;
+      }
+      setDraft(null);
       const digits = stripDigits(e.target.value);
+      if (!digits) codeOriginRef.current = null;
       const maxDigits = maskDigitCount(selected.mask);
       onChange?.({ countryCode, number: digits.slice(0, maxDigits) });
     };
@@ -350,9 +447,15 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
       <input
         id={inputId}
         type="tel"
-        value={formatted}
+        value={draft ?? formatted}
         onChange={handleNumberChange}
-        onBlur={() => setTouched(true)}
+        onBlur={() => {
+          setTouched(true);
+          if (codeOriginRef.current === countryCode) {
+            const withZero = withTrunkZero(rawDigits, selected);
+            if (withZero !== rawDigits) onChange?.({ countryCode, number: withZero });
+          }
+        }}
         placeholder={ph}
         disabled={disabled}
         readOnly={readonly}
@@ -502,6 +605,9 @@ const PhoneInput = React.forwardRef<HTMLDivElement, PhoneInputProps>(
             {error}
           </p>
         )}
+
+        {/* Announces a country change made by typing/pasting "+code" */}
+        <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{announcement}</div>
       </div>
     );
   }
