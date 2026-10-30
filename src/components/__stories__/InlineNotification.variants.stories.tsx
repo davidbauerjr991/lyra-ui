@@ -1,7 +1,9 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
+import { Avatar } from "../avatar";
 import { Button } from "../button";
 import { InlineNotification } from "../inline-notification";
+import { Tag } from "../tag";
 import { MESSAGES, VARIANTS, HEADINGS, INLINE_LINK_CLASS } from "./InlineNotification.shared";
 
 /* One page per Inline Notification variant, shown under "Inline
@@ -27,6 +29,22 @@ export const AllVariants: Story = {
           {MESSAGES[variant]}
         </InlineNotification>
       ))}
+      {/* `icon` replaces the status glyph (here a person's avatar, for an item row). The avatar carries no label:
+          the visible name beside it says it. A wider-than-20px icon pairs with `actionPlacement="inline"`. */}
+      <InlineNotification
+        variant="info"
+        icon={<Avatar size="xs" initials="MC" />}
+        heading={
+          <span className="flex items-center gap-2">
+            Maya Chen
+            <Tag label="Voice" />
+          </span>
+        }
+        actionPlacement="inline"
+        action={<Button variant="outline" size="sm">View</Button>}
+      >
+        On call
+      </InlineNotification>
     </div>
   ),
 };

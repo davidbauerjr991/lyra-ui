@@ -89,12 +89,19 @@ interface InlineNotificationProps
   heading?: React.ReactNode;
   /** Accessible name of the dismiss button. Default "Dismiss {type} notification". */
   dismissLabel?: string;
+  /** Opt-in: replaces the variant's status glyph at the start of the message
+   *  row (e.g. an `Avatar` for a person, or an entity icon). The variant still
+   *  sets the background and the screen-reader role. A `below` action indents
+   *  for the `md` glyph's 20px, so pair a wider icon with `actionPlacement="inline"`.
+   *  For a list of item rows, pass `role="listitem"` (in a `role="list"`
+   *  parent) so the rows aren't each a live region. */
+  icon?: React.ReactNode;
 }
 
 const InlineNotification = React.forwardRef<
   HTMLDivElement,
   InlineNotificationProps
->(({ className, variant = "info", onDismiss, action, actionPlacement = "below", heading, dismissLabel, children, ...props }, ref) => {
+>(({ className, variant = "info", onDismiss, action, actionPlacement = "below", heading, dismissLabel, icon, children, ...props }, ref) => {
   const StatusIcon = iconMap[variant!];
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   const setRefs = React.useCallback(
@@ -148,13 +155,19 @@ const InlineNotification = React.forwardRef<
       {...props}
     >
       <div className="flex items-start gap-3">
-        <Icon
-          icon={StatusIcon}
-          size="md"
-          color={iconColorMap[variant!]}
-          decorative
-          className="shrink-0 pt-0.5"
-        />
+        {icon ? (
+          <span className="shrink-0 flex items-center" data-slot="inline-notification-icon">
+            {icon}
+          </span>
+        ) : (
+          <Icon
+            icon={StatusIcon}
+            size="md"
+            color={iconColorMap[variant!]}
+            decorative
+            className="shrink-0 pt-0.5"
+          />
+        )}
         {message}
         {action && actionPlacement === "inline" && <div className="shrink-0 flex items-center">{action}</div>}
         {onDismiss && (
