@@ -62,7 +62,7 @@ export {
 } from "./components/table";
 export type { SortDirection, ColumnDragHandlers, TableProps, TableHeadProps, TableCellProps, TableToolbarProps, ToolbarFilterDef, ToolbarActionDef, TableFooterProps, ColumnToggleItem, ColumnToggleProps, TableGroupRowProps, GroupedData, UseTableGroupingReturn, UseAutoFitRowsReturn } from "./components/table";
 export { useListReorder } from "./components/use-list-reorder";
-export type { UseListReorderOptions, UseListReorderReturn, ListReorderItemProps } from "./components/use-list-reorder";
+export type { UseListReorderOptions, UseListReorderReturn, ListReorderItemProps, ListReorderListProps } from "./components/use-list-reorder";
 export { TabList, Tab, TabPanel } from "./components/tabs";
 export type { TabListProps, TabProps, TabPanelProps } from "./components/tabs";
 export { AppName } from "./components/app-name";

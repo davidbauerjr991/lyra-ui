@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { announceToScreenReader } from "./tabs";
 
 /**
@@ -23,6 +23,17 @@ import { announceToScreenReader } from "./tabs";
  *   item's DOM node moves with its key.
  *
  * Spread `itemProps(key)` onto each item's outermost element.
+ *
+ * **Between lists** (opt-in `group` + `id`): lists sharing a `group` accept
+ * each other's items. A drop on an item of another list, or on that list's
+ * own element (`listProps()`, which also catches drops on an empty list),
+ * reports `onMove(key, fromList, toList, index)` to the receiving list. A list
+ * can refuse an item (`canAccept` returning a reason string): the drop isn't
+ * allowed and the reason is announced. With `keyboardReorder`, the cross-axis
+ * arrows (Ctrl+Shift+Left / Right for a vertical list) move the focused item
+ * to the previous / next list in the group, in document order: to the end of
+ * the previous one or the start of the next. Focus follows the item into
+ * its new list (by `data-reorder-key`).
  */
 export interface UseListReorderOptions {
   /** The current order, as the consumer renders it. */
@@ -38,6 +49,28 @@ export interface UseListReorderOptions {
   /** The name announced after a keyboard move. Defaults to the item's
    *  `aria-label`, then its text, then the key. */
   getLabel?: (key: string) => string;
+  /** Lists with the same `group` accept each other's items. Needs `id`. */
+  group?: string;
+  /** This list's id within its `group`. */
+  id?: string;
+  /** The list's name in announcements ("moved to {label}"). Defaults to `id`. */
+  label?: string;
+  /** Called on the receiving list when an item arrives from another list in
+   *  the group, with the index it was dropped at in this list. */
+  onMove?: (key: string, fromList: string, toList: string, index: number) => void;
+  /** Whether this list takes an item from another list: `true`, or the reason
+   *  it doesn't (announced). Default: every item. */
+  canAccept?: (key: string, fromList: string) => true | string;
+}
+
+export interface ListReorderListProps {
+  ref: (el: HTMLElement | null) => void;
+  onDragEnter: (e: React.DragEvent<HTMLElement>) => void;
+  onDragOver: (e: React.DragEvent<HTMLElement>) => void;
+  onDrop: (e: React.DragEvent<HTMLElement>) => void;
+  onDragLeave: (e: React.DragEvent<HTMLElement>) => void;
+  /** Present while an item from another list is over this list and would be accepted. */
+  "data-drag-over"?: "";
 }
 
 export interface ListReorderItemProps {
@@ -58,6 +91,8 @@ export interface ListReorderItemProps {
 
 export interface UseListReorderReturn {
   itemProps: (key: string) => ListReorderItemProps;
+  /** Spread onto the list's own element (between lists only): drops on it, or on an empty list, land at its end. */
+  listProps: () => ListReorderListProps;
   /** The key currently dragged over, or `null`. */
   dragOverKey: string | null;
   /** The key being dragged, or `null`. */
@@ -71,6 +106,38 @@ function moveKey(order: string[], key: string, to: number): string[] {
   return next;
 }
 
+/** One list of a group, as the group's other lists see it (kept current every render). */
+interface GroupList {
+  id: string;
+  label: string;
+  order: string[];
+  el: HTMLElement | null;
+  accepts: (key: string, fromList: string) => true | string;
+  receive: (key: string, fromList: string, index: number) => void;
+  /** Clears this list's drag state: its item left for another list, so its own `dragend` (on a node no longer in
+   *  the document) never reaches it. */
+  reset: () => void;
+}
+
+/** The item being dragged in a group, and the lists that already announced refusing it. */
+interface GroupDrag {
+  key: string;
+  from: string;
+  announced: Set<string>;
+}
+
+/** Every mounted list, by group then id; and the item being dragged in each group. Module state: lists in one
+ *  group are separate hook instances (often separate components). */
+const groups = new Map<string, Map<string, GroupList>>();
+const groupDrags = new Map<string, GroupDrag>();
+
+/** The group's lists in document order. */
+function listsInOrder(group: string): GroupList[] {
+  return [...(groups.get(group)?.values() ?? [])]
+    .filter((l) => l.el)
+    .sort((a, b) => (a.el!.compareDocumentPosition(b.el!) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+}
+
 export function useListReorder({
   order,
   onReorder,
@@ -78,16 +145,70 @@ export function useListReorder({
   orientation = "vertical",
   disabled = false,
   getLabel,
+  group,
+  id,
+  label,
+  onMove,
+  canAccept,
 }: UseListReorderOptions): UseListReorderReturn {
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
   const [draggingKey, setDraggingKey] = useState<string | null>(null);
+  const [listOver, setListOver] = useState(false);
   const dragKeyRef = useRef<string | null>(null);
+  const grouped = group != null && id != null;
+
+  // This list as its group sees it, refreshed each render; registered while mounted.
+  const self = useRef<GroupList>({ id: id ?? "", label: label ?? id ?? "", order, el: null, accepts: () => true, receive: () => {}, reset: () => {} });
+  self.current.id = id ?? "";
+  self.current.label = label ?? id ?? "";
+  self.current.order = order;
+  self.current.accepts = (key, fromList) => canAccept?.(key, fromList) ?? true;
+  self.current.receive = (key, fromList, index) => onMove?.(key, fromList, id ?? "", index);
+  useEffect(() => {
+    if (!grouped) return;
+    const lists = groups.get(group!) ?? new Map<string, GroupList>();
+    groups.set(group!, lists);
+    lists.set(id!, self.current);
+    return () => {
+      if (lists.get(id!) === self.current) lists.delete(id!);
+      if (lists.size === 0) groups.delete(group!);
+      // Unmounted mid-drag: its drag would otherwise read as foreign to every later drag over the group.
+      if (groupDrags.get(group!)?.from === id) groupDrags.delete(group!);
+    };
+  }, [grouped, group, id]);
+
+  /** The item dragged from another list of this group, if that's what's being dragged. */
+  const foreignDrag = useCallback(() => {
+    if (!grouped || dragKeyRef.current != null) return null;
+    const drag = groupDrags.get(group!);
+    return drag && drag.from !== id ? drag : null;
+  }, [grouped, group, id]);
 
   const finish = useCallback(() => {
     dragKeyRef.current = null;
+    if (grouped && groupDrags.get(group!)?.from === id) groupDrags.delete(group!);
     setDraggingKey(null);
     setDragOverKey(null);
-  }, []);
+    setListOver(false);
+  }, [grouped, group, id]);
+  self.current.reset = finish;
+
+  /** Lands a foreign item here at `index`, or announces why not. */
+  const receiveForeign = useCallback(
+    (drag: GroupDrag, index: number) => {
+      groupDrags.delete(group!);
+      groups.get(group!)?.get(drag.from)?.reset();
+      setDragOverKey(null);
+      setListOver(false);
+      const ok = self.current.accepts(drag.key, drag.from);
+      if (ok !== true) {
+        announceToScreenReader(ok);
+        return;
+      }
+      self.current.receive(drag.key, drag.from, index);
+    },
+    [group]
+  );
 
   const itemProps = useCallback(
     (key: string): ListReorderItemProps => ({
@@ -95,20 +216,36 @@ export function useListReorder({
       onDragStart: (e) => {
         if (disabled) return;
         dragKeyRef.current = key;
+        if (grouped) groupDrags.set(group!, { key, from: id!, announced: new Set() });
         setDraggingKey(key);
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setData("text/plain", key);
       },
       onDragOver: (e) => {
-        if (disabled || dragKeyRef.current == null) return;
+        if (disabled) return;
+        const foreign = foreignDrag();
+        if (dragKeyRef.current == null && !foreign) return;
+        // A refused item from another list: no drop here (the list's dragenter announced why).
+        if (foreign && self.current.accepts(foreign.key, foreign.from) !== true) return;
         e.preventDefault();
+        // Grouped only: the list's own handlers mustn't see an item's drag (ungrouped lists behave as before).
+        if (grouped) e.stopPropagation();
         e.dataTransfer.dropEffect = "move";
         if (key !== dragKeyRef.current) setDragOverKey(key);
       },
       onDrop: (e) => {
+        if (disabled) return;
+        const foreign = foreignDrag();
+        if (foreign) {
+          e.preventDefault();
+          e.stopPropagation();
+          receiveForeign(foreign, order.indexOf(key));
+          return;
+        }
         const source = dragKeyRef.current;
-        if (disabled || source == null) return;
+        if (source == null) return;
         e.preventDefault();
+        if (grouped) e.stopPropagation();
         finish();
         if (source === key || !order.includes(source) || !order.includes(key)) return;
         onReorder(moveKey(order, source, order.indexOf(key)));
@@ -123,6 +260,31 @@ export function useListReorder({
         if (!keyboardReorder || disabled || !e.ctrlKey || !e.shiftKey) return;
         const back = orientation === "vertical" ? "ArrowUp" : "ArrowLeft";
         const forward = orientation === "vertical" ? "ArrowDown" : "ArrowRight";
+        const prevList = orientation === "vertical" ? "ArrowLeft" : "ArrowUp";
+        const nextList = orientation === "vertical" ? "ArrowRight" : "ArrowDown";
+        if (grouped && (e.key === prevList || e.key === nextList)) {
+          const name = () => getLabel?.(key) || e.currentTarget.getAttribute("aria-label") || e.currentTarget.textContent?.trim() || key;
+          e.preventDefault();
+          e.stopPropagation();
+          const lists = listsInOrder(group!);
+          const at = lists.findIndex((l) => l.id === id);
+          const target = lists[at + (e.key === nextList ? 1 : -1)];
+          if (at === -1 || !target) {
+            announceToScreenReader(`${name()}, already in the ${e.key === nextList ? "last" : "first"} list`);
+            return;
+          }
+          const ok = target.accepts(key, id!);
+          if (ok !== true) {
+            announceToScreenReader(ok);
+            return;
+          }
+          const index = e.key === nextList ? 0 : target.order.length;
+          announceToScreenReader(`${name()}, moved to ${target.label}, position ${index + 1} of ${target.order.length + 1}`);
+          target.receive(key, id!, index);
+          // The item remounts in its new list: give it focus back there.
+          requestAnimationFrame(() => target.el?.querySelector<HTMLElement>(`[data-reorder-key="${CSS.escape(key)}"]`)?.focus());
+          return;
+        }
         if (e.key !== back && e.key !== forward) return;
         e.preventDefault();
         e.stopPropagation();
@@ -142,8 +304,56 @@ export function useListReorder({
       ...(dragOverKey === key ? { "data-drag-over": "" as const } : {}),
       ...(draggingKey === key ? { "data-dragging": "" as const } : {}),
     }),
-    [order, onReorder, keyboardReorder, orientation, disabled, getLabel, dragOverKey, draggingKey, finish]
+    [order, onReorder, keyboardReorder, orientation, disabled, getLabel, dragOverKey, draggingKey, finish, grouped, group, id, foreignDrag, receiveForeign]
   );
 
-  return { itemProps, dragOverKey, draggingKey };
+  const listProps = useCallback(
+    (): ListReorderListProps => ({
+      ref: (el) => {
+        self.current.el = el;
+      },
+      onDragEnter: () => {
+        // Announced once per drag and list (dragenter fires again for every child entered).
+        const foreign = foreignDrag();
+        if (disabled || !foreign || foreign.announced.has(id!)) return;
+        const ok = self.current.accepts(foreign.key, foreign.from);
+        if (ok === true) return;
+        foreign.announced.add(id!);
+        announceToScreenReader(ok);
+      },
+      onDragOver: (e) => {
+        if (disabled) return;
+        const foreign = foreignDrag();
+        // Its own item (a drop on the empty area moves it to the end) or an accepted one from another list.
+        if (dragKeyRef.current == null && !foreign) return;
+        if (foreign && self.current.accepts(foreign.key, foreign.from) !== true) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        if (foreign) setListOver(true);
+      },
+      onDrop: (e) => {
+        // Drops on an item are handled (and stopped) there; this is the list's own area.
+        if (disabled) return;
+        const foreign = foreignDrag();
+        if (foreign) {
+          e.preventDefault();
+          receiveForeign(foreign, order.length);
+          return;
+        }
+        const source = dragKeyRef.current;
+        if (source == null) return;
+        e.preventDefault();
+        finish();
+        if (order.includes(source)) onReorder(moveKey(order, source, order.length));
+      },
+      onDragLeave: (e) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+        setListOver(false);
+      },
+      ...(listOver ? { "data-drag-over": "" as const } : {}),
+    }),
+    [disabled, foreignDrag, receiveForeign, order, onReorder, finish, listOver]
+  );
+
+  return { itemProps, listProps, dragOverKey, draggingKey };
 }
