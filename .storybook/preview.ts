@@ -77,11 +77,14 @@ const preview: Preview = {
         date: /Date$/i,
       },
     },
+    /* The backgrounds addon injects each value verbatim as `background: <value> !important`, so these are
+       var() references: the canvas follows data-theme (the toolbar toggle, or a component's own dark mode)
+       instead of staying on a fixed light hex. They also override the body color the withTheme decorator sets. */
     backgrounds: {
       default: "lyra-base",
       values: [
-        { name: "lyra-base", value: "#ffffff" },
-        { name: "lyra-shell", value: "#f3f5f6" },
+        { name: "lyra-base", value: "var(--lyra-color-bg-surface-base)" },
+        { name: "lyra-shell", value: "var(--lyra-color-bg-surface-shell)" },
         { name: "dark", value: "#1a2733" },
       ],
     },

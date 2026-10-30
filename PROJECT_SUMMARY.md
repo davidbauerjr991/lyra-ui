@@ -909,6 +909,10 @@ Stories: Select/Variants "Disabled with Reason"; CreateNew "Open address listed 
 
 ## Stories
 
+### Storybook canvas follows the theme toggle (2026-10-30)
+- `.storybook/preview.ts`: the `backgrounds` values `lyra-base` and `lyra-shell` were fixed light hexes (`#ffffff`, `#f3f5f6`), and the backgrounds addon's `background: <value> !important` beat the theme-aware body color the `withTheme` decorator sets, so the canvas stayed light in dark mode. They are now `var(--lyra-color-bg-surface-base)` and `var(--lyra-color-bg-surface-shell)` (the addon injects values verbatim, so `var()` works and tracks `data-theme`). Light shell moves from `#f3f5f6` to the token's `#F5F7F9`. The fixed `dark` entry is unchanged. Restart Storybook to pick up `preview.ts`.
+
+
 ### AppHeader (`src/components/__stories__/AppHeader.stories.tsx`)
 - `Default`, `AppName Only`, and `With Background` previously rendered a static, non-interactive `AppName` — clicking it did nothing, unlike the `Agent Next Gen Header` story where clicking `AppName` opens a real `AppMenu` popover (Admin/Supervisor/Agent-active/Conginity AI, Workforce Management/Quality Management/Interaction Hub/My Zone, Dashboard/Analytics groups, `CXoneLogo` footer).
 - Extracted that exact wiring into a shared `AppNameWithMenu({ name, alt })` helper (Radix `Popover.Root`/`Trigger`/`Portal`/`Content` around `AppName`, rendering `<AppMenu groups={APP_MENU_GROUPS} footer={<CXoneLogo />} />`) and the `APP_MENU_GROUPS` constant it needed, both moved above `Default` so all three static stories could reuse them — `AgentNextGen`'s own render function keeps its own separate copy of this wiring since it's bundled with unrelated AI-panel/notifications state specific to that story.
