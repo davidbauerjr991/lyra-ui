@@ -183,7 +183,7 @@ export type {
 export { SidePanel } from "./components/side-panel";
 export type { SidePanelProps } from "./components/side-panel";
 export { Container } from "./components/container";
-export type { ContainerProps, ContainerBorders, ContainerBorderSide, ContainerAccent, ContainerBackground } from "./components/container";
+export type { ContainerProps, ContainerBorders, ContainerBorderSide, ContainerAccent, ContainerBackground, ContainerCorner, ContainerCorners, ContainerBorderStyle } from "./components/container";
 export { PanelContent } from "./components/panel-content";
 export type { PanelContentProps } from "./components/panel-content";
 export { AdminShell } from "./components/admin-shell";

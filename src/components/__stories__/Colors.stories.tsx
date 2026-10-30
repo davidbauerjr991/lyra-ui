@@ -116,6 +116,54 @@ function ColorGroup({
   );
 }
 
+/* ── Gradients ──
+   Painted from the live CSS variable (not a copied value), so the swatches follow the theme toggle. */
+
+const GRADIENTS = [
+  { name: "Brand", id: "brand", from: "lyra-bg-active-subtle" },
+  { name: "Info", id: "info", from: "lyra-status-info-subtle" },
+  { name: "Success", id: "success", from: "lyra-status-success-subtle" },
+  { name: "Warning", id: "warning", from: "lyra-status-warning-subtle" },
+  { name: "Critical", id: "critical", from: "lyra-status-critical-subtle" },
+  { name: "Neutral", id: "neutral", from: "lyra-accent-slate-soft" },
+] as const;
+
+function GradientSwatch({ name, id, from }: (typeof GRADIENTS)[number]) {
+  return (
+    <div className="overflow-hidden rounded-lyra-lg border border-lyra-border-soft">
+      <div
+        className="h-24 w-full border-b border-lyra-border-subtle"
+        style={{ backgroundImage: `var(--lyra-gradient-${id})` }}
+      />
+      <div className="px-3 py-2.5 bg-lyra-bg-surface-base">
+        <div className="lyra-body-sm-emphasis text-lyra-fg-default">{name}</div>
+        <div className="lyra-body-sm text-lyra-fg-secondary font-mono mt-0.5">lyra-gradient-{id}</div>
+        <div className="lyra-body-sm text-lyra-fg-secondary mt-1">
+          Fades from <span className="font-mono">{from}</span> at the top to <span className="font-mono">lyra-bg-surface-base</span> at the bottom.
+        </div>
+        <div className="lyra-body-sm text-lyra-fg-secondary font-mono mt-0.5">background="gradient-{id}"</div>
+      </div>
+    </div>
+  );
+}
+
+function GradientsSection() {
+  return (
+    <div>
+      <h3 className="lyra-heading-md text-lyra-fg-default mb-1">Gradients</h3>
+      <p className="lyra-body-md text-lyra-fg-secondary mb-4">
+        A semantic tone at the top fading to the surface. Use them through Container's <span className="font-mono">background</span> prop
+        (for example <span className="font-mono">background="gradient-info"</span>) rather than writing the variable by hand.
+      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+        {GRADIENTS.map((g) => (
+          <GradientSwatch key={g.id} {...g} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ── Story ── */
 
 const meta: Meta = {
@@ -270,6 +318,23 @@ export const AllColors: Story = {
           { name: "Pink Strong", token: "lyra-accent-pink-strong", value: "#b53389", description: "Strong pink for text and icons." },
         ]}
       />
+
+      <GradientsSection />
+    </div>
+  ),
+};
+
+export const Gradients: Story = {
+  name: "Gradients",
+  render: () => (
+    <div className="max-w-[1200px]">
+      <div className="mb-8">
+        <h2 className="lyra-heading-xl text-lyra-fg-default mb-1">Gradients</h2>
+        <p className="lyra-body-lg text-lyra-fg-secondary">
+          Toggle the theme to see the same tokens in light and dark.
+        </p>
+      </div>
+      <GradientsSection />
     </div>
   ),
 };

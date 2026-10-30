@@ -155,15 +155,16 @@
   --lyra-size-card-max-width: 350px;
 
   /* ── Gradients ── */
-  /* A semantic tone at the top fading to the surface at the bottom (white in light, the surface in dark). Built
-     from the color tokens, so a theme or brand override flows through. Declared again in the dark block (same
-     text): a custom property's var() resolves where it's declared. `Container background="gradient-<name>"`. */
-  --lyra-gradient-brand: linear-gradient(to bottom, var(--lyra-color-bg-active-subtle), var(--lyra-color-bg-surface-base));
-  --lyra-gradient-info: linear-gradient(to bottom, var(--lyra-color-status-info-subtle), var(--lyra-color-bg-surface-base));
-  --lyra-gradient-success: linear-gradient(to bottom, var(--lyra-color-status-success-subtle), var(--lyra-color-bg-surface-base));
-  --lyra-gradient-warning: linear-gradient(to bottom, var(--lyra-color-status-warning-subtle), var(--lyra-color-bg-surface-base));
-  --lyra-gradient-critical: linear-gradient(to bottom, var(--lyra-color-status-critical-subtle), var(--lyra-color-bg-surface-base));
-  --lyra-gradient-neutral: linear-gradient(to bottom, var(--lyra-color-accent-slate-soft), var(--lyra-color-bg-surface-base));
+  /* A semantic tone at the top fading to the surface at the bottom (white in light, the surface in dark), over an
+     opaque surface layer so a translucent dark-mode tone blends with the surface, not with whatever is behind the
+     element. Built from the color tokens, so a theme or brand override flows through. Declared again in the dark
+     block (same text): a custom property's var() resolves where it's declared. `Container background="gradient-<name>"`. */
+  --lyra-gradient-brand: linear-gradient(to bottom, var(--lyra-color-bg-active-subtle), var(--lyra-color-bg-surface-base)), linear-gradient(var(--lyra-color-bg-surface-base), var(--lyra-color-bg-surface-base));
+  --lyra-gradient-info: linear-gradient(to bottom, var(--lyra-color-status-info-subtle), var(--lyra-color-bg-surface-base)), linear-gradient(var(--lyra-color-bg-surface-base), var(--lyra-color-bg-surface-base));
+  --lyra-gradient-success: linear-gradient(to bottom, var(--lyra-color-status-success-subtle), var(--lyra-color-bg-surface-base)), linear-gradient(var(--lyra-color-bg-surface-base), var(--lyra-color-bg-surface-base));
+  --lyra-gradient-warning: linear-gradient(to bottom, var(--lyra-color-status-warning-subtle), var(--lyra-color-bg-surface-base)), linear-gradient(var(--lyra-color-bg-surface-base), var(--lyra-color-bg-surface-base));
+  --lyra-gradient-critical: linear-gradient(to bottom, var(--lyra-color-status-critical-subtle), var(--lyra-color-bg-surface-base)), linear-gradient(var(--lyra-color-bg-surface-base), var(--lyra-color-bg-surface-base));
+  --lyra-gradient-neutral: linear-gradient(to bottom, var(--lyra-color-accent-slate-soft), var(--lyra-color-bg-surface-base)), linear-gradient(var(--lyra-color-bg-surface-base), var(--lyra-color-bg-surface-base));
 }
 
 /* ════════════════════════════════════════════════════
@@ -283,12 +284,12 @@
   --lyra-color-accent-pink-strong: #fccaeb;
 
   /* ── Gradients ── (same text as the light block, so they resolve against the dark colors) */
-  --lyra-gradient-brand: linear-gradient(to bottom, var(--lyra-color-bg-active-subtle), var(--lyra-color-bg-surface-base));
-  --lyra-gradient-info: linear-gradient(to bottom, var(--lyra-color-status-info-subtle), var(--lyra-color-bg-surface-base));
-  --lyra-gradient-success: linear-gradient(to bottom, var(--lyra-color-status-success-subtle), var(--lyra-color-bg-surface-base));
-  --lyra-gradient-warning: linear-gradient(to bottom, var(--lyra-color-status-warning-subtle), var(--lyra-color-bg-surface-base));
-  --lyra-gradient-critical: linear-gradient(to bottom, var(--lyra-color-status-critical-subtle), var(--lyra-color-bg-surface-base));
-  --lyra-gradient-neutral: linear-gradient(to bottom, var(--lyra-color-accent-slate-soft), var(--lyra-color-bg-surface-base));
+  --lyra-gradient-brand: linear-gradient(to bottom, var(--lyra-color-bg-active-subtle), var(--lyra-color-bg-surface-base)), linear-gradient(var(--lyra-color-bg-surface-base), var(--lyra-color-bg-surface-base));
+  --lyra-gradient-info: linear-gradient(to bottom, var(--lyra-color-status-info-subtle), var(--lyra-color-bg-surface-base)), linear-gradient(var(--lyra-color-bg-surface-base), var(--lyra-color-bg-surface-base));
+  --lyra-gradient-success: linear-gradient(to bottom, var(--lyra-color-status-success-subtle), var(--lyra-color-bg-surface-base)), linear-gradient(var(--lyra-color-bg-surface-base), var(--lyra-color-bg-surface-base));
+  --lyra-gradient-warning: linear-gradient(to bottom, var(--lyra-color-status-warning-subtle), var(--lyra-color-bg-surface-base)), linear-gradient(var(--lyra-color-bg-surface-base), var(--lyra-color-bg-surface-base));
+  --lyra-gradient-critical: linear-gradient(to bottom, var(--lyra-color-status-critical-subtle), var(--lyra-color-bg-surface-base)), linear-gradient(var(--lyra-color-bg-surface-base), var(--lyra-color-bg-surface-base));
+  --lyra-gradient-neutral: linear-gradient(to bottom, var(--lyra-color-accent-slate-soft), var(--lyra-color-bg-surface-base)), linear-gradient(var(--lyra-color-bg-surface-base), var(--lyra-color-bg-surface-base));
 
   /* Tailwind class overrides for dark mode */
   color-scheme: dark;

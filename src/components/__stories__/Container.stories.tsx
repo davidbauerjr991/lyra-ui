@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { cn } from "../../lib/utils";
-import { Container, type ContainerAccent, type ContainerBorderSide } from "../container";
+import { Container, type ContainerAccent, type ContainerBackground, type ContainerBorderSide, type ContainerBorderStyle, type ContainerCorner } from "../container";
 import {
   ALL_VARIANTS,
   BodyText,
@@ -39,6 +39,9 @@ export default meta;
 interface ContainerDemoProps {
   variant?: ContainerVariantName;
   radius?: "none" | "xs" | "sm" | "md" | "lg" | "xl";
+  corners?: ContainerCorner[];
+  background?: "none" | ContainerBackground;
+  borderStyle?: "variant" | ContainerBorderStyle;
   borders?: ContainerBorderSide[];
   accent?: ContainerAccent;
   showHeader?: boolean;
@@ -61,6 +64,9 @@ interface ContainerDemoProps {
 function ContainerDemo({
   variant = "default",
   radius = "lg",
+  corners = ["top-left", "top-right", "bottom-right", "bottom-left"],
+  background = "none",
+  borderStyle = "variant",
   borders = ["top", "right", "bottom", "left"],
   accent = "none",
   showHeader = true,
@@ -88,6 +94,9 @@ function ContainerDemo({
     <Container
       variant={variant}
       radius={radius}
+      corners={corners}
+      background={background === "none" ? undefined : background}
+      borderStyle={borderStyle === "variant" ? undefined : borderStyle}
       borders={borders}
       accent={accent}
       headerTitle={showHeader && showTitle ? "Container" : undefined}
@@ -135,16 +144,19 @@ export const Default: ContainerDemoStory = {
       // is set, so both the labels and the prop keys are listed.
       include: [
         "Header", "Title", "Draggable", "Subtitle", "Icon", "Alert tag", "Actions", "Tabs",
-        "Footer", "Title size", "Style", "Corner radius", "Borders", "Accent bar", "Header divider", "Footer border", "Footer scroll effect",
+        "Footer", "Title size", "Style", "Background", "Corner radius", "Rounded corners", "Border style", "Borders", "Accent bar", "Header divider", "Footer border", "Footer scroll effect",
         "showHeader", "showTitle", "showDraggable", "showSubhead", "showIcon", "tagPlacement",
-        "showActions", "showTabs", "footerAlign", "titleSize", "variant", "radius", "borders", "accent", "headerBordered", "footerBordered", "footerScrollEffect",
+        "showActions", "showTabs", "footerAlign", "titleSize", "variant", "background", "radius", "corners", "borderStyle", "borders", "accent", "headerBordered", "footerBordered", "footerScrollEffect",
       ],
       sort: "none",
     },
   },
   args: {
     variant: "default",
+    background: "none",
     radius: "lg",
+    corners: ["top-left", "top-right", "bottom-right", "bottom-left"],
+    borderStyle: "variant",
     borders: ["top", "right", "bottom", "left"],
     accent: "none",
     showHeader: true,
@@ -240,12 +252,35 @@ export const Default: ContainerDemoStory = {
       description: "Color and border style, as {color}-{border}. Popover and modal are overlay surfaces.",
       table: { category: "Appearance", defaultValue: { summary: "default" } },
     },
+    background: {
+      name: "Background",
+      control: "select",
+      options: ["none", "gradient-brand", "gradient-info", "gradient-success", "gradient-warning", "gradient-critical", "gradient-neutral"],
+      labels: { none: "None", "gradient-brand": "Gradient · Brand", "gradient-info": "Gradient · Info", "gradient-success": "Gradient · Success", "gradient-warning": "Gradient · Warning", "gradient-critical": "Gradient · Critical", "gradient-neutral": "Gradient · Neutral" },
+      description: "A gradient background (`background`): a semantic tone at the top fading to the surface, covering the style's own background color (the style still sets the border). None leaves the style's color alone.",
+      table: { category: "Appearance", defaultValue: { summary: "none" } },
+    },
     radius: {
       name: "Corner radius",
       control: "select",
       options: ["none", "xs", "sm", "md", "lg", "xl"],
       description: "Corner radius token (`radius`): none 0, xs 4, sm 6, md 8, lg 12, xl 16px.",
       table: { category: "Appearance", defaultValue: { summary: "lg" } },
+    },
+    corners: {
+      name: "Rounded corners",
+      control: "check",
+      options: ["top-left", "top-right", "bottom-right", "bottom-left"],
+      description: "Which corners keep the Corner radius (`corners`). All four is the default; the unticked corners are square.",
+      table: { category: "Appearance", defaultValue: { summary: "all four corners" } },
+    },
+    borderStyle: {
+      name: "Border style",
+      control: "select",
+      options: ["variant", "solid", "dashed", "dotted"],
+      labels: { variant: "Style's own", solid: "Solid", dashed: "Dashed", dotted: "Dotted" },
+      description: "The border's line style (`borderStyle`). “Style's own” keeps what the Style draws (the “-dotted” styles are dotted, the rest solid). Needs a style that has a border.",
+      table: { category: "Appearance", defaultValue: { summary: "style's own" } },
     },
     borders: {
       name: "Borders",
@@ -257,9 +292,9 @@ export const Default: ContainerDemoStory = {
     accent: {
       name: "Accent bar",
       control: "select",
-      options: ["none", "left", "right", "top", "bottom"],
-      labels: { none: "None", left: "Left", right: "Right", top: "Top", bottom: "Bottom" },
-      description: "A thick (4px) bar on one side in the style's strong color (`accent`). It follows the corner radius and sits on top of Borders, so Borders off with a left bar gives a bar alone.",
+      options: ["none", "all", "left", "right", "top", "bottom"],
+      labels: { none: "None", all: "All sides", left: "Left", right: "Right", top: "Top", bottom: "Bottom" },
+      description: "A thick (4px) bar on one side, or on all sides, in the style's strong color (`accent`). All sides replaces Borders. It follows the corner radius and sits on top of Borders, so Borders off with a left bar gives a bar alone.",
       table: { category: "Appearance", defaultValue: { summary: "none" } },
     },
     headerBordered: {
