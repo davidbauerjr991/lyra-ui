@@ -284,12 +284,14 @@
   --lyra-color-accent-pink-strong: #fccaeb;
 
   /* ── Gradients ── (same text as the light block, so they resolve against the dark colors) */
+  /* Dark neutral: its top stop is accent-slate-soft mixed 80/20 toward the surface, so secondary text at the top
+     reaches 4.5:1 (4.59:1; the unmixed slate gave 4.10:1). accent-slate-soft itself is unchanged. */
   --lyra-gradient-brand: linear-gradient(to bottom, var(--lyra-color-bg-active-subtle), var(--lyra-color-bg-surface-base)), linear-gradient(var(--lyra-color-bg-surface-base), var(--lyra-color-bg-surface-base));
   --lyra-gradient-info: linear-gradient(to bottom, var(--lyra-color-status-info-subtle), var(--lyra-color-bg-surface-base)), linear-gradient(var(--lyra-color-bg-surface-base), var(--lyra-color-bg-surface-base));
   --lyra-gradient-success: linear-gradient(to bottom, var(--lyra-color-status-success-subtle), var(--lyra-color-bg-surface-base)), linear-gradient(var(--lyra-color-bg-surface-base), var(--lyra-color-bg-surface-base));
   --lyra-gradient-warning: linear-gradient(to bottom, var(--lyra-color-status-warning-subtle), var(--lyra-color-bg-surface-base)), linear-gradient(var(--lyra-color-bg-surface-base), var(--lyra-color-bg-surface-base));
   --lyra-gradient-critical: linear-gradient(to bottom, var(--lyra-color-status-critical-subtle), var(--lyra-color-bg-surface-base)), linear-gradient(var(--lyra-color-bg-surface-base), var(--lyra-color-bg-surface-base));
-  --lyra-gradient-neutral: linear-gradient(to bottom, var(--lyra-color-accent-slate-soft), var(--lyra-color-bg-surface-base)), linear-gradient(var(--lyra-color-bg-surface-base), var(--lyra-color-bg-surface-base));
+  --lyra-gradient-neutral: linear-gradient(to bottom, color-mix(in srgb, var(--lyra-color-accent-slate-soft) 80%, var(--lyra-color-bg-surface-base)), var(--lyra-color-bg-surface-base)), linear-gradient(var(--lyra-color-bg-surface-base), var(--lyra-color-bg-surface-base));
 
   /* Tailwind class overrides for dark mode */
   color-scheme: dark;
