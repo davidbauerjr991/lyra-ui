@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { announceToScreenReader } from "./tabs";
 
 /**
@@ -33,7 +33,12 @@ import { announceToScreenReader } from "./tabs";
  * arrows (Ctrl+Shift+Left / Right for a vertical list) move the focused item
  * to the previous / next list in the group, in document order: to the end of
  * the previous one or the start of the next. Focus follows the item into
- * its new list (by `data-reorder-key`).
+ * its new list (by `data-reorder-key`) on the first render of that list that
+ * holds it, so an `onMove` that commits a little later still gets focus
+ * there. A `disabled` list refuses keyboard moves into it as it refuses
+ * drops. A list that doesn't spread `listProps()` is still a keyboard target
+ * while it has items (found by its items' `data-reorder-list`); an empty one
+ * needs `listProps()`.
  */
 export interface UseListReorderOptions {
   /** The current order, as the consumer renders it. */
@@ -82,6 +87,8 @@ export interface ListReorderItemProps {
   onDragLeave: (e: React.DragEvent<HTMLElement>) => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => void;
   "data-reorder-key": string;
+  /** Between lists only: which list the item belongs to (a per-list token, used to find the list's items). */
+  "data-reorder-list"?: string;
   /** Present while another item is dragged over this one — style the drop
    *  target with `data-[drag-over]:` utilities. */
   "data-drag-over"?: "";
@@ -111,12 +118,26 @@ interface GroupList {
   id: string;
   label: string;
   order: string[];
+  /** The element from `listProps()`, if the list spreads it. */
   el: HTMLElement | null;
+  /** The value of this list's items' `data-reorder-list`. */
+  token: string;
+  disabled: boolean;
   accepts: (key: string, fromList: string) => true | string;
   receive: (key: string, fromList: string, index: number) => void;
+  /** Focuses `key`'s item on the first render of this list that holds it (the consumer may commit the move late). */
+  focusWhenArrived: (key: string) => void;
   /** Clears this list's drag state: its item left for another list, so its own `dragend` (on a node no longer in
    *  the document) never reaches it. */
   reset: () => void;
+}
+
+/** How long a keyboard move waits for the target list to render the item before giving up on focusing it. */
+const FOCUS_WAIT_MS = 5000;
+
+/** A list's element for document order: its own (`listProps()`), else its first item. */
+function anchorOf(list: GroupList): Element | null {
+  return list.el ?? document.querySelector(`[data-reorder-list="${CSS.escape(list.token)}"]`);
 }
 
 /** The item being dragged in a group, and the lists that already announced refusing it. */
@@ -134,8 +155,10 @@ const groupDrags = new Map<string, GroupDrag>();
 /** The group's lists in document order. */
 function listsInOrder(group: string): GroupList[] {
   return [...(groups.get(group)?.values() ?? [])]
-    .filter((l) => l.el)
-    .sort((a, b) => (a.el!.compareDocumentPosition(b.el!) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+    .map((list) => ({ list, anchor: anchorOf(list) }))
+    .filter((l): l is { list: GroupList; anchor: Element } => l.anchor != null)
+    .sort((a, b) => (a.anchor.compareDocumentPosition(b.anchor) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
+    .map((l) => l.list);
 }
 
 export function useListReorder({
@@ -156,14 +179,43 @@ export function useListReorder({
   const [listOver, setListOver] = useState(false);
   const dragKeyRef = useRef<string | null>(null);
   const grouped = group != null && id != null;
+  const token = useId();
+  const pendingFocus = useRef<{ key: string; until: number } | null>(null);
 
   // This list as its group sees it, refreshed each render; registered while mounted.
-  const self = useRef<GroupList>({ id: id ?? "", label: label ?? id ?? "", order, el: null, accepts: () => true, receive: () => {}, reset: () => {} });
+  const self = useRef<GroupList>({
+    id: id ?? "", label: label ?? id ?? "", order, el: null, token, disabled,
+    accepts: () => true, receive: () => {}, focusWhenArrived: () => {}, reset: () => {},
+  });
   self.current.id = id ?? "";
   self.current.label = label ?? id ?? "";
   self.current.order = order;
+  self.current.disabled = disabled;
   self.current.accepts = (key, fromList) => canAccept?.(key, fromList) ?? true;
   self.current.receive = (key, fromList, index) => onMove?.(key, fromList, id ?? "", index);
+  self.current.focusWhenArrived = (key) => {
+    pendingFocus.current = { key, until: Date.now() + FOCUS_WAIT_MS };
+  };
+
+  // A keyboard move into this list: focus the item once a render of this list holds it (every render checks).
+  useEffect(() => {
+    const pending = pendingFocus.current;
+    if (!pending) return;
+    if (Date.now() > pending.until) {
+      pendingFocus.current = null;
+      return;
+    }
+    if (!order.includes(pending.key)) return;
+    const el = document.querySelector<HTMLElement>(
+      `[data-reorder-list="${CSS.escape(token)}"][data-reorder-key="${CSS.escape(pending.key)}"]`
+    );
+    if (!el) return;
+    pendingFocus.current = null;
+    // Only while focus is still the moved item's (its old node, or the body once that node left): never steal it.
+    const active = document.activeElement;
+    if (active && active !== document.body && active.getAttribute("data-reorder-key") !== pending.key) return;
+    el.focus();
+  });
   useEffect(() => {
     if (!grouped) return;
     const lists = groups.get(group!) ?? new Map<string, GroupList>();
@@ -273,16 +325,17 @@ export function useListReorder({
             announceToScreenReader(`${name()}, already in the ${e.key === nextList ? "last" : "first"} list`);
             return;
           }
-          const ok = target.accepts(key, id!);
+          // A disabled list takes nothing, by keyboard as by drop.
+          const ok = target.disabled ? `${target.label} isn't taking items` : target.accepts(key, id!);
           if (ok !== true) {
             announceToScreenReader(ok);
             return;
           }
           const index = e.key === nextList ? 0 : target.order.length;
           announceToScreenReader(`${name()}, moved to ${target.label}, position ${index + 1} of ${target.order.length + 1}`);
+          // The item remounts in its new list: give it focus back there, whenever that list renders it.
+          target.focusWhenArrived(key);
           target.receive(key, id!, index);
-          // The item remounts in its new list: give it focus back there.
-          requestAnimationFrame(() => target.el?.querySelector<HTMLElement>(`[data-reorder-key="${CSS.escape(key)}"]`)?.focus());
           return;
         }
         if (e.key !== back && e.key !== forward) return;
@@ -301,6 +354,7 @@ export function useListReorder({
         onReorder(moveKey(order, key, to));
       },
       "data-reorder-key": key,
+      ...(grouped ? { "data-reorder-list": token } : {}),
       ...(dragOverKey === key ? { "data-drag-over": "" as const } : {}),
       ...(draggingKey === key ? { "data-dragging": "" as const } : {}),
     }),
